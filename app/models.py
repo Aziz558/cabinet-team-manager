@@ -152,26 +152,9 @@ class AppSetting(db.Model):
     cle = db.Column(db.String(120), unique=True, nullable=False, index=True)
     valeur = db.Column(db.Text, nullable=True)
     type_valeur = db.Column(db.String(20), default='string')  # string | json | password
-    service = db.Column(db.String(50), default='general')  # pennylane | outlook | teams | mail | general
+    service = db.Column(db.String(50), default='general')  # outlook | teams | mail | general
     masque = db.Column(db.Boolean, default=False)
     date_modification = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f'<AppSetting {self.cle}>'
-
-
-class PennyLaneSnapshot(db.Model):
-    __tablename__ = 'pennylane_snapshots'
-    id = db.Column(db.Integer, primary_key=True)
-    company_id = db.Column(db.String(120), nullable=False, index=True)
-    company_name = db.Column(db.String(200))
-    fact_frs = db.Column(db.Integer, default=0)
-    fact_clts = db.Column(db.Integer, default=0)
-    transactions = db.Column(db.Integer, default=0)
-    ecritures_attente = db.Column(db.Integer, default=0)
-    documents_a_approuver = db.Column(db.Integer, default=0)
-    date_snapshot = db.Column(db.DateTime, default=datetime.utcnow)
-    raw = db.Column(db.Text)
-
-    def __repr__(self):
-        return f'<PennyLaneSnapshot {self.company_id} {self.date_snapshot}>'

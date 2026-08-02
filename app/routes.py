@@ -7,7 +7,7 @@ import csv
 import io
 import smtplib
 from app import app, db, mail
-from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, PennyLaneSnapshot
+from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting
 from flask_mail import Message
 import os
 
@@ -732,23 +732,6 @@ def _build_suggestions():
                     'source': 'deadline'
                 })
 
-    # Suggestions depuis PennyLane
-    try:
-        from app.integrations import get_pennylane
-        pennylane = get_pennylane()
-        if pennylane.is_configured():
-            for item in pennylane.build_suggestions_from_deadlines():
-                suggestions.append({
-                    'titre': item.get('titre', 'Échéance PennyLane'),
-                    'dossier_id': item.get('dossier_id'),
-                    'assigne_a': item.get('assigne_a'),
-                    'priorite': item.get('priorite', 'moyenne'),
-                    'date_echeance': item.get('date_echeance'),
-                    'source': 'pennylane'
-                })
-    except Exception:
-        pass
-
     # Suggestions depuis Outlook
     try:
         from app.integrations import get_outlook
@@ -939,33 +922,6 @@ def test_mail():
     return jsonify({'ok': ok, 'message': msg}), status
 
 
-@app.route('/api/test/pennylane', methods=['POST'])
-@login_required
-def test_pennylane():
-    try:
-        from app.integrations.pennylane import get_pennylane
-        client = get_pennylane()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Clé API PennyLane non configurée.'}), 400
-
-        company_id = getattr(client, 'company_id', None) or AppSetting.query.filter_by(cle='PENNYLANE_COMPANY_ID').first() and AppSetting.query.filter_by(cle='PENNYLANE_COMPANY_ID').first().valeur or ''
-        company_id = (company_id or '').strip()
-        if not company_id:
-            return jsonify({'ok': False, 'message': "PENNYLANE_COMPANY_ID manquant. Renseigne-le dans Paramètres, puis relance le test."}), 400
-
-        clients = client.fetch_clients(company_id=company_id)
-        clients_count = len(clients) if isinstance(clients, list) else 0
-        return jsonify({
-            'ok': True,
-            'message': f'Connexion PennyLane OK. {clients_count} client(s) pour company_id={company_id}.',
-            'company_id': company_id,
-            'clients_count': clients_count,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur test PennyLane: {e}")
-        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
-
-
 @app.route('/api/test/outlook', methods=['POST'])
 @login_required
 def test_outlook():
@@ -1034,63 +990,3 @@ def test_teams():
         return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
 
 
-@app.route('/api/pennyane/extension', methods=['POST', 'OPTIONS'])
-def pennyane_extension():
-    if request.method == 'OPTIONS':
-        resp = jsonify({'ok': True})
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        resp.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        return resp
-
-    try:
-        payload = request.get_json(silent=True) or {}
-        company_id = (payload.get('company_id') or '').strip()
-        company_name = (payload.get('company_name') or '').strip()
-        if not company_id:
-            return jsonify({'ok': False, 'message': 'company_id manquant'}), 400
-
-        fact_frs = int(payload.get('fact_frs', 0) or 0)
-        fact_clts = int(payload.get('fact_clts', 0) or 0)
-        transactions = int(payload.get('transactions', 0) or 0)
-        ecritures_attente = int(payload.get('ecritures_attente', 0) or 0)
-        documents_a_approuver = int(payload.get('documents_a_approuver', 0) or 0)
-        raw = payload.get('raw')
-
-        last = PennyLaneSnapshot.query.filter_by(company_id=company_id).order_by(desc( PennyLaneSnapshot.date_snapshot)).first()
-        changes = {}
-        if last:
-            for field, value in [
-                ('fact_frs', fact_frs),
-                ('fact_clts', fact_clts),
-                ('transactions', transactions),
-                ('ecritures_attente', ecritures_attente),
-                ('documents_a_approuver', documents_a_approuver),
-            ]:
-                prev = getattr(last, field)
-                if value != prev:
-                    changes[field] = {'previous': prev, 'current': value}
-
-        snapshot = PennyLaneSnapshot(
-            company_id=company_id,
-            company_name=company_name,
-            fact_frs=fact_frs,
-            fact_clts=fact_clts,
-            transactions=transactions,
-            ecritures_attente=ecritures_attente,
-            documents_a_approuver=documents_a_approuver,
-            raw=raw,
-        )
-        db.session.add(snapshot)
-        db.session.commit()
-
-        message = 'Aucune nouveauté.'
-        if changes:
-            message = 'Nouveautés détectées : ' + ', '.join([f"{k}: {v['previous']} -> {v['current']}" for k, v in changes.items()])
-
-        resp = jsonify({'ok': True, 'changes': changes, 'message': message})
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-    except Exception as e:
-        app.logger.error(f"Erreur extension PennyLane: {e}")
-        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
