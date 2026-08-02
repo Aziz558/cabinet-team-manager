@@ -37,11 +37,11 @@ mail = Mail(app)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-with app.app_context():
-    db.create_all()
-
 from app import routes  # noqa: F401
 from app.models import User, AppSetting  # noqa: F401
+
+with app.app_context():
+    db.create_all()
 
 @login_manager.user_loader
 def load_user(user_id):
