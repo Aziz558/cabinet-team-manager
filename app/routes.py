@@ -851,6 +851,23 @@ def init_db():
     return "Base de données initialisée."
 
 
+@app.route('/init-admin')
+def init_admin():
+    if User.query.filter_by(email='admin@cabinet-jmh.com').first():
+        return "Admin existe déjà."
+    user = User(
+        email='admin@cabinet-jmh.com',
+        nom='JLASSI',
+        prenom='Mohamed Aziz',
+        role='manager',
+        actif=True,
+    )
+    user.set_password('CabinetJMH2024!')
+    db.session.add(user)
+    db.session.commit()
+    return "Admin créé."
+
+
 # ============ SETTINGS / INTEGRATIONS ============
 
 @app.route('/settings')
