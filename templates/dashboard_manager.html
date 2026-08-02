@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card card-kpi border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">Membres actifs</h6>
+                <h2 class="text-primary">{{ kpi.membres_actifs }}</h2>
+                <i class="bi bi-people text-primary opacity-25 position-absolute top-0 end-0 m-3 display-6"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi border-0 shadow-sm h-100">
+            <div class="card-body text-center position-relative">
+                <h6 class="text-muted mb-2">Dossiers en cours</h6>
+                <h2 class="text-info">{{ kpi.dossiers_en_cours }}</h2>
+                <i class="bi bi-folder2-open text-info opacity-25 position-absolute top-0 end-0 m-3 display-6"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi border-0 shadow-sm h-100">
+            <div class="card-body text-center position-relative">
+                <h6 class="text-muted mb-2">Tâches en retard</h6>
+                <h2 class="text-danger">{{ kpi.taches_retard }}</h2>
+                <i class="bi bi-exclamation-circle text-danger opacity-25 position-absolute top-0 end-0 m-3 display-6"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi border-0 shadow-sm h-100">
+            <div class="card-body text-center position-relative">
+                <h6 class="text-muted mb-2">Haute priorité</h6>
+                <h2 class="text-warning">{{ kpi.taches_haute_priorite }}</h2>
+                <i class="bi bi-stars text-warning opacity-25 position-absolute top-0 end-0 m-3 display-6"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if alertes %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0"><i class="bi bi-bell me-2 text-warning"></i>Alertes</h5>
+            </div>
+            <div class="card-body">
+                {% for a in alertes %}
+                <div class="alert alert-{{ a.type }} alert-dismissible fade show shadow-sm" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi {{ 'bi-exclamation-triangle' if a.type == 'warning' else 'bi-info-circle' if a.type == 'info' else 'bi-check-circle' }}"></i>
+                        <span>{{ a.msg }}</span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if suggestions %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-lightbulb me-2 text-warning"></i>Suggestions automatiques</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Basées sur les deadlines déclarations</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="refreshSuggestionsBtn">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Actualiser
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Tâche suggérée</th>
+                                <th>Assignée à</th>
+                                <th>Priorité</th>
+                                <th>Échéance</th>
+                                <th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in suggestions %}
+                            <tr>
+                                <td><strong>{{ s.titre }}</strong></td>
+                                <td>
+                                    {% set u = membres | selectattr('id', 'equalto', s.assigne_a) | first %}
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="{{ url_for('uploaded_file', filename=u.photo_profil) }}" class="rounded-circle" width="28" height="28" alt="">
+                                        <span>{{ u.prenom }} {{ u.nom }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge {{ 'bg-danger' if s.priorite == 'haute' else 'bg-warning' if s.priorite == 'moyenne' else 'bg-success' }}">
+                                        {{ s.priorite }}
+                                    </span>
+                                </td>
+                                <td class="text-muted small">{{ s.date_echeance.strftime('%d/%m/%Y') }}</td>
+                                <td class="text-end">
+                                    <form method="POST" action="{{ url_for('taches') }}" class="d-inline">
+                                        <input type="hidden" name="titre" value="{{ s.titre }}">
+                                        <input type="hidden" name="description" value="Généré automatiquement depuis le dossier.">
+                                        <input type="hidden" name="dossier_id" value="{{ s.dossier_id }}">
+                                        <input type="hidden" name="assigne_a" value="{{ s.assigne_a }}">
+                                        <input type="hidden" name="priorite" value="{{ s.priorite }}">
+                                        <input type="hidden" name="date_echeance" value="{{ s.date_echeance.strftime('%Y-%m-%d') }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-plus-lg me-1"></i>Créer
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div id="suggestionsResult" class="small mt-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% block scripts %}
+<script>
+document.getElementById('refreshSuggestionsBtn').addEventListener('click', function () {
+    const btn = this;
+    const result = document.getElementById('suggestionsResult');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Actualisation...';
+    result.innerHTML = '';
+    fetch('/api/suggestions/refresh', {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
+            const count = (data.suggestions || []).length;
+            result.innerHTML = count
+                ? '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Suggestions actualisées : ' + count + '</span>'
+                : '<span class="text-muted">Aucune nouvelle suggestion.</span>';
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
+            result.innerHTML = '<span class="text-danger">Échec de l\'actualisation.</span>';
+        });
+});
+
+</script>
+{% endblock %}
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Vue équipe</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Collaborateur</th>
+                                <th class="text-center">Dossiers en cours</th>
+                                <th class="text-center">Tâches à faire</th>
+                                <th class="text-center">En retard</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in membres %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="{{ url_for('uploaded_file', filename=m.photo_profil) }}" class="rounded-circle" width="32" height="32" alt="">
+                                        <strong>{{ m.prenom }} {{ m.nom }}</strong>
+                                    </div>
+                                </td>
+                                <td class="text-center">{{ m.nb_dossiers_en_cours() }}</td>
+                                <td class="text-center">{{ m.nb_taches_a_faire() }}</td>
+                                <td class="text-center">
+                                    <span class="badge {{ 'bg-danger' if m.nb_taches_en_retard() > 0 else 'bg-success' }}">
+                                        {{ m.nb_taches_en_retard() }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Tâches du jour</h5>
+            </div>
+            <div class="card-body">
+                {% if taches_jour %}
+                    {% for t in taches_jour %}
+                    <div class="task-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ t.titre }}</strong>
+                            <br><small class="text-muted">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
+                        </div>
+                        <span class="badge {{ 'bg-danger' if t.priorite == 'haute' else 'bg-warning' if t.priorite == 'moyenne' else 'bg-success' }}">
+                            {{ t.priorite }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <p class="mb-0">Aucune tâche pour aujourd'hui.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Tâches de la semaine</h5>
+            </div>
+            <div class="card-body">
+                {% if taches_semaine %}
+                    {% for t in taches_semaine %}
+                    <div class="task-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ t.titre }}</strong>
+                            <br><small class="text-muted">{{ t.date_echeance.strftime('%d/%m/%Y') }} - {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
+                        </div>
+                        <span class="badge {{ 'bg-danger' if t.priorite == 'haute' else 'bg-warning' if t.priorite == 'moyenne' else 'bg-success' }}">
+                            {{ t.priorite }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-clipboard-x"></i>
+                        <p class="mb-0">Aucune tâche cette semaine.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

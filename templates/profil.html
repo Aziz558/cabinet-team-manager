@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Mon profil{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" class="rounded-circle mb-3" width="100" height="100" alt="">
+                    <h4>{{ current_user.prenom }} {{ current_user.nom }}</h4>
+                    <p class="text-muted">{{ current_user.poste or 'Membre' }}</p>
+                </div>
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Prénom</label>
+                            <input type="text" name="prenom" class="form-control" value="{{ current_user.prenom }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nom</label>
+                            <input type="text" name="nom" class="form-control" value="{{ current_user.nom }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Poste</label>
+                        <input type="text" name="poste" class="form-control" value="{{ current_user.poste or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Téléphone</label>
+                        <input type="text" name="telephone" class="form-control" value="{{ current_user.telephone or '' }}">
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Nouveau mot de passe</label>
+                        <input type="password" name="new_password" class="form-control" placeholder="Laisser vide pour ne pas changer">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

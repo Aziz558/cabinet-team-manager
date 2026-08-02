@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Membres{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Équipe</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAjouter">
+        <i class="bi bi-person-plus me-1"></i>Ajouter membre
+    </button>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Rôle</th>
+                        <th>Poste</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in membres %}
+                    <tr class="{{ '' if m.actif else 'table-secondary' }}">
+                        <td><img src="{{ url_for('uploaded_file', filename=m.photo_profil) }}" class="rounded-circle" width="36" height="36" alt=""></td>
+                        <td>{{ m.prenom }} {{ m.nom }}</td>
+                        <td>{{ m.email }}</td>
+                        <td><span class="badge {{ 'bg-primary' if m.role == 'manager' else 'bg-secondary' }}">{{ m.role }}</span></td>
+                        <td>{{ m.poste or '-' }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if m.actif else 'bg-danger' }}">
+                                {{ 'Actif' if m.actif else 'Désactivé' }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('fiche_membre', user_id=m.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            <form method="POST" action="{{ url_for('desactiver_membre', user_id=m.id) }}" class="d-inline" onsubmit="return confirm('Confirmer l\'activation/désactivation de ce membre ?');">
+                                <button type="submit" class="btn btn-sm {{ 'btn-outline-success' if m.actif else 'btn-outline-warning' }}">
+                                    <i class="bi {{ 'bi-pause' if m.actif else 'bi-play' }}"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajouter -->
+<div class="modal fade" id="modalAjouter" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('ajouter_membre') }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un membre</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Prénom</label>
+                        <input type="text" name="prenom" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nom</label>
+                        <input type="text" name="nom" class="form-control" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mot de passe</label>
+                    <input type="text" name="mot_de_passe" class="form-control" required>
+                    <small class="text-muted">Le mot de passe sera communiqué au membre par email.</small>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Rôle</label>
+                        <select name="role" class="form-select">
+                            <option value="membre">Membre</option>
+                            <option value="manager">Manager</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Poste</label>
+                        <input type="text" name="poste" class="form-control" placeholder="ex: Comptable">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Téléphone</label>
+                    <input type="text" name="telephone" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" class="btn btn-primary">Ajouter</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Fiche Membre{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center">
+        <img src="{{ url_for('uploaded_file', filename=user.photo_profil) }}" class="rounded-circle me-3" width="80" height="80" alt="">
+        <div>
+            <h2 class="mb-0">{{ user.prenom }} {{ user.nom }}</h2>
+            <p class="text-muted mb-0">{{ user.poste or 'Membre de l\'équipe' }}</p>
+            <small class="text-muted">{{ user.email }} | {{ user.telephone or '' }}</small>
+        </div>
+    </div>
+    <div>
+        <span class="badge {{ 'bg-success' if user.actif else 'bg-danger' }} fs-6">
+            {{ 'Actif' if user.actif else 'Désactivé' }}
+        </span>
+        <a href="{{ url_for('liste_membres') }}" class="btn btn-outline-secondary ms-2"><i class="bi bi-arrow-left"></i> Retour</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Dossiers en cours</h6>
+                        <h2 class="text-info">{{ dossiers_en_cours|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Tâches terminées</h6>
+                        <h2 class="text-success">{{ total_terminees }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0">Performance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Taux respect délai</h6>
+                        <h3 class="text-primary">{{ taux_respect }}%</h3>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Tâches en retard</h6>
+                        <h3 class="text-danger">{{ en_retard }}</h3>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Score</h6>
+                        <h3 class="text-warning">{{ score }}/100</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0">Dossiers en cours</h5>
+            </div>
+            <div class="card-body">
+                {% if dossiers_en_cours %}
+                    <div class="list-group">
+                        {% for d in dossiers_en_cours %}
+                        <div class="list-group-item d-flex justify-content-between">
+                            <div>
+                                <strong>{{ d.numero_dossier }}</strong> - {{ d.intitule }}
+                                {% if d.date_limite %}
+                                <br><small class="text-muted">Limite: {{ d.date_limite.strftime('%d/%m/%Y') }}</small>
+                                {% endif %}
+                            </div>
+                            <span class="badge bg-info">En cours</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucun dossier en cours.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('upload_photo', user_id=user.id) }}" enctype="multipart/form-data" class="mb-3">
+                    <label class="form-label">Photo de profil</label>
+                    <input type="file" name="photo" class="form-control mb-2" accept="image/*">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">Changer la photo</button>
+                </form>
+                <a href="{{ url_for('taches') }}?collaborateur={{ user.id }}" class="btn btn-outline-primary w-100 mb-2">Voir ses tâches</a>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0">Dernières tâches</h5>
+            </div>
+            <div class="card-body">
+                {% if taches_membre %}
+                    {% for t in taches_membre[:10] %}
+                    <div class="border-bottom py-2">
+                        <strong>{{ t.titre }}</strong>
+                        <br><small class="text-muted">{{ t.date_echeance.strftime('%d/%m/%Y') }} - {{ t.statut }}</small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">Aucune tâche.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

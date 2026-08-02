@@ -1,0 +1,1079 @@
+from flask import render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.utils import secure_filename
+from datetime import date, datetime
+from sqlalchemy import desc
+import csv
+import io
+import smtplib
+from app import app, db, mail
+from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, PennyLaneSnapshot
+from flask_mail import Message
+import os
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
+
+
+def get_mail_config():
+    username = AppSetting.query.filter_by(cle='MAIL_USERNAME').first()
+    password = AppSetting.query.filter_by(cle='MAIL_PASSWORD').first()
+    server = AppSetting.query.filter_by(cle='MAIL_SERVER').first()
+    port = AppSetting.query.filter_by(cle='MAIL_PORT').first()
+    use_tls = AppSetting.query.filter_by(cle='MAIL_USE_TLS').first()
+    default_sender = AppSetting.query.filter_by(cle='MAIL_DEFAULT_SENDER').first()
+
+    return {
+        'MAIL_USERNAME': (username.valeur if username else '') or app.config.get('MAIL_USERNAME', ''),
+        'MAIL_PASSWORD': (password.valeur if password else '') or app.config.get('MAIL_PASSWORD', ''),
+        'MAIL_SERVER': (server.valeur if server else '') or app.config.get('MAIL_SERVER', 'smtp.office365.com'),
+        'MAIL_PORT': int((port.valeur if port else '') or app.config.get('MAIL_PORT', 587)),
+        'MAIL_USE_TLS': (use_tls.valeur if use_tls else 'true').lower() == 'true',
+        'MAIL_DEFAULT_SENDER': (default_sender.valeur if default_sender else '') or app.config.get('MAIL_DEFAULT_SENDER', ''),
+    }
+
+
+def send_email_notification(to_email, subject, body, sender=None):
+    try:
+        config = get_mail_config()
+        username = config.get('MAIL_USERNAME') or app.config.get('MAIL_USERNAME', '')
+        password = config.get('MAIL_PASSWORD') or app.config.get('MAIL_PASSWORD', '')
+        server_host = config.get('MAIL_SERVER') or app.config.get('MAIL_SERVER', 'smtp.office365.com')
+        server_port = config.get('MAIL_PORT', app.config.get('MAIL_PORT', 587))
+        use_tls = config.get('MAIL_USE_TLS', app.config.get('MAIL_USE_TLS', True))
+        default_sender = config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_DEFAULT_SENDER', '')
+        
+        if not username:
+            return False, 'MAIL_USERNAME non configuré. Allez dans Paramètres.'
+        if not password:
+            return False, 'MAIL_PASSWORD vide. Allez dans Paramètres.'
+        
+        from_email = sender or default_sender or username
+        
+        msg = Message(subject, recipients=[to_email], body=body, sender=from_email)
+        smtp = smtplib.SMTP(server_host, server_port, timeout=15)
+        smtp.ehlo()
+        if use_tls:
+            smtp.starttls()
+            smtp.ehlo()
+        smtp.login(username, password)
+        smtp.sendmail(from_email, [to_email], msg.as_string())
+        smtp.quit()
+        return True, f'Email envoyé à {to_email}'
+    except Exception as e:
+        app.logger.error(f"Erreur envoi mail: {e}")
+        return False, f'Échec: {e}'
+
+
+def create_notification(user_id, message, tache_id=None, type_notification='info'):
+    notif = Notification(
+        user_id=user_id,
+        message=message,
+        tache_id=tache_id,
+        type_notification=type_notification
+    )
+    db.session.add(notif)
+    db.session.commit()
+    return notif
+
+
+# ============ AUTH ============
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        user = User.query.filter_by(email=email).first()
+        if user and user.check_password(password):
+            if not user.actif:
+                flash('Votre compte est désactivé. Contactez le manager.', 'danger')
+                return redirect(url_for('login'))
+            login_user(user, remember=True)
+            next_page = request.args.get('next')
+            flash(f'Bienvenue, {user.prenom} !', 'success')
+            return redirect(next_page or url_for('dashboard'))
+        else:
+            flash('Email ou mot de passe incorrect.', 'danger')
+    return render_template('login.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        nom = request.form.get('nom', '').strip()
+        prenom = request.form.get('prenom', '').strip()
+        role = request.form.get('role', 'membre').strip()
+        if not all([email, password, nom, prenom]):
+            flash('Tous les champs sont requis.', 'danger')
+        elif User.query.filter_by(email=email).first():
+            flash('Cet email est déjà utilisé.', 'danger')
+        elif role not in ['membre', 'manager']:
+            role = 'membre'
+        else:
+            user = User(email=email, nom=nom, prenom=prenom, role=role)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            flash('Account created! You can login.', 'success')
+            return redirect(url_for('login'))
+    return render_template('register.html')
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Déconnexion réussie.', 'info')
+    return redirect(url_for('login'))
+
+
+# ============ DASHBOARD ============
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    if current_user.role == 'manager':
+        membres = User.query.filter_by(actif=True).all()
+        dossiers = Dossier.query.all()
+        taches = Tache.query.all()
+
+        # KPIs
+        kpi = {
+            'membres_actifs': User.query.filter_by(actif=True, role='membre').count(),
+            'dossiers_en_cours': Dossier.query.count(),
+            'taches_retard': Tache.query.filter(Tache.statut != 'terminee', Tache.date_echeance < date.today()).count(),
+            'taches_haute_priorite': Tache.query.filter_by(priorite='haute', statut='a_faire').count(),
+        }
+
+        # Tâches du jour/semaine
+        today = date.today()
+        from datetime import timedelta
+        week_end = today + timedelta(days=7)
+        taches_jour = [t for t in taches if t.date_echeance == today and t.statut != 'terminee']
+        taches_semaine = [t for t in taches if today < t.date_echeance <= week_end and t.statut != 'terminee']
+
+        # Alertes deadlines
+        alertes = []
+        for d in dossiers:
+            if d.date_limite_declaration:
+                delta = (d.date_limite_declaration - today).days
+                if delta < 0:
+                    alertes.append({'type': 'danger', 'msg': f"Dossier {d.numero_dossier} en retard de {abs(delta)} jours"})
+                elif delta <= 7:
+                    alertes.append({'type': 'warning', 'msg': f"Dossier {d.numero_dossier} : deadline dans {delta} jours"})
+
+        # Suggestions de tâches automatiques basées sur deadlines
+        suggestions = []
+        for d in dossiers:
+            if d.date_limite_declaration:
+                delta = (d.date_limite_declaration - today).days
+                if 0 <= delta <= 14 and d.collaborateur_id:
+                    suggestions.append({
+                        'titre': f"Déclaration {d.regime_tva or 'fiscale'} - {d.numero_dossier}",
+                        'dossier_id': d.id,
+                        'assigne_a': d.collaborateur_id,
+                        'priorite': 'haute' if delta <= 3 else 'moyenne',
+                        'date_echeance': d.date_limite_declaration,
+                    })
+
+        return render_template(
+            'dashboard_manager.html',
+            membres=membres,
+            dossiers=dossiers,
+            taches=taches,
+            kpi=kpi,
+            taches_jour=taches_jour,
+            taches_semaine=taches_semaine,
+            today=today,
+            alertes=alertes,
+            suggestions=suggestions,
+        )
+    else:
+        # Collaborateur view
+        mes_dossiers = Dossier.query.filter_by(collaborateur_id=current_user.id).all()
+        mes_taches = Tache.query.filter_by(assigne_a=current_user.id).all()
+        taches_a_faire = [t for t in mes_taches if t.statut == 'a_faire']
+        taches_en_cours = [t for t in mes_taches if t.statut == 'en_cours']
+        taches_terminees = [t for t in mes_taches if t.statut == 'terminee']
+        return render_template(
+            'dashboard_collaborateur.html',
+            mes_dossiers=mes_dossiers,
+            taches_a_faire=taches_a_faire,
+            taches_en_cours=taches_en_cours,
+            taches_terminees=taches_terminees,
+            today=date.today()
+        )
+
+
+# ============ MEMBRES ============
+
+@app.route('/membres')
+@login_required
+def liste_membres():
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    membres = User.query.all()
+    return render_template('membres.html', membres=membres)
+
+
+@app.route('/membres/ajouter', methods=['POST'])
+@login_required
+def ajouter_membre():
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    email = request.form.get('email', '').strip().lower()
+    nom = request.form.get('nom', '').strip()
+    prenom = request.form.get('prenom', '').strip()
+    role = request.form.get('role', 'membre')
+    poste = request.form.get('poste', '').strip()
+    telephone = request.form.get('telephone', '').strip()
+    mot_de_passe = request.form.get('mot_de_passe', '')
+
+    if not all([email, nom, prenom, mot_de_passe]):
+        flash('Email, nom, prénom et mot de passe sont requis.', 'danger')
+        return redirect(url_for('liste_membres'))
+    if User.query.filter_by(email=email).first():
+        flash('Cet email existe déjà.', 'danger')
+        return redirect(url_for('liste_membres'))
+
+    user = User(email=email, nom=nom, prenom=prenom, role=role, poste=poste, telephone=telephone)
+    user.set_password(mot_de_passe)
+    db.session.add(user)
+    db.session.commit()
+
+    # Send welcome email
+    subject = "Bienvenue sur l'application de gestion d'équipe"
+    body = f"Bonjour {prenom},\n\nVotre compte a été créé.\nEmail: {email}\nMot de passe: {mot_de_passe}\n\nConnectez-vous: {request.host_url}login"
+    send_email_notification(email, subject, body)
+
+    flash(f'Membre {prenom} {nom} ajouté avec succès.', 'success')
+    return redirect(url_for('liste_membres'))
+
+
+@app.route('/membres/<int:user_id>/modifier', methods=['POST'])
+@login_required
+def modifier_membre(user_id):
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    user = User.query.get_or_404(user_id)
+    user.nom = request.form.get('nom', user.nom).strip()
+    user.prenom = request.form.get('prenom', user.prenom).strip()
+    user.role = request.form.get('role', user.role)
+    user.poste = request.form.get('poste', user.poste).strip()
+    user.telephone = request.form.get('telephone', user.telephone).strip()
+    db.session.commit()
+    flash('Membre modifié.', 'success')
+    return redirect(url_for('liste_membres'))
+
+
+@app.route('/membres/<int:user_id>/desactiver', methods=['GET', 'POST'])
+@login_required
+def desactiver_membre(user_id):
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id:
+        flash('Vous ne pouvez pas désactiver votre propre compte.', 'warning')
+        return redirect(url_for('liste_membres'))
+    user.actif = not user.actif
+    db.session.commit()
+    status = 'réactivé' if user.actif else 'désactivé'
+    flash(f'Membre {status} avec succès.', 'success')
+    return redirect(url_for('liste_membres'))
+
+
+@app.route('/membres/<int:user_id>')
+@login_required
+def fiche_membre(user_id):
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    user = User.query.get_or_404(user_id)
+    # Performance calculations
+    taches_terminees = Tache.query.filter_by(assigne_a=user.id, statut='terminee').all()
+    total_terminees = len(taches_terminees)
+    en_retard = sum(1 for t in taches_terminees if t.date_completion and t.date_completion.date() > t.date_echeance)
+    taux_respect = round((total_terminees - en_retard) / total_terminees * 100, 1) if total_terminees > 0 else 0
+    score = round(taux_respect * 0.6 + min(total_terminees * 2, 40), 1)  # simple scoring
+
+    # Dossiers
+    dossiers_en_cours = Dossier.query.filter_by(collaborateur_id=user.id).all()
+    dossiers_termines = []
+
+    # Tâches
+    taches_membre = Tache.query.filter_by(assigne_a=user.id).order_by(Tache.date_echeance.desc()).limit(20).all()
+
+    return render_template(
+        'fiche_membre.html',
+        user=user,
+        dossiers_en_cours=dossiers_en_cours,
+        dossiers_termines=dossiers_termines,
+        taches_membre=taches_membre,
+        total_terminees=total_terminees,
+        en_retard=en_retard,
+        taux_respect=taux_respect,
+        score=score
+    )
+
+
+@app.route('/membres/<int:user_id>/photo', methods=['POST'])
+@login_required
+def upload_photo(user_id):
+    if current_user.role != 'manager' and current_user.id != user_id:
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    user = User.query.get_or_404(user_id)
+    if 'photo' not in request.files:
+        flash('Aucun fichier sélectionné.', 'warning')
+        return redirect(url_for('fiche_membre', user_id=user_id))
+    file = request.files['photo']
+    if file.filename == '':
+        flash('Aucun fichier sélectionné.', 'warning')
+        return redirect(url_for('fiche_membre', user_id=user_id))
+    if file and allowed_file(file.filename):
+        filename = secure_filename(f"user_{user_id}_{file.filename}")
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        # Delete old photo if not default
+        if user.photo_profil and user.photo_profil != 'default.png':
+            old_path = os.path.join(app.config['UPLOAD_FOLDER'], user.photo_profil)
+            if os.path.exists(old_path):
+                os.remove(old_path)
+        user.photo_profil = filename
+        db.session.commit()
+        flash('Photo mise à jour.', 'success')
+    else:
+        flash('Format non autorisé. Utilisez PNG, JPG ou GIF.', 'danger')
+    return redirect(url_for('fiche_membre', user_id=user_id))
+
+
+# ============ DOSSIERS ============
+
+@app.route('/dossiers', methods=['GET', 'POST'])
+@login_required
+def dossiers():
+    if current_user.role == 'manager':
+        if request.method == 'POST':
+            numero = request.form.get('numero_dossier', '').strip()
+            intitule = request.form.get('intitule', '').strip()
+            collaborateur_id = request.form.get('collaborateur_id', type=int)
+            date_limite_str = request.form.get('date_limite', '').strip()
+            date_limite = None
+            if date_limite_str:
+                date_limite = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
+            if not numero or not intitule:
+                flash('Numéro et intitulé sont requis.', 'danger')
+            elif Dossier.query.filter_by(numero_dossier=numero).first():
+                flash('Ce numéro de dossier existe déjà.', 'danger')
+            else:
+                dossier = Dossier(
+                    numero_dossier=numero,
+                    intitule=intitule,
+                    collaborateur_id=collaborateur_id if collaborateur_id else None,
+                    regime_tva=request.form.get('regime_tva', '').strip() or None,
+                    date_limite_declaration=datetime.strptime(request.form.get('date_limite_declaration', ''), '%Y-%m-%d').date() if request.form.get('date_limite_declaration') else None
+                )
+                db.session.add(dossier)
+                db.session.commit()
+                if collaborateur_id:
+                    collab = User.query.get(collaborateur_id)
+                    if collab:
+                        msg = f"Un nouveau dossier vous a été assigné: {numero} - {intitule}"
+                        create_notification(collab.id, msg, type_notification='assignation')
+                        send_email_notification(collab.email, "Nouveau dossier assigné", msg)
+                flash('Dossier créé avec succès.', 'success')
+                return redirect(url_for('dossiers'))
+        all_dossiers = Dossier.query.all()
+        membres = User.query.filter_by(actif=True).all()
+        return render_template('dossiers.html', dossiers=all_dossiers, membres=membres)
+    else:
+        # Collaborateur sees only their dossiers
+        mes_dossiers = Dossier.query.filter_by(collaborateur_id=current_user.id).all()
+        return render_template('dossiers.html', dossiers=mes_dossiers, membres=[])
+
+
+@app.route('/dossiers/<int:dossier_id>/modifier', methods=['POST'])
+@login_required
+def modifier_dossier(dossier_id):
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    dossier = Dossier.query.get_or_404(dossier_id)
+    dossier.numero_dossier = request.form.get('numero_dossier', dossier.numero_dossier).strip()
+    dossier.intitule = request.form.get('intitule', dossier.intitule).strip()
+    collaborateur_id = request.form.get('collaborateur_id', type=int)
+    dossier.collaborateur_id = collaborateur_id if collaborateur_id else None
+    dossier.regime_tva = request.form.get('regime_tva', dossier.regime_tva).strip() or None
+    date_limite_str = request.form.get('date_limite_declaration', '').strip()
+    if date_limite_str:
+        dossier.date_limite_declaration = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
+    db.session.commit()
+    flash('Dossier modifié.', 'success')
+    return redirect(url_for('dossiers'))
+
+
+@app.route('/dossiers/importer', methods=['POST'])
+@login_required
+def importer_dossiers():
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    if 'csv_file' not in request.files:
+        flash('Aucun fichier fourni.', 'warning')
+        return redirect(url_for('dossiers'))
+    file = request.files['csv_file']
+    if file.filename == '' or not file.filename.lower().endswith('.csv'):
+        flash('Fichier CSV requis.', 'warning')
+        return redirect(url_for('dossiers'))
+    stream = io.StringIO(file.stream.read().decode('utf-8'))
+    reader = csv.DictReader(stream)
+    added = 0
+    skipped = 0
+    for row in reader:
+        numero = (row.get('numero_dossier') or '').strip()
+        intitule = (row.get('intitule') or '').strip()
+        if not numero or not intitule:
+            skipped += 1
+            continue
+        if Dossier.query.filter_by(numero_dossier=numero).first():
+            skipped += 1
+            continue
+        collab_email = (row.get('collaborateur_email') or '').strip().lower()
+        collaborateur_id = None
+        if collab_email:
+            u = User.query.filter_by(email=collab_email).first()
+            if u:
+                collaborateur_id = u.id
+        regime = (row.get('regime_tva') or '').strip().lower()
+        if regime not in {'ca3', 'ca12', 'exonere'}:
+            regime = None
+        date_limite = None
+        raw_date = (row.get('date_limite_declaration') or '').strip()
+        if raw_date:
+            try:
+                date_limite = datetime.strptime(raw_date, '%Y-%m-%d').date()
+            except ValueError:
+                date_limite = None
+        dossier = Dossier(
+            numero_dossier=numero,
+            intitule=intitule,
+            collaborateur_id=collaborateur_id,
+            regime_tva=regime,
+            date_limite_declaration=date_limite
+        )
+        db.session.add(dossier)
+        added += 1
+    db.session.commit()
+    flash(f'Import terminé : {added} dossiers ajoutés, {skipped} ignorés.', 'success')
+    return redirect(url_for('dossiers'))
+
+
+# ============ TACHES ============
+
+@app.route('/taches/aujourdhui')
+@login_required
+def taches_aujourdhui():
+    today = date.today()
+    if current_user.role == 'manager':
+        taches = Tache.query.filter(Tache.date_echeance == today, Tache.statut != 'terminee').all()
+    else:
+        taches = Tache.query.filter(Tache.assigne_a == current_user.id, Tache.date_echeance == today, Tache.statut != 'terminee').all()
+    return render_template('taches.html', taches=taches, dossiers=[], membres=[], focus=today)
+
+
+@app.route('/taches', methods=['GET', 'POST'])
+@login_required
+def taches():
+    if current_user.role == 'manager':
+        if request.method == 'POST':
+            titre = request.form.get('titre', '').strip()
+            description = request.form.get('description', '').strip()
+            dossier_id = request.form.get('dossier_id', type=int)
+            assigne_a = request.form.getlist('assigne_a')  # multi-select
+            priorite = request.form.get('priorite', 'moyenne')
+            date_echeance_str = request.form.get('date_echeance', '').strip()
+            date_echeance = None
+            if date_echeance_str:
+                date_echeance = datetime.strptime(date_echeance_str, '%Y-%m-%d').date()
+            if not titre or not date_echeance:
+                flash('Titre et date d\'échéance requis.', 'danger')
+            else:
+                if not assigne_a:
+                    assigne_a = [str(current_user.id)]
+                tache = Tache(
+                    titre=titre,
+                    description=description,
+                    dossier_id=dossier_id if dossier_id else None,
+                    priorite=priorite,
+                    date_echeance=date_echeance,
+                    cree_par=current_user.id,
+                    assigne_a=int(assigne_a[0])
+                )
+                db.session.add(tache)
+                db.session.flush()
+                for user_id in assigne_a[1:]:
+                    clone = Tache(
+                        titre=titre,
+                        description=description,
+                        dossier_id=dossier_id if dossier_id else None,
+                        priorite=priorite,
+                        date_echeance=date_echeance,
+                        cree_par=current_user.id,
+                        assigne_a=int(user_id)
+                    )
+                    db.session.add(clone)
+                db.session.commit()
+                for user_id in assigne_a:
+                    user = User.query.get(int(user_id))
+                    if user:
+                        msg = f"Nouvelle tâche assignée: {titre} (Priorité: {priorite}, Échéance: {date_echeance.strftime('%d/%m/%Y')})"
+                        create_notification(user.id, msg, type_notification='assignation')
+                        send_email_notification(user.email, f"Nouvelle tâche: {titre}", msg)
+                flash('Tâche créée et notifications envoyées.', 'success')
+                return redirect(url_for('taches'))
+        all_taches = Tache.query.order_by(Tache.date_echeance.desc()).all()
+        dossiers = Dossier.query.all()
+        membres = User.query.filter_by(actif=True).all()
+        return render_template('taches.html', taches=all_taches, dossiers=dossiers, membres=membres)
+    else:
+        # Collaborateur sees only their tasks
+        mes_taches = Tache.query.filter_by(assigne_a=current_user.id).order_by(Tache.date_echeance.asc()).all()
+        return render_template('taches.html', taches=mes_taches, dossiers=[], membres=[])
+
+
+@app.route('/taches/<int:tache_id>/prendre_en_charge', methods=['POST'])
+@login_required
+def prendre_en_charge(tache_id):
+    tache = Tache.query.get_or_404(tache_id)
+    if tache.assigne_a != current_user.id:
+        flash('Vous ne pouvez pas prendre en charge cette tâche.', 'danger')
+        return redirect(url_for('dashboard'))
+    if tache.statut == 'a_faire':
+        tache.statut = 'en_cours'
+        tache.date_prise_en_charge = datetime.utcnow()
+        db.session.commit()
+        # Notify manager
+        create_notification(
+            tache.cree_par,
+            f"{current_user.prenom} {current_user.nom} a pris en charge la tâche: {tache.titre}",
+            tache_id=tache.id,
+            type_notification='prise_en_charge'
+        )
+        send_email_notification(
+            User.query.get(tache.cree_par).email,
+            f"Prise en charge: {tache.titre}",
+            f"{current_user.prenom} {current_user.nom} a pris en charge la tâche: {tache.titre}"
+        )
+        flash('Tâche prise en charge.', 'success')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/taches/<int:tache_id>/terminer', methods=['POST'])
+@login_required
+def terminer_tache(tache_id):
+    tache = Tache.query.get_or_404(tache_id)
+    if tache.assigne_a != current_user.id and current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    if tache.statut != 'terminee':
+        tache.statut = 'terminee'
+        tache.date_completion = datetime.utcnow()
+        db.session.commit()
+        # Notify manager
+        if tache.cree_par != current_user.id:
+            create_notification(
+                tache.cree_par,
+                f"{current_user.prenom} {current_user.nom} a terminé la tâche: {tache.titre}",
+                tache_id=tache.id,
+                type_notification='completion'
+            )
+            send_email_notification(
+                User.query.get(tache.cree_par).email,
+                f"Tâche terminée: {tache.titre}",
+                f"{current_user.prenom} {current_user.nom} a terminé la tâche: {tache.titre}"
+            )
+        flash('Tâche marquée comme terminée.', 'success')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/taches/<int:tache_id>/commenter', methods=['POST'])
+@login_required
+def commenter_tache(tache_id):
+    tache = Tache.query.get_or_404(tache_id)
+    message = request.form.get('message', '').strip()
+    if message:
+        commentaire = CommentaireTache(tache_id=tache.id, user_id=current_user.id, message=message)
+        db.session.add(commentaire)
+        db.session.commit()
+        flash('Commentaire ajouté.', 'success')
+    return redirect(request.referrer or url_for('dashboard'))
+
+
+# ============ NOTIFICATIONS ============
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    notifs = Notification.query.filter_by(user_id=current_user.id).limit(50).all()
+    # Mark as read
+    for n in notifs:
+        if not n.lu:
+            n.lu = True
+    db.session.commit()
+    return jsonify({'notifications': [{'id': n.id, 'message': n.message, 'type': n.type_notification, 'date': n.date_envoi.strftime('%d/%m/%Y %H:%M'), 'lu': n.lu} for n in notifs]})
+
+
+@app.route('/notifications/non_lues')
+@login_required
+def notifications_non_lues():
+    count = Notification.query.filter_by(user_id=current_user.id, lu=False).count()
+    return jsonify({'count': count})
+
+
+# ============ PROFIL ============
+
+@app.route('/profil', methods=['GET', 'POST'])
+@login_required
+def profil():
+    if request.method == 'POST':
+        current_user.nom = request.form.get('nom', current_user.nom).strip()
+        current_user.prenom = request.form.get('prenom', current_user.prenom).strip()
+        current_user.telephone = request.form.get('telephone', current_user.telephone).strip()
+        current_user.poste = request.form.get('poste', current_user.poste).strip()
+        # Change password if provided
+        new_password = request.form.get('new_password', '').strip()
+        if new_password:
+            current_user.set_password(new_password)
+        db.session.commit()
+        flash('Profil mis à jour.', 'success')
+        return redirect(url_for('profil'))
+    return render_template('profil.html')
+
+
+# ============ FICHIERS ============
+
+@app.route('/static/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
+# ============ API / AJAX ============
+
+@app.route('/api/equipe/stats')
+@login_required
+def api_equipe_stats():
+    if current_user.role != 'manager':
+        return jsonify({}), 403
+    membres = User.query.filter_by(actif=True, role='membre').all()
+    stats = []
+    for m in membres:
+        stats.append({
+            'id': m.id,
+            'nom': m.nom_complet(),
+            'photo': m.photo_profil,
+            'dossiers_en_cours': m.nb_dossiers_en_cours(),
+            'taches_en_retard': m.nb_taches_en_retard(),
+            'taches_a_faire': m.nb_taches_a_faire()
+        })
+    return jsonify(stats)
+
+
+@app.route('/api/suggestions', methods=['GET'])
+@login_required
+def api_suggestions():
+    if current_user.role != 'manager':
+        return jsonify({'suggestions': []}), 403
+    suggestions = _build_suggestions()
+    return jsonify({'suggestions': suggestions})
+
+
+@app.route('/api/suggestions/refresh', methods=['POST'])
+@login_required
+def api_suggestions_refresh():
+    if current_user.role != 'manager':
+        return jsonify({'suggestions': []}), 403
+    suggestions = _build_suggestions()
+    return jsonify({'suggestions': suggestions})
+
+
+def _build_suggestions():
+    suggestions = []
+
+    # Suggestions depuis les deadlines des dossiers
+    today = date.today()
+    dossiers = Dossier.query.all()
+    for d in dossiers:
+        if d.date_limite_declaration:
+            delta = (d.date_limite_declaration - today).days
+            if 0 <= delta <= 14 and d.collaborateur_id:
+                suggestions.append({
+                    'titre': f"Déclaration {d.regime_tva or 'fiscale'} - {d.numero_dossier}",
+                    'dossier_id': d.id,
+                    'assigne_a': d.collaborateur_id,
+                    'priorite': 'haute' if delta <= 3 else 'moyenne',
+                    'date_echeance': d.date_limite_declaration.strftime('%Y-%m-%d'),
+                    'source': 'deadline'
+                })
+
+    # Suggestions depuis PennyLane
+    try:
+        from app.integrations import get_pennylane
+        pennylane = get_pennylane()
+        if pennylane.is_configured():
+            for item in pennylane.build_suggestions_from_deadlines():
+                suggestions.append({
+                    'titre': item.get('titre', 'Échéance PennyLane'),
+                    'dossier_id': item.get('dossier_id'),
+                    'assigne_a': item.get('assigne_a'),
+                    'priorite': item.get('priorite', 'moyenne'),
+                    'date_echeance': item.get('date_echeance'),
+                    'source': 'pennylane'
+                })
+    except Exception:
+        pass
+
+    # Suggestions depuis Outlook
+    try:
+        from app.integrations import get_outlook
+        outlook = get_outlook()
+        if outlook.is_configured():
+            for item in outlook.suggest_tasks_from_mails():
+                suggestions.append({
+                    'titre': item.get('titre', 'Action mail'),
+                    'dossier_id': item.get('dossier_id'),
+                    'assigne_a': item.get('assigne_a'),
+                    'priorite': item.get('priorite', 'moyenne'),
+                    'date_echeance': item.get('date_echeance'),
+                    'source': 'outlook'
+                })
+    except Exception:
+        pass
+
+    # Suggestions depuis Teams
+    try:
+        from app.integrations import get_teams
+        teams = get_teams()
+        if teams.is_configured():
+            for item in teams.suggest_tasks_from_messages():
+                suggestions.append({
+                    'titre': item.get('titre', 'Action Teams'),
+                    'dossier_id': item.get('dossier_id'),
+                    'assigne_a': item.get('assigne_a'),
+                    'priorite': item.get('priorite', 'moyenne'),
+                    'date_echeance': item.get('date_echeance'),
+                    'source': 'teams'
+                })
+    except Exception:
+        pass
+
+    # Suggestions IA à partir des mails et messages Teams
+    try:
+        from app.integrations import get_openrouter, get_outlook as _outlook_client, get_teams as _teams_client
+        llm = get_openrouter()
+        outlook_client = _outlook_client()
+        teams_client = _teams_client()
+
+        texts = []
+        try:
+            if outlook_client.is_configured():
+                for m in outlook_client.fetch_recent_mails(limit=20):
+                    texts.append(f"- MAIL: {m.get('subject','')} | {m.get('body_preview','')}")
+        except Exception:
+            pass
+        try:
+            if teams_client.is_configured():
+                for m in teams_client.fetch_recent_messages(limit=20):
+                    texts.append(f"- TEAMS: {m.get('subject','')} | {m.get('body_preview','')}")
+        except Exception:
+            pass
+
+        if llm.is_configured() and texts:
+            prompt = (
+                "Tu es un assistant comptable. A partir des messages suivants, propose 3 à 6 tâches concrètes "
+                "au format JSON: [{\"titre\":\"...\",\"priorite\":\"haute|moyenne|basse\",\"date_echeance\":\"YYYY-MM-DD\"}].\n"
+                + "\n".join(texts[:40])
+            )
+            raw = llm.chat([
+                {"role": "system", "content": "Réponds uniquement par un JSON valide."},
+                {"role": "user", "content": prompt},
+            ])
+            if raw:
+                import json
+                try:
+                    items = json.loads(raw)
+                    if isinstance(items, list):
+                        for item in items[:6]:
+                            if isinstance(item, dict) and item.get("titre"):
+                                suggestions.append({
+                                    'titre': item.get("titre"),
+                                    'dossier_id': item.get("dossier_id"),
+                                    'assigne_a': item.get("assigne_a"),
+                                    'priorite': item.get("priorite", "moyenne"),
+                                    'date_echeance': item.get("date_echeance"),
+                                    'source': 'openrouter'
+                                })
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # Dedup
+    seen = set()
+    unique = []
+    for s in suggestions:
+        key = (s.get('titre'), s.get('dossier_id'), s.get('assigne_a'))
+        if key not in seen:
+            seen.add(key)
+            unique.append(s)
+    return unique
+
+
+@app.route('/init-db')
+def init_db():
+    db.create_all()
+    return "Base de données initialisée."
+
+
+# ============ SETTINGS / INTEGRATIONS ============
+
+@app.route('/settings')
+@login_required
+def settings():
+    settings_list = AppSetting.query.all()
+    return render_template('settings.html', settings=settings_list)
+
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+@login_required
+def api_settings():
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or request.form
+        cle = data.get('cle', '').strip()
+        valeur = data.get('valeur', '').strip()
+        service = data.get('service', 'general').strip()
+        type_valeur = data.get('type_valeur', 'string').strip()
+        masque = bool(data.get('masque', False))
+
+        if not cle:
+            return jsonify({'error': 'Cle requise'}), 400
+
+        setting = AppSetting.query.filter_by(cle=cle).first()
+        if not setting:
+            setting = AppSetting(cle=cle, service=service, type_valeur=type_valeur, masque=masque)
+            db.session.add(setting)
+
+        setting.valeur = valeur
+        setting.service = service
+        setting.type_valeur = type_valeur
+        setting.masque = masque
+        db.session.commit()
+        return jsonify({'ok': True})
+
+    settings = AppSetting.query.all()
+    return jsonify([
+        {
+            'id': s.id,
+            'cle': s.cle,
+            'valeur': s.valeur if not s.masque else '',
+            'service': s.service,
+            'type_valeur': s.type_valeur,
+            'masque': s.masque,
+        }
+        for s in settings
+    ])
+
+
+@app.route('/api/settings/<int:setting_id>', methods=['DELETE'])
+@login_required
+def delete_setting(setting_id):
+    setting = AppSetting.query.get_or_404(setting_id)
+    db.session.delete(setting)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/mail/test', methods=['POST'])
+@login_required
+def test_mail():
+    data = request.get_json(silent=True) or {}
+    subject = data.get('subject', 'Test Cabinet Team Manager')
+    body = data.get('body', 'Ceci est un test d\'envoi d\'email depuis l\'application.')
+    recipient = data.get('recipient', current_user.email)
+    sender = data.get('sender') or None
+    ok, msg = send_email_notification(recipient, subject, body, sender=sender)
+    status = 200 if ok else 400
+    return jsonify({'ok': ok, 'message': msg}), status
+
+
+@app.route('/api/test/pennylane', methods=['POST'])
+@login_required
+def test_pennylane():
+    try:
+        from app.integrations.pennylane import get_pennylane
+        client = get_pennylane()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Clé API PennyLane non configurée.'}), 400
+
+        company_id = getattr(client, 'company_id', None) or AppSetting.query.filter_by(cle='PENNYLANE_COMPANY_ID').first() and AppSetting.query.filter_by(cle='PENNYLANE_COMPANY_ID').first().valeur or ''
+        company_id = (company_id or '').strip()
+        if not company_id:
+            return jsonify({'ok': False, 'message': "PENNYLANE_COMPANY_ID manquant. Renseigne-le dans Paramètres, puis relance le test."}), 400
+
+        clients = client.fetch_clients(company_id=company_id)
+        clients_count = len(clients) if isinstance(clients, list) else 0
+        return jsonify({
+            'ok': True,
+            'message': f'Connexion PennyLane OK. {clients_count} client(s) pour company_id={company_id}.',
+            'company_id': company_id,
+            'clients_count': clients_count,
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur test PennyLane: {e}")
+        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
+
+
+@app.route('/api/test/outlook', methods=['POST'])
+@login_required
+def test_outlook():
+    try:
+        from app.integrations.outlook import OutlookMailClient
+        client_id = AppSetting.query.filter_by(cle='OUTLOOK_CLIENT_ID').first()
+        tenant_id = AppSetting.query.filter_by(cle='OUTLOOK_TENANT_ID').first()
+        client_secret = AppSetting.query.filter_by(cle='OUTLOOK_CLIENT_SECRET').first()
+        mailbox_email = AppSetting.query.filter_by(cle='OUTLOOK_MAILBOX_EMAIL').first()
+
+        if not all([client_id, tenant_id, client_secret]) or not all([client_id.valeur, tenant_id.valeur, client_secret.valeur]):
+            return jsonify({'ok': False, 'message': 'Identifiants Outlook non configurés.'}), 400
+
+        client = OutlookMailClient(
+            client_id=client_id.valeur,
+            tenant_id=tenant_id.valeur,
+            client_secret=client_secret.valeur,
+            mailbox_email=mailbox_email.valeur if mailbox_email else None
+        )
+
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Client Outlook non configuré.'}), 400
+
+        # Test token acquisition
+        token = client._get_access_token()
+        if not token:
+            return jsonify({'ok': False, 'message': 'Impossible d\'obtenir le token d\'accès.'}), 400
+
+        return jsonify({'ok': True, 'message': 'Connexion Outlook OK. Token obtenu.'})
+    except Exception as e:
+        app.logger.error(f"Erreur test Outlook: {e}")
+        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
+
+
+@app.route('/api/test/teams', methods=['POST'])
+@login_required
+def test_teams():
+    try:
+        from app.integrations.teams import TeamsClient
+        client_id = AppSetting.query.filter_by(cle='TEAMS_CLIENT_ID').first()
+        tenant_id = AppSetting.query.filter_by(cle='TEAMS_TENANT_ID').first()
+        client_secret = AppSetting.query.filter_by(cle='TEAMS_CLIENT_SECRET').first()
+        team_id = AppSetting.query.filter_by(cle='TEAMS_TEAM_ID').first()
+        
+        if not all([client_id, tenant_id, client_secret]) or not all([client_id.valeur, tenant_id.valeur, client_secret.valeur]):
+            return jsonify({'ok': False, 'message': 'Identifiants Teams non configurés.'}), 400
+        
+        client = TeamsClient(
+            client_id=client_id.valeur,
+            tenant_id=tenant_id.valeur,
+            client_secret=client_secret.valeur,
+            team_id=team_id.valeur if team_id else None
+        )
+        
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Client Teams non configuré.'}), 400
+        
+        # Test token acquisition
+        token = client._get_access_token()
+        if not token:
+            return jsonify({'ok': False, 'message': 'Impossible d\'obtenir le token d\'accès.'}), 400
+        
+        return jsonify({'ok': True, 'message': 'Connexion Teams OK. Token obtenu.'})
+    except Exception as e:
+        app.logger.error(f"Erreur test Teams: {e}")
+        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
+
+
+@app.route('/api/pennyane/extension', methods=['POST', 'OPTIONS'])
+def pennyane_extension():
+    if request.method == 'OPTIONS':
+        resp = jsonify({'ok': True})
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return resp
+
+    try:
+        payload = request.get_json(silent=True) or {}
+        company_id = (payload.get('company_id') or '').strip()
+        company_name = (payload.get('company_name') or '').strip()
+        if not company_id:
+            return jsonify({'ok': False, 'message': 'company_id manquant'}), 400
+
+        fact_frs = int(payload.get('fact_frs', 0) or 0)
+        fact_clts = int(payload.get('fact_clts', 0) or 0)
+        transactions = int(payload.get('transactions', 0) or 0)
+        ecritures_attente = int(payload.get('ecritures_attente', 0) or 0)
+        documents_a_approuver = int(payload.get('documents_a_approuver', 0) or 0)
+        raw = payload.get('raw')
+
+        last = PennyLaneSnapshot.query.filter_by(company_id=company_id).order_by(desc( PennyLaneSnapshot.date_snapshot)).first()
+        changes = {}
+        if last:
+            for field, value in [
+                ('fact_frs', fact_frs),
+                ('fact_clts', fact_clts),
+                ('transactions', transactions),
+                ('ecritures_attente', ecritures_attente),
+                ('documents_a_approuver', documents_a_approuver),
+            ]:
+                prev = getattr(last, field)
+                if value != prev:
+                    changes[field] = {'previous': prev, 'current': value}
+
+        snapshot = PennyLaneSnapshot(
+            company_id=company_id,
+            company_name=company_name,
+            fact_frs=fact_frs,
+            fact_clts=fact_clts,
+            transactions=transactions,
+            ecritures_attente=ecritures_attente,
+            documents_a_approuver=documents_a_approuver,
+            raw=raw,
+        )
+        db.session.add(snapshot)
+        db.session.commit()
+
+        message = 'Aucune nouveauté.'
+        if changes:
+            message = 'Nouveautés détectées : ' + ', '.join([f"{k}: {v['previous']} -> {v['current']}" for k, v in changes.items()])
+
+        resp = jsonify({'ok': True, 'changes': changes, 'message': message})
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+    except Exception as e:
+        app.logger.error(f"Erreur extension PennyLane: {e}")
+        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400

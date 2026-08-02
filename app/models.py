@@ -1,0 +1,177 @@
+from datetime import datetime, date
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+from app import db, login_manager
+import os
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(256), nullable=False)
+    nom = db.Column(db.String(80), nullable=False)
+    prenom = db.Column(db.String(80), nullable=False)
+    photo_profil = db.Column(db.String(200), default='default.png')
+    role = db.Column(db.String(20), nullable=False, default='membre')  # manager | membre
+    poste = db.Column(db.String(120))  # e.g., "Comptable", "Auditeur"
+    telephone = db.Column(db.String(20))
+    actif = db.Column(db.Boolean, default=True)
+    date_arrivee = db.Column(db.Date, default=date.today)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    dossiers_assignes = db.relationship('Dossier', backref='collaborateur', lazy='dynamic')
+    taches_assignees = db.relationship('Tache', foreign_keys='Tache.assigne_a', backref='assigne', lazy='dynamic')
+    taches_creees = db.relationship('Tache', foreign_keys='Tache.cree_par', backref='createur', lazy='dynamic')
+    notifications = db.relationship('Notification', backref='user', lazy='dynamic', order_by='desc(Notification.date_envoi)')
+    commentaires = db.relationship('CommentaireTache', backref='user', lazy='dynamic')
+    performances = db.relationship('Performance', backref='user', lazy='dynamic')
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def nom_complet(self):
+        return f"{self.prenom} {self.nom}"
+
+    def nb_dossiers_en_cours(self):
+        return Dossier.query.filter_by(collaborateur_id=self.id).count()
+
+    def nb_taches_en_retard(self):
+        return Tache.query.filter(
+            Tache.assigne_a == self.id,
+            Tache.statut != 'terminee',
+            Tache.date_echeance < date.today()
+        ).count()
+
+    def nb_taches_a_faire(self):
+        return Tache.query.filter_by(assigne_a=self.id, statut='a_faire').count()
+
+    def __repr__(self):
+        return f'<User {self.email}>'
+
+
+class Dossier(db.Model):
+    __tablename__ = 'dossiers'
+    id = db.Column(db.Integer, primary_key=True)
+    numero_dossier = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    intitule = db.Column(db.String(200), nullable=False)
+    collaborateur_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    regime_tva = db.Column(db.String(50))  # ca3 | ca12 | exonere
+    date_limite_declaration = db.Column(db.Date)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_cloture = db.Column(db.DateTime)
+
+    taches = db.relationship('Tache', backref='dossier', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<Dossier {self.numero_dossier}>'
+
+
+class Tache(db.Model):
+    __tablename__ = 'taches'
+    id = db.Column(db.Integer, primary_key=True)
+    titre = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=True)
+    assigne_a = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    cree_par = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    priorite = db.Column(db.String(20), default='moyenne')  # haute | moyenne | basse
+    statut = db.Column(db.String(30), default='a_faire')  # a_faire | en_cours | terminee
+    date_echeance = db.Column(db.Date, nullable=False)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_prise_en_charge = db.Column(db.DateTime)
+    date_completion = db.Column(db.DateTime)
+
+    notifications = db.relationship('Notification', backref='tache', lazy='dynamic')
+    commentaires = db.relationship('CommentaireTache', backref='tache', lazy='dynamic', order_by='desc(CommentaireTache.date_creation)')
+
+    def est_en_retard(self):
+        if self.statut == 'terminee':
+            return False
+        return self.date_echeance < date.today()
+
+    def jours_restants(self):
+        if self.statut == 'terminee':
+            return 0
+        delta = (self.date_echeance - date.today()).days
+        return delta
+
+    def __repr__(self):
+        return f'<Tache {self.titre}>'
+
+
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    tache_id = db.Column(db.Integer, db.ForeignKey('taches.id'), nullable=True)
+    message = db.Column(db.Text, nullable=False)
+    lu = db.Column(db.Boolean, default=False)
+    type_notification = db.Column(db.String(30), default='info')  # assignation | prise_en_charge | completion | systeme
+    date_envoi = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Notification {self.id}>'
+
+
+class CommentaireTache(db.Model):
+    __tablename__ = 'commentaires_taches'
+    id = db.Column(db.Integer, primary_key=True)
+    tache_id = db.Column(db.Integer, db.ForeignKey('taches.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Commentaire {self.id}>'
+
+
+class Performance(db.Model):
+    __tablename__ = 'performance'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    periode = db.Column(db.String(20), nullable=False)  # hebdomadaire | mensuel | annuel
+    date_debut = db.Column(db.Date, nullable=False)
+    date_fin = db.Column(db.Date, nullable=False)
+    dossiers_termines = db.Column(db.Integer, default=0)
+    taches_terminees = db.Column(db.Integer, default=0)
+    taches_en_retard = db.Column(db.Integer, default=0)
+    taux_respect_delai = db.Column(db.Float, default=0.0)  # pourcentage
+    score_performance = db.Column(db.Float, default=0.0)  # note sur 100
+    date_calcul = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Performance user={self.user_id} score={self.score_performance}>'
+
+
+class AppSetting(db.Model):
+    __tablename__ = 'app_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    cle = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    valeur = db.Column(db.Text, nullable=True)
+    type_valeur = db.Column(db.String(20), default='string')  # string | json | password
+    service = db.Column(db.String(50), default='general')  # pennylane | outlook | teams | mail | general
+    masque = db.Column(db.Boolean, default=False)
+    date_modification = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<AppSetting {self.cle}>'
+
+
+class PennyLaneSnapshot(db.Model):
+    __tablename__ = 'pennylane_snapshots'
+    id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.String(120), nullable=False, index=True)
+    company_name = db.Column(db.String(200))
+    fact_frs = db.Column(db.Integer, default=0)
+    fact_clts = db.Column(db.Integer, default=0)
+    transactions = db.Column(db.Integer, default=0)
+    ecritures_attente = db.Column(db.Integer, default=0)
+    documents_a_approuver = db.Column(db.Integer, default=0)
+    date_snapshot = db.Column(db.DateTime, default=datetime.utcnow)
+    raw = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<PennyLaneSnapshot {self.company_id} {self.date_snapshot}>'

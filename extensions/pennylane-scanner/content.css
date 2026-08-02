@@ -1,0 +1,59 @@
+#pl-scanner-root {
+  --pl-green: #1a7f37;
+  --pl-green-hover: #12592a;
+  --pl-red: #cf222e;
+  --pl-orange: #9a6700;
+}
+
+#pl-scanner-btn {
+  position: fixed !important;
+  top: 10px !important;
+  right: 10px !important;
+  z-index: 2147483647 !important;
+  background: var(--pl-green) !important;
+  color: white !important;
+  border: 2px solid var(--pl-green-hover) !important;
+  padding: 10px 15px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 14px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+
+#pl-scanner-btn:hover {
+  background: var(--pl-green-hover) !important;
+}
+
+#pl-scanner-result {
+  position: fixed !important;
+  top: 50px !important;
+  right: 10px !important;
+  z-index: 2147483647 !important;
+  background: white !important;
+  border: 2px solid var(--pl-green) !important;
+  padding: 10px !important;
+  border-radius: 4px !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 12px !important;
+  max-width: 380px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+
+#pl-scanner-result.pl-hidden {
+  display: none !important;
+}
+
+#pl-scanner-result .ok {
+  color: var(--pl-green) !important;
+  font-weight: bold !important;
+}
+
+#pl-scanner-result .ko {
+  color: var(--pl-red) !important;
+  font-weight: bold !important;
+}
+
+#pl-scanner-result .change {
+  color: var(--pl-orange) !important;
+}
