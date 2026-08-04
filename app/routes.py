@@ -44,14 +44,14 @@ def send_email_notification(to_email, subject, body, sender=None):
         server_port = config.get('MAIL_PORT', app.config.get('MAIL_PORT', 587))
         use_tls = config.get('MAIL_USE_TLS', app.config.get('MAIL_USE_TLS', True))
         default_sender = config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_DEFAULT_SENDER', '')
-        
+
         if not username:
             return False, 'MAIL_USERNAME non configuré. Allez dans Paramètres.'
         if not password:
             return False, 'MAIL_PASSWORD vide. Allez dans Paramètres.'
-        
+
         from_email = sender or default_sender or username
-        
+
         app.logger.info(
             "SMTP test: server=%s port=%s username=%s sender=%s recipient=%s",
             server_host,
@@ -73,6 +73,17 @@ def send_email_notification(to_email, subject, body, sender=None):
         return True, f'Email envoyé à {to_email}'
     except Exception as e:
         app.logger.error(f"Erreur envoi mail: {e}")
+        # Fallback vers Brevo API en cas d'échec SMTP
+        try:
+            from app.integrations.brevo import send_email_via_brevo_api
+            api_key = AppSetting.query.filter_by(cle='BREVO_API_KEY').first()
+            if api_key and api_key.valeur:
+                app.logger.info("SMTP échoué, bascule vers Brevo API")
+                ok = send_email_via_brevo_api(to_email=to_email, subject=subject, body=body)
+                if ok:
+                    return True, f'Email envoyé à {to_email} via Brevo API'
+        except Exception as e2:
+            app.logger.error(f"Brevo API fallback also failed: {e2}")
         return False, f'Échec: {e}'
 
 
