@@ -54,8 +54,8 @@
                     <div class="mb-3">
                         <label class="form-label">Provider</label>
                         {% set openrouter_provider = settings|selectattr('cle','equalto','OPENROUTER_PROVIDER')|list|first %}
-                        <input type="text" name="OPENROUTER_PROVIDER" class="form-control" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: openai, google, anthropic, nvidia, stepfun, kilocode">
-                        <div class="form-text">Laisser vide pour ne pas filtrer par provider.</div>
+                        <input type="text" name="OPENROUTER_PROVIDER" class="form-control" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: stepfun, openai, google, anthropic, nvidia, kilocode">
+                        <div class="form-text">Laisser vide pour tous les modèles. Sinon, utilisez le préfixe du modèle (ex: stepfun/, openai/).</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Modèle LLM par défaut</label>
