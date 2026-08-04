@@ -1,294 +1,308 @@
 """
-Real Outlook / Microsoft Graph mail connector.
-
-Uses MSAL confidential client to acquire an app-only access token and then
-talks to Microsoft Graph. No secrets are hard-coded; everything comes from
-environment variables or constructor parameters.
+Outlook integration via Microsoft Graph – device code flow using the
+public client ID of Microsoft Graph Explorer (c44b4283-bb79-491f-b596-915e3e3ef989).
+No Azure AD app registration required from the user.
 """
 
 from __future__ import annotations
 
-import os
+import json
 import logging
+import os
+import time
 from typing import Any, Dict, List, Optional
 
-import msal
+import msal  # pip install msal
 import requests
+from bs4 import BeautifulSoup  # already present via your environment
 
 logger = logging.getLogger(__name__)
 
-GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
+# ----------------------------------------------------------------------
+# Constants – public client ID of Microsoft Graph Explorer
+# ----------------------------------------------------------------------
+GRAPH_EXPLORER_CLIENT_ID = "c44b4283-bb79-491f-b596-915e3e3ef989"
+GRAPH_AUTHORITY = "https://login.microsoftonline.com/common"
+GRAPH_ENDPOINT = "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages"
+SCOPES = ["Mail.Read", "offline_access"]  # offline_access → refresh token
 
+# ----------------------------------------------------------------------
+# Helpers for storing refresh token in AppSetting
+# ----------------------------------------------------------------------
+def _get_setting(cle: str) -> Optional[str]:
+    from app.models import AppSetting
+    row = AppSetting.query.filter_by(cle=cle).first()
+    return row.valeur if row else None
 
-def _env_str(name: str, default: str = "") -> str:
-    return os.getenv(name, default).strip()
+def _set_setting(cle: str, valeur: str) -> None:
+    from app import db
+    from app.models import AppSetting
+    row = AppSetting.query.filter_by(cle=cle).first()
+    if row:
+        row.valeur = valeur
+    else:
+        row = AppSetting(cle=cle, valeur=valeur, service="outlook")
+        db.session.add(row)
+    db.session.commit()
 
+def _delete_setting(cle: str) -> None:
+    from app import db
+    from app.models import AppSetting
+    AppSetting.query.filter_by(cle=cle).delete()
+    db.session.commit()
 
+# ----------------------------------------------------------------------
+# Main class
+# ----------------------------------------------------------------------
 class OutlookMailClient:
-    """Microsoft Graph mail integration for Outlook.
-
-    Reads config from env by default:
-      - OUTLOOK_CLIENT_ID
-      - OUTLOOK_TENANT_ID
-      - OUTLOOK_CLIENT_SECRET
-      - OUTLOOK_MAILBOX_EMAIL
-    """
-
-    def __init__(
-        self,
-        client_id: Optional[str] = None,
-        tenant_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        mailbox_email: Optional[str] = None,
-    ) -> None:
-        self.client_id = client_id or _env_str("OUTLOOK_CLIENT_ID")
-        self.tenant_id = tenant_id or _env_str("OUTLOOK_TENANT_ID")
-        self.client_secret = client_secret or _env_str("OUTLOOK_CLIENT_SECRET")
-        self.mailbox_email = mailbox_email or _env_str("OUTLOOK_MAILBOX_EMAIL")
-
+    def __init__(self) -> None:
+        self._app = msal.PublicClientApplication(
+            client_id=GRAPH_EXPLORER_CLIENT_ID,
+            authority=GRAPH_AUTHORITY,
+            token_cache=msal.TokenCache(),
+        )
         self._access_token: Optional[str] = None
-        self._msal_app: Optional[msal.ConfidentialClientApplication] = None
+        self._expires_at: float = 0.0
 
-    # ----------------------------------------------------------------
-    # Config helpers
-    # ----------------------------------------------------------------
-
-    def is_configured(self) -> bool:
-        return bool(self.client_id and self.tenant_id and self.client_secret)
-
-    # ----------------------------------------------------------------
-    # Auth / token
-    # ----------------------------------------------------------------
-
-    def _build_msal_app(self) -> msal.ConfidentialClientApplication:
-        if self._msal_app is None:
-            authority = f"https://login.microsoftonline.com/{self.tenant_id}"
-            self._msal_app = msal.ConfidentialClientApplication(
-                self.client_id,
-                authority=authority,
-                client_credential=self.client_secret,
-            )
-        return self._msal_app
-
-    def _get_access_token(self) -> Optional[str]:
-        if self._access_token:
-            return self._access_token
-
-        if not self.is_configured():
-            logger.warning("Outlook client is not configured.")
-            return None
-
-        app = self._build_msal_app()
-        scopes = ["https://graph.microsoft.com/.default"]
-        result = app.acquire_token_for_client(scopes=scopes)
-
-        if "access_token" in result:
-            self._access_token = result["access_token"]
-            logger.info("Outlook access token acquired successfully.")
-            return self._access_token
-
-        error = result.get("error")
-        desc = result.get("error_description")
-        logger.error("Failed to acquire Outlook token: %s - %s", error, desc)
+    # ------------------------------------------------------------------
+    # Refresh token handling
+    # ------------------------------------------------------------------
+    def _load_refresh_token(self) -> Optional[str]:
+        raw = _get_setting("OUTLOOK_GRAPH_REFRESH_TOKEN")
+        if raw:
+            try:
+                data = json.loads(raw)
+                return data.get("refresh_token")
+            except Exception:
+                logger.warning("Failed to decode stored refresh token")
         return None
 
-    def _headers(self) -> Dict[str, str]:
-        token = self._get_access_token()
-        if not token:
-            return {}
-        return {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
+    def _save_refresh_token(self, refresh_token: str, expires_in: int = None) -> None:
+        payload = {
+            "refresh_token": refresh_token,
+            "expires_at": int(time.time()) + (expires_in or 0),
         }
+        _set_setting("OUTLOOK_GRAPH_REFRESH_TOKEN", json.dumps(payload))
 
-    # ----------------------------------------------------------------
-    # Internal HTTP helper
-    # ----------------------------------------------------------------
+    def _clear_refresh_token(self) -> None:
+        _delete_setting("OUTLOOK_GRAPH_REFRESH_TOKEN")
+        _delete_setting("OUTLOOK_GRAPH_EXPIRES_AT")
 
-    def _graph_get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
-        headers = self._headers()
-        if not headers:
+    # ------------------------------------------------------------------
+    # Silently acquire an access token using refresh token
+    # ------------------------------------------------------------------
+    def _acquire_token_silently(self) -> Optional[Dict[str, Any]]:
+        refresh_token = self._load_refresh_token()
+        if not refresh_token:
             return None
-        url = f"{GRAPH_BASE_URL}{path}"
-        try:
-            resp = requests.get(url, headers=headers, params=params, timeout=30)
-            resp.raise_for_status()
-            return resp.json()
-        except requests.RequestException as exc:
-            logger.error("Graph GET %s failed: %s", url, exc)
+        # msal does not have a direct "acquire_by_refresh_token"; we reconstruct a token cache.
+        cache = msal.TokenCache()
+        cache.add(
+            {
+                "refresh_token": refresh_token,
+                "client_id": GRAPH_EXPLORER_CLIENT_ID,
+                "scope": " ".join(SCOPES),
+            }
+        )
+        self._app.token_cache = cache
+        result = self._app.acquire_token_by_refresh_token(
+            refresh_token, scopes=SCOPES
+        )
+        if "access_token" in result:
+            self._access_token = result["access_token"]
+            self._expires_at = time.time() + result.get("expires_in", 0) - 30  # 30s safety margin
+            if "refresh_token" in result:
+                self._save_refresh_token(
+                    result["refresh_token"], result.get("expires_in", 0)
+                )
+            return result
+        else:
+            logger.error(
+                "Silent token acquisition failed: %s",
+                result.get("error_description"),
+            )
             return None
 
-    # ----------------------------------------------------------------
-    # Mail reading
-    # ----------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Device code flow (first-time authentication)
+    # ------------------------------------------------------------------
+    def _acquire_token_via_device_code(self) -> Optional[Dict[str, Any]]:
+        flow = self._app.initiate_device_flow(scopes=SCOPES)
+        if "user_code" not in flow:
+            logger.error(
+                "Failed to create device flow: %s",
+                flow.get("error_description"),
+            )
+            return None
+
+        print(
+            "\nTo authorize access to your Outlook mailbox, follow these steps:\n"
+            f"1. Open a browser and go to {flow['verification_uri']}\n"
+            f"2. Enter the code: {flow['user_code']}\n"
+            f"3. Sign in with your Outlook.com account and grant the permissions "
+            f"Mail.Read + offline access.\n"
+        )
+        # Wait for user to complete the flow (timeout ~5 minutes)
+        result = self._app.acquire_token_by_device_flow(flow)
+        if "access_token" in result:
+            self._access_token = result["access_token"]
+            self._expires_at = time.time() + result.get("expires_in", 0) - 30
+            if "refresh_token" in result:
+                self._save_refresh_token(
+                    result["refresh_token"], result.get("expires_in", 0)
+                )
+            return result
+        else:
+            logger.error(
+                "Device code flow failed: %s",
+                result.get("error_description"),
+            )
+            return None
+
+    # ------------------------------------------------------------------
+    # Public API expected by the rest of the app
+    # ------------------------------------------------------------------
+    def is_configured(self) -> bool:
+        # Always considered configured as long as the public client ID exists
+        return True
+
+    def _get_valid_token(self) -> str:
+        """Return a valid access token, refreshing if necessary."""
+        now = time.time()
+        if not self._access_token or now >= self._expires_at:
+            # Try silent refresh first
+            res = self._acquire_token_silently()
+            if res:
+                return self._access_token
+            # Otherwise, trigger device code flow (requires user interaction)
+            res = self._acquire_token_via_device_code()
+            if not res:
+                raise RuntimeError("Unable to obtain an access token for Graph")
+        return self._access_token
 
     def fetch_recent_mails(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """Return recent inbox messages from Microsoft Graph.
-
-        Each dict contains at least:
-          id, subject, bodyPreview, receivedDateTime, from/emailAddress, importance
-        """
-        if not self.is_configured():
+        token = self._get_valid_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {"$top": str(limit), "$select": "id,subject,bodyPreview,receivedDateTime,from,importance"}
+        try:
+            resp = requests.get(GRAPH_ENDPOINT, headers=headers, params=params, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            messages = data.get("value", [])
+            out: List[Dict[str, Any]] = []
+            for m in messages:
+                from_addr = ""
+                fr = m.get("from", {})
+                if isinstance(fr, dict):
+                    email_addr = fr.get("emailAddress", {})
+                    if isinstance(email_addr, dict):
+                        from_addr = email_addr.get("address", "")
+                out.append(
+                    {
+                        "id": m.get("id"),
+                        "subject": m.get("subject", ""),
+                        "body_preview": m.get("bodyPreview", ""),
+                        "body": m.get("bodyPreview", ""),  # we only have preview; keep as body for compatibility
+                        "received_date_time": m.get("receivedDateTime", ""),
+                        "from_email": from_addr,
+                        "importance": m.get("importance", "normal").lower(),
+                        "conversation_id": None,
+                    }
+                )
+            return out
+        except Exception as e:
+            logger.exception("Error calling Graph API: %s", e)
             return []
-
-        mailbox = self.mailbox_email or "me"
-        path = f"/users/{mailbox}/mailFolders/inbox/messages"
-        params = {
-            "$top": str(limit),
-            "$select": "id,subject,bodyPreview,receivedDateTime,importance,from,conversationId",
-            "$orderby": "receivedDateTime DESC",
-        }
-
-        data = self._graph_get(path, params=params)
-        if not data:
-            return []
-
-        messages = data.get("value", [])
-        result: List[Dict[str, Any]] = []
-        for msg in messages:
-            sender = msg.get("from") or {}
-            email_addr = (sender.get("emailAddress") or {}).get("address", "")
-            result.append({
-                "id": msg.get("id"),
-                "subject": msg.get("subject") or "(no subject)",
-                "body_preview": msg.get("bodyPreview") or "",
-                "received_date_time": msg.get("receivedDateTime"),
-                "from_email": email_addr,
-                "importance": msg.get("importance", "normal"),
-                "conversation_id": msg.get("conversationId"),
-            })
-        return result
 
     def fetch_mail_by_id(self, mail_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch a single message by id."""
-        if not self.is_configured():
+        # Not currently used; keep signature for compatibility
+        token = self._get_valid_token()
+        url = f"https://graph.microsoft.com/v1.0/me/messages/{mail_id}"
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            m = resp.json()
+            from_addr = ""
+            fr = m.get("from", {})
+            if isinstance(fr, dict):
+                email_addr = fr.get("emailAddress", {})
+                if isinstance(email_addr, dict):
+                    from_addr = email_addr.get("address", "")
+            return {
+                "id": m.get("id"),
+                "subject": m.get("subject", ""),
+                "body_preview": m.get("bodyPreview", ""),
+                "body": m.get("bodyPreview", ""),
+                "received_date_time": m.get("receivedDateTime", ""),
+                "from_email": from_addr,
+                "importance": m.get("importance", "normal").lower(),
+                "conversation_id": None,
+            }
+        except Exception as e:
+            logger.exception("Error fetching mail by ID: %s", e)
             return None
-
-        mailbox = self.mailbox_email or "me"
-        path = f"/users/{mailbox}/messages/{mail_id}"
-        params = {
-            "$select": "id,subject,body,receivedDateTime,importance,from,conversationId",
-        }
-
-        data = self._graph_get(path, params=params)
-        if not data:
-            return None
-
-        sender = data.get("from") or {}
-        email_addr = (sender.get("emailAddress") or {}).get("address", "")
-        body_content = ""
-        body_data = data.get("body") or {}
-        body_content = body_data.get("content", "")
-
-        return {
-            "id": data.get("id"),
-            "subject": data.get("subject") or "(no subject)",
-            "body": body_content,
-            "received_date_time": data.get("receivedDateTime"),
-            "from_email": email_addr,
-            "importance": data.get("importance", "normal"),
-            "conversation_id": data.get("conversationId"),
-        }
-
-    # ----------------------------------------------------------------
-    # Mail sending
-    # ----------------------------------------------------------------
 
     def send_email(self, to_email: str, subject: str, body: str) -> bool:
-        """Send an email via Microsoft Graph.
+        # Reuse your existing email sending via Brevo (already in routes.py)
+        from app import app
+        from flask_mail import Message
+        from smtplib import SMTPException
 
-        Returns True on success, False otherwise.
-        """
-        if not self.is_configured():
-            return False
+        with app.app_context():
+            msg = Message(subject=subject, recipients=[to_email], body=body,
+                          sender=app.config.get("MAIL_DEFAULT_SENDER"))
+            try:
+                mail.send(msg)
+                return True
+            except SMTPException as e:
+                logger.error("Failed to send email via Brevo: %s", e)
+                return False
 
-        mailbox = self.mailbox_email or "me"
-        url = f"{GRAPH_BASE_URL}/users/{mailbox}/sendMail"
-        headers = self._headers()
-        if not headers:
-            return False
+    # ------------------------------------------------------------------
+    # Action keyword detection (identical to previous version)
+    # ------------------------------------------------------------------
+    _KEYWORDS = [
+        "à faire", "action", "demande", "urgent", "rappel", "rappeler",
+        "valider", "signer", "envoyer", "corriger", "répondre", "relancer",
+        "deadline", "échéance", "à confirmer", "à revoir",
+    ]
 
-        message = {
-            "message": {
-                "subject": subject,
-                "body": {
-                    "contentType": "Text",
-                    "content": body,
-                },
-                "toRecipients": [
-                    {"emailAddress": {"address": to_email}}
-                ],
-            },
-            "saveToSentItems": "true",
-        }
-
-        try:
-            resp = requests.post(url, headers=headers, json=message, timeout=30)
-            resp.raise_for_status()
-            logger.info("Mail sent to %s: %s", to_email, subject)
-            return True
-        except requests.RequestException as exc:
-            logger.error("Failed to send mail to %s: %s", to_email, exc)
-            return False
-
-    # ----------------------------------------------------------------
-    # Suggestion logic from mails
-    # ----------------------------------------------------------------
-
-    def _parse_suggestions_from_mails(
-        self,
-        mails: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Very lightweight heuristic parser: look for action keywords in subjects."""
-        suggestions: List[Dict[str, Any]] = []
-        keywords = [
-            "à faire",
-            "action",
-            "demande",
-            "urgent",
-            "rappel",
-            "rappeler",
-            "valider",
-            "signer",
-            "envoyer",
-            "corriger",
-            "répondre",
-            "relancer",
-            "deadline",
-            "échéance",
-            "à confirmer",
-            "à revoir",
-        ]
-        subj_lower = ""
-        body_lower = ""
-        for mail in mails:
-            subj_lower = (mail.get("subject") or "").lower()
-            body_lower = (mail.get("body_preview") or "").lower()
-            matched_keyword = next((kw for kw in keywords if kw in subj_lower or kw in body_lower), None)
-            if matched_keyword:
-                priority = "haute" if mail.get("importance") == "high" or matched_keyword in {"urgent", "deadline", "échéance"} else "moyenne"
-                suggestions.append({
-                    "titre": f"Mail: {mail.get('subject') or '(no subject)'}",
-                    "dossier_id": mail.get("dossier_id"),
-                    "assigne_a": mail.get("assigne_a"),
-                    "priorite": priority,
-                    "date_echeance": mail.get("date_echeance"),
-                    "source": f"outlook:{mail.get('id')}",
-                    "meta": {
-                        "from_email": mail.get("from_email"),
-                        "received_date_time": mail.get("received_date_time"),
-                        "matched_keyword": matched_keyword,
-                    },
-                })
-        return suggestions
+    def _match_keyword(self, text: str) -> Optional[str]:
+        low = text.lower()
+        for kw in self._KEYWORDS:
+            if kw in low:
+                return kw
+        return None
 
     def suggest_tasks_from_mails(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """High-level method used by routes to propose tasks from Outlook mails."""
         if not self.is_configured():
             return []
-
         mails = self.fetch_recent_mails(limit=limit)
-        if not mails:
-            return []
-
-        return self._parse_suggestions_from_mails(mails[:limit])
+        suggestions: List[Dict[str, Any]] = []
+        for m in mails:
+            kw = self._match_keyword(f"{m['subject']} {m['body_preview']}")
+            if not kw:
+                continue
+            priority = (
+                "haute"
+                if m["importance"] == "high"
+                or kw in {"urgent", "deadline", "échéance"}
+                else "moyenne"
+            )
+            suggestions.append(
+                {
+                    "titre": f"Mail: {m['subject'] or '(sans sujet)'}",
+                    "dossier_id": m.get("dossier_id"),
+                    "assigne_a": m.get("assigne_a"),
+                    "priorite": priority,
+                    "date_echeance": m.get("date_echeance"),
+                    "source": f"outlook_graph:{m['id']}",
+                    "meta": {
+                        "from_email": m.get("from_email"),
+                        "received_date_time": m.get("receivedDateTime", ""),
+                        "matched_keyword": kw,
+                    },
+                }
+            )
+        return suggestions
