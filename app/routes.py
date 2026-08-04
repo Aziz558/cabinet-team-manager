@@ -6,6 +6,7 @@ from sqlalchemy import desc
 import csv
 import io
 import smtplib
+import email
 from app import app, db, mail
 from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting
 from flask_mail import Message
