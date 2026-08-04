@@ -54,7 +54,7 @@
                     <div class="mb-3">
                         <label class="form-label">Modèle LLM par défaut</label>
                         {% set openrouter_model = settings|selectattr('cle','equalto','OPENROUTER_MODEL')|list|first %}
-                        <input type="text" name="OPENROUTER_MODEL" class="form-control" value="{{ openrouter_model.valeur if openrouter_model else 'mistralai/mistral-7b-instruct' }}">
+                        <input type="text" name="OPENROUTER_MODEL" class="form-control" value="{{ openrouter_model.valeur if openrouter_model else 'stepfun/step-3.7-flash:free' }}">
                         <div class="form-text">Exemple : mistralai/mistral-7b-instruct, google/gemini-2.0-flash-exp, openai/gpt-4o-mini, etc.</div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Enregistrer OpenRouter</button>
