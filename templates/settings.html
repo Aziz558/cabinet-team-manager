@@ -145,6 +145,9 @@
                     <button class="btn btn-outline-primary btn-sm" id="testTeamsBtn">
                         <i class="bi bi-chat-dots me-1"></i>Tester Teams
                     </button>
+                    <button class="btn btn-outline-primary btn-sm" id="testOpenRouterBtn">
+                        <i class="bi bi-cpu me-1"></i>Tester OpenRouter
+                    </button>
                     <button class="btn btn-outline-primary btn-sm" id="testMailboxBtn">
                         <i class="bi bi-inbox me-1"></i>Tester Mailbox
                     </button>
@@ -469,6 +472,18 @@ document.getElementById('testTeamsBtn').addEventListener('click', function() {
     fetch('/api/test/teams', { method: 'POST' })
         .then(r => r.json())
         .then(res => showIntegrationResult(res.message, res.ok));
+});
+
+document.getElementById('testOpenRouterBtn').addEventListener('click', function() {
+    const box = document.getElementById('testIntegrationResult');
+    box.textContent = 'Test en cours...';
+    fetch('/api/test/openrouter', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            const detail = res.model ? '<br><small>Modèle : ' + res.model + '</small>' : '';
+            showIntegrationResult(res.message + detail, res.ok);
+            if (res.ok) loadOpenRouterModels();
+        });
 });
 </script>
 {% endblock %}

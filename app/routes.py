@@ -980,13 +980,35 @@ def openrouter_models():
         from app.integrations.openrouter import OpenRouterClient
         client = OpenRouterClient()
         if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Clé API OpenRouter non configurée.'}), 400
+            return jsonify({'ok': False, 'message': 'Clé API OpenRouter non configurée.', 'stage': 'config'}), 400
         provider = request.args.get('provider', '').strip() or None
         models = client.list_models(provider=provider)
-        return jsonify({'ok': True, 'models': models})
+        return jsonify({'ok': True, 'models': models, 'stage': 'models'})
     except Exception as e:
         app.logger.error(f"Erreur openrouter models: {e}")
-        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 500
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+
+@app.route('/api/test/openrouter', methods=['POST'])
+@login_required
+def test_openrouter():
+    try:
+        from app.integrations.openrouter import OpenRouterClient
+        client = OpenRouterClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Clé API OpenRouter non configurée.', 'stage': 'config'}), 400
+        models = client.list_models()
+        count = len(models)
+        return jsonify({
+            'ok': True,
+            'message': f'Connexion OpenRouter OK. {count} modèle(s) disponible(s). Modèle par défaut : {client.model}',
+            'count': count,
+            'model': client.model,
+            'stage': 'openrouter',
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur test OpenRouter: {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
 @app.route('/api/test/mailbox', methods=['POST'])
@@ -996,13 +1018,20 @@ def test_mailbox():
         from app.integrations.mailbox import MailboxClient
         client = MailboxClient()
         if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.'}), 400
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
 
         unseen = client.fetch_unseen(limit=5)
         count = len(unseen)
-        return jsonify({'ok': True, 'message': f'{count} e-mail(s) non lu(s) détecté(s).', 'count': count})
+        allowed = getattr(client, 'allowed_senders', [])
+        return jsonify({
+            'ok': True,
+            'message': f'{count} e-mail(s) non lu(s) détecté(s).',
+            'count': count,
+            'stage': 'imap',
+            'allowed_senders': allowed,
+        })
     except Exception as e:
         app.logger.error(f"Erreur test mailbox : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
