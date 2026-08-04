@@ -27,6 +27,11 @@ DEFAULT_SETTINGS = [
     {'cle': 'OPENROUTER_API_KEY', 'valeur': '', 'service': 'llm', 'type_valeur': 'password', 'masque': True},
     {'cle': 'OUTLOOK_GRAPH_REFRESH_TOKEN', 'valeur': '', 'service': 'outlook', 'type_valeur': 'string'},
     {'cle': 'OUTLOOK_GRAPH_EXPIRES_AT', 'valeur': '', 'service': 'outlook', 'type_valeur': 'string'},
+    {'cle': 'MAILBOX_USER', 'valeur': '', 'service': 'mailbox', 'type_valeur': 'string'},
+    {'cle': 'MAILBOX_PASSWORD', 'valeur': '', 'service': 'mailbox', 'type_valeur': 'password', 'masque': True},
+    {'cle': 'MAILBOX_SERVER', 'valeur': 'imap.gmail.com', 'service': 'mailbox', 'type_valeur': 'string'},
+    {'cle': 'MAILBOX_PORT', 'valeur': '993', 'service': 'mailbox', 'type_valeur': 'string'},
+    {'cle': 'MAILBOX_USE_SSL', 'valeur': 'true', 'service': 'mailbox', 'type_valeur': 'string'},
 ]
 
 with app.app_context():

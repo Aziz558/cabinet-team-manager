@@ -973,3 +973,20 @@ def test_teams():
         return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
 
 
+@app.route('/api/test/mailbox', methods=['POST'])
+@login_required
+def test_mailbox():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.'}), 400
+
+        unseen = client.fetch_unseen(limit=5)
+        count = len(unseen)
+        return jsonify({'ok': True, 'message': f'{count} e-mail(s) non lu(s) détecté(s).', 'count': count})
+    except Exception as e:
+        app.logger.error(f"Erreur test mailbox : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+
