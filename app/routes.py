@@ -52,8 +52,17 @@ def send_email_notification(to_email, subject, body, sender=None):
         
         from_email = sender or default_sender or username
         
+        app.logger.info(
+            "SMTP test: server=%s port=%s username=%s sender=%s recipient=%s",
+            server_host,
+            server_port,
+            username,
+            from_email,
+            to_email,
+        )
+
         msg = Message(subject, recipients=[to_email], body=body, sender=from_email)
-        smtp = smtplib.SMTP(server_host, server_port, timeout=15)
+        smtp = smtplib.SMTP(server_host, server_port, timeout=20)
         smtp.ehlo()
         if use_tls:
             smtp.starttls()
