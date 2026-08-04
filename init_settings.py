@@ -26,6 +26,7 @@ DEFAULT_SETTINGS = [
     {'cle': 'TEAMS_TEAM_ID', 'valeur': '', 'service': 'teams', 'type_valeur': 'string'},
     {'cle': 'OPENROUTER_API_KEY', 'valeur': '', 'service': 'llm', 'type_valeur': 'password', 'masque': True},
     {'cle': 'OPENROUTER_MODEL', 'valeur': 'stepfun/step-3.7-flash:free', 'service': 'llm', 'type_valeur': 'string'},
+    {'cle': 'OPENROUTER_PROVIDER', 'valeur': '', 'service': 'llm', 'type_valeur': 'string'},
     {'cle': 'OUTLOOK_GRAPH_REFRESH_TOKEN', 'valeur': '', 'service': 'outlook', 'type_valeur': 'string'},
     {'cle': 'OUTLOOK_GRAPH_EXPIRES_AT', 'valeur': '', 'service': 'outlook', 'type_valeur': 'string'},
     {'cle': 'MAILBOX_USER', 'valeur': '', 'service': 'mailbox', 'type_valeur': 'string'},

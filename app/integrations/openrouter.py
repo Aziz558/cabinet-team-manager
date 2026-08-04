@@ -60,3 +60,20 @@ class OpenRouterClient:
         except Exception:
             return None
         return None
+
+    def list_models(self, provider: Optional[str] = None) -> List[str]:
+        if not self.is_configured():
+            return []
+        url = "https://openrouter.ai/api/v1/models"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        try:
+            resp = requests.get(url, headers=headers, timeout=20)
+            resp.raise_for_status()
+            data = resp.json()
+            models = [m.get("id", "") for m in data.get("data", []) if m.get("id")]
+            if provider:
+                prefix = provider.strip().lower() + "/"
+                models = [m for m in models if m.lower().startswith(prefix)]
+            return sorted(models)
+        except Exception:
+            return []

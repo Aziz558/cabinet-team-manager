@@ -973,6 +973,22 @@ def test_teams():
         return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
 
 
+@app.route('/api/openrouter/models', methods=['GET'])
+@login_required
+def openrouter_models():
+    try:
+        from app.integrations.openrouter import OpenRouterClient
+        client = OpenRouterClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Clé API OpenRouter non configurée.'}), 400
+        provider = request.args.get('provider', '').strip() or None
+        models = client.list_models(provider=provider)
+        return jsonify({'ok': True, 'models': models})
+    except Exception as e:
+        app.logger.error(f"Erreur openrouter models: {e}")
+        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 500
+
+
 @app.route('/api/test/mailbox', methods=['POST'])
 @login_required
 def test_mailbox():

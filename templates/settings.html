@@ -52,10 +52,17 @@
                         <input type="password" name="OPENROUTER_API_KEY" class="form-control" value="{{ openrouter_key.valeur if openrouter_key else '' }}">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Provider</label>
+                        {% set openrouter_provider = settings|selectattr('cle','equalto','OPENROUTER_PROVIDER')|list|first %}
+                        <input type="text" name="OPENROUTER_PROVIDER" class="form-control" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: openai, google, anthropic, nvidia, stepfun, kilocode">
+                        <div class="form-text">Laisser vide pour ne pas filtrer par provider.</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Modèle LLM par défaut</label>
-                        {% set openrouter_model = settings|selectattr('cle','equalto','OPENROUTER_MODEL')|list|first %}
-                        <input type="text" name="OPENROUTER_MODEL" class="form-control" value="{{ openrouter_model.valeur if openrouter_model else 'stepfun/step-3.7-flash:free' }}">
-                        <div class="form-text">Exemple : mistralai/mistral-7b-instruct, google/gemini-2.0-flash-exp, openai/gpt-4o-mini, etc.</div>
+                        <select name="OPENROUTER_MODEL" class="form-select" id="openrouterModelSelect">
+                            <option value="">Chargement...</option>
+                        </select>
+                        <div class="form-text">Modèle choisi parmi ceux disponibles pour votre clé.</div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Enregistrer OpenRouter</button>
                 </form>
@@ -301,6 +308,7 @@ document.getElementById('openrouterForm').addEventListener('submit', function(e)
     const entries = [
         {cle: 'OPENROUTER_API_KEY', valeur: formData.get('OPENROUTER_API_KEY'), service: 'llm', type_valeur: 'password', masque: true},
         {cle: 'OPENROUTER_MODEL', valeur: formData.get('OPENROUTER_MODEL'), service: 'llm', type_valeur: 'string', masque: false},
+        {cle: 'OPENROUTER_PROVIDER', valeur: formData.get('OPENROUTER_PROVIDER'), service: 'llm', type_valeur: 'string', masque: false},
     ];
     const box = document.getElementById('openrouterResult');
     box.textContent = 'Enregistrement...';
@@ -317,6 +325,48 @@ document.getElementById('openrouterForm').addEventListener('submit', function(e)
         }
     });
 });
+
+function loadOpenRouterModels() {
+    const providerInput = document.querySelector('input[name="OPENROUTER_PROVIDER"]');
+    const select = document.getElementById('openrouterModelSelect');
+    if (!select) return;
+    select.innerHTML = '<option value="">Chargement...</option>';
+    const provider = providerInput ? providerInput.value.trim() : '';
+    const url = '/api/openrouter/models' + (provider ? '?provider=' + encodeURIComponent(provider) : '');
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) {
+                select.innerHTML = '<option value="">Erreur chargement</option>';
+                return;
+            }
+            const models = data.models || [];
+            select.innerHTML = '';
+            if (!models.length) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'Aucun modèle';
+                select.appendChild(opt);
+                return;
+            }
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                select.appendChild(opt);
+            });
+        })
+        .catch(() => {
+            const select = document.getElementById('openrouterModelSelect');
+            if (select) select.innerHTML = '<option value="">Erreur</option>';
+        });
+}
+
+const providerInput = document.querySelector('input[name="OPENROUTER_PROVIDER"]');
+if (providerInput) {
+    providerInput.addEventListener('change', loadOpenRouterModels);
+    providerInput.addEventListener('blur', loadOpenRouterModels);
+}
 
 document.getElementById('testMailboxBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
