@@ -417,22 +417,11 @@ document.getElementById('testMailboxBtn').addEventListener('click', function() {
                 html += '<br><small>Expéditeurs autorisés : ' + res.allowed_senders.join(', ') + '</small>';
             }
             if (res.samples && res.samples.length) {
-                const allowedSamples = res.samples.filter(s => s.allowed);
-                const blockedSamples = res.samples.filter(s => !s.allowed);
-                if (allowedSamples.length) {
-                    html += '<h6 class="mt-2">Mails autorisés</h6><ul class="mb-0">';
-                    allowedSamples.forEach(s => {
-                        html += '<li>' + (s.subject || '(sans sujet)') + '<br><small class="text-muted">De : ' + (s.from || 'inconnu') + '</small></li>';
-                    });
-                    html += '</ul>';
-                }
-                if (blockedSamples.length) {
-                    html += '<h6 class="mt-2 text-danger">Mails bloqués</h6><ul class="mb-0">';
-                    blockedSamples.forEach(s => {
-                        html += '<li>' + (s.subject || '(sans sujet)') + '<br><small class="text-muted">De : ' + (s.from || 'inconnu') + ' <span class="text-danger">[BLOQUÉ]</span></small></li>';
-                    });
-                    html += '</ul>';
-                }
+                html += '<ul class="mb-0">';
+                res.samples.forEach(s => {
+                    html += '<li>' + (s.subject || '(sans sujet)') + '<br><small class="text-muted">De : ' + (s.from || 'inconnu') + '</small></li>';
+                });
+                html += '</ul>';
             }
             showIntegrationResult(html, true);
         });

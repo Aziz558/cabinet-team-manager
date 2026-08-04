@@ -1045,13 +1045,15 @@ def test_mailbox():
                 'allowed': client._is_sender_allowed(from_addr),
             })
 
+        allowed_samples = [s for s in samples if s['allowed']]
+
         return jsonify({
             'ok': True,
             'message': f'{total_unseen} e-mail(s) non lu(s) détecté(s).',
             'count': total_unseen,
             'stage': 'imap',
             'allowed_senders': allowed,
-            'samples': samples,
+            'samples': allowed_samples,
         })
     except Exception as e:
         app.logger.error(f"Erreur test mailbox : {e}")
