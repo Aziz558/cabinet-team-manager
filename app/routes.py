@@ -1048,6 +1048,21 @@ def test_mailbox():
 
         allowed_samples = [s for s in samples if s['allowed']]
 
+        app.logger.info(
+            "Mailbox debug: total_unseen=%s allowed_senders=%s samples=%s",
+            total_unseen,
+            allowed,
+            [
+                {
+                    "subject": s["subject"],
+                    "raw_from": s["raw_from"],
+                    "from": s["from"],
+                    "allowed": s["allowed"],
+                }
+                for s in samples
+            ],
+        )
+
         return jsonify({
             'ok': True,
             'message': f'{total_unseen} e-mail(s) non lu(s) détecté(s).',
