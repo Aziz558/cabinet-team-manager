@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import email
 import imaplib
+import json
 import logging
 import os
 import re
@@ -198,6 +199,11 @@ class MailboxClient:
             try:
                 client_id = self._resolve_client(m["subject"], m["body"])
                 task_desc = self._extract_task(m["subject"], m["body"])
+                if not client_id or not task_desc:
+                    llm_result = self._analyze_with_llm(m["subject"], m["body"])
+                    if llm_result:
+                        client_id = client_id or llm_result.get("client_id")
+                        task_desc = task_desc or llm_result.get("task")
                 if client_id and task_desc:
                     self._create_task(client_id, task_desc, m["subject"])
                 self._mark_as_processed(m["uid"])
@@ -206,6 +212,42 @@ class MailboxClient:
                 logger.error("Error processing mail %s: %s", m.get("uid"), exc)
                 self._move_to_error(m["uid"])
         return processed
+
+    # ------------------------------------------------------------------
+    # LLM-based extraction
+    # ------------------------------------------------------------------
+    def _analyze_with_llm(self, subject: str, body: str) -> Optional[Dict[str, Any]]:
+        try:
+            from app.integrations.openrouter import OpenRouterClient
+            llm = OpenRouterClient()
+            if not llm.is_configured():
+                return None
+            prompt = (
+                "Analyse ce message et extrais uniquement les informations utiles pour créer une tâche.\n"
+                "- Si le mail mentionne un dossier/client identifiable, renvoie 'client_id' comme un entier si possible, sinon null.\n"
+                "- Si le mail contient une action à faire, renvoie 'task' comme une phrase courte.\n"
+                "- Réponds strictement en JSON : { \"client_id\": number|null, \"task\": string|null }\n\n"
+                f"Sujet: {subject}\n\nCorps:\n{body}"
+            )
+            messages = [
+                {"role": "system", "content": "Tu es un assistant qui extrait des actions à partir d'emails."},
+                {"role": "user", "content": prompt},
+            ]
+            raw = llm.chat(messages)
+            if not raw:
+                return None
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = re.sub(r"```(?:json)?", "", raw).replace("```", "").strip()
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                return {
+                    "client_id": data.get("client_id"),
+                    "task": data.get("task"),
+                }
+        except Exception as exc:
+            logger.error("LLM mailbox analysis failed: %s", exc)
+        return None
 
     # ------------------------------------------------------------------
     # Client/task extraction
