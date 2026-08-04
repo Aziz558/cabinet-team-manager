@@ -241,10 +241,19 @@ class MailboxClient:
                 raw = re.sub(r"```(?:json)?", "", raw).replace("```", "").strip()
             data = json.loads(raw)
             if isinstance(data, dict):
-                return {
-                    "client_id": data.get("client_id"),
-                    "task": data.get("task"),
-                }
+                result = {}
+                if "client_id" in data and data["client_id"] is not None:
+                    try:
+                        result["client_id"] = int(data["client_id"])
+                    except (ValueError, TypeError):
+                        result["client_id"] = None
+                else:
+                    result["client_id"] = None
+                if "task" in data and isinstance(data["task"], str) and data["task"].strip():
+                    result["task"] = data["task"].strip()[:200]
+                else:
+                    result["task"] = None
+                return result if result else None
         except Exception as exc:
             logger.error("LLM mailbox analysis failed: %s", exc)
         return None
