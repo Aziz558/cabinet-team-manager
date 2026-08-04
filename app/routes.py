@@ -1129,3 +1129,53 @@ def test_mailbox_debug():
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
+@app.route('/api/test/mailbox/senders', methods=['GET'])
+@login_required
+def test_mailbox_senders():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        return jsonify({
+            'ok': True,
+            'allowed_senders': client.allowed_senders,
+            'is_configured': client.is_configured(),
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur test mailbox senders : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+
+@app.route('/api/test/mailbox/search', methods=['POST'])
+@login_required
+def test_mailbox_search():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
+
+        imap = client._connect()
+        allowed = getattr(client, 'allowed_senders', [])
+        results = []
+        for sender in allowed:
+            typ, data = imap.search(None, 'UNSEEN', 'FROM', sender)
+            if typ != "OK":
+                continue
+            ids = data[0].split() if data[0] else []
+            results.append({
+                'sender': sender,
+                'count': len(ids),
+                'uids': [num.decode() if isinstance(num, bytes) else str(num) for num in ids[:10]],
+            })
+
+        return jsonify({
+            'ok': True,
+            'message': f'Recherche par expéditeur autorisé : {len(allowed)} expéditeur(s) configuré(s).',
+            'allowed_senders': allowed,
+            'results': results,
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur test mailbox search : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+

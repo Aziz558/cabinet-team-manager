@@ -154,6 +154,12 @@
                     <button class="btn btn-outline-secondary btn-sm" id="debugMailboxBtn">
                         <i class="bi bi-bug me-1"></i>Debug Mailbox
                     </button>
+                    <button class="btn btn-outline-info btn-sm" id="sendersMailboxBtn">
+                        <i class="bi bi-person-lines-fill me-1"></i>Voir expéditeurs autorisés
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" id="searchMailboxBtn">
+                        <i class="bi bi-search me-1"></i>Rechercher par expéditeur
+                    </button>
                 </div>
                 <div id="testIntegrationResult" class="small mt-2"></div>
             </div>
@@ -567,6 +573,54 @@ document.getElementById('debugMailboxBtn').addEventListener('click', function() 
                     html += '</li>';
                 });
                 html += '</ul>';
+            }
+            showIntegrationResult(html, true);
+        });
+});
+
+document.getElementById('sendersMailboxBtn').addEventListener('click', function() {
+    const box = document.getElementById('testIntegrationResult');
+    box.textContent = 'Chargement...';
+    fetch('/api/test/mailbox/senders')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.ok) {
+                showIntegrationResult(res.message, false);
+                return;
+            }
+            let html = '<strong>Expéditeurs autorisés configurés</strong>';
+            html += '<ul class="mb-0">';
+            (res.allowed_senders || []).forEach(s => {
+                html += '<li>' + s + '</li>';
+            });
+            html += '</ul>';
+            showIntegrationResult(html, true);
+        });
+});
+
+document.getElementById('searchMailboxBtn').addEventListener('click', function() {
+    const box = document.getElementById('testIntegrationResult');
+    box.textContent = 'Recherche en cours...';
+    fetch('/api/test/mailbox/search', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.ok) {
+                showIntegrationResult(res.message, false);
+                return;
+            }
+            let html = '<strong>' + res.message + '</strong>';
+            if (res.results && res.results.length) {
+                html += '<ul class="mb-0">';
+                res.results.forEach(r => {
+                    html += '<li>' + r.sender + ' : ' + r.count + ' mail(s) non lu(s)';
+                    if (r.uids.length) {
+                        html += ' <small class="text-muted">(UID: ' + r.uids.join(', ') + ')</small>';
+                    }
+                    html += '</li>';
+                });
+                html += '</ul>';
+            } else {
+                html += '<br><small class="text-muted">Aucun résultat.</small>';
             }
             showIntegrationResult(html, true);
         });
