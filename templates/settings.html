@@ -74,6 +74,12 @@
                             <option value="false" {{ 'selected' if (mailbox_ssl.valeur if mailbox_ssl else 'true')|lower == 'false' else '' }}>Non</option>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Expéditeurs autorisés</label>
+                        {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
+                        <textarea name="MAILBOX_ALLOWED_SENDERS" class="form-control" rows="3" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
+                        <div class="form-text">Laisser vide pour accepter tous les expéditeurs. Sinon, séparez les adresses par des virgules.</div>
+                    </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Enregistrer Mailbox</button>
                 </form>
                 <div id="mailboxResult" class="small mb-3"></div>
@@ -251,6 +257,7 @@ document.getElementById('mailboxForm').addEventListener('submit', function(e) {
         {cle: 'MAILBOX_SERVER', valeur: formData.get('MAILBOX_SERVER'), service: 'mailbox', type_valeur: 'string', masque: false},
         {cle: 'MAILBOX_PORT', valeur: formData.get('MAILBOX_PORT'), service: 'mailbox', type_valeur: 'string', masque: false},
         {cle: 'MAILBOX_USE_SSL', valeur: formData.get('MAILBOX_USE_SSL'), service: 'mailbox', type_valeur: 'string', masque: false},
+        {cle: 'MAILBOX_ALLOWED_SENDERS', valeur: formData.get('MAILBOX_ALLOWED_SENDERS'), service: 'mailbox', type_valeur: 'string', masque: false},
     ];
     const box = document.getElementById('mailboxResult');
     box.textContent = 'Enregistrement...';

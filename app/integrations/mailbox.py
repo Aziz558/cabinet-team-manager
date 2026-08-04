@@ -39,6 +39,7 @@ class MailboxClient:
         self.host = host or _get_setting("MAILBOX_SERVER") or "imap.gmail.com"
         self.port = int(_get_setting("MAILBOX_PORT") or 993)
         self.mailbox = mailbox.upper()
+        self.allowed_senders = self._load_allowed_senders()
         self._imap: Optional[imaplib.IMAP4_SSL] = None
 
     # ------------------------------------------------------------------
@@ -65,6 +66,20 @@ class MailboxClient:
                 pass
             finally:
                 self._imap = None
+
+    # ------------------------------------------------------------------
+    # Sender restriction helpers
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _load_allowed_senders() -> List[str]:
+        raw = _get_setting("MAILBOX_ALLOWED_SENDERS") or ""
+        senders = [s.strip().lower() for s in raw.replace("\n", ",").split(",") if s.strip()]
+        return list(dict.fromkeys(senders))
+
+    def _is_sender_allowed(self, sender: str) -> bool:
+        if not self.allowed_senders:
+            return True
+        return sender.lower() in self.allowed_senders
 
     # ------------------------------------------------------------------
     # Email parsing helpers
@@ -161,6 +176,8 @@ class MailboxClient:
                 from_addr = self._extract_email_from(self._decode_mime_words(mail.get("From")))
                 date_hdr = self._decode_mime_words(mail.get("Date"))
                 body = self._extract_body(mail)
+                if not self._is_sender_allowed(from_addr):
+                    continue
                 messages.append({
                     "uid": num.decode() if isinstance(num, bytes) else str(num),
                     "subject": subject,
