@@ -233,7 +233,7 @@ class MailboxClient:
                 {"role": "system", "content": "Tu es un assistant qui extrait des actions à partir d'emails."},
                 {"role": "user", "content": prompt},
             ]
-            raw = llm.chat(messages)
+            raw = llm.chat(messages, model=llm.model)
             if not raw:
                 return None
             raw = raw.strip()

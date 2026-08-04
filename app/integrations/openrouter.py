@@ -5,6 +5,11 @@ Reads API key from:
 - constructor parameter
 - env var OPENROUTER_API_KEY
 - AppSetting.cle == 'OPENROUTER_API_KEY'
+
+Reads default model from:
+- constructor parameter
+- env var OPENROUTER_MODEL
+- AppSetting.cle == 'OPENROUTER_MODEL'
 """
 
 from __future__ import annotations
@@ -17,14 +22,21 @@ import requests
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
+def _get_setting(cle: str) -> Optional[str]:
+    from app.models import AppSetting
+    row = AppSetting.query.filter_by(cle=cle).first()
+    return row.valeur if row else None
+
+
 class OpenRouterClient:
-    def __init__(self, api_key: Optional[str] = None) -> None:
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY", "").strip()
+        self.model = model or os.getenv("OPENROUTER_MODEL", "").strip() or _get_setting("OPENROUTER_MODEL") or "mistralai/mistral-7b-instruct"
 
     def is_configured(self) -> bool:
         return bool(self.api_key)
 
-    def chat(self, messages: List[Dict[str, str]], model: str = "mistralai/mistral-7b-instruct") -> Optional[str]:
+    def chat(self, messages: List[Dict[str, str]], model: Optional[str] = None) -> Optional[str]:
         if not self.is_configured():
             return None
         headers = {
@@ -32,7 +44,7 @@ class OpenRouterClient:
             "Content-Type": "application/json",
         }
         payload: Dict[str, Any] = {
-            "model": model,
+            "model": model or self.model,
             "messages": messages,
             "max_tokens": 300,
         }
