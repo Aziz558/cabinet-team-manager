@@ -411,7 +411,6 @@ class MailboxClient:
 
 def send_task_assignment_email(tache, assignee_id: int) -> None:
     from app.models import User
-    from app.integrations.openrouter import OpenRouterClient
 
     user = User.query.get(assignee_id)
     if not user or not user.email:
@@ -433,14 +432,36 @@ Cordialement,
 L'équipe Cabinet JMH
 """
 
-    client = OpenRouterClient()
-    if client.is_configured():
-        try:
-            from app.integrations.outlook import OutlookClient
-            outlook = OutlookClient()
-            if outlook.is_configured():
-                outlook.send_email(to=user.email, subject=subject, body=body)
-            else:
-                logger.warning("Outlook not configured, skipping assignment email")
-        except Exception as e:
-            logger.error(f"Failed to send assignment email: {e}")
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        from app.models import AppSetting
+
+        def get_setting(key, default=''):
+            setting = AppSetting.query.filter_by(cle=key).first()
+            return (setting.valeur if setting and setting.valeur else default) or os.environ.get(key, default)
+
+        smtp_server = get_setting('MAIL_SERVER', 'smtp.office365.com')
+        smtp_port = int(get_setting('MAIL_PORT', 587))
+        smtp_user = get_setting('MAIL_USERNAME', '')
+        smtp_password = get_setting('MAIL_PASSWORD', '')
+
+        if not smtp_user or not smtp_password:
+            logger.warning("SMTP not fully configured, skipping assignment email")
+            return
+
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = user.email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, user.email, msg.as_string())
+        server.quit()
+        logger.info(f"Assignment email sent to {user.email}")
+    except Exception as e:
+        logger.error(f"Failed to send assignment email: {e}")
