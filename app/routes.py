@@ -841,7 +841,12 @@ def init_db():
 @login_required
 def settings():
     settings_list = AppSetting.query.all()
-    return render_template('settings.html', settings=settings_list)
+    openrouter_model = ''
+    for s in settings_list:
+        if s.cle == 'OPENROUTER_MODEL' and s.valeur:
+            openrouter_model = s.valeur
+            break
+    return render_template('settings.html', settings=settings_list, openrouter_model=openrouter_model)
 
 
 @app.route('/api/settings', methods=['GET', 'POST'])
@@ -1298,5 +1303,60 @@ def process_mailbox():
     except Exception as e:
         app.logger.error(f"Erreur process mailbox : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+
+@app.route('/mes-taches')
+@login_required
+def mes_taches():
+    return render_template('mes_taches.html')
+
+
+@app.route('/api/taches/mes-taches')
+@login_required
+def api_mes_taches():
+    try:
+        from app.models import Tache
+        statut = request.args.get('statut', 'a_faire')
+        taches = Tache.query.filter_by(assigne_a=current_user.id, statut=statut).order_by(Tache.date_echeance.asc()).all()
+        result = []
+        for t in taches:
+            result.append({
+                'id': t.id,
+                'titre': t.titre,
+                'description': t.description,
+                'priorite': t.priorite,
+                'statut': t.statut,
+                'date_echeance': t.date_echeance.strftime('%Y-%m-%d') if t.date_echeance else '',
+            })
+        return jsonify({'ok': True, 'taches': result})
+    except Exception as e:
+        app.logger.error(f"Erreur mes taches : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+
+@app.route('/api/taches/<int:tache_id>/statut', methods=['POST'])
+@login_required
+def update_tache_statut(tache_id):
+    try:
+        from app.models import Tache
+        data = request.get_json() or {}
+        statut = data.get('statut')
+        if statut not in ['a_faire', 'en_cours', 'terminee']:
+            return jsonify({'ok': False, 'message': 'Statut invalide.'}), 400
+
+        tache = Tache.query.get_or_404(tache_id)
+        if tache.assigne_a != current_user.id:
+            return jsonify({'ok': False, 'message': 'Non autorisé.'}), 403
+
+        tache.statut = statut
+        if statut == 'en_cours' and not tache.date_prise_en_charge:
+            tache.date_prise_en_charge = datetime.utcnow()
+        if statut == 'terminee' and not tache.date_completion:
+            tache.date_completion = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'Statut mis à jour.'})
+    except Exception as e:
+        app.logger.error(f"Erreur update statut : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
 
 

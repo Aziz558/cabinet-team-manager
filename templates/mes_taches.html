@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Mes tâches{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Mes tâches</h2>
+    <p class="text-muted">Tâches qui vous sont assignées. Vous pouvez les prendre en charge et mettre à jour leur statut.</p>
+
+    <div class="mb-3">
+        <a href="{{ url_for('mes_taches') }}" class="btn btn-outline-primary btn-sm">À faire</a>
+        <a href="{{ url_for('mes_taches', statut='en_cours') }}" class="btn btn-outline-warning btn-sm">En cours</a>
+        <a href="{{ url_for('mes_taches', statut='terminee') }}" class="btn btn-outline-success btn-sm">Terminées</a>
+    </div>
+
+    <div id="mesTachesList">
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Chargement des tâches...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal prise en charge -->
+<div class="modal fade" id="priseEnChargeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Prendre en charge la tâche</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="priseEnChargeForm">
+                    <input type="hidden" id="tacheId">
+                    <div class="mb-3">
+                        <label class="form-label">Statut</label>
+                        <select class="form-select" id="tacheStatut">
+                            <option value="a_faire">À faire</option>
+                            <option value="en_cours" selected>En cours</option>
+                            <option value="terminee">Terminée</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmPriseEnCharge">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadMesTaches();
+});
+
+function loadMesTaches() {
+    const statut = new URLSearchParams(window.location.search).get('statut') || 'a_faire';
+    fetch(`/api/taches/mes-taches?statut=${statut}`)
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('mesTachesList');
+            if (!data.ok || !data.taches.length) {
+                container.innerHTML = '<div class="alert alert-info">Aucune tâche pour le moment.</div>';
+                return;
+            }
+
+            let html = '<div class="row">';
+            data.taches.forEach(t => {
+                html += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${t.titre}</h5>
+                            <p class="card-text">${t.description}</p>
+                            <p class="card-text"><small class="text-muted">Priorité: ${t.priorite} | Échéance: ${t.date_echeance}</small></p>
+                            <p class="card-text"><small class="text-muted">Statut: ${t.statut}</small></p>
+                            <div class="btn-group">
+                                <button class="btn btn-primary btn-sm" onclick="openPriseEnChargeModal(${t.id}, '${t.statut}')">
+                                    <i class="bi bi-check2"></i> Mettre à jour le statut
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        });
+}
+
+function openPriseEnChargeModal(id, statut) {
+    document.getElementById('tacheId').value = id;
+    document.getElementById('tacheStatut').value = statut || 'en_cours';
+    new bootstrap.Modal(document.getElementById('priseEnChargeModal')).show();
+}
+
+document.getElementById('confirmPriseEnCharge').addEventListener('click', function() {
+    const id = document.getElementById('tacheId').value;
+    const statut = document.getElementById('tacheStatut').value;
+
+    fetch(`/api/taches/${id}/statut`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({statut})
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('priseEnChargeModal')).hide();
+            loadMesTaches();
+        } else {
+            alert('Erreur: ' + res.message);
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -385,6 +385,12 @@ function loadOpenRouterModels() {
                 opt.textContent = m;
                 select.appendChild(opt);
             });
+
+            // Restore previously saved model
+            const savedModel = '{{ openrouter_model or "" }}';
+            if (savedModel) {
+                select.value = savedModel;
+            }
             
             console.log('Loaded', models.length, 'models for provider:', providerLabel);
         })
