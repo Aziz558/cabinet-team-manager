@@ -1094,7 +1094,7 @@ def test_mailbox_debug():
         total_unseen = len(ids)
         samples = []
         allowed = getattr(client, 'allowed_senders', [])
-        for num in ids[:5]:
+        for num in ids[:50]:
             typ, msg_data = imap.fetch(num, "(RFC822)")
             if typ != "OK":
                 continue
@@ -1103,14 +1103,19 @@ def test_mailbox_debug():
             subject = client._decode_mime_words(mail.get("Subject"))
             raw_from = client._decode_mime_words(mail.get("From"))
             from_addr = client._extract_email_from(raw_from)
+            date_hdr = client._decode_mime_words(mail.get("Date"))
             samples.append({
                 'uid': num.decode() if isinstance(num, bytes) else str(num),
                 'subject': subject,
                 'raw_from': raw_from,
                 'from': from_addr,
+                'date': date_hdr,
                 'allowed': client._is_sender_allowed(from_addr),
                 'allowed_senders': allowed,
             })
+
+        # Sort by date descending (most recent first)
+        samples.sort(key=lambda s: s.get('date') or '', reverse=True)
 
         return jsonify({
             'ok': True,
