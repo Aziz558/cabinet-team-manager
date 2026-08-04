@@ -9,3 +9,4 @@ gunicorn==21.2.0
 werkzeug==2.3.7
 psycopg2-binary==2.9.9
 msal==1.37.0
+beautifulsoup4==4.15.0
