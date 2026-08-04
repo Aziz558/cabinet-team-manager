@@ -432,24 +432,58 @@ Cordialement,
 L'équipe Cabinet JMH
 """
 
+    # Try SMTP first, fallback to Brevo API
+    try:
+        send_task_assignment_email_smtp(tache, assignee_id)
+    except Exception as e:
+        logger.error(f"SMTP failed, trying Brevo API: {e}")
+        try:
+            from app.integrations.brevo import send_task_assignment_email_brevo
+            send_task_assignment_email_brevo(tache, assignee_id)
+        except Exception as e2:
+            logger.error(f"Brevo API also failed: {e2}")
+
+
+def send_task_assignment_email_smtp(tache, assignee_id: int) -> None:
+    from app.models import User, AppSetting
+
+    user = User.query.get(assignee_id)
+    if not user or not user.email:
+        return
+
+    def get_setting(key, default=''):
+        setting = AppSetting.query.filter_by(cle=key).first()
+        return (setting.valeur if setting and setting.valeur else default) or os.environ.get(key, default)
+
+    smtp_server = get_setting('MAIL_SERVER', 'smtp.office365.com')
+    smtp_port = int(get_setting('MAIL_PORT', 587))
+    smtp_user = get_setting('MAIL_USERNAME', '')
+    smtp_password = get_setting('MAIL_PASSWORD', '')
+
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not fully configured, skipping assignment email")
+        return
+
+    subject = f"Nouvelle tâche assignée: {tache.titre}"
+    body = f"""Bonjour {user.prenom} {user.nom},
+
+Une nouvelle tâche vous a été assignée :
+
+Titre: {tache.titre}
+Description: {tache.description}
+Priorité: {tache.priorite}
+Date d'échéance: {tache.date_echeance}
+
+Veuillez la prendre en charge dans l'application.
+
+Cordialement,
+L'équipe Cabinet JMH
+"""
+
     try:
         import smtplib
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
-        from app.models import AppSetting
-
-        def get_setting(key, default=''):
-            setting = AppSetting.query.filter_by(cle=key).first()
-            return (setting.valeur if setting and setting.valeur else default) or os.environ.get(key, default)
-
-        smtp_server = get_setting('MAIL_SERVER', 'smtp.office365.com')
-        smtp_port = int(get_setting('MAIL_PORT', 587))
-        smtp_user = get_setting('MAIL_USERNAME', '')
-        smtp_password = get_setting('MAIL_PASSWORD', '')
-
-        if not smtp_user or not smtp_password:
-            logger.warning("SMTP not fully configured, skipping assignment email")
-            return
 
         msg = MIMEMultipart()
         msg['From'] = smtp_user
@@ -457,11 +491,14 @@ L'équipe Cabinet JMH
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
-        server = smtplib.SMTP(smtp_server, smtp_port)
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=20)
+        server.ehlo()
         server.starttls()
+        server.ehlo()
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, user.email, msg.as_string())
         server.quit()
         logger.info(f"Assignment email sent to {user.email}")
     except Exception as e:
-        logger.error(f"Failed to send assignment email: {e}")
+        logger.error(f"Failed to send assignment email via SMTP: {e}")
+        raise
