@@ -43,6 +43,42 @@
                 <div id="smtpResult" class="small mb-3"></div>
                 
                 <hr>
+                <h6 class="mt-3">Boîte mail dédiée (IMAP)</h6>
+                <p class="text-muted small">Transférez les mails à transformer en tâches vers cette boîte.</p>
+                <form id="mailboxForm" class="mb-3">
+                    <div class="mb-2">
+                        <label class="form-label">Adresse mailbox</label>
+                        {% set mailbox_user = settings|selectattr('cle','equalto','MAILBOX_USER')|list|first %}
+                        <input type="email" name="MAILBOX_USER" class="form-control" value="{{ mailbox_user.valeur if mailbox_user else '' }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Mot de passe d'application</label>
+                        {% set mailbox_pass = settings|selectattr('cle','equalto','MAILBOX_PASSWORD')|list|first %}
+                        <input type="password" name="MAILBOX_PASSWORD" class="form-control" value="{{ mailbox_pass.valeur if mailbox_pass else '' }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Serveur IMAP</label>
+                        {% set mailbox_server = settings|selectattr('cle','equalto','MAILBOX_SERVER')|list|first %}
+                        <input type="text" name="MAILBOX_SERVER" class="form-control" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Port</label>
+                        {% set mailbox_port = settings|selectattr('cle','equalto','MAILBOX_PORT')|list|first %}
+                        <input type="number" name="MAILBOX_PORT" class="form-control" value="{{ mailbox_port.valeur if mailbox_port else '993' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SSL</label>
+                        {% set mailbox_ssl = settings|selectattr('cle','equalto','MAILBOX_USE_SSL')|list|first %}
+                        <select name="MAILBOX_USE_SSL" class="form-select">
+                            <option value="true" {{ 'selected' if (mailbox_ssl.valeur if mailbox_ssl else 'true')|lower == 'true' else '' }}>Oui</option>
+                            <option value="false" {{ 'selected' if (mailbox_ssl.valeur if mailbox_ssl else 'true')|lower == 'false' else '' }}>Non</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mb-2">Enregistrer Mailbox</button>
+                </form>
+                <div id="mailboxResult" class="small mb-3"></div>
+
+                <hr>
                 <h6 class="mt-3">Test d'envoi</h6>
                 <form id="testMailForm" class="mb-2">
                     <div class="mb-2">
@@ -76,6 +112,9 @@
                     </button>
                     <button class="btn btn-outline-primary btn-sm" id="testTeamsBtn">
                         <i class="bi bi-chat-dots me-1"></i>Tester Teams
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" id="testMailboxBtn">
+                        <i class="bi bi-inbox me-1"></i>Tester Mailbox
                     </button>
                 </div>
                 <div id="testIntegrationResult" class="small mt-2"></div>
@@ -200,6 +239,41 @@ document.getElementById('smtpForm').addEventListener('submit', function(e) {
             box.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }
     });
+});
+
+// Mailbox form
+document.getElementById('mailboxForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const entries = [
+        {cle: 'MAILBOX_USER', valeur: formData.get('MAILBOX_USER'), service: 'mailbox', type_valeur: 'string', masque: false},
+        {cle: 'MAILBOX_PASSWORD', valeur: formData.get('MAILBOX_PASSWORD'), service: 'mailbox', type_valeur: 'password', masque: true},
+        {cle: 'MAILBOX_SERVER', valeur: formData.get('MAILBOX_SERVER'), service: 'mailbox', type_valeur: 'string', masque: false},
+        {cle: 'MAILBOX_PORT', valeur: formData.get('MAILBOX_PORT'), service: 'mailbox', type_valeur: 'string', masque: false},
+        {cle: 'MAILBOX_USE_SSL', valeur: formData.get('MAILBOX_USE_SSL'), service: 'mailbox', type_valeur: 'string', masque: false},
+    ];
+    const box = document.getElementById('mailboxResult');
+    box.textContent = 'Enregistrement...';
+    Promise.all(entries.map(item => fetch('/api/settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(item),
+    }).then(r => r.json()))).then(results => {
+        const failed = results.filter(r => !r.ok);
+        if (failed.length === 0) {
+            box.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Mailbox enregistrée.</span>';
+        } else {
+            box.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
+        }
+    });
+});
+
+document.getElementById('testMailboxBtn').addEventListener('click', function() {
+    const box = document.getElementById('testIntegrationResult');
+    box.textContent = 'Test en cours...';
+    fetch('/api/test/mailbox', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => showIntegrationResult(res.message, res.ok));
 });
 
 // Test mail form
