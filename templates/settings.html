@@ -332,36 +332,60 @@ document.getElementById('openrouterForm').addEventListener('submit', function(e)
 function loadOpenRouterModels() {
     const providerInput = document.querySelector('input[name="OPENROUTER_PROVIDER"]');
     const select = document.getElementById('openrouterModelSelect');
+    const resultBox = document.getElementById('openrouterResult');
     if (!select) return;
-    select.innerHTML = '<option value="">Chargement...</option>';
+    
     const provider = providerInput ? providerInput.value.trim() : '';
+    const providerLabel = provider || 'tous';
+    
+    select.innerHTML = '<option value="">Chargement...</option>';
+    
     const url = '/api/openrouter/models' + (provider ? '?provider=' + encodeURIComponent(provider) : '');
     fetch(url)
         .then(r => r.json())
         .then(data => {
             if (!data.ok) {
+                const errorMsg = data.message || 'Erreur inconnue';
                 select.innerHTML = '<option value="">Erreur chargement</option>';
+                if (resultBox) {
+                    resultBox.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur: ' + errorMsg + '</span>';
+                }
+                console.error('OpenRouter models error:', data);
                 return;
             }
             const models = data.models || [];
             select.innerHTML = '';
+            
+            if (resultBox && data.stage === 'models') {
+                resultBox.innerHTML = '<span class="text-info"><i class="bi bi-info-circle me-1"></i>' + models.length + ' modèle(s) chargé(s) pour provider: ' + providerLabel + '</span>';
+            }
+            
             if (!models.length) {
                 const opt = document.createElement('option');
                 opt.value = '';
-                opt.textContent = 'Aucun modèle';
+                opt.textContent = 'Aucun modèle pour ce provider';
                 select.appendChild(opt);
+                console.warn('No models found for provider:', provider);
                 return;
             }
-            models.forEach(m => {
+            
+            // Sort and add models
+            models.sort().forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m;
                 opt.textContent = m;
                 select.appendChild(opt);
             });
+            
+            console.log('Loaded', models.length, 'models for provider:', providerLabel);
         })
-        .catch(() => {
+        .catch(err => {
             const select = document.getElementById('openrouterModelSelect');
             if (select) select.innerHTML = '<option value="">Erreur</option>';
+            if (resultBox) {
+                resultBox.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur réseau: ' + err.message + '</span>';
+            }
+            console.error('OpenRouter models fetch error:', err);
         });
 }
 
@@ -369,6 +393,13 @@ const providerInput = document.querySelector('input[name="OPENROUTER_PROVIDER"]'
 if (providerInput) {
     providerInput.addEventListener('change', loadOpenRouterModels);
     providerInput.addEventListener('blur', loadOpenRouterModels);
+}
+
+// Load models on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadOpenRouterModels);
+} else {
+    loadOpenRouterModels();
 }
 
 document.getElementById('testMailboxBtn').addEventListener('click', function() {
@@ -482,7 +513,12 @@ document.getElementById('testOpenRouterBtn').addEventListener('click', function(
         .then(res => {
             const detail = res.model ? '<br><small>Modèle : ' + res.model + '</small>' : '';
             showIntegrationResult(res.message + detail, res.ok);
-            if (res.ok) loadOpenRouterModels();
+            if (res.ok) {
+                console.log('OpenRouter test OK, loading models...');
+                loadOpenRouterModels();
+            } else {
+                console.error('OpenRouter test failed:', res);
+            }
         });
 });
 </script>
