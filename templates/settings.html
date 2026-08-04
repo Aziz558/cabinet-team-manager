@@ -151,6 +151,9 @@
                     <button class="btn btn-outline-primary btn-sm" id="testMailboxBtn">
                         <i class="bi bi-inbox me-1"></i>Tester Mailbox
                     </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="debugMailboxBtn">
+                        <i class="bi bi-bug me-1"></i>Debug Mailbox
+                    </button>
                 </div>
                 <div id="testIntegrationResult" class="small mt-2"></div>
             </div>
@@ -536,6 +539,31 @@ document.getElementById('testOpenRouterBtn').addEventListener('click', function(
             } else {
                 console.error('OpenRouter test failed:', res);
             }
+        });
+});
+
+document.getElementById('debugMailboxBtn').addEventListener('click', function() {
+    const box = document.getElementById('testIntegrationResult');
+    box.textContent = 'Debug en cours...';
+    fetch('/api/test/mailbox/debug', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.ok) {
+                showIntegrationResult(res.message, false);
+                return;
+            }
+            let html = '<strong>' + res.message + '</strong>';
+            if (res.samples && res.samples.length) {
+                html += '<ul class="mb-0">';
+                res.samples.forEach(s => {
+                    html += '<li>' + (s.subject || '(sans sujet)') + '<br>';
+                    html += '<small class="text-muted">Raw From: ' + (s.raw_from || 'inconnu') + '</small><br>';
+                    html += '<small class="text-muted">Extrait: ' + (s.from || 'inconnu') + ' -> ' + (s.allowed ? '<span class="text-success">AUTORISÉ</span>' : '<span class="text-danger">BLOQUÉ</span>') + '</small>';
+                    html += '</li>';
+                });
+                html += '</ul>';
+            }
+            showIntegrationResult(html, true);
         });
 });
 </script>
