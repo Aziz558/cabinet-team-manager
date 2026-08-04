@@ -407,7 +407,24 @@ document.getElementById('testMailboxBtn').addEventListener('click', function() {
     box.textContent = 'Test en cours...';
     fetch('/api/test/mailbox', { method: 'POST' })
         .then(r => r.json())
-        .then(res => showIntegrationResult(res.message, res.ok));
+        .then(res => {
+            if (!res.ok) {
+                showIntegrationResult(res.message, false);
+                return;
+            }
+            let html = '<strong>' + res.message + '</strong>';
+            if (res.allowed_senders && res.allowed_senders.length) {
+                html += '<br><small>Expéditeurs autorisés : ' + res.allowed_senders.join(', ') + '</small>';
+            }
+            if (res.samples && res.samples.length) {
+                html += '<ul class="mb-0">';
+                res.samples.forEach(s => {
+                    html += '<li>' + (s.subject || '(sans sujet)') + '<br><small class="text-muted">De : ' + (s.from || 'inconnu') + (s.allowed ? '' : ' <span class="text-danger">[BLOQUÉ]</span>') + '</small></li>';
+                });
+                html += '</ul>';
+            }
+            showIntegrationResult(html, true);
+        });
 });
 
 // Test mail form

@@ -1020,15 +1020,37 @@ def test_mailbox():
         if not client.is_configured():
             return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
 
-        unseen = client.fetch_unseen(limit=5)
-        count = len(unseen)
+        imap = client._connect()
+        typ, data = imap.search(None, "UNSEEN")
+        if typ != "OK":
+            return jsonify({'ok': False, 'message': 'IMAP search UNSEEN failed', 'stage': 'imap'}), 500
+
+        ids = data[0].split() if data[0] else []
+        total_unseen = len(ids)
+        samples = []
         allowed = getattr(client, 'allowed_senders', [])
+        for num in ids[:5]:
+            typ, msg_data = imap.fetch(num, "(RFC822)")
+            if typ != "OK":
+                continue
+            raw = msg_data[0][1]
+            mail = email.message_from_bytes(raw)
+            subject = client._decode_mime_words(mail.get("Subject"))
+            from_addr = client._extract_email_from(client._decode_mime_words(mail.get("From")))
+            samples.append({
+                'uid': num.decode() if isinstance(num, bytes) else str(num),
+                'subject': subject,
+                'from': from_addr,
+                'allowed': client._is_sender_allowed(from_addr),
+            })
+
         return jsonify({
             'ok': True,
-            'message': f'{count} e-mail(s) non lu(s) détecté(s).',
-            'count': count,
+            'message': f'{total_unseen} e-mail(s) non lu(s) détecté(s).',
+            'count': total_unseen,
             'stage': 'imap',
             'allowed_senders': allowed,
+            'samples': samples,
         })
     except Exception as e:
         app.logger.error(f"Erreur test mailbox : {e}")
