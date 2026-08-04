@@ -416,8 +416,11 @@ document.getElementById('testMailboxBtn').addEventListener('click', function() {
                 return;
             }
             let html = '<strong>' + res.message + '</strong>';
+            html += '<br><small>Total non lus : ' + (res.count || 0) + '</small>';
             if (res.allowed_senders && res.allowed_senders.length) {
                 html += '<br><small>Expéditeurs autorisés : ' + res.allowed_senders.join(', ') + '</small>';
+            } else {
+                html += '<br><small class="text-warning">Aucun expéditeur autorisé configuré</small>';
             }
             if (res.samples && res.samples.length) {
                 html += '<ul class="mb-0">';
@@ -425,6 +428,8 @@ document.getElementById('testMailboxBtn').addEventListener('click', function() {
                     html += '<li>' + (s.subject || '(sans sujet)') + '<br><small class="text-muted">De : ' + (s.from || 'inconnu') + '</small></li>';
                 });
                 html += '</ul>';
+            } else {
+                html += '<br><small class="text-muted">Aucun mail autorisé trouvé parmi les non lus.</small>';
             }
             showIntegrationResult(html, true);
         });
