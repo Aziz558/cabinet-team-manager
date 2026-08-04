@@ -158,3 +158,27 @@ class AppSetting(db.Model):
 
     def __repr__(self):
         return f'<AppSetting {self.cle}>'
+
+
+class SuggestionTache(db.Model):
+    __tablename__ = 'suggestions_taches'
+    id = db.Column(db.Integer, primary_key=True)
+    sujet = db.Column(db.String(200), nullable=False)
+    corps = db.Column(db.Text, nullable=False)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=True)
+    titre_suggere = db.Column(db.String(200), nullable=False)
+    description_suggeree = db.Column(db.Text, nullable=False)
+    statut = db.Column(db.String(20), default='en_attente')  # en_attente | validee | rejetee
+    cree_par = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    valide_par = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    date_validation = db.Column(db.DateTime, nullable=True)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    mail_uid = db.Column(db.String(50), nullable=True, unique=True)
+    priorite_suggeree = db.Column(db.String(20), default='moyenne')  # haute | moyenne | basse
+
+    dossier = db.relationship('Dossier', backref='suggestions')
+    createur = db.relationship('User', foreign_keys=[cree_par], backref='suggestions_creees')
+    validateur = db.relationship('User', foreign_keys=[valide_par], backref='suggestions_validees')
+
+    def __repr__(self):
+        return f'<SuggestionTache {self.id}>'

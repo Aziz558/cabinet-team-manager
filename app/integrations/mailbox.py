@@ -207,15 +207,33 @@ class MailboxClient:
         processed = 0
         for m in mails:
             try:
-                client_id = self._resolve_client(m["subject"], m["body"])
-                task_desc = self._extract_task(m["subject"], m["body"])
+                # Skip if already processed
+                if self._is_already_processed(m.get("uid")):
+                    continue
+
+                # Use LLM as primary extraction method
+                llm_result = self._analyze_with_llm(m["subject"], m["body"])
+                client_id = None
+                task_desc = None
+                if llm_result:
+                    client_id = llm_result.get("client_id")
+                    task_desc = llm_result.get("task")
+
+                # Fallback to regex if LLM fails
                 if not client_id or not task_desc:
-                    llm_result = self._analyze_with_llm(m["subject"], m["body"])
-                    if llm_result:
-                        client_id = client_id or llm_result.get("client_id")
-                        task_desc = task_desc or llm_result.get("task")
-                if client_id and task_desc:
-                    self._create_task(client_id, task_desc, m["subject"])
+                    client_id = client_id or self._resolve_client(m["subject"], m["body"])
+                    task_desc = task_desc or self._extract_task(m["subject"], m["body"])
+
+                # Create suggestion instead of task directly
+                if task_desc:
+                    self._create_suggestion(
+                        subject=m["subject"],
+                        body=m["body"],
+                        dossier_id=client_id,
+                        titre_suggere=m["subject"][:200],
+                        description_suggeree=task_desc,
+                        mail_uid=m.get("uid"),
+                    )
                 self._mark_as_processed(m["uid"])
                 processed += 1
             except Exception as exc:
@@ -306,6 +324,35 @@ class MailboxClient:
     # ------------------------------------------------------------------
     # Persistence
     # ------------------------------------------------------------------
+    def _is_already_processed(self, uid: str) -> bool:
+        from app.models import SuggestionTache
+        return SuggestionTache.query.filter_by(mail_uid=uid).first() is not None
+
+    def _create_suggestion(
+        self,
+        subject: str,
+        body: str,
+        titre_suggere: str,
+        description_suggeree: str,
+        dossier_id: Optional[int] = None,
+        mail_uid: Optional[str] = None,
+    ) -> None:
+        from app import db
+        from app.models import SuggestionTache
+
+        suggestion = SuggestionTache(
+            sujet=subject[:200] if subject else '',
+            corps=body,
+            dossier_id=dossier_id,
+            titre_suggere=titre_suggere[:200],
+            description_suggeree=description_suggeree,
+            mail_uid=mail_uid,
+            priorite_suggeree='moyenne',
+        )
+        db.session.add(suggestion)
+        db.session.commit()
+        logger.info("Suggestion created: %s", suggestion.titre_suggere)
+
     def _create_task(self, client_id: int, description: str, title: str) -> None:
         from app import db
         from app.models import Tache, Dossier
@@ -360,3 +407,40 @@ class MailboxClient:
             return status == "OK" and bool(_)
         except Exception:
             return False
+
+
+def send_task_assignment_email(tache, assignee_id: int) -> None:
+    from app.models import User
+    from app.integrations.openrouter import OpenRouterClient
+
+    user = User.query.get(assignee_id)
+    if not user or not user.email:
+        return
+
+    subject = f"Nouvelle tâche assignée: {tache.titre}"
+    body = f"""Bonjour {user.prenom} {user.nom},
+
+Une nouvelle tâche vous a été assignée :
+
+Titre: {tache.titre}
+Description: {tache.description}
+Priorité: {tache.priorite}
+Date d'échéance: {tache.date_echeance}
+
+Veuillez la prendre en charge dans l'application.
+
+Cordialement,
+L'équipe Cabinet JMH
+"""
+
+    client = OpenRouterClient()
+    if client.is_configured():
+        try:
+            from app.integrations.outlook import OutlookClient
+            outlook = OutlookClient()
+            if outlook.is_configured():
+                outlook.send_email(to=user.email, subject=subject, body=body)
+            else:
+                logger.warning("Outlook not configured, skipping assignment email")
+        except Exception as e:
+            logger.error(f"Failed to send assignment email: {e}")

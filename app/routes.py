@@ -1179,3 +1179,124 @@ def test_mailbox_search():
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
+@app.route('/api/suggestions', methods=['GET'])
+@login_required
+def list_suggestions():
+    try:
+        from app.models import SuggestionTache
+        status = request.args.get('status', 'en_attente')
+        suggestions = SuggestionTache.query.filter_by(statut=status).order_by(SuggestionTache.date_creation.desc()).all()
+        result = []
+        for s in suggestions:
+            result.append({
+                'id': s.id,
+                'sujet': s.sujet,
+                'titre_suggere': s.titre_suggere,
+                'description_suggeree': s.description_suggeree,
+                'dossier_id': s.dossier_id,
+                'dossier_nom': s.dossier.nom if s.dossier else None,
+                'priorite_suggeree': s.priorite_suggeree,
+                'statut': s.statut,
+                'date_creation': s.date_creation.strftime('%Y-%m-%d %H:%M') if s.date_creation else None,
+            })
+        return jsonify({'ok': True, 'suggestions': result})
+    except Exception as e:
+        app.logger.error(f"Erreur list suggestions : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+
+@app.route('/api/suggestions/<int:suggestion_id>/validate', methods=['POST'])
+@login_required
+def validate_suggestion(suggestion_id):
+    try:
+        from app.models import SuggestionTache, Tache, Notification
+        data = request.get_json() or {}
+        suggestion = SuggestionTache.query.get_or_404(suggestion_id)
+        suggestion.statut = 'validee'
+        suggestion.valide_par = current_user.id
+        suggestion.date_validation = datetime.utcnow()
+        db.session.commit()
+
+        # Create actual task from validated suggestion
+        assignee_id = data.get('assignee')
+        due_date = data.get('due_date')
+        priority = data.get('priority', 'moyenne')
+        dossier_id = data.get('dossier_id')
+
+        if not assignee_id or not due_date:
+            return jsonify({'ok': False, 'message': 'Collaborateur et date d\'échéance requis.'}), 400
+
+        tache = Tache(
+            titre=suggestion.titre_suggere,
+            description=suggestion.description_suggeree,
+            dossier_id=dossier_id,
+            assigne_a=assignee_id,
+            cree_par=current_user.id,
+            priorite=priority,
+            statut='a_faire',
+            date_echeance=datetime.strptime(due_date, '%Y-%m-%d').date(),
+        )
+        db.session.add(tache)
+        db.session.commit()
+
+        # Create notification for assignee
+        notification = Notification(
+            user_id=assignee_id,
+            tache_id=tache.id,
+            message=f"Nouvelle tâche assignée: {tache.titre}",
+            type_notification='assignation',
+            lu=False,
+        )
+        db.session.add(notification)
+        db.session.commit()
+
+        # Send email notification to assignee
+        from app.integrations.mailbox import send_task_assignment_email
+        send_task_assignment_email(tache, assignee_id)
+
+        return jsonify({'ok': True, 'message': 'Suggestion validée et tâche créée.', 'tache_id': tache.id})
+    except Exception as e:
+        app.logger.error(f"Erreur validate suggestion : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+
+@app.route('/api/suggestions/<int:suggestion_id>/reject', methods=['POST'])
+@login_required
+def reject_suggestion(suggestion_id):
+    try:
+        from app.models import SuggestionTache
+        suggestion = SuggestionTache.query.get_or_404(suggestion_id)
+        suggestion.statut = 'rejetee'
+        suggestion.valide_par = current_user.id
+        suggestion.date_validation = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'Suggestion rejetée.'})
+    except Exception as e:
+        app.logger.error(f"Erreur reject suggestion : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+
+@app.route('/suggestions')
+@login_required
+def suggestions_page():
+    from app.models import User, Dossier
+    users = User.query.filter_by(actif=True).all()
+    dossiers = Dossier.query.order_by(Dossier.numero_dossier).all()
+    return render_template('suggestions.html', users=users, dossiers=dossiers)
+
+
+@app.route('/api/mailbox/process', methods=['POST'])
+@login_required
+def process_mailbox():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
+        count = client.process_new_messages()
+        return jsonify({'ok': True, 'message': f'{count} mail(s) traité(s).', 'count': count})
+    except Exception as e:
+        app.logger.error(f"Erreur process mailbox : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+

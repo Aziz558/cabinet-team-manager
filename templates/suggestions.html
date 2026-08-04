@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Suggestions de tâches{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Suggestions de tâches</h2>
+    <p class="text-muted">Validez ou rejetez les suggestions générées automatiquement à partir des emails.</p>
+
+    <div class="mb-3">
+        <a href="{{ url_for('list_suggestions') }}" class="btn btn-outline-primary btn-sm">En attente</a>
+        <a href="{{ url_for('list_suggestions', status='validee') }}" class="btn btn-outline-success btn-sm">Validées</a>
+        <a href="{{ url_for('list_suggestions', status='rejetee') }}" class="btn btn-outline-danger btn-sm">Rejetées</a>
+    </div>
+
+    <div id="suggestionsList">
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Chargement des suggestions...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Validation Modal -->
+<div class="modal fade" id="validateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Valider la suggestion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="validateForm">
+                    <input type="hidden" id="suggestionId">
+                    <div class="mb-3">
+                        <label class="form-label">Titre de la tâche</label>
+                        <input type="text" class="form-control" id="taskTitle" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="taskDescription" rows="3" readonly></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Collaborateur assigné</label>
+                        <select class="form-select" id="taskAssignee" required>
+                            <option value="">Sélectionner un collaborateur</option>
+                            {% for user in users if user.role != 'manager' %}
+                            <option value="{{ user.id }}">{{ user.nom_complet() }} ({{ user.poste or 'Membre' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date d'échéance</label>
+                        <input type="date" class="form-control" id="taskDueDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Priorité</label>
+                        <select class="form-select" id="taskPriority">
+                            <option value="basse">Basse</option>
+                            <option value="moyenne" selected>Moyenne</option>
+                            <option value="haute">Haute</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Dossier</label>
+                        <select class="form-select" id="taskDossier">
+                            <option value="">Aucun dossier</option>
+                            {% for dossier in dossiers %}
+                            <option value="{{ dossier.id }}">{{ dossier.numero_dossier }} - {{ dossier.intitule }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="confirmValidate">Confirmer et créer la tâche</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadSuggestions();
+});
+
+function loadSuggestions() {
+    const status = new URLSearchParams(window.location.search).get('status') || 'en_attente';
+    fetch(`/api/suggestions?status=${status}`)
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('suggestionsList');
+            if (!data.ok || !data.suggestions.length) {
+                container.innerHTML = '<div class="alert alert-info">Aucune suggestion pour le moment.</div>';
+                return;
+            }
+
+            let html = '<div class="row">';
+            data.suggestions.forEach(s => {
+                html += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${s.titre_suggere || s.sujet}</h5>
+                            <p class="card-text">${s.description_suggeree}</p>
+                            ${s.dossier_nom ? `<p class="card-text"><small class="text-muted">Dossier: ${s.dossier_nom}</small></p>` : ''}
+                            <p class="card-text"><small class="text-muted">Priorité suggérée: ${s.priorite_suggeree}</small></p>
+                            <p class="card-text"><small class="text-muted">Date: ${s.date_creation}</small></p>
+                            <div class="btn-group">
+                                <button class="btn btn-success btn-sm" onclick="openValidateModal(${s.id}, '${(s.titre_suggere || s.sujet).replace(/'/g, "\\'")}', '${(s.description_suggeree || '').replace(/'/g, "\\'")}')">
+                                    <i class="bi bi-check"></i> Valider
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="rejectSuggestion(${s.id})">
+                                    <i class="bi bi-x"></i> Rejeter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        });
+}
+
+function openValidateModal(id, title, description) {
+    document.getElementById('suggestionId').value = id;
+    document.getElementById('taskTitle').value = title;
+    document.getElementById('taskDescription').value = description;
+    new bootstrap.Modal(document.getElementById('validateModal')).show();
+}
+
+document.getElementById('confirmValidate').addEventListener('click', function() {
+    const id = document.getElementById('suggestionId').value;
+    const assignee = document.getElementById('taskAssignee').value;
+    const dueDate = document.getElementById('taskDueDate').value;
+    const priority = document.getElementById('taskPriority').value;
+    const dossier = document.getElementById('taskDossier').value;
+
+    if (!assignee || !dueDate) {
+        alert('Veuillez remplir le collaborateur et la date d\'échéance.');
+        return;
+    }
+
+    fetch(`/api/suggestions/${id}/validate`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({assignee, due_date: dueDate, priority, dossier_id: dossier || null})
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('validateModal')).hide();
+            loadSuggestions();
+            alert('Tâche créée avec succès !');
+        } else {
+            alert('Erreur: ' + res.message);
+        }
+    });
+});
+
+function rejectSuggestion(id) {
+    if (!confirm('Êtes-vous sûr de vouloir rejeter cette suggestion ?')) return;
+    fetch(`/api/suggestions/${id}/reject`, {method: 'POST'})
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) loadSuggestions();
+            else alert('Erreur: ' + res.message);
+        });
+}
+</script>
+{% endblock %}
