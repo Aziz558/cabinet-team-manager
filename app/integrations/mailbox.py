@@ -79,8 +79,18 @@ class MailboxClient:
 
     def _is_sender_allowed(self, sender: str) -> bool:
         if not self.allowed_senders:
+            logger.info("No allowed senders configured, allowing all")
             return True
-        return sender.lower() in self.allowed_senders
+        normalized = sender.lower().strip()
+        allowed = normalized in self.allowed_senders
+        if not allowed:
+            # Try partial match: allow if sender contains any allowed sender
+            for allowed_sender in self.allowed_senders:
+                if allowed_sender in normalized or normalized in allowed_sender:
+                    allowed = True
+                    break
+        logger.info("Sender check: raw='%s' normalized='%s' allowed=%s allowed_list=%s", sender, normalized, allowed, self.allowed_senders)
+        return allowed
 
     # ------------------------------------------------------------------
     # Email parsing helpers
