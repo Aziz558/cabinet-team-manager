@@ -1041,6 +1041,7 @@ def test_mailbox():
             samples.append({
                 'uid': num.decode() if isinstance(num, bytes) else str(num),
                 'subject': subject,
+                'raw_from': client._decode_mime_words(mail.get("From")),
                 'from': from_addr,
                 'allowed': client._is_sender_allowed(from_addr),
             })
@@ -1057,6 +1058,54 @@ def test_mailbox():
         })
     except Exception as e:
         app.logger.error(f"Erreur test mailbox : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+
+@app.route('/api/test/mailbox/debug', methods=['POST'])
+@login_required
+def test_mailbox_debug():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
+
+        imap = client._connect()
+        typ, data = imap.search(None, "UNSEEN")
+        if typ != "OK":
+            return jsonify({'ok': False, 'message': 'IMAP search UNSEEN failed', 'stage': 'imap'}), 500
+
+        ids = data[0].split() if data[0] else []
+        total_unseen = len(ids)
+        samples = []
+        allowed = getattr(client, 'allowed_senders', [])
+        for num in ids[:5]:
+            typ, msg_data = imap.fetch(num, "(RFC822)")
+            if typ != "OK":
+                continue
+            raw = msg_data[0][1]
+            mail = email.message_from_bytes(raw)
+            subject = client._decode_mime_words(mail.get("Subject"))
+            raw_from = client._decode_mime_words(mail.get("From"))
+            from_addr = client._extract_email_from(raw_from)
+            samples.append({
+                'uid': num.decode() if isinstance(num, bytes) else str(num),
+                'subject': subject,
+                'raw_from': raw_from,
+                'from': from_addr,
+                'allowed': client._is_sender_allowed(from_addr),
+                'allowed_senders': allowed,
+            })
+
+        return jsonify({
+            'ok': True,
+            'message': f'{total_unseen} e-mail(s) non lu(s) détecté(s).',
+            'count': total_unseen,
+            'stage': 'imap',
+            'samples': samples,
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur test mailbox debug : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
