@@ -204,11 +204,14 @@ class MailboxClient:
 
     def process_new_messages(self) -> int:
         mails = self.fetch_unseen(limit=50)
+        logger.info("process_new_messages: fetched %d mails", len(mails))
         processed = 0
         for m in mails:
             try:
+                logger.info("Processing mail uid=%s subject=%s", m.get("uid"), m.get("subject"))
                 # Skip if already processed
                 if self._is_already_processed(m.get("uid")):
+                    logger.info("Mail uid=%s already processed, skipping", m.get("uid"))
                     continue
 
                 # Use LLM as primary extraction method
@@ -224,6 +227,8 @@ class MailboxClient:
                     client_id = client_id or self._resolve_client(m["subject"], m["body"])
                     task_desc = task_desc or self._extract_task(m["subject"], m["body"])
 
+                logger.info("Mail uid=%s extraction result: client_id=%s task_desc=%s", m.get("uid"), client_id, task_desc)
+
                 # Create suggestion instead of task directly
                 if task_desc:
                     self._create_suggestion(
@@ -234,11 +239,16 @@ class MailboxClient:
                         description_suggeree=task_desc,
                         mail_uid=m.get("uid"),
                     )
+                    logger.info("Created suggestion for mail uid=%s", m.get("uid"))
+                else:
+                    logger.info("No task extracted for mail uid=%s, marking as processed anyway", m.get("uid"))
+
                 self._mark_as_processed(m["uid"])
                 processed += 1
             except Exception as exc:
                 logger.error("Error processing mail %s: %s", m.get("uid"), exc)
                 self._move_to_error(m["uid"])
+        logger.info("process_new_messages: processed %d mails", processed)
         return processed
 
     # ------------------------------------------------------------------
