@@ -1325,6 +1325,63 @@ def process_mailbox():
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
+@app.route('/api/mailbox/process-debug', methods=['POST'])
+@login_required
+def process_mailbox_debug():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        from app.models import SuggestionTache
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
+
+        # Step 1: fetch unseen
+        mails = client.fetch_unseen(limit=50)
+        fetch_info = {
+            'fetched_count': len(mails),
+            'sample_uids': [m.get('uid') for m in mails[:5]],
+            'sample_subjects': [m.get('subject') for m in mails[:5]],
+            'allowed_senders': getattr(client, 'allowed_senders', []),
+        }
+
+        # Step 2: check already processed
+        already_processed = []
+        for m in mails:
+            uid = m.get('uid')
+            if SuggestionTache.query.filter_by(mail_uid=uid).first():
+                already_processed.append(uid)
+
+        # Step 3: attempt extraction on first mail
+        extraction_result = None
+        suggestion_created = False
+        if mails:
+            m = mails[0]
+            try:
+                from app.integrations.openrouter import OpenRouterClient
+                llm = OpenRouterClient()
+                llm_configured = llm.is_configured()
+            except Exception:
+                llm_configured = False
+            extraction_result = {
+                'uid': m.get('uid'),
+                'subject': m.get('subject'),
+                'body_preview': (m.get('body') or '')[:200],
+                'llm_configured': llm_configured,
+            }
+
+        return jsonify({
+            'ok': True,
+            'stage': 'debug',
+            'fetch_info': fetch_info,
+            'already_processed': already_processed,
+            'extraction_result': extraction_result,
+            'suggestion_created': suggestion_created,
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur process mailbox debug : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+
 @app.route('/mes-taches')
 @login_required
 def mes_taches():
