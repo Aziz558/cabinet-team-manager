@@ -1354,20 +1354,45 @@ def process_mailbox_debug():
         # Step 3: attempt extraction on first mail
         extraction_result = None
         suggestion_created = False
+        error_detail = None
         if mails:
             m = mails[0]
             try:
                 from app.integrations.openrouter import OpenRouterClient
                 llm = OpenRouterClient()
                 llm_configured = llm.is_configured()
-            except Exception:
-                llm_configured = False
-            extraction_result = {
-                'uid': m.get('uid'),
-                'subject': m.get('subject'),
-                'body_preview': (m.get('body') or '')[:200],
-                'llm_configured': llm_configured,
-            }
+                llm_result = None
+                if llm_configured:
+                    llm_result = client._analyze_with_llm(m['subject'], m['body'])
+                client_id = None
+                task_desc = None
+                if llm_result:
+                    client_id = llm_result.get('client_id')
+                    task_desc = llm_result.get('task')
+                if not client_id or not task_desc:
+                    client_id = client_id or client._resolve_client(m['subject'], m['body'])
+                    task_desc = task_desc or client._extract_task(m['subject'], m['body'])
+                extraction_result = {
+                    'uid': m.get('uid'),
+                    'subject': m.get('subject'),
+                    'body_preview': (m.get('body') or '')[:200],
+                    'llm_configured': llm_configured,
+                    'llm_result': llm_result,
+                    'client_id': client_id,
+                    'task_desc': task_desc,
+                }
+                if task_desc:
+                    client._create_suggestion(
+                        subject=m['subject'],
+                        body=m['body'],
+                        dossier_id=client_id,
+                        titre_suggere=m['subject'][:200],
+                        description_suggeree=task_desc,
+                        mail_uid=m.get('uid'),
+                    )
+                    suggestion_created = True
+            except Exception as e:
+                error_detail = str(e)
 
         return jsonify({
             'ok': True,
@@ -1376,6 +1401,7 @@ def process_mailbox_debug():
             'already_processed': already_processed,
             'extraction_result': extraction_result,
             'suggestion_created': suggestion_created,
+            'error_detail': error_detail,
         })
     except Exception as e:
         app.logger.error(f"Erreur process mailbox debug : {e}")
