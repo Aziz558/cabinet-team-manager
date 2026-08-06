@@ -31,7 +31,7 @@ def _get_setting(cle: str) -> Optional[str]:
 class OpenRouterClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY", "").strip() or _get_setting("OPENROUTER_API_KEY") or ""
-        self.model = model or os.getenv("OPENROUTER_MODEL", "").strip() or _get_setting("OPENROUTER_MODEL") or "stepfun/step-3.7-flash:free"
+        self.model = model or os.getenv("OPENROUTER_MODEL", "").strip() or _get_setting("OPENROUTER_MODEL") or "meta-llama/llama-3.3-70b-instruct:free"
 
     def is_configured(self) -> bool:
         return bool(self.api_key)
