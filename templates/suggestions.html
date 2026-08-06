@@ -10,6 +10,9 @@
         <a href="{{ url_for('list_suggestions') }}" class="btn btn-outline-primary btn-sm">En attente</a>
         <a href="{{ url_for('list_suggestions', status='validee') }}" class="btn btn-outline-success btn-sm">Validées</a>
         <a href="{{ url_for('list_suggestions', status='rejetee') }}" class="btn btn-outline-danger btn-sm">Rejetées</a>
+        <button class="btn btn-outline-warning btn-sm float-end" id="resetBtn" onclick="resetSuggestions()">
+            <i class="bi bi-arrow-clockwise"></i> Réinitialiser
+        </button>
     </div>
 
     <div id="suggestionsList">
@@ -167,6 +170,20 @@ function rejectSuggestion(id) {
         .then(res => {
             if (res.ok) loadSuggestions();
             else alert('Erreur: ' + res.message);
+        });
+}
+
+function resetSuggestions() {
+    if (!confirm('Supprimer TOUTES les suggestions et permettre de retraiter la boîte mail ?')) return;
+    fetch('/api/suggestions/reset', {method: 'POST'})
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) {
+                alert(res.message);
+                loadSuggestions();
+            } else {
+                alert('Erreur: ' + res.message);
+            }
         });
 }
 </script>

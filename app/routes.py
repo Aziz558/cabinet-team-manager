@@ -1537,6 +1537,25 @@ def suggestions_page():
     return render_template('suggestions.html', users=users, dossiers=dossiers)
 
 
+@app.route('/api/suggestions/reset', methods=['POST'])
+@login_required
+def reset_suggestions():
+    try:
+        from app.models import SuggestionTache, AppSetting
+        from app import db
+        # Delete all suggestions
+        SuggestionTache.query.delete()
+        # Delete all skip markers
+        skipped = AppSetting.query.filter(AppSetting.cle.like('MAILBOX_SKIPPED_%')).all()
+        for s in skipped:
+            db.session.delete(s)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'Toutes les suggestions ont été supprimées. Vous pouvez retraiter la boîte mail.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
+
 @app.route('/api/mailbox/process', methods=['POST'])
 @login_required
 def process_mailbox():
