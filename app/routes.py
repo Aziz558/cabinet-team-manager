@@ -1170,7 +1170,7 @@ def test_mailbox_senders():
             return jsonify({'ok': False, 'message': 'IMAP search ALL failed', 'stage': 'imap'}), 500
 
         ids = data[0].split() if data[0] else []
-        ids = list(reversed(ids))[:20]
+        ids = list(reversed(ids))[:50]
         samples = []
         allowed = getattr(client, 'allowed_senders', [])
         for num in ids:
