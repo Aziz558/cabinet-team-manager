@@ -101,6 +101,12 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Dossier IMAP</label>
+                        {% set mailbox_folder = settings|selectattr('cle','equalto','MAILBOX_FOLDER')|list|first %}
+                        <input type="text" name="MAILBOX_FOLDER" class="form-control" value="{{ mailbox_folder.valeur if mailbox_folder else 'INBOX' }}">
+                        <div class="form-text">Ex: INBOX, [Gmail]/All Mail. Laisser vide ou INBOX pour la boîte de réception.</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Expéditeurs autorisés</label>
                         {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
                         <textarea name="MAILBOX_ALLOWED_SENDERS" class="form-control" rows="3" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
@@ -295,6 +301,7 @@ document.getElementById('mailboxForm').addEventListener('submit', function(e) {
         {cle: 'MAILBOX_SERVER', valeur: formData.get('MAILBOX_SERVER'), service: 'mailbox', type_valeur: 'string', masque: false},
         {cle: 'MAILBOX_PORT', valeur: formData.get('MAILBOX_PORT'), service: 'mailbox', type_valeur: 'string', masque: false},
         {cle: 'MAILBOX_USE_SSL', valeur: formData.get('MAILBOX_USE_SSL'), service: 'mailbox', type_valeur: 'string', masque: false},
+        {cle: 'MAILBOX_FOLDER', valeur: formData.get('MAILBOX_FOLDER'), service: 'mailbox', type_valeur: 'string', masque: false},
         {cle: 'MAILBOX_ALLOWED_SENDERS', valeur: formData.get('MAILBOX_ALLOWED_SENDERS'), service: 'mailbox', type_valeur: 'string', masque: false},
     ];
     const box = document.getElementById('mailboxResult');
