@@ -1255,6 +1255,35 @@ def test_mailbox_search():
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
+@app.route('/api/test/mailbox/folders', methods=['GET'])
+@login_required
+def test_mailbox_folders():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
+
+        imap = client._connect()
+        typ, data = imap.list()
+        folders = []
+        if typ == "OK":
+            for line in data:
+                if not line:
+                    continue
+                parts = line.decode('utf-8', errors='replace').split('"')
+                if len(parts) >= 3:
+                    folders.append(parts[-2].strip() if len(parts) >= 3 else parts[-1].strip())
+
+        return jsonify({
+            'ok': True,
+            'folders': folders,
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur test mailbox folders : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+
 @app.route('/api/suggestions', methods=['GET'])
 @login_required
 def list_suggestions():
