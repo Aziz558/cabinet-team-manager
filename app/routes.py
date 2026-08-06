@@ -722,7 +722,39 @@ def api_suggestions():
     if current_user.role != 'manager':
         return jsonify({'suggestions': []}), 403
     suggestions = _build_suggestions()
-    return jsonify({'suggestions': suggestions})
+    # Merge SuggestionTache records from mailbox processing
+    try:
+        from app.models import SuggestionTache
+        from app import db
+        total_count = db.session.query(SuggestionTache).count()
+        all_statuses = db.session.query(SuggestionTache.statut).distinct().all()
+
+        status_filter = request.args.get('status', 'en_attente')
+        if status_filter == 'all':
+            db_suggestions = SuggestionTache.query.order_by(SuggestionTache.date_creation.desc()).all()
+        else:
+            db_suggestions = SuggestionTache.query.filter_by(statut=status_filter).order_by(SuggestionTache.date_creation.desc()).all()
+
+        for s in db_suggestions:
+            suggestions.append({
+                'id': s.id,
+                'sujet': s.sujet,
+                'sujet_suggere': s.titre_suggere,
+                'description_suggeree': s.description_suggeree,
+                'dossier_id': s.dossier_id,
+                'dossier_nom': s.dossier.nom if s.dossier else None,
+                'priorite_suggeree': s.priorite_suggeree,
+                'statut': s.statut,
+                'mail_uid': s.mail_uid,
+                'date_creation': s.date_creation.strftime('%Y-%m-%d %H:%M') if s.date_creation else None,
+                'source': 'mailbox',
+            })
+
+        return jsonify({'suggestions': suggestions, 'count': len(suggestions), 'total_in_db': total_count, 'distinct_statuses': [s[0] for s in all_statuses]})
+    except Exception as e:
+        app.logger.error(f"Erreur api_suggestions db merge : {e}")
+        # Still return deadline-based suggestions
+        return jsonify({'suggestions': suggestions, 'count': len(suggestions)})
 
 
 @app.route('/api/suggestions/refresh', methods=['POST'])
@@ -1395,12 +1427,11 @@ def list_suggestions():
         from app import db
         status = request.args.get('status', 'en_attente')
 
-        # Debug: check table exists and count
         try:
             total_count = db.session.query(SuggestionTache).count()
             all_statuses = db.session.query(SuggestionTache.statut).distinct().all()
         except Exception as table_err:
-            return jsonify({'ok': False, 'message': f'Table error: {table_err}', 'total_count': -1}), 500
+            return jsonify({'ok': False, 'message': f'Table error: {table_err}', 'total_in_db': -1}), 500
 
         if status == 'all':
             suggestions = SuggestionTache.query.order_by(SuggestionTache.date_creation.desc()).all()
