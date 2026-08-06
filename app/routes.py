@@ -1309,10 +1309,22 @@ def test_mailbox_folder_scan():
         for folder in candidates:
             if not folder:
                 continue
+            selected_folder = None
             try:
                 imap.select(folder)
+                selected_folder = folder
             except Exception:
+                if folder != "INBOX":
+                    try:
+                        imap.select("INBOX")
+                        selected_folder = "INBOX"
+                    except Exception:
+                        continue
+                else:
+                    continue
+            if not selected_folder:
                 continue
+
             typ, data = imap.search(None, "ALL")
             ids = data[0].split() if data[0] else []
             samples = []
@@ -1333,7 +1345,7 @@ def test_mailbox_folder_scan():
                 })
 
             folder_results.append({
-                'folder': folder,
+                'folder': selected_folder,
                 'count': len(ids),
                 'samples': samples,
             })
