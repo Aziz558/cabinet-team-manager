@@ -1284,6 +1284,71 @@ def test_mailbox_folders():
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
+@app.route('/api/test/mailbox/folder-scan', methods=['POST'])
+@login_required
+def test_mailbox_folder_scan():
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
+
+        imap = client._connect()
+        allowed = getattr(client, 'allowed_senders', [])
+        folder_name = request.json.get('folder') if request.is_json else None
+        candidates = [folder_name] if folder_name else []
+        if not candidates:
+            candidates = [
+                getattr(client, 'mailbox', None),
+                "INBOX",
+                "[Gmail]/All Mail",
+                '"[Gmail]/All Mail"',
+            ]
+
+        folder_results = []
+        for folder in candidates:
+            if not folder:
+                continue
+            try:
+                imap.select(folder)
+            except Exception:
+                continue
+            typ, data = imap.search(None, "ALL")
+            ids = data[0].split() if data[0] else []
+            samples = []
+            for num in ids[:10]:
+                typ2, msg_data = imap.fetch(num, "(BODY.PEEK[])")
+                if typ2 != "OK":
+                    continue
+                raw = msg_data[0][1]
+                mail = email.message_from_bytes(raw)
+                subject = client._decode_mime_words(mail.get("Subject"))
+                raw_from = client._decode_mime_words(mail.get("From"))
+                from_addr = client._extract_email_from(raw_from)
+                samples.append({
+                    'subject': subject,
+                    'raw_from': raw_from,
+                    'from': from_addr,
+                    'allowed': client._is_sender_allowed(from_addr),
+                })
+
+            folder_results.append({
+                'folder': folder,
+                'count': len(ids),
+                'samples': samples,
+            })
+
+        return jsonify({
+            'ok': True,
+            'message': 'Scan des dossiers IMAP avec échantillons et statut d\'autorisation.',
+            'allowed_senders': allowed,
+            'folder_results': folder_results,
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur test mailbox folder-scan : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+
+
 @app.route('/api/suggestions', methods=['GET'])
 @login_required
 def list_suggestions():
