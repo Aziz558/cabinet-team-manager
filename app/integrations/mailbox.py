@@ -302,15 +302,23 @@ class MailboxClient:
 
                 # Create suggestion instead of task directly
                 if task_desc:
-                    self._create_suggestion(
-                        subject=m["subject"],
-                        body=m["body"],
-                        dossier_id=client_id,
-                        titre_suggere=m["subject"][:200],
-                        description_suggeree=task_desc,
-                        mail_uid=m.get("uid"),
-                    )
-                    logger.info("Created suggestion for mail uid=%s", m.get("uid"))
+                    try:
+                        self._create_suggestion(
+                            subject=m["subject"],
+                            body=m["body"],
+                            dossier_id=client_id,
+                            titre_suggere=m["subject"][:200],
+                            description_suggeree=task_desc,
+                            mail_uid=m.get("uid"),
+                        )
+                        logger.info("Created suggestion for mail uid=%s", m.get("uid"))
+                    except Exception as dup_err:
+                        if "UniqueViolation" in str(dup_err) or "duplicate key" in str(dup_err):
+                            logger.info("Mail uid=%s already has a suggestion, skipping", m.get("uid"))
+                            from app import db
+                            db.session.rollback()
+                        else:
+                            raise
                 else:
                     logger.info("No task extracted for mail uid=%s, marking as processed anyway", m.get("uid"))
 
