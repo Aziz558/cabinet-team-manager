@@ -1215,6 +1215,19 @@ def test_mailbox_search():
             return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
 
         imap = client._connect()
+        selected_mailbox = getattr(client, 'mailbox', 'unknown')
+
+        # Get total message count
+        typ, data = imap.search(None, "ALL")
+        total_ids = data[0].split() if data[0] else []
+        total_count = len(total_ids)
+
+        # Get unseen count
+        typ, data = imap.search(None, "UNSEEN")
+        unseen_ids = data[0].split() if data[0] else []
+        unseen_count = len(unseen_ids)
+
+        # Search by allowed sender
         allowed = getattr(client, 'allowed_senders', [])
         results = []
         for sender in allowed:
@@ -1232,6 +1245,9 @@ def test_mailbox_search():
             'ok': True,
             'message': f'Recherche par expéditeur autorisé : {len(allowed)} expéditeur(s) configuré(s).',
             'allowed_senders': allowed,
+            'selected_mailbox': selected_mailbox,
+            'total_messages': total_count,
+            'unseen_messages': unseen_count,
             'results': results,
         })
     except Exception as e:
