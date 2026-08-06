@@ -273,9 +273,9 @@ class MailboxClient:
             logger.exception("IMAP fetch failed: %s", e)
             return []
 
-    def process_new_messages(self) -> int:
-        mails = self.fetch_unseen(limit=50)
-        logger.info("process_new_messages: fetched %d mails", len(mails))
+    def process_new_messages(self, max_emails: int = 5) -> int:
+        mails = self.fetch_unseen(limit=max_emails)
+        logger.info("process_new_messages: fetched %d mails (max=%d)", len(mails), max_emails)
         processed = 0
         for m in mails:
             try:

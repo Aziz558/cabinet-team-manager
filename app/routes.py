@@ -1501,7 +1501,7 @@ def process_mailbox():
         client = MailboxClient()
         if not client.is_configured():
             return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-        count = client.process_new_messages()
+        count = client.process_new_messages(max_emails=3)
         return jsonify({'ok': True, 'message': f'{count} mail(s) traité(s).', 'count': count})
     except Exception as e:
         app.logger.error(f"Erreur process mailbox : {e}")
@@ -1525,7 +1525,7 @@ def process_mailbox_debug():
             return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
 
         # Step 1: fetch unseen
-        mails = client.fetch_unseen(limit=50)
+        mails = client.fetch_unseen(limit=5)
         fetch_info = {
             'fetched_count': len(mails),
             'sample_uids': [m.get('uid') for m in mails[:5]],
