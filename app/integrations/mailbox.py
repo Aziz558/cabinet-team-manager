@@ -33,7 +33,7 @@ class MailboxClient:
         password: Optional[str] = None,
         host: Optional[str] = None,
         port: Optional[int] = None,
-        mailbox: str = "INBOX",
+        mailbox: str = "[Gmail]/All Mail",
     ) -> None:
         self.user = user or _get_setting("MAILBOX_USER") or ""
         self.password = password or _get_setting("MAILBOX_PASSWORD") or ""
@@ -178,7 +178,7 @@ class MailboxClient:
             ids = list(reversed(ids))[-limit:]
             messages: List[Dict[str, Any]] = []
             for num in ids:
-                typ, msg_data = imap.fetch(num, "(RFC822)")
+                typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
                 if typ != "OK":
                     continue
                 raw = msg_data[0][1]

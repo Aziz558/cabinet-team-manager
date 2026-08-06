@@ -1056,7 +1056,7 @@ def test_mailbox():
         samples = []
         allowed = getattr(client, 'allowed_senders', [])
         for num in ids[:5]:
-            typ, msg_data = imap.fetch(num, "(RFC822)")
+            typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
             if typ != "OK":
                 continue
             raw = msg_data[0][1]
@@ -1120,7 +1120,7 @@ def test_mailbox_debug():
         samples = []
         allowed = getattr(client, 'allowed_senders', [])
         for num in ids[:50]:
-            typ, msg_data = imap.fetch(num, "(RFC822)")
+            typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
             if typ != "OK":
                 continue
             raw = msg_data[0][1]
@@ -1174,7 +1174,7 @@ def test_mailbox_senders():
         samples = []
         allowed = getattr(client, 'allowed_senders', [])
         for num in ids:
-            typ, msg_data = imap.fetch(num, "(RFC822)")
+            typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
             if typ != "OK":
                 continue
             raw = msg_data[0][1]
