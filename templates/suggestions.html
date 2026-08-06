@@ -105,7 +105,7 @@ function loadSuggestions() {
                             <p class="card-text">${s.description_suggeree}</p>
                             ${s.dossier_nom ? `<p class="card-text"><small class="text-muted">Dossier: ${s.dossier_nom}</small></p>` : ''}
                             <p class="card-text"><small class="text-muted">Priorité suggérée: ${s.priorite_suggeree}</small></p>
-                            <p class="card-text"><small class="text-muted">Date: ${s.date_creation}</small></p>
+                            <p class="card-text"><small class="text-muted">Date: ${s.date_creation} ${s.source ? `| Source: ${s.source}` : ''}</small></p>
                             <div class="btn-group">
                                 <button class="btn btn-success btn-sm" onclick="openValidateModal(${s.id}, '${(s.titre_suggere || s.sujet).replace(/'/g, "\\'")}', '${(s.description_suggeree || '').replace(/'/g, "\\'")}')">
                                     <i class="bi bi-check"></i> Valider
