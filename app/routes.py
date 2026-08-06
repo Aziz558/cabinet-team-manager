@@ -750,11 +750,11 @@ def api_suggestions():
                 'source': 'mailbox',
             })
 
-        return jsonify({'suggestions': suggestions, 'count': len(suggestions), 'total_in_db': total_count, 'distinct_statuses': [s[0] for s in all_statuses]})
+        return jsonify({'ok': True, 'suggestions': suggestions, 'count': len(suggestions), 'total_in_db': total_count, 'distinct_statuses': [s[0] for s in all_statuses]})
     except Exception as e:
         app.logger.error(f"Erreur api_suggestions db merge : {e}")
         # Still return deadline-based suggestions
-        return jsonify({'suggestions': suggestions, 'count': len(suggestions)})
+        return jsonify({'ok': True, 'suggestions': suggestions, 'count': len(suggestions)})
 
 
 @app.route('/api/suggestions/refresh', methods=['POST'])
