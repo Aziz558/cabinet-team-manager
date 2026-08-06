@@ -1393,7 +1393,10 @@ def list_suggestions():
     try:
         from app.models import SuggestionTache
         status = request.args.get('status', 'en_attente')
-        suggestions = SuggestionTache.query.filter_by(statut=status).order_by(SuggestionTache.date_creation.desc()).all()
+        if status == 'all':
+            suggestions = SuggestionTache.query.order_by(SuggestionTache.date_creation.desc()).all()
+        else:
+            suggestions = SuggestionTache.query.filter_by(statut=status).order_by(SuggestionTache.date_creation.desc()).all()
         result = []
         for s in suggestions:
             result.append({
@@ -1405,9 +1408,10 @@ def list_suggestions():
                 'dossier_nom': s.dossier.nom if s.dossier else None,
                 'priorite_suggeree': s.priorite_suggeree,
                 'statut': s.statut,
+                'mail_uid': s.mail_uid,
                 'date_creation': s.date_creation.strftime('%Y-%m-%d %H:%M') if s.date_creation else None,
             })
-        return jsonify({'ok': True, 'suggestions': result})
+        return jsonify({'ok': True, 'count': len(result), 'suggestions': result})
     except Exception as e:
         app.logger.error(f"Erreur list suggestions : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
