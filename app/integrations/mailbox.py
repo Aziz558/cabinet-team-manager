@@ -274,10 +274,15 @@ class MailboxClient:
             return []
 
     def process_new_messages(self, max_emails: int = 5) -> int:
-        mails = self.fetch_unseen(limit=max_emails)
+        # Fetch more than max_emails, then filter out already-processed ones,
+        # so we actually process max_emails NEW emails (not just the first N
+        # which may all be duplicates).
+        mails = self.fetch_unseen(limit=50)
         logger.info("process_new_messages: fetched %d mails (max=%d)", len(mails), max_emails)
         processed = 0
         for m in mails:
+            if processed >= max_emails:
+                break
             try:
                 logger.info("Processing mail uid=%s subject=%s", m.get("uid"), m.get("subject"))
                 # Skip if already processed
