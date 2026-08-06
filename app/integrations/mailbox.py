@@ -51,7 +51,10 @@ class MailboxClient:
             try:
                 self._imap = imaplib.IMAP4_SSL(self.host, self.port)
                 self._imap.login(self.user, self.password)
-                self._imap.select(self.mailbox)
+                mailbox = self.mailbox if self.mailbox else "INBOX"
+                if mailbox.startswith("[") or "/" in mailbox:
+                    mailbox = f'"{mailbox}"'
+                self._imap.select(mailbox)
                 logger.info("IMAP connected to %s as %s", self.host, self.user)
             except imaplib.IMAP4.error as exc:
                 logger.error("IMAP connection failed: %s", exc)
