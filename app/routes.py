@@ -1392,7 +1392,16 @@ def test_mailbox_folder_scan():
 def list_suggestions():
     try:
         from app.models import SuggestionTache
+        from app import db
         status = request.args.get('status', 'en_attente')
+
+        # Debug: check table exists and count
+        try:
+            total_count = db.session.query(SuggestionTache).count()
+            all_statuses = db.session.query(SuggestionTache.statut).distinct().all()
+        except Exception as table_err:
+            return jsonify({'ok': False, 'message': f'Table error: {table_err}', 'total_count': -1}), 500
+
         if status == 'all':
             suggestions = SuggestionTache.query.order_by(SuggestionTache.date_creation.desc()).all()
         else:
@@ -1411,7 +1420,7 @@ def list_suggestions():
                 'mail_uid': s.mail_uid,
                 'date_creation': s.date_creation.strftime('%Y-%m-%d %H:%M') if s.date_creation else None,
             })
-        return jsonify({'ok': True, 'count': len(result), 'suggestions': result})
+        return jsonify({'ok': True, 'count': len(result), 'total_in_db': total_count, 'distinct_statuses': [s[0] for s in all_statuses], 'suggestions': result})
     except Exception as e:
         app.logger.error(f"Erreur list suggestions : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
