@@ -1160,14 +1160,49 @@ def test_mailbox_senders():
     try:
         from app.integrations.mailbox import MailboxClient
         client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
+
+        imap = client._connect()
+        imap.select(client.mailbox)
+        typ, data = imap.search(None, "ALL")
+        if typ != "OK":
+            return jsonify({'ok': False, 'message': 'IMAP search ALL failed', 'stage': 'imap'}), 500
+
+        ids = data[0].split() if data[0] else []
+        ids = list(reversed(ids))[:20]
+        samples = []
+        allowed = getattr(client, 'allowed_senders', [])
+        for num in ids:
+            typ, msg_data = imap.fetch(num, "(RFC822)")
+            if typ != "OK":
+                continue
+            raw = msg_data[0][1]
+            mail = email.message_from_bytes(raw)
+            subject = client._decode_mime_words(mail.get("Subject"))
+            raw_from = client._decode_mime_words(mail.get("From"))
+            from_addr = client._extract_email_from(raw_from)
+            date_hdr = client._decode_mime_words(mail.get("Date"))
+            samples.append({
+                'uid': num.decode() if isinstance(num, bytes) else str(num),
+                'subject': subject,
+                'raw_from': raw_from,
+                'from': from_addr,
+                'date': date_hdr,
+                'allowed': client._is_sender_allowed(from_addr),
+                'allowed_senders': allowed,
+            })
+
+        samples.sort(key=lambda s: s.get('date') or '', reverse=True)
         return jsonify({
             'ok': True,
-            'allowed_senders': client.allowed_senders,
-            'is_configured': client.is_configured(),
+            'stage': 'imap',
+            'allowed_senders': allowed,
+            'samples': samples,
         })
     except Exception as e:
         app.logger.error(f"Erreur test mailbox senders : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
 @app.route('/api/test/mailbox/search', methods=['POST'])
