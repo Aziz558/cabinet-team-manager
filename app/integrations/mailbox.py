@@ -215,8 +215,8 @@ class MailboxClient:
             if self.allowed_senders:
                 for sender in self.allowed_senders:
                     try:
-                        # Search UNSEEN from this sender only — processed mails are marked \Seen
-                        typ, data = imap.search(None, 'UNSEEN', 'FROM', sender)
+                        # Search ALL from this sender, filter duplicates via DB in process_new_messages
+                        typ, data = imap.search(None, 'FROM', sender)
                     except Exception:
                         continue
                     if typ != "OK":
@@ -327,6 +327,16 @@ class MailboxClient:
                             raise
                 else:
                     logger.info("No task extracted for mail uid=%s (LLM returned null), skipping suggestion", m.get("uid"))
+                    # Mark as skipped so we don't reprocess
+                    try:
+                        from app import db
+                        from app.models import AppSetting
+                        skip = AppSetting(cle=f'MAILBOX_SKIPPED_{m.get("uid")}', valeur='1', service='mailbox', type_valeur='string')
+                        db.session.add(skip)
+                        db.session.commit()
+                    except Exception:
+                        from app import db
+                        db.session.rollback()
 
                 # Always mark as processed so we don't re-process this mail
                 self._mark_as_processed(m["uid"])
@@ -463,6 +473,14 @@ class MailboxClient:
         # Check if suggestion exists in DB for this mail UID
         if SuggestionTache.query.filter_by(mail_uid=uid).first() is not None:
             return True
+        # Also check if mail was explicitly skipped (stored as "skipped" suggestion)
+        try:
+            from app.models import AppSetting
+            skipped = AppSetting.query.filter_by(cle=f'MAILBOX_SKIPPED_{uid}').first()
+            if skipped:
+                return True
+        except Exception:
+            pass
         return False
 
     def _create_suggestion(
