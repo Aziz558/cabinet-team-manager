@@ -1322,9 +1322,37 @@ def test_mailbox_folder_scan():
                 continue
             if typ != "OK":
                 continue
-            ids = data[0].split() if data[0] else []
-            samples = []
-            for num in ids[:10]:
+            all_ids = data[0].split() if data[0] else []
+
+            # Find allowed emails by searching FROM each allowed sender
+            allowed_samples = []
+            for sender in allowed:
+                try:
+                    typ2, data2 = imap.search(None, 'FROM', sender)
+                except Exception:
+                    continue
+                if typ2 != "OK":
+                    continue
+                sender_ids = data2[0].split() if data2[0] else []
+                for num in sender_ids[:10]:
+                    typ3, msg_data = imap.fetch(num, "(BODY.PEEK[])")
+                    if typ3 != "OK":
+                        continue
+                    raw = msg_data[0][1]
+                    mail = email.message_from_bytes(raw)
+                    subject = client._decode_mime_words(mail.get("Subject"))
+                    raw_from = client._decode_mime_words(mail.get("From"))
+                    from_addr = client._extract_email_from(raw_from)
+                    allowed_samples.append({
+                        'subject': subject,
+                        'raw_from': raw_from,
+                        'from': from_addr,
+                        'allowed': True,
+                    })
+
+            # Also show last 5 general samples
+            general_samples = []
+            for num in all_ids[-5:]:
                 typ2, msg_data = imap.fetch(num, "(BODY.PEEK[])")
                 if typ2 != "OK":
                     continue
@@ -1333,7 +1361,7 @@ def test_mailbox_folder_scan():
                 subject = client._decode_mime_words(mail.get("Subject"))
                 raw_from = client._decode_mime_words(mail.get("From"))
                 from_addr = client._extract_email_from(raw_from)
-                samples.append({
+                general_samples.append({
                     'subject': subject,
                     'raw_from': raw_from,
                     'from': from_addr,
@@ -1342,8 +1370,10 @@ def test_mailbox_folder_scan():
 
             folder_results.append({
                 'folder': folder,
-                'count': len(ids),
-                'samples': samples,
+                'count': len(all_ids),
+                'allowed_count': len(allowed_samples),
+                'allowed_samples': allowed_samples,
+                'samples': general_samples,
             })
 
         return jsonify({

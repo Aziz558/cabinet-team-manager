@@ -210,36 +210,64 @@ class MailboxClient:
             return []
         try:
             imap = self._connect()
-            # Search ALL instead of UNSEEN to catch mails that were marked as read
-            # by previous diagnostic calls; _is_already_processed filters duplicates
-            typ, data = imap.search(None, "ALL")
-            if typ != "OK":
-                return []
-            ids = data[0].split()
-            if not ids:
-                return []
-            ids = list(reversed(ids))[:limit]
             messages: List[Dict[str, Any]] = []
-            for num in ids:
-                typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
+
+            if self.allowed_senders:
+                for sender in self.allowed_senders:
+                    try:
+                        typ, data = imap.search(None, 'FROM', sender)
+                    except Exception:
+                        continue
+                    if typ != "OK":
+                        continue
+                    ids = data[0].split() if data[0] else []
+                    if not ids:
+                        continue
+                    ids = list(reversed(ids))[:limit]
+                    for num in ids:
+                        typ2, msg_data = imap.fetch(num, "(BODY.PEEK[])")
+                        if typ2 != "OK":
+                            continue
+                        raw = msg_data[0][1]
+                        mail = email.message_from_bytes(raw)
+                        subject = self._decode_mime_words(mail.get("Subject"))
+                        from_addr = self._extract_email_from(self._decode_mime_words(mail.get("From")))
+                        date_hdr = self._decode_mime_words(mail.get("Date"))
+                        body = self._extract_body(mail)
+                        messages.append({
+                            "uid": num.decode() if isinstance(num, bytes) else str(num),
+                            "subject": subject,
+                            "from": from_addr,
+                            "date": date_hdr,
+                            "body": body,
+                            "raw": mail,
+                        })
+            else:
+                typ, data = imap.search(None, "ALL")
                 if typ != "OK":
-                    continue
-                raw = msg_data[0][1]
-                mail = email.message_from_bytes(raw)
-                subject = self._decode_mime_words(mail.get("Subject"))
-                from_addr = self._extract_email_from(self._decode_mime_words(mail.get("From")))
-                date_hdr = self._decode_mime_words(mail.get("Date"))
-                body = self._extract_body(mail)
-                if not self._is_sender_allowed(from_addr):
-                    continue
-                messages.append({
-                    "uid": num.decode() if isinstance(num, bytes) else str(num),
-                    "subject": subject,
-                    "from": from_addr,
-                    "date": date_hdr,
-                    "body": body,
-                    "raw": mail,
-                })
+                    return []
+                ids = data[0].split() if data[0] else []
+                if not ids:
+                    return []
+                ids = list(reversed(ids))[:limit]
+                for num in ids:
+                    typ2, msg_data = imap.fetch(num, "(BODY.PEEK[])")
+                    if typ2 != "OK":
+                        continue
+                    raw = msg_data[0][1]
+                    mail = email.message_from_bytes(raw)
+                    subject = self._decode_mime_words(mail.get("Subject"))
+                    from_addr = self._extract_email_from(self._decode_mime_words(mail.get("From")))
+                    date_hdr = self._decode_mime_words(mail.get("Date"))
+                    body = self._extract_body(mail)
+                    messages.append({
+                        "uid": num.decode() if isinstance(num, bytes) else str(num),
+                        "subject": subject,
+                        "from": from_addr,
+                        "date": date_hdr,
+                        "body": body,
+                        "raw": mail,
+                    })
             return messages
         except Exception as e:
             logger.exception("IMAP fetch failed: %s", e)
