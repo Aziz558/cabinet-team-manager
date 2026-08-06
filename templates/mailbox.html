@@ -14,9 +14,9 @@
 
   <div class="card mt-3">
     <div class="card-body">
-      <h5 class="card-title">Test de connexion</h5>
-      <button id="testMailbox" class="btn btn-secondary">Tester la connexion IMAP</button>
-      <div id="mailboxTestResult" class="mt-3"></div>
+      <h5 class="card-title">Derniers emails</h5>
+      <button id="listMailbox" class="btn btn-secondary mb-2">Lister les derniers emails</button>
+      <div id="mailboxList" class="mt-2"></div>
     </div>
   </div>
 </div>
@@ -44,21 +44,38 @@ document.getElementById('processMailbox').addEventListener('click', async functi
   }
 });
 
-document.getElementById('testMailbox').addEventListener('click', async function() {
+document.getElementById('listMailbox').addEventListener('click', async function() {
   const btn = this;
-  const resultDiv = document.getElementById('mailboxTestResult');
+  const resultDiv = document.getElementById('mailboxList');
   btn.disabled = true;
-  resultDiv.innerHTML = '<div class="alert alert-info">Test en cours...</div>';
+  resultDiv.innerHTML = '<div class="alert alert-info">Chargement...</div>';
 
   try {
-    const response = await fetch('/api/test/mailbox', { method: 'POST' });
+    const response = await fetch('/api/test/mailbox/senders');
     const data = await response.json();
 
-    if (data.ok) {
-      resultDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-    } else {
+    if (!data.ok) {
       resultDiv.innerHTML = `<div class="alert alert-danger">Échec : ${data.message}</div>`;
+      return;
     }
+
+    const samples = data.samples || [];
+    if (!samples.length) {
+      resultDiv.innerHTML = '<div class="alert alert-warning">Aucun email trouvé.</div>';
+      return;
+    }
+
+    let html = '<ul class="list-group">';
+    for (const s of samples) {
+      html += `<li class="list-group-item">
+        <strong>${s.subject || '(sans sujet)'}</strong><br>
+        <small>De : ${s.from || s.raw_from}</small><br>
+        <small>Date : ${s.date || ''}</small><br>
+        <small>Autorisé : ${s.allowed ? 'Oui' : 'Non'}</small>
+      </li>`;
+    }
+    html += '</ul>';
+    resultDiv.innerHTML = html;
   } catch (error) {
     resultDiv.innerHTML = `<div class="alert alert-danger">Erreur : ${error.message}</div>`;
   } finally {
