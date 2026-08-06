@@ -98,15 +98,31 @@ class MailboxClient:
         if not self.allowed_senders:
             logger.info("No allowed senders configured, allowing all")
             return True
-        normalized = sender.lower().strip()
-        allowed = normalized in self.allowed_senders
-        if not allowed:
-            # Try partial match: allow if sender contains any allowed sender
-            for allowed_sender in self.allowed_senders:
-                if allowed_sender in normalized or normalized in allowed_sender:
-                    allowed = True
-                    break
-        logger.info("Sender check: raw='%s' normalized='%s' allowed=%s allowed_list=%s", sender, normalized, allowed, self.allowed_senders)
+        normalized = (sender or "").lower().strip()
+        if not normalized:
+            return False
+
+        if normalized in self.allowed_senders:
+            return True
+
+        allowed = False
+        for allowed_sender in self.allowed_senders:
+            if not allowed_sender:
+                continue
+            if allowed_sender in normalized:
+                allowed = True
+                break
+            if normalized in allowed_sender:
+                allowed = True
+                break
+
+        logger.info(
+            "Sender check: raw='%s' normalized='%s' allowed=%s allowed_list=%s",
+            sender,
+            normalized,
+            allowed,
+            self.allowed_senders,
+        )
         return allowed
 
     # ------------------------------------------------------------------
