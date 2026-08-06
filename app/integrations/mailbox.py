@@ -51,25 +51,31 @@ class MailboxClient:
             try:
                 self._imap = imaplib.IMAP4_SSL(self.host, self.port)
                 self._imap.login(self.user, self.password)
-                candidates = [
-                    self.mailbox if self.mailbox else "INBOX",
-                    "INBOX",
-                    "[Gmail]/All Mail",
-                    '"[Gmail]/All Mail"',
-                ]
+                configured = (self.mailbox or "").strip()
+                candidates = []
+                if configured:
+                    candidates.append(configured)
+                candidates.extend(["INBOX", "\"[Gmail]/All Mail\"", "[Gmail]/All Mail"])
                 last_err = None
+                selected = False
                 for candidate in candidates:
                     try:
-                        self._imap.select(candidate)
-                        self.mailbox = candidate
-                        logger.info("IMAP selected mailbox=%s", candidate)
-                        break
+                        typ, data = self._imap.select(candidate)
+                        if typ == "OK":
+                            self.mailbox = candidate
+                            logger.info("IMAP selected mailbox=%s typ=%s", candidate, typ)
+                            selected = True
+                            break
+                        else:
+                            last_err = f"select({candidate}) -> {typ} {data}"
+                            logger.warning("IMAP select failed: %s", last_err)
                     except imaplib.IMAP4.error as e:
                         last_err = e
+                        logger.warning("IMAP select exception for %s: %s", candidate, e)
                         continue
-                else:
-                    raise imaplib.IMAP4.error(f"IMAP SELECT failed for {candidates}: {last_err}")
-                logger.info("IMAP connected to %s as %s", self.host, self.user)
+                if not selected:
+                    raise imaplib.IMAP4.error(f"IMAP SELECT failed for all candidates: {last_err}")
+                logger.info("IMAP connected to %s as %s, mailbox=%s", self.host, self.user, self.mailbox)
             except imaplib.IMAP4.error as exc:
                 logger.error("IMAP connection failed: %s", exc)
                 raise
@@ -204,11 +210,15 @@ class MailboxClient:
             return []
         try:
             imap = self._connect()
-            typ, data = imap.search(None, "UNSEEN")
+            # Search ALL instead of UNSEEN to catch mails that were marked as read
+            # by previous diagnostic calls; _is_already_processed filters duplicates
+            typ, data = imap.search(None, "ALL")
             if typ != "OK":
                 return []
             ids = data[0].split()
-            ids = list(reversed(ids))[-limit:]
+            if not ids:
+                return []
+            ids = list(reversed(ids))[:limit]
             messages: List[Dict[str, Any]] = []
             for num in ids:
                 typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")

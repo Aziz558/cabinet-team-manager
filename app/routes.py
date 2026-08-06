@@ -1296,36 +1296,32 @@ def test_mailbox_folder_scan():
         imap = client._connect()
         allowed = getattr(client, 'allowed_senders', [])
         folder_name = request.json.get('folder') if request.is_json else None
-        candidates = [folder_name] if folder_name else []
-        if not candidates:
-            candidates = [
-                getattr(client, 'mailbox', None),
-                "INBOX",
-                "[Gmail]/All Mail",
-                '"[Gmail]/All Mail"',
-            ]
+        configured = getattr(client, 'mailbox', None)
+        candidates = []
+        if folder_name:
+            candidates.append(folder_name)
+        if configured and configured not in candidates:
+            candidates.append(configured)
+        for f in ["INBOX", '"[Gmail]/All Mail"', "[Gmail]/All Mail"]:
+            if f not in candidates:
+                candidates.append(f)
 
         folder_results = []
         for folder in candidates:
             if not folder:
                 continue
-            selected_folder = None
             try:
-                imap.select(folder)
-                selected_folder = folder
-            except Exception:
-                if folder != "INBOX":
-                    try:
-                        imap.select("INBOX")
-                        selected_folder = "INBOX"
-                    except Exception:
-                        continue
-                else:
+                typ, data = imap.select(folder)
+                if typ != "OK":
                     continue
-            if not selected_folder:
+            except Exception:
                 continue
-
-            typ, data = imap.search(None, "ALL")
+            try:
+                typ, data = imap.search(None, "ALL")
+            except Exception:
+                continue
+            if typ != "OK":
+                continue
             ids = data[0].split() if data[0] else []
             samples = []
             for num in ids[:10]:
@@ -1345,7 +1341,7 @@ def test_mailbox_folder_scan():
                 })
 
             folder_results.append({
-                'folder': selected_folder,
+                'folder': folder,
                 'count': len(ids),
                 'samples': samples,
             })
