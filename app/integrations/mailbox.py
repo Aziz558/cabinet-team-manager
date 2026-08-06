@@ -395,8 +395,6 @@ class MailboxClient:
             imap.store(uid, '+FLAGS', '\\Seen')
             if self._folder_exists("Traité"):
                 imap.copy(uid, "Traité")
-            imap.store(uid, '+FLAGS', '\\Deleted')
-            imap.expunge()
         except Exception as e:
             logger.error("Failed to mark mail %s as processed: %s", uid, e)
 
