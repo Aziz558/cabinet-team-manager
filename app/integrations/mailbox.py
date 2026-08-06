@@ -215,7 +215,8 @@ class MailboxClient:
             if self.allowed_senders:
                 for sender in self.allowed_senders:
                     try:
-                        typ, data = imap.search(None, 'FROM', sender)
+                        # Search UNSEEN from this sender only — processed mails are marked \Seen
+                        typ, data = imap.search(None, 'UNSEEN', 'FROM', sender)
                     except Exception:
                         continue
                     if typ != "OK":
@@ -243,7 +244,7 @@ class MailboxClient:
                             "raw": mail,
                         })
             else:
-                typ, data = imap.search(None, "ALL")
+                typ, data = imap.search(None, "UNSEEN")
                 if typ != "OK":
                     return []
                 ids = data[0].split() if data[0] else []
@@ -325,8 +326,9 @@ class MailboxClient:
                         else:
                             raise
                 else:
-                    logger.info("No task extracted for mail uid=%s, marking as processed anyway", m.get("uid"))
+                    logger.info("No task extracted for mail uid=%s (LLM returned null), skipping suggestion", m.get("uid"))
 
+                # Always mark as processed so we don't re-process this mail
                 self._mark_as_processed(m["uid"])
                 processed += 1
             except Exception as exc:
@@ -344,15 +346,29 @@ class MailboxClient:
             llm = OpenRouterClient()
             if not llm.is_configured():
                 return None
+
+            # Build context from past manager corrections (feedback loop)
+            feedback_context = self._build_feedback_context()
+
             prompt = (
-                "Analyse ce message et extrais uniquement les informations utiles pour créer une tâche.\n"
-                "- Si le mail mentionne un dossier/client identifiable, renvoie 'client_id' comme un entier si possible, sinon null.\n"
-                "- Si le mail contient une action à faire, renvoie 'task' comme une phrase courte.\n"
-                "- Réponds strictement en JSON : { \"client_id\": number|null, \"task\": string|null }\n\n"
-                f"Sujet: {subject}\n\nCorps:\n{body}"
+                "Tu es un assistant comptable pour le Cabinet JMH.\n"
+                "Analyse l'email ci-dessous et extrais une tâche actionnable.\n\n"
+                "RÈGLES:\n"
+                "- 'task': une phrase courte décrivant l'action à faire (pas juste le sujet du mail).\n"
+                "- 'client_id': null (sera assigné par le manager).\n"
+                "- Si l'email est une notification (LinkedIn, Binance, etc.), réponds {\"task\": null, \"client_id\": null}.\n"
+                "- Réponds STRICTEMENT en JSON: {\"client_id\": null, \"task\": \"...\"}\n\n"
+            )
+            if feedback_context:
+                prompt += f"EXEMPLES DE TÂCHES CORRECTEMENT FORMULÉES (basés sur corrections du manager):\n{feedback_context}\n\n"
+
+            prompt += (
+                f"Sujet: {subject}\n\n"
+                f"Corps de l'email:\n{body[:2000] if body else '(vide)'}\n\n"
+                "Réponse JSON:"
             )
             messages = [
-                {"role": "system", "content": "Tu es un assistant qui extrait des actions à partir d'emails."},
+                {"role": "system", "content": "Tu es un assistant comptable expert qui extrait des tâches actionnables à partir d'emails. Tu réponds uniquement en JSON."},
                 {"role": "user", "content": prompt},
             ]
             raw = llm.chat(messages, model=llm.model)
@@ -379,6 +395,29 @@ class MailboxClient:
         except Exception as exc:
             logger.error("LLM mailbox analysis failed: %s", exc)
         return None
+
+    def _build_feedback_context(self) -> str:
+        """Build few-shot examples from manager-corrected suggestions."""
+        try:
+            from app.models import SuggestionTache
+            # Get suggestions where the manager modified the title or description
+            corrected = SuggestionTache.query.filter(
+                SuggestionTache.statut.in_(['validee', 'rejetee'])
+            ).order_by(SuggestionTache.date_creation.desc()).limit(10).all()
+
+            examples = []
+            for s in corrected:
+                original = s.sujet or ""
+                final_title = s.titre_suggere or ""
+                final_desc = s.description_suggeree or ""
+                if original and final_desc and original != final_desc:
+                    examples.append(f"  Email sujet: \"{original[:60]}\" → Tâche: \"{final_desc[:60]}\"")
+
+            if not examples:
+                return ""
+            return "\n".join(examples[:5])
+        except Exception:
+            return ""
 
     # ------------------------------------------------------------------
     # Client/task extraction
@@ -413,14 +452,18 @@ class MailboxClient:
             m = re.search(pat, text, re.I | re.S)
             if m:
                 return m.group(1).strip().split("\n")[0][:200]
-        return subject.strip()[:200] if subject else None
+        # Don't just return the subject — return None so the caller knows extraction failed
+        return None
 
     # ------------------------------------------------------------------
     # Persistence
     # ------------------------------------------------------------------
     def _is_already_processed(self, uid: str) -> bool:
         from app.models import SuggestionTache
-        return SuggestionTache.query.filter_by(mail_uid=uid).first() is not None
+        # Check if suggestion exists in DB for this mail UID
+        if SuggestionTache.query.filter_by(mail_uid=uid).first() is not None:
+            return True
+        return False
 
     def _create_suggestion(
         self,
