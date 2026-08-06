@@ -23,6 +23,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('taches_aujourdhui') }}"><i class="bi bi-calendar-check me-1"></i>Tâches du jour</a></li>
                     {% if current_user.is_authenticated and current_user.role == 'manager' %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('mailbox_page') }}"><i class="bi bi-envelope me-1"></i>Boîte mail</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('liste_membres') }}"><i class="bi bi-people me-1"></i>Membres</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('dossiers') }}"><i class="bi bi-folder me-1"></i>Dossiers</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('taches') }}"><i class="bi bi-check2-square me-1"></i>Tâches</a></li>

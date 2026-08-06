@@ -1325,6 +1325,12 @@ def process_mailbox():
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 
 
+@app.route('/mailbox')
+@login_required
+def mailbox_page():
+    return render_template('mailbox.html')
+
+
 @app.route('/api/mailbox/process-debug', methods=['POST'])
 @login_required
 def process_mailbox_debug():
