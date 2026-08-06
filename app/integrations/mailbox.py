@@ -33,13 +33,13 @@ class MailboxClient:
         password: Optional[str] = None,
         host: Optional[str] = None,
         port: Optional[int] = None,
-        mailbox: str = "[Gmail]/All Mail",
+        mailbox: Optional[str] = None,
     ) -> None:
         self.user = user or _get_setting("MAILBOX_USER") or ""
         self.password = password or _get_setting("MAILBOX_PASSWORD") or ""
         self.host = host or _get_setting("MAILBOX_SERVER") or "imap.gmail.com"
         self.port = int(_get_setting("MAILBOX_PORT") or 993)
-        self.mailbox = mailbox.upper()
+        self.mailbox = mailbox or _get_setting("MAILBOX_FOLDER") or "INBOX"
         self.allowed_senders = self._load_allowed_senders()
         self._imap: Optional[imaplib.IMAP4_SSL] = None
 

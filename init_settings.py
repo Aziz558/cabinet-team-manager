@@ -35,6 +35,7 @@ DEFAULT_SETTINGS = [
     {'cle': 'MAILBOX_PORT', 'valeur': '993', 'service': 'mailbox', 'type_valeur': 'string'},
     {'cle': 'MAILBOX_USE_SSL', 'valeur': 'true', 'service': 'mailbox', 'type_valeur': 'string'},
     {'cle': 'MAILBOX_ALLOWED_SENDERS', 'valeur': '', 'service': 'mailbox', 'type_valeur': 'string'},
+    {'cle': 'MAILBOX_FOLDER', 'valeur': 'INBOX', 'service': 'mailbox', 'type_valeur': 'string'},
 ]
 
 with app.app_context():
