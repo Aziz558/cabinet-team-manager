@@ -42,6 +42,17 @@ from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
 with app.app_context():
     db.create_all()
+    # Add missing columns to existing tables (for migration)
+    try:
+        inspector = db.inspect(db.engine)
+        if 'users' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('users')]
+            if 'equipe_id' not in columns:
+                with db.engine.begin() as conn:
+                    conn.execute(db.text("ALTER TABLE users ADD COLUMN equipe_id INTEGER"))
+                    app.logger.info("Added equipe_id column to users table")
+    except Exception as e:
+        app.logger.warning(f"Migration error (equipe_id): {e}")
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
@@ -56,7 +67,7 @@ with app.app_context():
             db.session.add(default_team)
             db.session.commit()
     except Exception as e:
-        # Log but don't crash
+        db.session.rollback()
         app.logger.warning(f"Could not create default team: {e}")
 
 @login_manager.user_loader
