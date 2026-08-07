@@ -187,24 +187,30 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
-        nom = request.form.get('nom', '').strip()
-        prenom = request.form.get('prenom', '').strip()
-        role = request.form.get('role', 'membre').strip()
-        if not all([email, password, nom, prenom]):
-            flash('Tous les champs sont requis.', 'danger')
-        elif User.query.filter_by(email=email).first():
-            flash('Cet email est déjà utilisé.', 'danger')
-        elif role not in ['membre', 'manager', 'admin']:
-            role = 'membre'
-        else:
-            user = User(email=email, nom=nom, prenom=prenom, role=role)
-            user.set_password(password)
-            db.session.add(user)
-            db.session.commit()
-            flash('Account created! You can login.', 'success')
-            return redirect(url_for('login'))
+        try:
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
+            nom = request.form.get('nom', '').strip()
+            prenom = request.form.get('prenom', '').strip()
+            role = request.form.get('role', 'membre').strip()
+            if not all([email, password, nom, prenom]):
+                flash('Tous les champs sont requis.', 'danger')
+            elif User.query.filter_by(email=email).first():
+                flash('Cet email est déjà utilisé.', 'danger')
+            elif role not in ['membre', 'manager', 'admin']:
+                role = 'membre'
+            else:
+                user = User(email=email, nom=nom, prenom=prenom, role=role)
+                user.set_password(password)
+                db.session.add(user)
+                db.session.commit()
+                flash('Account created! You can login.', 'success')
+                return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            # Log the error for debugging (if logs are accessible)
+            app.logger.error(f"Registration error: {e}")
+            flash('Une erreur est survenue lors de la création du compte. Veuillez réessayer.', 'danger')
     return render_template('register.html')
 
 
