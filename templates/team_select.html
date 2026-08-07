@@ -248,7 +248,7 @@
             background: var(--card-color, var(--accent-1));
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-center: center;
             color: white;
             font-size: 1.1rem;
             opacity: 0.8;
@@ -303,7 +303,7 @@
         <div class="header">
             <img src="https://api.dicebear.com/7.x/shapes/svg?seed=JMH&backgroundColor=E07A5F" alt="Cabinet JMH" onerror="this.style.display='none'">
             <h1>Cabinet JMH</h1>
-            <p>Choisissez votre équipe ✨</p>
+            <p>Choisissez votre équipe � ✨</p>
         </div>
 
         <div class="teams-grid" id="teamsGrid">
@@ -328,7 +328,7 @@
                         </div>
                         <div class="member-count">
                             <i class="bi bi-people"></i>
-                            {{ equipe.nb_membres() }} membre{{ equipe.nb_membres()|pluralize }}
+                            {{ equipe.nb_membres() }} membre{% if equipe.nb_membres() != 1 %}s{% endif %}
                         </div>
                     </div>
                 </div>
