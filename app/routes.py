@@ -180,7 +180,7 @@ def login():
             return redirect(next_page or url_for('dashboard'))
         else:
             flash('Email ou mot de passe incorrect.', 'danger')
-    return render_template('login.html', equipe_data=equipe_data)
+    return render_template('login.html', equipe_nom=equipe_nom, equipe_icon=equipe_icon, equipe_couleur=equipe_couleur)
 
 
 @app.route('/register', methods=['GET', 'POST'])
