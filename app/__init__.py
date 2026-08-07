@@ -42,6 +42,22 @@ from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
 with app.app_context():
     db.create_all()
+    # Create default team if none exists
+    try:
+        admin_user = User.query.filter_by(role='admin').first()
+        if not Equipe.query.first():
+            default_team = Equipe(
+                nom="Équipe Cabinet JMH",
+                description="Équipe par défaut du cabinet",
+                couleur="#E07A5F",
+                icon="bi-people",
+                manager_id=admin_user.id if admin_user else None
+            )
+            db.session.add(default_team)
+            db.session.commit()
+    except Exception as e:
+        # Log but don't crash
+        app.logger.warning(f"Could not create default team: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
