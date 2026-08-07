@@ -208,9 +208,38 @@ def register():
                 return redirect(url_for('login'))
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"Registration error: {e}")
-            # Return error details for debugging
-            return jsonify({'error': str(e), 'type': type(e).__name__}), 500
+            # Check if the error is about missing column equipe_id
+            if "column users.equipe_id does not exist" in str(e):
+                try:
+                    # Add the column
+                    db.session.execute(db.text("ALTER TABLE users ADD COLUMN equipe_id INTEGER"))
+                    db.session.commit()
+                    # Now retry the operation by re-executing the same POST logic
+                    email = request.form.get('email', '').strip().lower()
+                    password = request.form.get('password', '')
+                    nom = request.form.get('nom', '').strip()
+                    prenom = request.form.get('prenom', '').strip()
+                    role = request.form.get('role', 'membre').strip()
+                    if not all([email, password, nom, prenom]):
+                        flash('Tous les champs sont requis.', 'danger')
+                    elif User.query.filter_by(email=email).first():
+                        flash('Cet email est déjà utilisé.', 'danger')
+                    elif role not in ['membre', 'manager', 'admin']:
+                        role = 'membre'
+                    else:
+                        user = User(email=email, nom=nom, prenom=prenom, role=role)
+                        user.set_password(password)
+                        db.session.add(user)
+                        db.session.commit()
+                        flash('Account created! You can login.', 'success')
+                        return redirect(url_for('login'))
+                except Exception as e2:
+                    db.session.rollback()
+                    app.logger.error(f"Migration error: {e2}")
+                    return jsonify({'error': 'Migration failed', 'details': str(e2)}), 500
+            else:
+                app.logger.error(f"Registration error: {e}")
+                return jsonify({'error': str(e), 'type': type(e).__name__}), 500
     return render_template('register.html')
 
 
