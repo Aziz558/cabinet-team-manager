@@ -196,7 +196,7 @@ def register():
             flash('Tous les champs sont requis.', 'danger')
         elif User.query.filter_by(email=email).first():
             flash('Cet email est déjà utilisé.', 'danger')
-        elif role not in ['membre', 'manager']:
+        elif role not in ['membre', 'manager', 'admin']:
             role = 'membre'
         else:
             user = User(email=email, nom=nom, prenom=prenom, role=role)
