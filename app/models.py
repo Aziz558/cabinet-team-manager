@@ -12,7 +12,8 @@ class User(UserMixin, db.Model):
     nom = db.Column(db.String(80), nullable=False)
     prenom = db.Column(db.String(80), nullable=False)
     photo_profil = db.Column(db.String(200), default='default.png')
-    role = db.Column(db.String(20), nullable=False, default='membre')  # manager | membre
+    role = db.Column(db.String(20), nullable=False, default='membre')  # admin | manager | membre
+    equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
     poste = db.Column(db.String(120))  # e.g., "Comptable", "Auditeur"
     telephone = db.Column(db.String(20))
     actif = db.Column(db.Boolean, default=True)
@@ -158,6 +159,26 @@ class AppSetting(db.Model):
 
     def __repr__(self):
         return f'<AppSetting {self.cle}>'
+
+
+class Equipe(db.Model):
+    __tablename__ = 'equipes'
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    couleur = db.Column(db.String(20), default='#E07A5F')  # terracotta par défaut
+    icon = db.Column(db.String(50), default='bi-people')  # bootstrap icon class
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='equipe_dirigee')
+    membres = db.relationship('User', foreign_keys='User.equipe_id', backref='equipe', lazy='dynamic')
+
+    def nb_membres(self):
+        return self.membres.filter_by(actif=True).count()
+
+    def __repr__(self):
+        return f'<Equipe {self.nom}>'
 
 
 class SuggestionTache(db.Model):

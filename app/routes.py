@@ -8,7 +8,7 @@ import io
 import smtplib
 import email
 from app import app, db, mail
-from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting
+from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe
 from flask_mail import Message
 import os
 
@@ -108,10 +108,64 @@ def index():
     return redirect(url_for('login'))
 
 
+@app.route('/team-select')
+def team_select():
+    equipes = Equipe.query.order_by(Equipe.nom).all()
+    return render_template('team_select.html', equipes=equipes)
+
+
+@app.route('/api/equipes', methods=['GET'])
+@login_required
+def list_equipes():
+    equipes = Equipe.query.order_by(Equipe.nom).all()
+    result = []
+    for e in equipes:
+        result.append({
+            'id': e.id,
+            'nom': e.nom,
+            'description': e.description or '',
+            'couleur': e.couleur,
+            'icon': e.icon,
+            'manager_id': e.manager_id,
+            'manager_nom': e.manager.nom_complet() if e.manager else None,
+            'manager_photo': e.manager.photo_profil if e.manager else 'default.png',
+            'nb_membres': e.nb_membres(),
+        })
+    return jsonify({'ok': True, 'equipes': result})
+
+
+@app.route('/api/equipes', methods=['POST'])
+@login_required
+def create_equipe():
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Non autorisé'}), 403
+    nom = request.json.get('nom', '').strip()
+    if not nom:
+        return jsonify({'ok': False, 'message': 'Nom requis'}), 400
+    couleur = request.json.get('couleur', '#E07A5F')
+    icon = request.json.get('icon', 'bi-people')
+    description = request.json.get('description', '')
+    manager_id = request.json.get('manager_id')
+    equipe = Equipe(nom=nom, couleur=couleur, icon=icon, description=description, manager_id=manager_id)
+    db.session.add(equipe)
+    db.session.commit()
+    return jsonify({'ok': True, 'id': equipe.id, 'message': 'Équipe créée'})
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
+    equipe_nom = None
+    equipe_icon = None
+    equipe_couleur = None
+    if request.args.get('equipe'):
+        equipe_id = request.args.get('equipe')
+        equipe = Equipe.query.get(equipe_id)
+        if equipe:
+            equipe_nom = equipe.nom
+            equipe_icon = equipe.icon
+            equipe_couleur = equipe.couleur
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
@@ -126,7 +180,7 @@ def login():
             return redirect(next_page or url_for('dashboard'))
         else:
             flash('Email ou mot de passe incorrect.', 'danger')
-    return render_template('login.html')
+    return render_template('login.html', equipe_data=equipe_data)
 
 
 @app.route('/register', methods=['GET', 'POST'])

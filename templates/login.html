@@ -1,30 +1,385 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion — Cabinet JMH</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-1: #FFF9F0;
+            --bg-2: #F0F7FF;
+            --accent-1: #E07A5F;
+            --accent-2: #2D9CDB;
+            --text-dark: #2D2D2D;
+            --equipe-color: {{ equipe_couleur|default("'#E07A5F'") }};
+        }
 
-{% block title %}Connexion{% endblock %}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-5">
-                <div class="text-center mb-4">
-                    <i class="bi bi-folder-fill display-4 text-warning"></i>
-                    <h3 class="mt-2">Connexion</h3>
-                    <p class="text-muted">Cabinet Manager</p>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: var(--text-dark);
+        }
+
+        /* Background blur layer for portal effect */
+        .bg-blur-layer {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            backdrop-filter: blur(0px);
+            background: transparent;
+            z-index: 999;
+            pointer-events: none;
+            transition: backdrop-filter 0.8s ease, background 0.8s ease;
+        }
+
+        .bg-blur-layer.active {
+            backdrop-filter: blur(30px);
+            background: rgba(255, 249, 240, 0.6);
+        }
+
+        /* Portal logo */
+        .portal-logo {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 1001;
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        .portal-logo.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+
+        .portal-logo img,
+        .portal-logo .logo-placeholder {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 60px rgba(224, 122, 95, 0.4);
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.5rem;
+            color: var(--accent-1);
+        }
+
+        .portal-logo .ripple {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid var(--accent-1);
+            animation: ripple 1.5s ease-out infinite;
+        }
+
+        @keyframes ripple {
+            0% { width: 120px; height: 120px; opacity: 0.8; }
+            100% { width: 400px; height: 400px; opacity: 0; }
+        }
+
+        /* Login content */
+        .container-main {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* Decorative blobs */
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.12;
+            z-index: 0;
+            animation: float 20s ease-in-out infinite;
+        }
+        .blob-1 { width: 350px; height: 350px; background: var(--equipe-color); top: -10%; left: -5%; }
+        .blob-2 { width: 300px; height: 300px; background: var(--accent-2); bottom: -10%; right: -5%; animation-delay: -5s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            33% { transform: translate(30px, -40px); }
+            66% { transform: translate(-20px, 30px); }
+        }
+
+        /* Team badge */
+        .team-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--equipe-color);
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            animation: fadeInDown 0.6s ease;
+        }
+
+        /* Login card */
+        .login-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid rgba(255,255,255,0.6);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            animation: cardSlide 0.6s ease backwards;
+            animation-delay: 0.2s;
+            transition: all 0.4s ease;
+        }
+
+        @keyframes cardSlide {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-card.fade-out {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        .login-card-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-card-header .logo-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--equipe-color), var(--accent-2));
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
+        .login-card-header h2 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .login-card-header p {
+            font-family: 'Caveat', cursive;
+            font-size: 1.3rem;
+            color: var(--equipe-color);
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        .form-control-custom {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid rgba(0,0,0,0.08);
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.7);
+            outline: none;
+        }
+
+        .form-control-custom:focus {
+            border-color: var(--equipe-color);
+            box-shadow: 0 0 0 4px rgba(224, 122, 95, 0.1);
+            background: white;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 0.9rem;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            background: var(--equipe-color);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .alert-custom {
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-danger-custom {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border: 1px solid rgba(220,53,69,0.2);
+        }
+
+        .alert-success-custom {
+            background: rgba(25, 135, 84, 0.1);
+            color: #198754;
+            border: 1px solid rgba(25,135,84,0.2);
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: rgba(0,0,0,0.4);
+        }
+
+        .login-footer a {
+            color: var(--equipe-color);
+            text-decoration: none;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <!-- Portal effect layers -->
+    <div class="bg-blur-layer" id="blurLayer"></div>
+    <div class="portal-logo" id="portalLogo">
+        <div class="ripple"></div>
+        <img src="{{ url_for('static', filename='img/logo-jmh.jpg') }}" alt="Cabinet JMH Logo" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default.png') }}'">
+    </div>
+
+    <!-- Decorative blobs -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="container-main">
+        {% if equipe_nom %}
+        <div class="team-badge">
+            <i class="bi {{ equipe_icon|default('bi-people') }}"></i>
+            {{ equipe_nom }}
+        </div>
+        {% endif %}
+
+        <div class="login-card" id="loginCard">
+            <div class="login-card-header">
+                <div class="logo-icon">
+                    <i class="bi bi-folder-fill"></i>
                 </div>
-                <form method="POST">
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control" required autofocus>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Mot de passe</label>
-                        <input type="password" name="password" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Se connecter</button>
-                </form>
+                <h2>Cabinet JMH</h2>
+                <p>Content de vous revoir 👋</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert-custom alert-{{ 'danger' if 'danger' in category else 'success' }}-custom">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" id="loginForm">
+                <div class="form-group">
+                    <label for="email">Adresse email</label>
+                    <input type="email" id="email" name="email" class="form-control-custom" required autofocus
+                           placeholder="vous@cabinet-jmh.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="password" class="form-control-custom" required
+                           placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-login" id="loginBtn">
+                    Se connecter <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <a href="{{ url_for('team_select') }}"><i class="bi bi-arrow-left me-1"></i>Retour aux équipes</a>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+
+    <script>
+        // Portal effect on form submit
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            // Don't prevent default — let the form submit
+            // But show the portal animation while the page redirects
+            e.preventDefault();
+
+            // Trigger portal effect
+            const card = document.getElementById('loginCard');
+            const blur = document.getElementById('blurLayer');
+            const logo = document.getElementById('portalLogo');
+
+            card.classList.add('fade-out');
+
+            setTimeout(() => {
+                blur.classList.add('active');
+                logo.classList.add('active');
+            }, 200);
+
+            // Submit the form after a small delay so the animation is visible
+            setTimeout(() => {
+                this.submit();
+            }, 600);
+        });
+
+        // Parallax on blobs
+        document.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth - 0.5) * 20;
+            const y = (e.clientY / window.innerHeight - 0.5) * 20;
+            document.querySelector('.blob-1').style.transform = `translate(${x}px, ${y}px)`;
+            document.querySelector('.blob-2').style.transform = `translate(${-x}px, ${-y}px)`;
+        });
+    </script>
+</body>
+</html>

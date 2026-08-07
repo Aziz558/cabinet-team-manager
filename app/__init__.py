@@ -38,7 +38,7 @@ mail = Mail(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 from app import routes  # noqa: F401
-from app.models import User, AppSetting, SuggestionTache  # noqa: F401
+from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
 with app.app_context():
     db.create_all()
