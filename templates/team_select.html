@@ -310,7 +310,7 @@
             {% for equipe in equipes %}
             <div class="team-card" style="--card-color: {{ equipe.couleur }}" onclick="window.location.href='{{ url_for('login', equipe=equipe.id) }}'">
                 <div class="team-card-header">
-                    {% if equipe.manager and equipe.manager.photo_profil != 'default.png' %}
+                    {% if equipe.manager and equipe.manager.photo_profil and equipe.manager.photo_profil != 'default.png' %}
                     <img src="{{ url_for('uploaded_file', filename=equipe.manager.photo_profil) }}" class="manager-avatar" alt="{{ equipe.manager.nom_complet() }}">
                     {% elif equipe.manager %}
                     <div class="manager-avatar-placeholder">

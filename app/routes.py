@@ -11,6 +11,7 @@ from app import app, db, mail
 from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe
 from flask_mail import Message
 import os
+from flask import send_from_directory
 
 
 def allowed_file(filename):
