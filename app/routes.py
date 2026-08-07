@@ -208,9 +208,9 @@ def register():
                 return redirect(url_for('login'))
         except Exception as e:
             db.session.rollback()
-            # Log the error for debugging (if logs are accessible)
             app.logger.error(f"Registration error: {e}")
-            flash('Une erreur est survenue lors de la création du compte. Veuillez réessayer.', 'danger')
+            # Return error details for debugging
+            return jsonify({'error': str(e), 'type': type(e).__name__}), 500
     return render_template('register.html')
 
 
