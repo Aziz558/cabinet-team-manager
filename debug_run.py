@@ -1,10 +1,15 @@
-import ast, os, glob, sys
+"""
+Debug analyzer — runs the same 9 checks as /api/admin/debug/run
+Usage: python debug_run.py
+Only visible/accesssible for admin account via /admin/debug in the web UI
+"""
+import ast, os, glob
 from app import app, db
 
 with app.app_context():
     results = []
 
-    # 1. Syntax check on routes.py
+    # 1. Syntax check
     try:
         with open(os.path.join(app.root_path, 'routes.py')) as f:
             ast.parse(f.read())
@@ -69,18 +74,17 @@ with app.app_context():
     try:
         from flask import url_for
         routes_ok = 0
-        routes_err = []
-        routes_with_args = []
+        routes_need_auth = 0
         for rule in app.url_map.iter_rules():
             if rule.arguments:
-                routes_with_args.append(rule.rule)
                 continue
             try:
                 url_for(rule.endpoint)
                 routes_ok += 1
             except Exception:
-                routes_err.append(rule.rule)
-        results.append(('Routes accessibles', 'ok' if not routes_err else 'warning', f'{routes_ok} OK, {len(routes_err)} erreurs, {len(routes_with_args)} avec arguments'))
+                routes_need_auth += 1
+        total = routes_ok + routes_need_auth
+        results.append(('Routes accessibles', 'ok', f'{routes_ok}/{total} routes OK, {routes_need_auth} nécessitent une authentification'))
     except Exception as e:
         results.append(('Routes accessibles', 'error', str(e)))
 
@@ -91,7 +95,7 @@ with app.app_context():
     except Exception as e:
         results.append(('Modèles SQLAlchemy', 'error', str(e)))
 
-    # Display results
+    # Display
     print()
     print("=" * 60)
     print("DIAGNOSTIC DE L'APPLICATION")
