@@ -13,18 +13,18 @@
             --bg-2: #1A1A20;
             --accent-1: #FF8C00;
             --accent-2: #2D9CDB;
-            --text-dark: #E8E8EC;
+            --text-dark: #FFFFFF;
             --equipe-color: {{ equipe_couleur|default("'#FF8C00'") }};
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; color: #FFFFFF; }
 
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
             min-height: 100vh;
             overflow-x: hidden;
-            color: var(--text-dark);
+            color: #FFFFFF !important;
         }
 
         /* Background blur layer for portal effect */
