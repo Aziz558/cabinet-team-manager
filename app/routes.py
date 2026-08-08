@@ -865,6 +865,100 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
+# ============ ADMIN DEBUG ============\
+
+@app.route('/admin/debug')
+@login_required
+def admin_debug():
+    if current_user.role != 'admin':
+        flash('Accès refusé. Compte admin requis.', 'danger')
+        return redirect(url_for('dashboard'))
+    return render_template('admin_debug.html')
+
+
+@app.route('/api/admin/debug/run', methods=['POST'])
+@login_required
+def api_admin_debug_run():
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès refusé. Compte admin requis.'}), 403
+    results = []
+    # 1. Python syntax check on routes.py
+    try:
+        import ast
+        with open(os.path.join(app.root_path, 'routes.py')) as f:
+            ast.parse(f.read())
+        results.append({'check': 'Syntaxe routes.py', 'status': 'ok', 'message': 'OK'})
+    except Exception as e:
+        results.append({'check': 'Syntaxe routes.py', 'status': 'error', 'message': str(e)})
+    # 2. Database connection
+    try:
+        db.session.execute(db.text('SELECT 1'))
+        results.append({'check': 'Connexion base de données', 'status': 'ok', 'message': 'OK'})
+    except Exception as e:
+        results.append({'check': 'Connexion base de données', 'status': 'error', 'message': str(e)})
+    # 3. Missing template files
+    try:
+        import glob
+        templates = glob.glob(os.path.join(app.root_path, '..', 'templates', '*.html'))
+        results.append({'check': 'Templates', 'status': 'ok', 'message': f'{len(templates)} templates trouvés'})
+    except Exception as e:
+        results.append({'check': 'Templates', 'status': 'error', 'message': str(e)})
+    # 4. Upload folder
+    try:
+        upload_folder = app.config.get('UPLOAD_FOLDER')
+        exists = upload_folder and os.path.isdir(upload_folder)
+        results.append({'check': 'Dossier uploads', 'status': 'ok' if exists else 'warning', 'message': f'Upload folder: {upload_folder} (exists={exists})'})
+    except Exception as e:
+        results.append({'check': 'Dossier uploads', 'status': 'error', 'message': str(e)})
+    # 5. Mailbox config
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        configured = client.is_configured()
+        results.append({'check': 'Boîte mail (credentials)', 'status': 'ok' if configured else 'warning', 'message': f'Configured={configured}, user={client.user[:3]}***' if client.user else 'user=None'})
+    except Exception as e:
+        results.append({'check': 'Boîte mail (credentials)', 'status': 'error', 'message': str(e)})
+    # 6. OpenRouter LLM config
+    try:
+        from app.integrations.openrouter import OpenRouterClient
+        llm = OpenRouterClient()
+        configured = llm.is_configured()
+        results.append({'check': 'LLM (OpenRouter)', 'status': 'ok' if configured else 'warning', 'message': f'Configured={configured}'})
+    except Exception as e:
+        results.append({'check': 'LLM (OpenRouter)', 'status': 'error', 'message': str(e)})
+    # 7. Static files missing
+    try:
+        missing = []
+        for f in ['img/logo-jmh.png', 'css/style.css']:
+            path = os.path.join(app.root_path, 'static', f)
+            if not os.path.exists(path):
+                missing.append(f)
+        results.append({'check': 'Fichiers statiques', 'status': 'ok' if not missing else 'warning', 'message': 'Manquants: ' + ', '.join(missing) if missing else 'Tous présents'})
+    except Exception as e:
+        results.append({'check': 'Fichiers statiques', 'status': 'error', 'message': str(e)})
+    # 8. Routes accessibility
+    try:
+        from flask import url_for
+        routes_ok = 0
+        routes_err = []
+        for rule in app.url_map.iter_rules():
+            try:
+                url_for(rule.endpoint)
+                routes_ok += 1
+            except Exception:
+                routes_err.append(rule.rule)
+        results.append({'check': 'Routes accessibles', 'status': 'ok' if not routes_err else 'warning', 'message': f'{routes_ok} OK, {len(routes_err)} erreurs'})
+    except Exception as e:
+        results.append({'check': 'Routes accessibles', 'status': 'error', 'message': str(e)})
+    # 9. Model integrity (check all tables exist)
+    try:
+        from app.models import User, Dossier, Tache, Notification, SuggestionTache, AppSetting, Equipe, CommentaireTache, Performance
+        results.append({'check': 'Modèles SQLAlchemy', 'status': 'ok', 'message': 'Tous importables'})
+    except Exception as e:
+        results.append({'check': 'Modèles SQLAlchemy', 'status': 'error', 'message': str(e)})
+    return jsonify({'ok': True, 'results': results})
+
+
 # ============ API / AJAX ============
 
 @app.route('/api/equipe/stats')

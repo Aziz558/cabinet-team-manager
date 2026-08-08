@@ -33,6 +33,9 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('taches_aujourdhui') }}"><i class="bi bi-calendar-check me-1"></i>Tâches du jour</a></li>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_debug') }}"><i class="bi bi-bug me-1"></i>Debug Admin</a></li>
+                    {% endif %}
                     {% if current_user.is_authenticated and current_user.role == 'manager' %}
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('mailbox_page') }}"><i class="bi bi-envelope me-1"></i>Boîte mail</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('suggestions_page') }}"><i class="bi bi-lightbulb me-1"></i>Suggestions</a></li>

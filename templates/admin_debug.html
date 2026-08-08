@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Debug Admin{% endblock %}
+
+{% block content %}
+<div class="row stagger-1">
+    <div class="col-12">
+        <h2 class="fw-semibold mb-4 animate-fade-in-up">
+            <i class="bi bi-bug me-2" style="color: var(--warning);"></i>Console de Debug Admin
+        </h2>
+        <p class="text-tertiary mb-4">Diagnostic complet de l'application. Cliquez sur "Lancer le diagnostic" pour analyser les erreurs courantes.</p>
+    </div>
+    <div class="col-12">
+        <div class="card-premium animate-fade-in-up stagger-2">
+            <div class="card-body-premium">
+                <button id="runDebug" class="btn-premium btn-premium-primary btn-press">
+                    <i class="bi bi-play-circle me-1"></i>Lancer le diagnostic
+                </button>
+                <div id="debugResults" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('runDebug').addEventListener('click', async function() {
+    const btn = this;
+    const resultsDiv = document.getElementById('debugResults');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Diagnostic...';
+    resultsDiv.innerHTML = '<div class="skeleton-text" style="height: 20px; width: 100%; margin-bottom: 0.5rem;"></div>';
+    window.showToast('Lancement du diagnostic...', 'info');
+
+    try {
+        const response = await fetch('/api/admin/debug/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        if (data.ok) {
+            window.showToast('Diagnostic terminé', 'success');
+            let html = '';
+            data.results.forEach(function(r) {
+                const icon = r.status === 'ok' ? 'bi-check-circle-fill text-success' : r.status === 'warning' ? 'bi-exclamation-triangle-fill text-warning' : 'bi-x-circle-fill text-danger';
+                html += '<div class="list-group-item d-flex align-items-center">' +
+                    '<i class="bi ' + icon + ' me-2"></i>' +
+                    '<div class="d-flex flex-column">' +
+                        '<strong>' + r.check + '</strong>' +
+                        '<small class="text-tertiary">' + r.message + '</small>' +
+                    '</div>' +
+                '</div>';
+            });
+            resultsDiv.innerHTML = '<div class="list-group">' + html + '</div>';
+        } else {
+            window.showToast('Échec : ' + data.message, 'danger');
+        }
+    } catch (error) {
+        window.showToast('Erreur : ' + error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Lancer le diagnostic';
+    }
+});
+</script>
+{% endblock %}
