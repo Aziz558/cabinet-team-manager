@@ -76,3 +76,19 @@ def load_user(user_id):
 
 # Make date available in templates
 app.jinja_env.globals['date'] = _date
+
+# Global error handlers to avoid silent 500s
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('login.html', equipe_nom=None, equipe_icon=None,
+                           equipe_couleur=None, error_404=True), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error(f"500 error: {error}")
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    return render_template('error.html',
+                           message="Une erreur interne est survenue. Nos equipes ont ete notifiees."), 500

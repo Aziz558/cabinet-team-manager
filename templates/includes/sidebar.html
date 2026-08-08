@@ -42,7 +42,7 @@
                 <span>Tâches</span>
             </a>
             
-            <a href="{{ url_for('equipes') }}" class="nav-link {% if request.endpoint == 'equipes' %}active{% endif %}">
+            <a href="{{ url_for('team_select') }}" class="nav-link {% if request.endpoint == 'team_select' %}active{% endif %}">
                 <i class="bi bi-diagram-3 me-2"></i>
                 <span>Équipes</span>
             </a>
@@ -90,7 +90,7 @@
                 <span>Mes tâches</span>
             </a>
             
-            <a href="{{ url_for('nouvelle_suggestion') }}" class="nav-link {% if request.endpoint == 'nouvelle_suggestion' %}active{% endif %}">
+            <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
                 <i class="bi bi-plus-lg me-2"></i>
                 <span>Nouvelle suggestion</span>
             </a>
