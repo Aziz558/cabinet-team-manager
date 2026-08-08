@@ -809,49 +809,52 @@ def notifications_non_lues():
 @login_required
 def profil():
     if request.method == 'POST':
-        current_user.nom = request.form.get('nom', current_user.nom).strip()
-        current_user.prenom = request.form.get('prenom', current_user.prenom).strip()
-        current_user.telephone = request.form.get('telephone', current_user.telephone).strip()
-        current_user.poste = request.form.get('poste', current_user.poste).strip()
-        
-    # Photo upload
-    if 'photo' in request.files and request.files.get('photo').filename:
-        file = request.files['photo']
-        if file and file.filename and allowed_file(file.filename):
-            try:
-                filename = secure_filename(f"user_{current_user.id}_{file.filename}")
-                upload_folder = app.config.get('UPLOAD_FOLDER')
-                if not upload_folder or not os.path.isdir(upload_folder):
-                    os.makedirs(upload_folder, exist_ok=True)
-                filepath = os.path.join(upload_folder, filename)
-                file.save(filepath)
-                # Delete old photo if not default
-                if current_user.photo_profil and current_user.photo_profil != 'default.png':
-                    old_path = os.path.join(upload_folder, current_user.photo_profil)
-                    if os.path.exists(old_path):
-                        os.remove(old_path)
-                current_user.photo_profil = filename
-                db.session.commit()
-                # Return JSON if this is a fetch request, otherwise flash+redirect
-                if request.headers.get('Content-Type', '').startswith('multipart/form-data') or request.is_json:
-                    return jsonify({'ok': True, 'message': 'Photo de profil mise à jour.', 'photo_url': url_for('uploaded_file', filename=filename)}), 200
-                flash('Photo de profil mise à jour.', 'success')
+        # Photo upload
+        if 'photo' in request.files and request.files.get('photo').filename:
+            file = request.files['photo']
+            if file and file.filename and allowed_file(file.filename):
+                try:
+                    filename = secure_filename(f"user_{current_user.id}_{file.filename}")
+                    upload_folder = app.config.get('UPLOAD_FOLDER')
+                    if not upload_folder or not os.path.isdir(upload_folder):
+                        os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+                    file.save(filepath)
+                    # Delete old photo if not default
+                    if current_user.photo_profil and current_user.photo_profil != 'default.png':
+                        old_path = os.path.join(upload_folder, current_user.photo_profil)
+                        if os.path.exists(old_path):
+                            os.remove(old_path)
+                    current_user.photo_profil = filename
+                    db.session.commit()
+                    # Fetch request → JSON, regular form submit → redirect
+                    if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                        return jsonify({'ok': True, 'message': 'Photo de profil mise à jour.', 'photo_url': url_for('uploaded_file', filename=filename)}), 200
+                    flash('Photo de profil mise à jour.', 'success')
+                    return redirect(url_for('profil'))
+                except Exception as e:
+                    app.logger.error(f"Photo upload error: {e}")
+                    db.session.rollback()
+                    if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                        return jsonify({'ok': False, 'message': str(e)}), 500
+                    flash(f'Erreur lors du téléchargement: {e}', 'danger')
+                    return redirect(url_for('profil'))
+            else:
+                flash('Format de fichier non autorisé.', 'danger')
                 return redirect(url_for('profil'))
-            except Exception as e:
-                app.logger.error(f"Photo upload error: {e}")
-                db.session.rollback()
-                if request.headers.get('Content-Type', '').startswith('multipart/form-data') or request.is_json:
-                    return jsonify({'ok': False, 'message': str(e)}), 500
-                flash(f'Erreur lors du téléchargement: {e}', 'danger')
-                return redirect(url_for('profil'))
-        
-        # Change password if provided
-        new_password = request.form.get('new_password', '').strip()
-        if new_password:
-            current_user.set_password(new_password)
-        db.session.commit()
-        flash('Profil mis à jour.', 'success')
-        return redirect(url_for('profil'))
+        else:
+            # Regular profile update (name, phone, poste, password)
+            current_user.nom = request.form.get('nom', current_user.nom).strip()
+            current_user.prenom = request.form.get('prenom', current_user.prenom).strip()
+            current_user.telephone = request.form.get('telephone', current_user.telephone).strip()
+            current_user.poste = request.form.get('poste', current_user.poste).strip()
+            # Change password if provided
+            new_password = request.form.get('new_password', '').strip()
+            if new_password:
+                current_user.set_password(new_password)
+            db.session.commit()
+            flash('Profil mis à jour.', 'success')
+            return redirect(url_for('profil'))
     return render_template('profil.html')
 
 
