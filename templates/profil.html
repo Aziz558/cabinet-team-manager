@@ -21,10 +21,10 @@
                     </div>
                 </div>
 
-                {% if current_user.role == 'admin' or current_user.id == current_user.id %}
+                {% if current_user.role == 'admin' %}
                 <div class="card-premium mb-3" style="background: var(--bg-card-hover);">
                     <div class="card-body-premium">
-                        <h6 class="mb-2" style="color: var(--orange-primary);"><i class="bi bi-image me-1"></i>Changer la photo de profil</h6>
+                        <h6 class="mb-2" style="color: var(--orange-primary);"><i class="bi bi-image me-1"></i>Uploader une nouvelle photo de profil <span class="badge badge-orange">Admin seulement</span></h6>
                         <form method="POST" enctype="multipart/form-data" id="photoUploadForm">
                             <div class="d-flex align-items-center gap-3">
                                 <label for="photoInput" class="btn-premium btn-premium-secondary mb-0" style="cursor: pointer;">
@@ -86,17 +86,28 @@ document.getElementById('photoUploadForm')?.addEventListener('submit', async fun
         return;
     }
     
+    const btn = this.querySelector('label[for="photoInput"]');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Envoi...';
+    
     try {
         const response = await fetch('/profil', {
             method: 'POST',
             body: formData,
+            credentials: 'same-origin',
         });
-        const text = await response.text();
-        const url = new URL(response.url || window.location.href);
-        window.showToast('Photo de profil mise à jour.', 'success');
-        setTimeout(() => location.reload(), 1000);
+        const data = await response.json();
+        if (data.ok) {
+            window.showToast(data.message || 'Photo de profil mise à jour.', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            window.showToast('Erreur : ' + (data.message || 'Upload échoué'), 'danger');
+        }
     } catch (error) {
-        window.showToast('Erreur lors du téléchargement.', 'danger');
+        window.showToast('Erreur lors du téléchargement: ' + error.message, 'danger');
+        console.error('Photo upload error:', error);
+    } finally {
+        btn.innerHTML = originalHtml;
     }
 });
 
