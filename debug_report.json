@@ -1,0 +1,122 @@
+[
+  {
+    "check": "Active Debug",
+    "status": "info",
+    "message": "Starting active debug on https://cabinet-team-manager-production.up.railway.app",
+    "details": {}
+  },
+  {
+    "check": "Login admin",
+    "status": "warning",
+    "message": "No admin credentials provided \u2014 testing unauthenticated flow",
+    "details": {}
+  },
+  {
+    "check": "Page: Login page",
+    "status": "ok",
+    "message": "HTTP 200 \u2014 12091 bytes",
+    "details": {}
+  },
+  {
+    "check": "Page: Register page",
+    "status": "ok",
+    "message": "HTTP 200 \u2014 7002 bytes",
+    "details": {}
+  },
+  {
+    "check": "Page: Team select",
+    "status": "ok",
+    "message": "HTTP 200 \u2014 11575 bytes",
+    "details": {}
+  },
+  {
+    "check": "Page: Bo\u00eete mail (unauth)",
+    "status": "ok",
+    "message": "HTTP 200 \u2014 12250 bytes",
+    "details": {}
+  },
+  {
+    "check": "Page: Profil (unauth)",
+    "status": "ok",
+    "message": "HTTP 200 \u2014 12250 bytes",
+    "details": {}
+  },
+  {
+    "check": "Page: Debug Admin (unauth)",
+    "status": "ok",
+    "message": "HTTP 200 \u2014 12250 bytes",
+    "details": {}
+  },
+  {
+    "check": "500 Check: /login",
+    "status": "error",
+    "message": "Page contains 'Internal Server Error'",
+    "details": {}
+  },
+  {
+    "check": "500 Check: /register",
+    "status": "error",
+    "message": "Page contains 'Internal Server Error'",
+    "details": {}
+  },
+  {
+    "check": "500 Check: /team-select",
+    "status": "error",
+    "message": "Page contains 'Internal Server Error'",
+    "details": {}
+  },
+  {
+    "check": "500 Check: /mailbox",
+    "status": "error",
+    "message": "Page contains 'Internal Server Error'",
+    "details": {}
+  },
+  {
+    "check": "500 Check: /profil",
+    "status": "error",
+    "message": "Page contains 'Internal Server Error'",
+    "details": {}
+  },
+  {
+    "check": "500 Check: /admin/debug",
+    "status": "error",
+    "message": "Page contains 'Internal Server Error'",
+    "details": {}
+  },
+  {
+    "check": "Theme Check: /login",
+    "status": "warning",
+    "message": "White background detected",
+    "details": {}
+  },
+  {
+    "check": "Theme Check: /register",
+    "status": "ok",
+    "message": "No white backgrounds found",
+    "details": {}
+  },
+  {
+    "check": "Theme Check: /team-select",
+    "status": "ok",
+    "message": "No white backgrounds found",
+    "details": {}
+  },
+  {
+    "check": "Theme Check: /mailbox",
+    "status": "warning",
+    "message": "White background detected",
+    "details": {}
+  },
+  {
+    "check": "Theme Check: /profil",
+    "status": "warning",
+    "message": "White background detected",
+    "details": {}
+  },
+  {
+    "check": "Theme Check: /admin/debug",
+    "status": "warning",
+    "message": "White background detected",
+    "details": {}
+  }
+]

@@ -157,14 +157,16 @@ class ActiveDebugger:
             return []
 
     def check_500_errors(self, page):
-        """Check if a page contains Internal Server Error text."""
+        """Check if a page returns HTTP 500 or contains Internal Server Error."""
         url = urljoin(self.base_url + '/', page.lstrip('/'))
         try:
             resp = self.session.get(url, timeout=10, allow_redirects=True)
-            if 'Internal Server Error' in resp.text or '500' in resp.text:
-                self.log(f"500 Check: {page}", 'error', "Page contains 'Internal Server Error'")
-            elif resp.status_code == 500:
+            if resp.status_code == 500:
                 self.log(f"500 Check: {page}", 'error', f"HTTP 500 — Internal Server Error", {'body': resp.text[:500]})
+            elif 'Internal Server Error' in resp.text:
+                self.log(f"500 Check: {page}", 'error', "Page contains 'Internal Server Error' text")
+            else:
+                self.log(f"500 Check: {page}", 'ok', f"No 500 error (HTTP {resp.status_code})")
         except Exception as e:
             self.log(f"500 Check: {page}", 'error', str(e))
 
@@ -175,10 +177,19 @@ class ActiveDebugger:
             resp = self.session.get(url, timeout=10, allow_redirects=True)
             if resp.status_code != 200:
                 return
-            # Check for white bg in CSS or inline
-            has_white_bg = bool(re.search(r'background:\s*(white|#fff|#ffffff)', resp.text, re.I))
+            # Check for white bg in CSS — but exclude known cosmetic uses like
+            # portal-logos and logo containers (background: white on small icons)
+            has_white_bg = False
+            # Check for body or card-level white backgrounds (the real problem)
+            for match in re.finditer(r'background:\s*(white|#fff|#ffffff)\s*;', resp.text, re.I):
+                # Check if this is inside a portal-logo or similar cosmetic context
+                start = max(0, match.start() - 200)
+                context = resp.text[start:match.end() + 100]
+                if 'portal-logo' not in context and 'logo-placeholder' not in context:
+                    has_white_bg = True
+                    break
             if has_white_bg:
-                self.log(f"Theme Check: {page}", 'warning', "White background detected")
+                self.log(f"Theme Check: {page}", 'warning', "White background detected (possible Bootstrap leak)")
             else:
                 self.log(f"Theme Check: {page}", 'ok', "No white backgrounds found")
         except Exception as e:
