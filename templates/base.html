@@ -8,13 +8,23 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        /* FORCE TEXTE BLANC PARTOUT (fallback si style.css non chargé) */
+        *, *::before, *::after { color: #FFFFFF; }
+        body, .container, .container-fluid, main { color: #FFFFFF !important; }
+        h1, h2, h3, h4, h5, h6 { color: #FFFFFF !important; }
+        .text-dark, .text-body { color: #FFFFFF !important; }
+        .text-muted { color: #B8B8C0 !important; }
+        p, label, span, td, th, li, div, small, strong, b { color: #FFFFFF; }
+        a { color: #FF8C00; }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container">
             <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{{ url_for('dashboard') }}">
-                <img src="{{ url_for('static', filename='img/logo-jmh.jpg') }}" alt="JMH" width="36" height="36" class="rounded-circle" style="object-fit:cover;border:2px solid var(--orange,#FF8C00)">
-                <span style="color:var(--orange,#FF8C00)">Cabinet JMH</span>
+                <img src="{{ url_for('static', filename='img/logo-jmh.svg') }}" alt="JMH" width="36" height="36" class="rounded-circle" style="border:2px solid #FF8C00;background:#0F0F12">
+                <span style="color:#FF8C00">Cabinet JMH</span>
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
