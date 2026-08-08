@@ -1337,6 +1337,15 @@ p {
 .bg-white { background: var(--bg-sidebar) !important; }
 .border-end-subtle { border-color: var(--border-color) !important; }
 
+/* Collapsed sidebar (icons only) */
+.sidebar-collapsed {
+    width: 60px !important;
+    overflow: hidden;
+}
+.sidebar-collapsed .sidebar-brand span { display: none; }
+.sidebar-collapsed .sidebar-footer { text-align: center; }
+.sidebar-collapsed .sidebar-footer .avatar-md { margin-right: 0; }
+
 /* Sidebar nav links: the sidebar.html uses .nav-link but CSS defined .sidebar-nav-item */
 .sidebar .nav-link {
     display: flex;
@@ -1379,6 +1388,27 @@ p {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
 }
+
+/* Dark list-group */
+.list-group {
+    background: transparent;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.list-group-item {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+.list-group-item:hover {
+    background: var(--bg-card-hover);
+}
+.list-group-flush .list-group-item {
+    border-right: none;
+    border-left: none;
+    border-radius: 0;
+}
+
 .dropdown-item {
     color: var(--text-secondary);
 }

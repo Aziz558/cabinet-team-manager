@@ -18,6 +18,14 @@
                 <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="JMH" width="36" height="36" class="rounded-circle" style="border:2px solid #FF8C00;background:#0F0F12;object-fit:cover">
                 <span style="color:#FF8C00">Cabinet JMH</span>
             </a>
+            {% if current_user.is_authenticated %}
+            <button class="btn btn-sm btn-outline-secondary d-md-none me-2" id="mobileSidebarToggle" type="button" style="border-color: var(--border-color); color: var(--text-tertiary);">
+                <i class="bi bi-list"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary d-none d-md-inline-flex me-2" id="desktopSidebarToggle" type="button" style="border-color: var(--border-color); color: var(--text-tertiary);">
+                <i class="bi bi-caret-left"></i>
+            </button>
+            {% endif %}
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -54,7 +62,7 @@
     <main class="container-fluid">
         <div class="row">
             {% if current_user.is_authenticated %}
-            <div class="col-auto h-100 d-none d-md-block" style="width: 260px;">
+            <div class="col-auto h-100 d-none d-md-flex" id="sidebarCol" style="width: 220px;">
                 {% include 'includes/sidebar.html' %}
             </div>
             {% endif %}
@@ -126,6 +134,78 @@
             bsToast.show();
             setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 5500);
         };
+    })();
+    
+    // Sidebar toggle (desktop collapse + mobile)
+    (function() {
+        var sidebarCol = document.getElementById('sidebarCol');
+        var desktopToggle = document.getElementById('desktopSidebarToggle');
+        var mobileToggle = document.getElementById('mobileSidebarToggle');
+        var sidebar = sidebarCol ? sidebarCol.querySelector('.sidebar') : null;
+        
+        if (!sidebarCol || !sidebar) return;
+        
+        // State: 'full' (icons+text), 'icons' (icons only), 'hidden' (mobile)
+        var state = localStorage.getItem('sidebarState') || 'full';
+        applySidebarState(state);
+        
+        function applySidebarState(s) {
+            if (s === 'icons') {
+                sidebarCol.style.width = '60px';
+                sidebarCol.classList.add('sidebar-collapsed');
+                sidebar.classList.add('sidebar-collapsed');
+                document.querySelectorAll('.sidebar-nav .nav-link span').forEach(function(span) {
+                    span.style.display = 'none';
+                });
+                document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+                    link.classList.add('px-2');
+                    link.style.justifyContent = 'center';
+                });
+                if (desktopToggle) {
+                    desktopToggle.innerHTML = '<i class="bi bi-caret-right"></i>';
+                }
+            } else {
+                sidebarCol.style.width = '220px';
+                sidebarCol.classList.remove('sidebar-collapsed');
+                sidebar.classList.remove('sidebar-collapsed');
+                document.querySelectorAll('.sidebar-nav .nav-link span').forEach(function(span) {
+                    span.style.display = '';
+                });
+                document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+                    link.classList.remove('px-2');
+                    link.style.justifyContent = '';
+                });
+                if (desktopToggle) {
+                    desktopToggle.innerHTML = '<i class="bi bi-caret-left"></i>';
+                }
+            }
+            // Adjust main content margin
+            var mainContent = sidebarCol.nextElementSibling;
+            if (mainContent) {
+                if (s === 'icons') {
+                    mainContent.style.marginLeft = '0';
+                }
+            }
+        }
+        
+        if (desktopToggle) {
+            desktopToggle.addEventListener('click', function() {
+                if (sidebarCol.style.width === '60px') {
+                    state = 'full';
+                } else {
+                    state = 'icons';
+                }
+                localStorage.setItem('sidebarState', state);
+                applySidebarState(state);
+            });
+        }
+        
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', function() {
+                sidebarCol.classList.toggle('d-md-flex');
+                sidebarCol.classList.toggle('d-none');
+            });
+        }
     })();
     </script>
     {% block scripts %}{% endblock %}

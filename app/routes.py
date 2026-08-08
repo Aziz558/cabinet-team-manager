@@ -813,6 +813,27 @@ def profil():
         current_user.prenom = request.form.get('prenom', current_user.prenom).strip()
         current_user.telephone = request.form.get('telephone', current_user.telephone).strip()
         current_user.poste = request.form.get('poste', current_user.poste).strip()
+        
+        # Photo upload
+        if 'photo' in request.files:
+            file = request.files['photo']
+            if file and file.filename and file.filename != '' and allowed_file(file.filename):
+                filename = secure_filename(f"user_{current_user.id}_{file.filename}")
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                # Delete old photo if not default
+                if current_user.photo_profil and current_user.photo_profil != 'default.png':
+                    old_path = os.path.join(app.config['UPLOAD_FOLDER'], current_user.photo_profil)
+                    try:
+                        if os.path.exists(old_path):
+                            os.remove(old_path)
+                    except Exception:
+                        pass
+                current_user.photo_profil = filename
+                db.session.commit()
+                flash('Photo de profil mise à jour.', 'success')
+                return redirect(url_for('profil'))
+        
         # Change password if provided
         new_password = request.form.get('new_password', '').strip()
         if new_password:

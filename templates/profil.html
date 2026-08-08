@@ -1,45 +1,109 @@
 {% extends "base.html" %}
-
 {% block title %}Mon profil{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-5">
+        <div class="card-premium animate-fade-in-up">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-person me-2" style="color: var(--orange-primary);"></i>Mon profil</h5>
+            </div>
+            <div class="card-body-premium">
                 <div class="text-center mb-4">
-                    <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" class="rounded-circle mb-3" width="100" height="100" alt="">
-                    <h4>{{ current_user.prenom }} {{ current_user.nom }}</h4>
-                    <p class="text-muted">{{ current_user.poste or 'Membre' }}</p>
+                    <div class="position-relative d-inline-block">
+                        <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil or 'default.png') }}" 
+                             class="rounded-circle mb-3" width="100" height="100" alt=""
+                             style="border: 3px solid var(--orange-primary); object-fit: cover;">
+                    </div>
+                    <div class="mt-2">
+                        <h4 class="mb-1">{{ current_user.prenom }} {{ current_user.nom }}</h4>
+                        <p class="text-tertiary small mb-0">{{ current_user.poste or 'Membre' }}</p>
+                    </div>
                 </div>
+
+                {% if current_user.role == 'admin' or current_user.id == current_user.id %}
+                <div class="card-premium mb-3" style="background: var(--bg-card-hover);">
+                    <div class="card-body-premium">
+                        <h6 class="mb-2" style="color: var(--orange-primary);"><i class="bi bi-image me-1"></i>Changer la photo de profil</h6>
+                        <form method="POST" enctype="multipart/form-data" id="photoUploadForm">
+                            <div class="d-flex align-items-center gap-3">
+                                <label for="photoInput" class="btn-premium btn-premium-secondary mb-0" style="cursor: pointer;">
+                                    <i class="bi bi-upload me-1"></i>Choisir une image
+                                </label>
+                                <input type="file" id="photoInput" name="photo" accept="image/png,image/jpeg,image/gif" style="display: none;">
+                                <span class="text-tertiary small" id="fileNameDisplay">Aucun fichier</span>
+                            </div>
+                        </form>
+                        <p class="text-tertiary small mt-2 mb-0">Formats : PNG, JPG, JPEG, GIF (max 5MB)</p>
+                    </div>
+                </div>
+                {% endif %}
+
                 <form method="POST">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Prénom</label>
-                            <input type="text" name="prenom" class="form-control" value="{{ current_user.prenom }}">
+                            <label class="form-label-premium">Prénom</label>
+                            <input type="text" name="prenom" class="input-premium" value="{{ current_user.prenom }}" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Nom</label>
-                            <input type="text" name="nom" class="form-control" value="{{ current_user.nom }}">
+                            <label class="form-label-premium">Nom</label>
+                            <input type="text" name="nom" class="input-premium" value="{{ current_user.nom }}" required>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Poste</label>
-                        <input type="text" name="poste" class="form-control" value="{{ current_user.poste or '' }}">
+                        <label class="form-label-premium">Poste</label>
+                        <input type="text" name="poste" class="input-premium" value="{{ current_user.poste or '' }}">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Téléphone</label>
-                        <input type="text" name="telephone" class="form-control" value="{{ current_user.telephone or '' }}">
+                        <label class="form-label-premium">Téléphone</label>
+                        <input type="text" name="telephone" class="input-premium" value="{{ current_user.telephone or '' }}">
                     </div>
-                    <hr>
+                    <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
                     <div class="mb-3">
-                        <label class="form-label">Nouveau mot de passe</label>
-                        <input type="password" name="new_password" class="form-control" placeholder="Laisser vide pour ne pas changer">
+                        <label class="form-label-premium">Nouveau mot de passe</label>
+                        <input type="password" name="new_password" class="input-premium" placeholder="Laisser vide pour ne pas changer">
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                    <button type="submit" class="btn-premium btn-premium-primary w-100 btn-press">
+                        <i class="bi bi-save me-1"></i>Enregistrer
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Handle photo upload form submission
+document.getElementById('photoUploadForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const fileInput = document.getElementById('photoInput');
+    if (fileInput.files.length === 0) {
+        window.showToast('Veuillez sélectionner une image.', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/profil', {
+            method: 'POST',
+            body: formData,
+        });
+        const text = await response.text();
+        const url = new URL(response.url || window.location.href);
+        window.showToast('Photo de profil mise à jour.', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch (error) {
+        window.showToast('Erreur lors du téléchargement.', 'danger');
+    }
+});
+
+// Show file name when selected
+document.getElementById('photoInput')?.addEventListener('change', function(e) {
+    const name = e.target.files[0]?.name || 'Aucun fichier';
+    document.getElementById('fileNameDisplay').textContent = name;
+});
+</script>
 {% endblock %}
