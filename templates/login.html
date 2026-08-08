@@ -13,7 +13,7 @@
             --bg-2: #1A1A20;
             --accent-1: #FF8C00;
             --accent-2: #2D9CDB;
-            --text-dark: #FFFFFF;
+            --text-primary: #FFFFFF;
             --equipe-color: {{ equipe_couleur|default("'#FF8C00'") }};
         }
 
@@ -209,7 +209,7 @@
             display: block;
         }
 
-        .form-control-custom {
+        .input-premium-custom {
             width: 100%;
             padding: 0.8rem 1rem;
             border: 2px solid rgba(255,255,255,0.1);
@@ -218,13 +218,13 @@
             font-family: 'Inter', sans-serif;
             transition: all 0.3s ease;
             background: rgba(15,15,18,0.6);
-            color: var(--text-dark);
+            color: var(--text-primary);
             outline: none;
         }
 
-        .form-control-custom::placeholder { color: var(--text-dark); opacity: 0.4; }
+        .input-premium-custom::placeholder { color: var(--text-primary); opacity: 0.4; }
 
-        .form-control-custom:focus {
+        .input-premium-custom:focus {
             border-color: var(--equipe-color);
             box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.15);
             background: rgba(15,15,18,0.8);
@@ -277,7 +277,7 @@
             text-align: center;
             margin-top: 1.5rem;
             font-size: 0.85rem;
-            color: var(--text-dark);
+            color: var(--text-primary);
             opacity: 0.6;
         }
 
@@ -331,12 +331,12 @@
             <form method="POST" id="loginForm">
                 <div class="form-group">
                     <label for="email">Adresse email</label>
-                    <input type="email" id="email" name="email" class="form-control-custom" required autofocus
+                    <input type="email" id="email" name="email" class="input-premium-custom" required autofocus
                            placeholder="vous@cabinet-jmh.com">
                 </div>
                 <div class="form-group">
                     <label for="password">Mot de passe</label>
-                    <input type="password" id="password" name="password" class="form-control-custom" required
+                    <input type="password" id="password" name="password" class="input-premium-custom" required
                            placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn-login" id="loginBtn">

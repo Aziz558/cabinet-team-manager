@@ -2,23 +2,25 @@
 {% block title %}Suggestions de tâches{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Suggestions de tâches</h2>
-    <p class="text-muted">Validez ou rejetez les suggestions générées automatiquement à partir des emails.</p>
+<div class="stagger-inner">
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up stagger-1">
+        <h2 class="fw-semibold mb-0"><i class="bi bi-lightbulb me-2" style="color:var(--orange-primary)"></i>Suggestions de tâches</h2>
+    </div>
+    <p class="text-tertiary mb-4">Validez ou rejetez les suggestions générées automatiquement à partir des emails.</p>
 
-    <div class="mb-3">
-        <a href="{{ url_for('list_suggestions') }}" class="btn btn-outline-primary btn-sm">En attente</a>
-        <a href="{{ url_for('list_suggestions', status='validee') }}" class="btn btn-outline-success btn-sm">Validées</a>
-        <a href="{{ url_for('list_suggestions', status='rejetee') }}" class="btn btn-outline-danger btn-sm">Rejetées</a>
-        <button class="btn btn-outline-warning btn-sm float-end" id="resetBtn" onclick="resetSuggestions()">
+    <div class="d-flex flex-wrap gap-2 mb-4 animate-fade-in-up stagger-2">
+        <a href="{{ url_for('list_suggestions') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">En attente</a>
+        <a href="{{ url_for('list_suggestions', status='validee') }}" class="btn-premium btn-premium-outline btn-premium-success btn-sm">Validées</a>
+        <a href="{{ url_for('list_suggestions', status='rejetee') }}" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">Rejetées</a>
+        <button class="btn-premium btn-premium-outline btn-premium-warning btn-sm ms-auto" id="resetBtn" onclick="resetSuggestions()">
             <i class="bi bi-arrow-clockwise"></i> Réinitialiser
         </button>
     </div>
 
     <div id="suggestionsList">
-        <div class="text-center mt-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2">Chargement des suggestions...</p>
+        <div class="text-center py-5">
+            <div class="spinner-premium"></div>
+            <p class="text-tertiary mt-3">Chargement des suggestions...</p>
         </div>
     </div>
 </div>
@@ -26,25 +28,25 @@
 <!-- Validation Modal -->
 <div class="modal fade" id="validateModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Valider la suggestion</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="validateForm">
+        <div class="modal-content-premium">
+            <form id="validateForm">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0">Valider la suggestion</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
                     <input type="hidden" id="suggestionId">
                     <div class="mb-3">
-                        <label class="form-label">Titre de la tâche</label>
-                        <input type="text" class="form-control" id="taskTitle" readonly>
+                        <label class="form-label-premium">Titre de la tâche</label>
+                        <input type="text" class="input-premium" id="taskTitle" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control" id="taskDescription" rows="3" readonly></textarea>
+                        <label class="form-label-premium">Description</label>
+                        <textarea class="input-premium" id="taskDescription" rows="3" readonly></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Collaborateur assigné</label>
-                        <select class="form-select" id="taskAssignee" required>
+                        <label class="form-label-premium">Collaborateur assigné</label>
+                        <select class="select-premium" id="taskAssignee" required>
                             <option value="">Sélectionner un collaborateur</option>
                             {% for user in users if user.role != 'manager' %}
                             <option value="{{ user.id }}">{{ user.nom_complet() }} ({{ user.poste or 'Membre' }})</option>
@@ -52,36 +54,39 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Date d'échéance</label>
-                        <input type="date" class="form-control" id="taskDueDate" required>
+                        <label class="form-label-premium">Date d'échéance</label>
+                        <input type="date" class="input-premium" id="taskDueDate" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Priorité</label>
-                        <select class="form-select" id="taskPriority">
+                        <label class="form-label-premium">Priorité</label>
+                        <select class="select-premium" id="taskPriority">
                             <option value="basse">Basse</option>
                             <option value="moyenne" selected>Moyenne</option>
                             <option value="haute">Haute</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Dossier</label>
-                        <select class="form-select" id="taskDossier">
+                        <label class="form-label-premium">Dossier</label>
+                        <select class="select-premium" id="taskDossier">
                             <option value="">Aucun dossier</option>
                             {% for dossier in dossiers %}
                             <option value="{{ dossier.id }}">{{ dossier.numero_dossier }} - {{ dossier.intitule }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-success" id="confirmValidate">Confirmer et créer la tâche</button>
-            </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn-premium btn-premium-success" id="confirmValidate">Confirmer et créer la tâche</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     loadSuggestions();
@@ -94,26 +99,26 @@ function loadSuggestions() {
         .then(data => {
             const container = document.getElementById('suggestionsList');
             if (!data.ok || !data.suggestions.length) {
-                container.innerHTML = '<div class="alert alert-info">Aucune suggestion pour le moment.</div>';
+                container.innerHTML = '<div class="empty-state"><img src="{{ url_for("static", filename="img/logo-jmh.png") }}" alt="" class="empty-state-icon"><h4 class="empty-state-title">Aucune suggestion pour le moment</h4><p class="empty-state-desc">Les suggestions apparaîtront automatiquement quand des emails avec des deadlines seront détectés.</p></div>';
                 return;
             }
 
-            let html = '<div class="row">';
+            let html = '<div class="row stagger-1">';
             data.suggestions.forEach(s => {
                 html += `
-                <div class="col-md-6 mb-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">${s.titre_suggere || s.sujet}</h5>
-                            <p class="card-text">${s.description_suggeree}</p>
-                            ${s.dossier_nom ? `<p class="card-text"><small class="text-muted">Dossier: ${s.dossier_nom}</small></p>` : ''}
-                            <p class="card-text"><small class="text-muted">Priorité suggérée: ${s.priorite_suggeree}</small></p>
-                            <p class="card-text"><small class="text-muted">Date: ${s.date_creation} ${s.source ? `| Source: ${s.source}` : ''}</small></p>
-                            <div class="btn-group">
-                                <button class="btn btn-success btn-sm" onclick="openValidateModal(${s.id}, '${(s.titre_suggere || s.sujet).replace(/'/g, "\\'")}', '${(s.description_suggeree || '').replace(/'/g, "\\'")}')">
+                <div class="col-md-6 mb-4">
+                    <div class="card-premium h-100 hover-lift animate-fade-in-up">
+                        <div class="card-body-premium">
+                            <h5 class="mb-2">${s.titre_suggere || s.sujet}</h5>
+                            <p class="text-tertiary mb-3">${s.description_suggeree || 'Aucune description'}</p>
+                            ${s.dossier_nom ? `<p class="text-tertiary small mb-1"><i class="bi bi-folder2 me-1"></i>Dossier: ${s.dossier_nom}</p>` : ''}
+                            <p class="text-tertiary small mb-2"><i class="bi bi-flag me-1" style="color:${s.priorite_suggeree === 'haute' ? 'var(--danger)' : s.priorite_suggeree === 'moyenne' ? 'var(--warning)' : 'var(--success)'}"></i>Priorité suggérée: ${s.priorite_suggeree || 'Normale'}</p>
+                            <small class="text-muted">Créée le ${s.date_creation} ${s.source ? `| Source: ${s.source}` : ''}</small>
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn-premium btn-premium-success btn-sm" onclick="openValidateModal(${s.id}, '${(s.titre_suggere || s.sujet).replace(/'/g, "\\'")}', '${(s.description_suggeree || '').replace(/'/g, "\\'')}')">
                                     <i class="bi bi-check"></i> Valider
                                 </button>
-                                <button class="btn btn-danger btn-sm" onclick="rejectSuggestion(${s.id})">
+                                <button class="btn-premium btn-premium-danger btn-sm" onclick="rejectSuggestion(${s.id})">
                                     <i class="bi bi-x"></i> Rejeter
                                 </button>
                             </div>
@@ -142,7 +147,7 @@ document.getElementById('confirmValidate').addEventListener('click', function() 
     const dossier = document.getElementById('taskDossier').value;
 
     if (!assignee || !dueDate) {
-        alert('Veuillez remplir le collaborateur et la date d\'échéance.');
+        showToast('Veuillez remplir le collaborateur et la date d\'échéance.', 'warning');
         return;
     }
 
@@ -156,9 +161,9 @@ document.getElementById('confirmValidate').addEventListener('click', function() 
         if (res.ok) {
             bootstrap.Modal.getInstance(document.getElementById('validateModal')).hide();
             loadSuggestions();
-            alert('Tâche créée avec succès !');
+            showToast('Tâche créée avec succès !', 'success');
         } else {
-            alert('Erreur: ' + res.message);
+            showToast('Erreur: ' + res.message, 'danger');
         }
     });
 });
@@ -168,8 +173,12 @@ function rejectSuggestion(id) {
     fetch(`/api/suggestions/${id}/reject`, {method: 'POST'})
         .then(r => r.json())
         .then(res => {
-            if (res.ok) loadSuggestions();
-            else alert('Erreur: ' + res.message);
+            if (res.ok) {
+                loadSuggestions();
+                showToast('Suggestion rejetée.', 'info');
+            } else {
+                showToast('Erreur: ' + res.message, 'danger');
+            }
         });
 }
 
@@ -179,10 +188,10 @@ function resetSuggestions() {
         .then(r => r.json())
         .then(res => {
             if (res.ok) {
-                alert(res.message);
+                showToast(res.message, 'success');
                 loadSuggestions();
             } else {
-                alert('Erreur: ' + res.message);
+                showToast('Erreur: ' + res.message, 'danger');
             }
         });
 }

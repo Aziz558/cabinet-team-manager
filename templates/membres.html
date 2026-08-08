@@ -65,50 +65,50 @@
 <!-- Modal Ajouter -->
 <div class="modal fade" id="modalAjouter" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);" method="POST" action="{{ url_for('ajouter_membre') }}">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                <h5 class="modal-title">Ajouter un membre</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <form class="modal-content-premium" style="background: var(--bg-card); border: 1px solid var(--border-color);" method="POST" action="{{ url_for('ajouter_membre') }}">
+            <div class="modal-header-premium">
+                <h5 class="mb-0">Ajouter un membre</h5>
+                <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
             </div>
-            <div class="modal-body" style="color: var(--text-primary);">
+            <div class="modal-body-premium">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Prénom</label>
-                        <input type="text" name="prenom" class="form-control input-premium" required>
+                        <label class="form-label-premium">Prénom</label>
+                        <input type="text" name="prenom" class="input-premium" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Nom</label>
-                        <input type="text" name="nom" class="form-control input-premium" required>
+                        <label class="form-label-premium">Nom</label>
+                        <input type="text" name="nom" class="input-premium" required>
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-control input-premium" required>
+                    <label class="form-label-premium">Email</label>
+                    <input type="email" name="email" class="input-premium" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Mot de passe</label>
-                    <input type="text" name="mot_de_passe" class="form-control input-premium" required>
+                    <label class="form-label-premium">Mot de passe</label>
+                    <input type="text" name="mot_de_passe" class="input-premium" required>
                     <small class="text-tertiary">Le mot de passe sera communiqué au membre par email.</small>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Rôle</label>
-                        <select name="role" class="form-select input-premium">
+                        <label class="form-label-premium">Rôle</label>
+                        <select name="role" class="select-premium">
                             <option value="membre">Membre</option>
                             <option value="manager">Manager</option>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Poste</label>
-                        <input type="text" name="poste" class="form-control input-premium" placeholder="ex: Comptable">
+                        <label class="form-label-premium">Poste</label>
+                        <input type="text" name="poste" class="input-premium" placeholder="ex: Comptable">
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Téléphone</label>
-                    <input type="text" name="telephone" class="form-control input-premium">
+                    <label class="form-label-premium">Téléphone</label>
+                    <input type="text" name="telephone" class="input-premium">
                 </div>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+            <div class="modal-footer-premium">
                 <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
                 <button type="submit" class="btn-premium btn-premium-primary btn-press">Ajouter</button>
             </div>

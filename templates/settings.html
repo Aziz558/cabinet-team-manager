@@ -23,22 +23,22 @@
                     <div class="mb-2">
                         <label class="form-label">Serveur SMTP</label>
                         {% set smtp_server = settings|selectattr('cle','equalto','MAIL_SERVER')|list|first %}
-                        <input type="text" name="MAIL_SERVER" class="form-control input-premium" value="{{ smtp_server.valeur if smtp_server else 'smtp.office365.com' }}">
+                        <input type="text" name="MAIL_SERVER" class="input-premium" value="{{ smtp_server.valeur if smtp_server else 'smtp.office365.com' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Port</label>
                         {% set smtp_port = settings|selectattr('cle','equalto','MAIL_PORT')|list|first %}
-                        <input type="number" name="MAIL_PORT" class="form-control input-premium" value="{{ smtp_port.valeur if smtp_port else '587' }}">
+                        <input type="number" name="MAIL_PORT" class="input-premium" value="{{ smtp_port.valeur if smtp_port else '587' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Identifiant</label>
                         {% set smtp_user = settings|selectattr('cle','equalto','MAIL_USERNAME')|list|first %}
-                        <input type="text" name="MAIL_USERNAME" class="form-control input-premium" value="{{ smtp_user.valeur if smtp_user else '' }}">
+                        <input type="text" name="MAIL_USERNAME" class="input-premium" value="{{ smtp_user.valeur if smtp_user else '' }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Mot de passe</label>
                         {% set smtp_pass = settings|selectattr('cle','equalto','MAIL_PASSWORD')|list|first %}
-                        <input type="password" name="MAIL_PASSWORD" class="form-control input-premium" value="{{ smtp_pass.valeur if smtp_pass else '' }}">
+                        <input type="password" name="MAIL_PASSWORD" class="input-premium" value="{{ smtp_pass.valeur if smtp_pass else '' }}">
                     </div>
                     <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer SMTP</button>
                 </form>
@@ -51,17 +51,17 @@
                     <div class="mb-3">
                         <label class="form-label">Clé API OpenRouter</label>
                         {% set openrouter_key = settings|selectattr('cle','equalto','OPENROUTER_API_KEY')|list|first %}
-                        <input type="password" name="OPENROUTER_API_KEY" class="form-control input-premium" value="{{ openrouter_key.valeur if openrouter_key else '' }}">
+                        <input type="password" name="OPENROUTER_API_KEY" class="input-premium" value="{{ openrouter_key.valeur if openrouter_key else '' }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Provider</label>
                         {% set openrouter_provider = settings|selectattr('cle','equalto','OPENROUTER_PROVIDER')|list|first %}
-                        <input type="text" name="OPENROUTER_PROVIDER" class="form-control input-premium" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: stepfun, openai, google, anthropic, nvidia, kilocode">
+                        <input type="text" name="OPENROUTER_PROVIDER" class="input-premium" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: stepfun, openai, google, anthropic, nvidia, kilocode">
                         <div class="form-text text-tertiary">Laisser vide pour tous les modèles. Sinon, utilisez le préfixe du modèle (ex: stepfun/, openai/).</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Modèle LLM par défaut</label>
-                        <select name="OPENROUTER_MODEL" class="form-select input-premium" id="openrouterModelSelect">
+                        <select name="OPENROUTER_MODEL" class="select-premium" id="openrouterModelSelect">
                             <option value="">Chargement...</option>
                         </select>
                         <div class="form-text text-tertiary">Modèle choisi parmi ceux disponibles pour votre clé.</div>
@@ -77,27 +77,27 @@
                     <div class="mb-2">
                         <label class="form-label">Adresse mailbox</label>
                         {% set mailbox_user = settings|selectattr('cle','equalto','MAILBOX_USER')|list|first %}
-                        <input type="email" name="MAILBOX_USER" class="form-control input-premium" value="{{ mailbox_user.valeur if mailbox_user else '' }}">
+                        <input type="email" name="MAILBOX_USER" class="input-premium" value="{{ mailbox_user.valeur if mailbox_user else '' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Mot de passe d'application</label>
                         {% set mailbox_pass = settings|selectattr('cle','equalto','MAILBOX_PASSWORD')|list|first %}
-                        <input type="password" name="MAILBOX_PASSWORD" class="form-control input-premium" value="{{ mailbox_pass.valeur if mailbox_pass else '' }}">
+                        <input type="password" name="MAILBOX_PASSWORD" class="input-premium" value="{{ mailbox_pass.valeur if mailbox_pass else '' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Serveur IMAP</label>
                         {% set mailbox_server = settings|selectattr('cle','equalto','MAILBOX_SERVER')|list|first %}
-                        <input type="text" name="MAILBOX_SERVER" class="form-control input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
+                        <input type="text" name="MAILBOX_SERVER" class="input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Port</label>
                         {% set mailbox_port = settings|selectattr('cle','equalto','MAILBOX_PORT')|list|first %}
-                        <input type="number" name="MAILBOX_PORT" class="form-control input-premium" value="{{ mailbox_port.valeur if mailbox_port else '993' }}">
+                        <input type="number" name="MAILBOX_PORT" class="input-premium" value="{{ mailbox_port.valeur if mailbox_port else '993' }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">SSL</label>
                         {% set mailbox_ssl = settings|selectattr('cle','equalto','MAILBOX_USE_SSL')|list|first %}
-                        <select name="MAILBOX_USE_SSL" class="form-select input-premium">
+                        <select name="MAILBOX_USE_SSL" class="select-premium">
                             <option value="true" {{ 'selected' if (mailbox_ssl.valeur if mailbox_ssl else 'true')|lower == 'true' else '' }}>Oui</option>
                             <option value="false" {{ 'selected' if (mailbox_ssl.valeur if mailbox_ssl else 'true')|lower == 'false' else '' }}>Non</option>
                         </select>
@@ -105,13 +105,13 @@
                     <div class="mb-3">
                         <label class="form-label">Dossier IMAP</label>
                         {% set mailbox_folder = settings|selectattr('cle','equalto','MAILBOX_FOLDER')|list|first %}
-                        <input type="text" name="MAILBOX_FOLDER" class="form-control input-premium" value="{{ mailbox_folder.valeur if mailbox_folder else 'INBOX' }}">
+                        <input type="text" name="MAILBOX_FOLDER" class="input-premium" value="{{ mailbox_folder.valeur if mailbox_folder else 'INBOX' }}">
                         <div class="form-text text-tertiary">Ex: INBOX, [Gmail]/All Mail. Laisser vide ou INBOX pour la boîte de réception.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Expéditeurs autorisés</label>
                         {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
-                        <textarea name="MAILBOX_ALLOWED_SENDERS" class="form-control input-premium" rows="3" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
+                        <textarea name="MAILBOX_ALLOWED_SENDERS" class="input-premium" rows="3" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
                         <div class="form-text text-tertiary">Laisser vide pour accepter tous les expéditeurs. Sinon, séparez les adresses par des virgules.</div>
                     </div>
                     <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer Mailbox</button>
@@ -123,19 +123,19 @@
                 <form id="testMailForm" class="mb-2">
                     <div class="mb-2">
                         <label class="form-label">Expéditeur</label>
-                        <input type="email" name="sender" class="form-control input-premium" value="">
+                        <input type="email" name="sender" class="input-premium" value="">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Destinataire</label>
-                        <input type="email" name="recipient" class="form-control input-premium" value="{{ current_user.email }}">
+                        <input type="email" name="recipient" class="input-premium" value="{{ current_user.email }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Sujet</label>
-                        <input type="text" name="subject" class="form-control input-premium" value="Test Cabinet Team Manager">
+                        <input type="text" name="subject" class="input-premium" value="Test Cabinet Team Manager">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Message</label>
-                        <textarea name="body" class="form-control input-premium" rows="2">Ceci est un test d'envoi d'email depuis l'application.</textarea>
+                        <textarea name="body" class="input-premium" rows="2">Ceci est un test d'envoi d'email depuis l'application.</textarea>
                     </div>
                     <button type="submit" class="btn-premium btn-premium-primary btn-press w-100">Envoyer un email test</button>
                 </form>
@@ -178,7 +178,7 @@
     <div class="col-md-8">
         <div class="card-premium animate-fade-in-up stagger-2">
             <div class="card-header-premium d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0"><i class="bi bi-key me-2" style="color: var(--info);"></i>Clés et paramètres</h5>
+                <h5 class="mb-0"><i class="bi bi-key me-2" style="color: var(--info);"></i>Clés et paramètres</h5>
                 <button class="btn-premium btn-premium-primary btn-press" id="addSettingBtn"><i class="bi bi-plus-lg me-1"></i>Ajouter</button>
             </div>
             <div class="card-body-premium">
@@ -228,7 +228,7 @@
             <div class="modal-body" style="color: var(--text-primary);">
                 <div class="mb-3">
                     <label class="form-label">Service</label>
-                    <select name="service" class="form-select input-premium">
+                    <select name="service" class="select-premium">
                         <option value="general">Général</option>
                         <option value="pennylane">PennyLane</option>
                         <option value="outlook">Outlook</option>
@@ -239,15 +239,15 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Clé</label>
-                    <input type="text" name="cle" class="form-control input-premium" required placeholder="ex: PENNYLANE_API_KEY">
+                    <input type="text" name="cle" class="input-premium" required placeholder="ex: PENNYLANE_API_KEY">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Valeur</label>
-                    <input type="text" name="valeur" class="form-control input-premium" required placeholder="valeur ou token">
+                    <input type="text" name="valeur" class="input-premium" required placeholder="valeur ou token">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Type</label>
-                    <select name="type_valeur" class="form-select input-premium">
+                    <select name="type_valeur" class="select-premium">
                         <option value="string">string</option>
                         <option value="password">password</option>
                         <option value="json">json</option>

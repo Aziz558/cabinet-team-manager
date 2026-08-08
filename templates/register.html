@@ -13,7 +13,7 @@
             --bg-2: #1A1A20;
             --accent-1: #FF8C00;
             --accent-2: #2D9CDB;
-            --text-dark: #FFFFFF;
+            --text-primary: #FFFFFF;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; color: #FFFFFF; }
         body {
@@ -58,23 +58,23 @@
             color: #14130F; font-size: 28px;
             box-shadow: 0 10px 30px rgba(255,140,0,0.4);
         }
-        .reg-header h2 { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 24px; color: var(--text-dark); }
-        .reg-header p { color: var(--text-dark); opacity: 0.6; font-size: 14px; margin-top: 4px; }
+        .reg-header h2 { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 24px; color: var(--text-primary); }
+        .reg-header p { color: var(--text-primary); opacity: 0.6; font-size: 14px; margin-top: 4px; }
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--text-dark); }
-        .form-control-custom {
+        .form-group label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--text-primary); }
+        .input-premium-custom {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid rgba(255,255,255,0.1);
             border-radius: 12px;
             font-size: 15px;
             background: rgba(15,15,18,0.6);
-            color: var(--text-dark);
+            color: var(--text-primary);
             transition: all 0.2s ease;
             font-family: 'Inter', sans-serif;
         }
-        .form-control-custom::placeholder { color: var(--text-dark); opacity: 0.4; }
-        .form-control-custom:focus {
+        .input-premium-custom::placeholder { color: var(--text-primary); opacity: 0.4; }
+        .input-premium-custom:focus {
             outline: none;
             border-color: var(--accent-1);
             box-shadow: 0 0 0 4px rgba(255,140,0,0.15);
@@ -134,25 +134,25 @@
         <form method="POST">
             <div class="form-group">
                 <label for="prenom">Prénom</label>
-                <input type="text" id="prenom" name="prenom" class="form-control-custom" required autofocus>
+                <input type="text" id="prenom" name="prenom" class="input-premium-custom" required autofocus>
             </div>
             <div class="form-group">
                 <label for="nom">Nom</label>
-                <input type="text" id="nom" name="nom" class="form-control-custom" required>
+                <input type="text" id="nom" name="nom" class="input-premium-custom" required>
             </div>
             <div class="form-group">
                 <label for="email">Adresse email</label>
-                <input type="email" id="email" name="email" class="form-control-custom" required
+                <input type="email" id="email" name="email" class="input-premium-custom" required
                        placeholder="vous@cabinet-jmh.com">
             </div>
             <div class="form-group">
                 <label for="password">Mot de passe</label>
-                <input type="password" id="password" name="password" class="form-control-custom" required
+                <input type="password" id="password" name="password" class="input-premium-custom" required
                        placeholder="••••••••" minlength="4">
             </div>
             <div class="form-group">
                 <label for="role">Rôle</label>
-                <select id="role" name="role" class="form-control-custom">
+                <select id="role" name="role" class="input-premium-custom">
                     <option value="membre">Membre</option>
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>

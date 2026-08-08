@@ -80,8 +80,7 @@ app.jinja_env.globals['date'] = _date
 # Global error handlers to avoid silent 500s
 @app.errorhandler(404)
 def not_found(error):
-    return render_template('login.html', equipe_nom=None, equipe_icon=None,
-                           equipe_couleur=None, error_404=True), 404
+    return render_template('error.html', code=404, message="Page non trouvée."), 404
 
 @app.errorhandler(500)
 def internal_error(error):
@@ -90,5 +89,4 @@ def internal_error(error):
         db.session.rollback()
     except Exception:
         pass
-    return render_template('error.html',
-                           message="Une erreur interne est survenue. Nos equipes ont ete notifiees."), 500
+    return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos équipes ont été notifiées."), 500

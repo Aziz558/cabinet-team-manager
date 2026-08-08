@@ -3,43 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Erreur — Cabinet JMH</title>
+    <title>{% block title %}Erreur — Cabinet JMH{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-dark: #0A0A0F;
+            --bg-card: #11111A;
+            --orange-primary: #FF8C00;
+            --text-primary: #FFFFFF;
+            --text-tertiary: #B0B0B0;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #FFF9F0 0%, #F0F7FF 100%);
+            background: var(--bg-dark);
+            color: var(--text-primary);
             min-height: 100vh;
-            display: flex; align-items: center; justify-content: center;
-            color: #2D2D2D; margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
         }
         .err-card {
-            background: rgba(255,255,255,0.95);
-            border-radius: 24px; padding: 48px; max-width: 480px; text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 48px;
+            max-width: 480px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
         .err-icon {
-            width: 72px; height: 72px; border-radius: 20px; margin: 0 auto 18px;
-            background: linear-gradient(135deg, #E07A5F, #2D9CDB);
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 32px;
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            margin: 0 auto 18px;
+            background: rgba(255, 140, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--orange-primary);
+            font-size: 32px;
         }
         .btn-home {
-            margin-top: 24px; padding: 12px 28px; border: none; border-radius: 12px;
-            background: linear-gradient(135deg, #E07A5F, #2D9CDB); color: #fff;
-            font-weight: 700; text-decoration: none; display: inline-block;
+            margin-top: 24px;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 12px;
+            background: var(--orange-primary);
+            color: var(--bg-dark);
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .btn-home:hover { color: #fff; opacity: 0.92; }
+        .btn-home:hover {
+            background: #FFB347;
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.4);
+        }
     </style>
 </head>
 <body>
     <div class="err-card">
         <div class="err-icon"><i class="bi bi-exclamation-triangle"></i></div>
-        <h2 style="font-family:'Poppins',sans-serif;font-weight:700;">Oups !</h2>
-        <p class="text-muted mt-2">{{ message or "Une erreur inattendue s'est produite." }}</p>
-        <a href="{{ url_for('login') }}" class="btn-home">Retour à la connexion</a>
+        <h2 class="fw-bold mb-2">Oups !</h2>
+        {% if code %}
+        <p class="text-tertiary mt-2">Erreur {{ code }} — {{ message or "Une erreur est survenue." }}</p>
+        {% else %}
+        <p class="text-tertiary mt-2">{{ message or "Une erreur inattendue s'est produite. Nos équipes ont été notifiées." }}</p>
+        {% endif %}
+        <a href="{{ url_for('dashboard') }}" class="btn-home">Retour au tableau de bord</a>
     </div>
 </body>
 </html>

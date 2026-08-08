@@ -75,12 +75,12 @@
     </div>
     <div class="card-body-premium">
         {% for a in alertes %}
-        <div class="alert alert-{{ a.type }} alert-dismissible fade show" role="alert">
+        <div class="alert-premium alert-{{ 'warning' if a.type == 'warning' else 'info' if a.type == 'info' else 'success' }}-premium">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi {{ 'bi-exclamation-triangle' if a.type == 'warning' else 'bi-info-circle' if a.type == 'info' else 'bi-check-circle' }}"></i>
                 <span>{{ a.msg }}</span>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+            <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="this.parentElement.remove()">✕</button>
         </div>
         {% endfor %}
     </div>
@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         result.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Suggestions actualisées : ' + count + '</span>';
                         window.showToast('Suggestions actualisées avec succès', 'success');
                     } else {
-                        result.innerHTML = '<span style="color: var(--text-muted);">Aucune nouvelle suggestion.</span>';
+                        result.innerHTML = '<span style="color: var(--text-tertiary);">Aucune nouvelle suggestion.</span>';
                         window.showToast('Aucune nouvelle suggestion', 'info');
                     }
                 })

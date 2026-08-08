@@ -2,20 +2,22 @@
 {% block title %}Mes tâches{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Mes tâches</h2>
-    <p class="text-muted">Tâches qui vous sont assignées. Vous pouvez les prendre en charge et mettre à jour leur statut.</p>
+<div class="stagger-inner">
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up stagger-1">
+        <h2 class="fw-semibold mb-0"><i class="bi bi-clipboard-task me-2" style="color:var(--orange-primary)"></i>Mes tâches</h2>
+    </div>
+    <p class="text-tertiary mb-4">Tâches qui vous sont assignées. Vous pouvez les prendre en charge et mettre à jour leur statut.</p>
 
-    <div class="mb-3">
-        <a href="{{ url_for('mes_taches') }}" class="btn btn-outline-primary btn-sm">À faire</a>
-        <a href="{{ url_for('mes_taches', statut='en_cours') }}" class="btn btn-outline-warning btn-sm">En cours</a>
-        <a href="{{ url_for('mes_taches', statut='terminee') }}" class="btn btn-outline-success btn-sm">Terminées</a>
+    <div class="d-flex flex-wrap gap-2 mb-4 animate-fade-in-up stagger-2">
+        <a href="{{ url_for('mes_taches') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">À faire</a>
+        <a href="{{ url_for('mes_taches', statut='en_cours') }}" class="btn-premium btn-premium-outline btn-premium-warning btn-sm">En cours</a>
+        <a href="{{ url_for('mes_taches', statut='terminee') }}" class="btn-premium btn-premium-outline btn-premium-success btn-sm">Terminées</a>
     </div>
 
     <div id="mesTachesList">
-        <div class="text-center mt-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2">Chargement des tâches...</p>
+        <div class="text-center py-5">
+            <div class="spinner-premium"></div>
+            <p class="text-tertiary mt-3">Chargement des tâches...</p>
         </div>
     </div>
 </div>
@@ -23,17 +25,17 @@
 <!-- Modal prise en charge -->
 <div class="modal fade" id="priseEnChargeModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Prendre en charge la tâche</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="priseEnChargeForm">
+        <div class="modal-content-premium">
+            <form id="priseEnChargeForm">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0">Prendre en charge la tâche</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
                     <input type="hidden" id="tacheId">
                     <div class="mb-3">
-                        <label class="form-label">Statut</label>
-                        <select class="form-select" id="tacheStatut">
+                        <label class="form-label-premium">Statut</label>
+                        <select class="select-premium" id="tacheStatut">
                             <option value="a_faire">À faire</option>
                             <option value="en_cours" selected>En cours</option>
                             <option value="terminee">Terminée</option>
@@ -41,14 +43,17 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="confirmPriseEnCharge">Enregistrer</button>
+            <div class="modal-footer-premium">
+                <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn-premium btn-premium-primary" id="confirmPriseEnCharge">Enregistrer</button>
             </div>
         </div>
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     loadMesTaches();
@@ -61,26 +66,29 @@ function loadMesTaches() {
         .then(data => {
             const container = document.getElementById('mesTachesList');
             if (!data.ok || !data.taches.length) {
-                container.innerHTML = '<div class="alert alert-info">Aucune tâche pour le moment.</div>';
+                container.innerHTML = '<div class="empty-state"><img src="{{ url_for("static", filename="img/logo-jmh.png") }}" alt="" class="empty-state-icon"><h4 class="empty-state-title">Aucune tâche pour le moment</h4><p class="empty-state-desc">Vos tâches apparaîtront ici quand elles vous seront assignées.</p></div>';
                 return;
             }
 
-            let html = '<div class="row">';
+            let html = '<div class="row stagger-1">';
             data.taches.forEach(t => {
                 html += `
-                <div class="col-md-6 mb-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">${t.titre}</h5>
-                            <p class="card-text">${t.description || ''}</p>
-                            <p class="card-text"><small class="text-muted">Priorité: ${t.priorite} | Échéance: ${t.date_echeance}</small></p>
-                            <p class="card-text"><small class="text-muted">Statut: ${t.statut}</small></p>
-                            <div class="btn-group">
-                                <button class="btn btn-primary btn-sm" onclick="openPriseEnChargeModal(${t.id}, '${t.statut}')">
+                <div class="col-md-6 mb-4">
+                    <div class="card-premium h-100 hover-lift animate-fade-in-up">
+                        <div class="card-body-premium">
+                            <h5 class="mb-2">${t.titre}</h5>
+                            ${t.description ? `<p class="text-tertiary mb-3">${t.description}</p>` : ''}
+                            <p class="text-tertiary small mb-2">
+                                <i class="bi bi-flag me-1" style="color:${t.priorite === 'haute' ? 'var(--danger)' : t.priorite === 'moyenne' ? 'var(--warning)' : 'var(--success)'}"></i>
+                                Priorité: ${t.priorite} | Échéance: ${t.date_echeance}
+                            </p>
+                            <p class="text-tertiary small mb-3">Statut: ${t.statut}</p>
+                            <div class="d-flex gap-2">
+                                <button class="btn-premium btn-premium-primary btn-sm" onclick="openPriseEnChargeModal(${t.id}, '${t.statut}')">
                                     <i class="bi bi-check2"></i> Mettre à jour le statut
                                 </button>
                                 <form method="POST" action="/taches/${t.id}/supprimer" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <button type="submit" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
@@ -115,8 +123,9 @@ document.getElementById('confirmPriseEnCharge').addEventListener('click', functi
         if (res.ok) {
             bootstrap.Modal.getInstance(document.getElementById('priseEnChargeModal')).hide();
             loadMesTaches();
+            showToast('Statut mis à jour.', 'success');
         } else {
-            alert('Erreur: ' + res.message);
+            showToast('Erreur: ' + res.message, 'danger');
         }
     });
 });
