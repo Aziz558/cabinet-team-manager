@@ -732,71 +732,380 @@ p {
     }
 }
 
-/* Animations */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+/* ==========================================================================
+   PREMIUM MICRO-INTERACTIONS & ANIMATIONS
+   ========================================================================== */
+
+/* Focus Ring - Accessible & Beautiful */
+.focus-ring:focus-visible {
+    outline: 2px solid var(--orange-primary);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
 }
 
-@keyframes slideInLeft {
-    from { opacity: 0; transform: translateX(-30px); }
-    to { opacity: 1; transform: translateX(0); }
+/* Button Press Animation */
+.btn-press {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-@keyframes slideInRight {
-    from { opacity: 0; transform: translateX(30px); }
-    to { opacity: 1; transform: translateX(0); }
+.btn-press:active {
+    transform: scale(0.97);
+    box-shadow: var(--shadow-sm);
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+/* Ripple Effect */
+.ripple-container {
+    position: relative;
+    overflow: hidden;
 }
 
-.fade-in {
-    animation: fadeIn 0.6s ease-out;
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0);
+    animation: ripple-effect 0.6s ease-out;
+    pointer-events: none;
 }
 
-.slide-in-left {
-    animation: slideInLeft 0.5s ease-out;
+@keyframes ripple-effect {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
 }
 
-.slide-in-right {
-    animation: slideInRight 0.5s ease-out;
+/* Shimmer Loading */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
 
-.pulse {
-    animation: pulse 2s infinite;
+.shimmer {
+    background: linear-gradient(
+        90deg,
+        var(--bg-card) 25%,
+        var(--bg-card-hover) 50%,
+        var(--bg-card) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
 }
 
-/* Glassmorphism Effect */
-.glass {
-    background: rgba(17, 17, 26, 0.4);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+/* Staggered Entry Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-/* Hover Effects */
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 140, 0, 0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(255, 140, 0, 0); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes glow-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Animation Classes */
+.animate-fade-in-up { animation: fadeInUp 0.6s var(--transition) forwards; }
+.animate-fade-in-left { animation: fadeInLeft 0.5s var(--transition) forwards; }
+.animate-fade-in-right { animation: fadeInRight 0.5s var(--transition) forwards; }
+.animate-scale-in { animation: scaleIn 0.4s var(--transition) forwards; }
+.animate-slide-down { animation: slideDown 0.5s var(--transition) forwards; }
+.animate-pulse-glow { animation: pulse-glow 2s infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-glow-pulse { animation: glow-pulse 2s infinite; }
+
+/* Stagger Delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
+
+/* Card Hover Lift */
 .hover-lift {
-    transition: all 0.3s ease;
+    transition: transform var(--transition), box-shadow var(--transition);
 }
 
 .hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-lg);
 }
 
-.hover-glow {
-    transition: all 0.3s ease;
+/* Card Tilt Effect */
+.tilt-card {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-style: preserve-3d;
 }
 
-.hover-glow:hover {
-    box-shadow: 0 0 15px rgba(255, 140, 0, 0.6);
+.tilt-card:hover {
+    transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) scale(1.02);
 }
 
-/* Focus Ring */
-.focus-ring:focus-visible {
-    outline: 2px solid #FF8C00;
-    outline-offset: 2px;
+/* Image Zoom on Hover */
+.img-zoom {
+    overflow: hidden;
+}
+
+.img-zoom img {
+    transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.img-zoom:hover img {
+    transform: scale(1.08);
+}
+
+/* Text Gradient Animation */
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.text-gradient-animated {
+    background: linear-gradient(90deg, #FF8C00, #FFB347, #FF8C00);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 3s ease infinite;
+}
+
+/* Progress Bar Animation */
+@keyframes progress-fill {
+    from { width: 0%; }
+}
+
+.progress-animated .progress-bar {
+    animation: progress-fill 1s var(--transition) forwards;
+}
+
+/* Toast/Notification Slide */
+@keyframes toast-enter {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toast-exit {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+.toast-enter { animation: toast-enter 0.4s var(--transition) forwards; }
+.toast-exit { animation: toast-exit 0.3s var(--transition) forwards; }
+
+/* Modal/Dialog Animation */
+@keyframes modal-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes modal-backdrop-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-enter { animation: modal-enter 0.3s var(--transition) forwards; }
+.modal-backdrop-enter { animation: modal-backdrop-enter 0.2s var(--transition) forwards; }
+
+/* Skeleton Loading */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bg-card) 25%,
+        var(--bg-card-hover) 50%,
+        var(--bg-card) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius-sm);
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Performance Optimizations */
+.will-change-transform { will-change: transform; }
+.will-change-opacity { will-change: opacity; }
+.will-change-contents { will-change: contents; }
+
+/* GPU Acceleration for Animated Elements */
+.gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Interactive States */
+.interactive {
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--transition-fast);
+}
+
+.interactive:hover { transform: translateY(-2px); }
+.interactive:active { transform: scale(0.98); }
+
+/* Loading Spinner */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--orange-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.spinner-sm { width: 16px; height: 16px; border-width: 2px; }
+.spinner-lg { width: 40px; height: 40px; border-width: 4px; }
+
+/* Page Transition */
+.page-transition {
+    animation: fadeInUp 0.4s var(--transition);
+}
+
+/* Scroll Reveal */
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s var(--transition), transform 0.6s var(--transition);
+}
+
+.scroll-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ==========================================================================
+   OPTIMIZED ANIMATION PERFORMANCE
+   ========================================================================== */
+
+/* Use transform/opacity for animations (GPU accelerated) */
+.optimize-animation {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* Disable animations when tab is hidden */
+@media (prefers-reduced-motion: no-preference) {
+    .tab-hidden * {
+        animation-play-state: paused !important;
+        transition-duration: 0s !important;
+    }
+}
+
+/* Efficient keyframes - avoid layout thrashing */
+@keyframes efficient-fade {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes efficient-slide {
+    0% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+/* CSS Containment for performance */
+.card-premium {
+    contain: layout style;
+}
+
+.sidebar-nav-item {
+    contain: layout style;
+}
+
+.stat-card {
+    contain: layout style;
 }
