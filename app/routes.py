@@ -279,7 +279,7 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    if current_user.role == 'manager':
+    if current_user.role in ('admin', 'manager'):
         membres = User.query.filter_by(actif=True).all()
         dossiers = Dossier.query.all()
         taches = Tache.query.all()
@@ -357,7 +357,7 @@ def dashboard():
 @app.route('/membres')
 @login_required
 def liste_membres():
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     membres = User.query.all()
@@ -367,7 +367,7 @@ def liste_membres():
 @app.route('/membres/ajouter', methods=['POST'])
 @login_required
 def ajouter_membre():
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     email = request.form.get('email', '').strip().lower()
@@ -402,7 +402,7 @@ def ajouter_membre():
 @app.route('/membres/<int:user_id>/modifier', methods=['POST'])
 @login_required
 def modifier_membre(user_id):
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     user = User.query.get_or_404(user_id)
@@ -419,7 +419,7 @@ def modifier_membre(user_id):
 @app.route('/membres/<int:user_id>/supprimer', methods=['POST'])
 @login_required
 def supprimer_membre(user_id):
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     user = User.query.get_or_404(user_id)
@@ -441,7 +441,7 @@ def supprimer_membre(user_id):
 @app.route('/membres/<int:user_id>')
 @login_required
 def fiche_membre(user_id):
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     user = User.query.get_or_404(user_id)
@@ -508,50 +508,49 @@ def upload_photo(user_id):
 @app.route('/dossiers', methods=['GET', 'POST'])
 @login_required
 def dossiers():
-    if current_user.role == 'manager':
-        if request.method == 'POST':
-            numero = request.form.get('numero_dossier', '').strip()
-            intitule = request.form.get('intitule', '').strip()
-            collaborateur_id = request.form.get('collaborateur_id', type=int)
-            date_limite_str = request.form.get('date_limite', '').strip()
-            date_limite = None
-            if date_limite_str:
-                date_limite = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
-            if not numero or not intitule:
-                flash('Numéro et intitulé sont requis.', 'danger')
-            elif Dossier.query.filter_by(numero_dossier=numero).first():
-                flash('Ce numéro de dossier existe déjà.', 'danger')
-            else:
-                dossier = Dossier(
-                    numero_dossier=numero,
-                    intitule=intitule,
-                    collaborateur_id=collaborateur_id if collaborateur_id else None,
-                    regime_tva=request.form.get('regime_tva', '').strip() or None,
-                    date_limite_declaration=datetime.strptime(request.form.get('date_limite_declaration', ''), '%Y-%m-%d').date() if request.form.get('date_limite_declaration') else None
-                )
-                db.session.add(dossier)
-                db.session.commit()
-                if collaborateur_id:
-                    collab = User.query.get(collaborateur_id)
-                    if collab:
-                        msg = f"Un nouveau dossier vous a été assigné: {numero} - {intitule}"
-                        create_notification(collab.id, msg, type_notification='assignation')
-                        send_email_notification(collab.email, "Nouveau dossier assigné", msg)
-                flash('Dossier créé avec succès.', 'success')
-                return redirect(url_for('dossiers'))
-        all_dossiers = Dossier.query.all()
-        membres = User.query.filter_by(actif=True).all()
-        return render_template('dossiers.html', dossiers=all_dossiers, membres=membres)
-    else:
+    if current_user.role not in ('admin', 'manager'):
         # Collaborateur sees only their dossiers
         mes_dossiers = Dossier.query.filter_by(collaborateur_id=current_user.id).all()
         return render_template('dossiers.html', dossiers=mes_dossiers, membres=[])
+    if request.method == 'POST':
+        numero = request.form.get('numero_dossier', '').strip()
+        intitule = request.form.get('intitule', '').strip()
+        collaborateur_id = request.form.get('collaborateur_id', type=int)
+        date_limite_str = request.form.get('date_limite', '').strip()
+        date_limite = None
+        if date_limite_str:
+            date_limite = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
+        if not numero or not intitule:
+            flash('Numéro et intitulé sont requis.', 'danger')
+        elif Dossier.query.filter_by(numero_dossier=numero).first():
+            flash('Ce numéro de dossier existe déjà.', 'danger')
+        else:
+            dossier = Dossier(
+                numero_dossier=numero,
+                intitule=intitule,
+                collaborateur_id=collaborateur_id if collaborateur_id else None,
+                regime_tva=request.form.get('regime_tva', '').strip() or None,
+                date_limite_declaration=datetime.strptime(request.form.get('date_limite_declaration', ''), '%Y-%m-%d').date() if request.form.get('date_limite_declaration') else None
+            )
+            db.session.add(dossier)
+            db.session.commit()
+            if collaborateur_id:
+                collab = User.query.get(collaborateur_id)
+                if collab:
+                    msg = f"Un nouveau dossier vous a été assigné: {numero} - {intitule}"
+                    create_notification(collab.id, msg, type_notification='assignation')
+                    send_email_notification(collab.email, "Nouveau dossier assigné", msg)
+            flash('Dossier créé avec succès.', 'success')
+            return redirect(url_for('dossiers'))
+    all_dossiers = Dossier.query.all()
+    membres = User.query.filter_by(actif=True).all()
+    return render_template('dossiers.html', dossiers=all_dossiers, membres=membres)
 
 
 @app.route('/dossiers/<int:dossier_id>/modifier', methods=['POST'])
 @login_required
 def modifier_dossier(dossier_id):
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     dossier = Dossier.query.get_or_404(dossier_id)
@@ -571,7 +570,7 @@ def modifier_dossier(dossier_id):
 @app.route('/dossiers/importer', methods=['POST'])
 @login_required
 def importer_dossiers():
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     if 'csv_file' not in request.files:
@@ -630,7 +629,7 @@ def importer_dossiers():
 @login_required
 def taches_aujourdhui():
     today = date.today()
-    if current_user.role == 'manager':
+    if current_user.role in ('admin', 'manager'):
         taches = Tache.query.filter(Tache.date_echeance == today, Tache.statut != 'terminee').all()
     else:
         taches = Tache.query.filter(Tache.assigne_a == current_user.id, Tache.date_echeance == today, Tache.statut != 'terminee').all()
@@ -640,7 +639,7 @@ def taches_aujourdhui():
 @app.route('/taches', methods=['GET', 'POST'])
 @login_required
 def taches():
-    if current_user.role == 'manager':
+    if current_user.role in ('admin', 'manager'):
         if request.method == 'POST':
             titre = request.form.get('titre', '').strip()
             description = request.form.get('description', '').strip()
@@ -691,10 +690,9 @@ def taches():
         dossiers = Dossier.query.all()
         membres = User.query.filter_by(actif=True).all()
         return render_template('taches.html', taches=all_taches, dossiers=dossiers, membres=membres)
-    else:
-        # Collaborateur sees only their tasks
-        mes_taches = Tache.query.filter_by(assigne_a=current_user.id).order_by(Tache.date_echeance.asc()).all()
-        return render_template('taches.html', taches=mes_taches, dossiers=[], membres=[])
+    # Collaborateur sees only their tasks
+    mes_taches = Tache.query.filter_by(assigne_a=current_user.id).order_by(Tache.date_echeance.asc()).all()
+    return render_template('taches.html', taches=mes_taches, dossiers=[], membres=[])
 
 
 @app.route('/taches/<int:tache_id>/prendre_en_charge', methods=['POST'])
@@ -837,7 +835,7 @@ def uploaded_file(filename):
 @app.route('/api/equipe/stats')
 @login_required
 def api_equipe_stats():
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         return jsonify({}), 403
     membres = User.query.filter_by(actif=True, role='membre').all()
     stats = []
@@ -856,7 +854,7 @@ def api_equipe_stats():
 @app.route('/api/suggestions', methods=['GET'])
 @login_required
 def api_suggestions():
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         return jsonify({'suggestions': []}), 403
     suggestions = _build_suggestions()
     # Merge SuggestionTache records from mailbox processing
@@ -897,7 +895,7 @@ def api_suggestions():
 @app.route('/api/suggestions/refresh', methods=['POST'])
 @login_required
 def api_suggestions_refresh():
-    if current_user.role != 'manager':
+    if current_user.role not in ('admin', 'manager'):
         return jsonify({'suggestions': []}), 403
     suggestions = _build_suggestions()
     return jsonify({'suggestions': suggestions})

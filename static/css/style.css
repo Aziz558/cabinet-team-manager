@@ -166,6 +166,29 @@ footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size:
 .team-card-hover { transition: all 0.4s ease; cursor: pointer; }
 .team-card-hover:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 12px 28px rgba(0,0,0,0.4); }
 
+/* Texte lisible sur fond sombre - override Bootstrap */
+body, .container, .container-fluid, main { color: var(--text-light); }
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 { color: var(--text-light); }
+.text-dark { color: var(--text-light) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-body { color: var(--text-light) !important; }
+p, label, span, td, th, li, a:not(.btn) { color: inherit; }
+a { color: var(--orange); }
+a:hover { color: #ffa533; }
+small, .small { color: var(--text-muted); }
+hr { border-color: var(--border-dark); opacity: 0.6; }
+.input-group-text { background: var(--bg-panel-2); border-color: var(--border-dark); color: var(--text-light); }
+.form-check-label { color: var(--text-light); }
+.form-check-input:checked { background-color: var(--orange); border-color: var(--orange); }
+.dropdown-menu { background: var(--bg-panel); border: 1px solid var(--border-dark); }
+.dropdown-item { color: var(--text-light); }
+.dropdown-item:hover { background: var(--bg-panel-2); color: var(--orange); }
+.navbar-dark .navbar-nav .nav-link { color: var(--text-light) !important; }
+.navbar-dark .navbar-brand { color: var(--orange) !important; }
+.bg-white { background: var(--bg-panel) !important; }
+.border { border-color: var(--border-dark) !important; }
+.shadow-sm { box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
