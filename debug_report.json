@@ -49,44 +49,44 @@
   },
   {
     "check": "500 Check: /login",
-    "status": "error",
-    "message": "Page contains 'Internal Server Error'",
+    "status": "ok",
+    "message": "No 500 error (HTTP 200)",
     "details": {}
   },
   {
     "check": "500 Check: /register",
-    "status": "error",
-    "message": "Page contains 'Internal Server Error'",
+    "status": "ok",
+    "message": "No 500 error (HTTP 200)",
     "details": {}
   },
   {
     "check": "500 Check: /team-select",
-    "status": "error",
-    "message": "Page contains 'Internal Server Error'",
+    "status": "ok",
+    "message": "No 500 error (HTTP 200)",
     "details": {}
   },
   {
     "check": "500 Check: /mailbox",
-    "status": "error",
-    "message": "Page contains 'Internal Server Error'",
+    "status": "ok",
+    "message": "No 500 error (HTTP 200)",
     "details": {}
   },
   {
     "check": "500 Check: /profil",
-    "status": "error",
-    "message": "Page contains 'Internal Server Error'",
+    "status": "ok",
+    "message": "No 500 error (HTTP 200)",
     "details": {}
   },
   {
     "check": "500 Check: /admin/debug",
-    "status": "error",
-    "message": "Page contains 'Internal Server Error'",
+    "status": "ok",
+    "message": "No 500 error (HTTP 200)",
     "details": {}
   },
   {
     "check": "Theme Check: /login",
-    "status": "warning",
-    "message": "White background detected",
+    "status": "ok",
+    "message": "No white backgrounds found",
     "details": {}
   },
   {
@@ -103,20 +103,20 @@
   },
   {
     "check": "Theme Check: /mailbox",
-    "status": "warning",
-    "message": "White background detected",
+    "status": "ok",
+    "message": "No white backgrounds found",
     "details": {}
   },
   {
     "check": "Theme Check: /profil",
-    "status": "warning",
-    "message": "White background detected",
+    "status": "ok",
+    "message": "No white backgrounds found",
     "details": {}
   },
   {
     "check": "Theme Check: /admin/debug",
-    "status": "warning",
-    "message": "White background detected",
+    "status": "ok",
+    "message": "No white backgrounds found",
     "details": {}
   }
 ]
