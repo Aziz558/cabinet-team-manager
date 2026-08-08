@@ -12,9 +12,14 @@
     <div class="col-12">
         <div class="card-premium animate-fade-in-up stagger-2">
             <div class="card-body-premium">
-                <button id="runDebug" class="btn-premium btn-premium-primary btn-press">
-                    <i class="bi bi-play-circle me-1"></i>Lancer le diagnostic
-                </button>
+                <div class="d-flex gap-2">
+                    <button id="runDebug" class="btn-premium btn-premium-primary btn-press">
+                        <i class="bi bi-play-circle me-1"></i>Lancer le diagnostic
+                    </button>
+                    <button id="runActiveDebug" class="btn-premium btn-premium-secondary btn-press">
+                        <i class="bi bi-bug me-1"></i>Lancer le diagnostic actif
+                    </button>
+                </div>
                 <div id="debugResults" class="mt-3"></div>
             </div>
         </div>
@@ -61,6 +66,54 @@ document.getElementById('runDebug').addEventListener('click', async function() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Lancer le diagnostic';
+    }
+});
+document.getElementById('runActiveDebug').addEventListener('click', async function() {
+    const btn = this;
+    const resultsDiv = document.getElementById('debugResults');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Diagnostic actif...';
+    window.showToast('Lancement du diagnostic actif (navigation + tests)...', 'info');
+
+    try {
+        const response = await fetch('/api/admin/debug/run-active', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        if (data.ok) {
+            window.showToast('Diagnostic actif terminé', 'success');
+            let html = '<h6 class="mb-2" style="color: var(--orange-primary);">Résultats du diagnostic actif</h6>';
+            html += '<div class="list-group">';
+            
+            (data.results || []).forEach(function(r) {
+                const icon = r.status === 'ok' ? 'bi-check-circle-fill text-success' : r.status === 'warning' ? 'bi-exclamation-triangle-fill text-warning' : 'bi-x-circle-fill text-danger';
+                html += '<div class="list-group-item d-flex align-items-center">' +
+                    '<i class="bi ' + icon + ' me-2"></i>' +
+                    '<div class="d-flex flex-column">' +
+                        '<strong>' + r.check + '</strong>' +
+                        '<small class="text-tertiary">' + r.message + '</small>' +
+                    '</div>' +
+                '</div>';
+            });
+            
+            html += '</div>';
+            
+            // Add stdout summary
+            if (data.stdout) {
+                html += '<div class="mt-3"><pre class="text-tertiary small" style="white-space: pre-wrap; max-height: 300px; overflow-y: auto;">' + data.stdout + '</pre></div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        } else {
+            window.showToast('Échec : ' + data.message, 'danger');
+        }
+    } catch (error) {
+        window.showToast('Erreur : ' + error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-bug me-1"></i>Lancer le diagnostic actif';
     }
 });
 </script>

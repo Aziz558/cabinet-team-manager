@@ -965,6 +965,43 @@ def api_admin_debug_run():
     return jsonify({'ok': True, 'results': results})
 
 
+@app.route('/api/admin/debug/run-active', methods=['POST'])
+@login_required
+def api_admin_debug_run_active():
+    """Active debug: navigates pages, checks for 500s, white backgrounds, broken links."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès refusé. Compte admin requis.'}), 403
+    try:
+        import subprocess, sys, os
+        # Run the debug bot from the project root
+        project_root = os.path.join(app.root_path, '..')
+        result = subprocess.run(
+            [sys.executable, os.path.join(project_root, 'active_debug.py'), '--url', request.host_url.rstrip('/')],
+            capture_output=True, text=True, timeout=120, cwd=project_root
+        )
+        # Read the JSON report
+        import json
+        report_path = os.path.join(project_root, 'debug_report.json')
+        results = []
+        try:
+            with open(report_path) as f:
+                results = json.load(f)
+        except Exception:
+            pass
+        # Also include stdout for human-readable summary
+        return jsonify({
+            'ok': True,
+            'results': results,
+            'stdout': result.stdout[-3000:] if len(result.stdout) > 3000 else result.stdout,
+            'stderr': result.stderr[-1000:] if result.stderr else '',
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'message': 'Diagnostic actif a expiré (120s)'}), 504
+    except Exception as e:
+        app.logger.error(f"Active debug error: {e}")
+        return jsonify({'ok': False, 'message': str(e)}), 500
+
+
 # ============ API / AJAX ============
 
 @app.route('/api/equipe/stats')
