@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Boîte mail{% endblock %}
+{% set logo_url = url_for('static', filename='img/logo-jmh.png') %}
+
 {% block content %}
 <div class="row stagger-1">
     <div class="col-12">
-        <h2 class="fw-semibold mb-4 animate-fade-in-up">Boîte mail</h2>
+        <h2 class="fw-semibold mb-4 animate-fade-in-up">Boîte mail IMAP</h2>
+        <p class="text-tertiary mb-4">Gestion de la détection automatique d'emails et création de suggestions de tâches.</p>
     </div>
     <div class="col-12">
         <div class="card-premium mb-3 animate-fade-in-up stagger-2">
@@ -26,20 +29,27 @@
             </div>
         </div>
 
+        <!-- Admin-only Debug Panel -->
+        {% if current_user.role == 'admin' %}
         <div class="card-premium mt-3 animate-fade-in-up stagger-4" id="debugPanel">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-bug me-2" style="color: var(--warning);"></i>Debug: Filtrage des expéditeurs</h5>
             </div>
             <div class="card-body-premium">
-                <div id="debugContent" class="text-tertiary small"></div>
+                <div id="debugContent" class="text-tertiary small">Cliquez sur "Lister les derniers emails" pour afficher les logs de filtrage.</div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Logo URL for empty state (pre-computed by Jinja2)
+const LOGO_URL = "{{ logo_url }}";
+
 document.getElementById('processMailbox').addEventListener('click', async function() {
     const btn = this;
     const resultDiv = document.createElement('div');
@@ -76,39 +86,42 @@ document.getElementById('listMailbox').addEventListener('click', async function(
         const data = await response.json();
         if (!data.ok) {
             window.showToast('Échec : ' + data.message, 'danger');
-            resultDiv.innerHTML = '<p class="text-danger">Échec : ' + data.message + '</p>';
+            resultDiv.innerHTML = '<p class="text-danger">Échec : ' + (data.message || 'Erreur inconnue') + '</p>';
             return;
         }
 
         const samples = data.samples || [];
-        const debug = data.debug;
         
-        // Populate debug panel
+        // Populate debug panel (admin only)
         const debugContent = document.getElementById('debugContent');
-        if (debug && debugContent) {
-            debugContent.innerHTML = '<div class="small"><strong>Expéditeurs autorisés:</strong> ' + (debug.allowed_senders || []).join(', ') + '<br><strong>Expéditeurs bloqués:</strong> ' + (debug.blocked_senders || []).join(', ') + '<br><strong>Total emails scannés:</strong> ' + (debug.total || 0) + '</div>';
+        if (debugContent) {
+            const allowedSenders = data.allowed_senders || [];
+            const allSenders = samples.map(s => s.from);
+            const blockedSenders = allSenders.filter(s => s && !allowedSenders.some(a => s.includes(a))).filter((v, i, a) => a.indexOf(v) === i);
+            const totalScanned = samples.length;
+            debugContent.innerHTML = '<div class="small"><strong>Expéditeurs autorisés:</strong> ' + (allowedSenders.length ? allowedSenders.join(', ') : 'Aucun (tous autorisés)') + '<br><strong>Expéditeurs bloqués:</strong> ' + (blockedSenders.length ? blockedSenders.join(', ') : 'Aucun') + '<br><strong>Total emails scannés:</strong> ' + totalScanned + '</div>';
         }
 
         if (!samples.length) {
-            resultDiv.innerHTML = '<div class="empty-state"><img src="{{ url_for(\'static\', filename=\'img/logo-jmh.png\') }}" class="empty-state-icon" alt=""><h5 class="empty-state-title">Aucun email trouvé</h5><p class="empty-state-desc">Aucun email n\'a été détecté dans la boîte mail.</p></div>';
+            resultDiv.innerHTML = '<div class="empty-state"><img src="' + LOGO_URL + '" class="empty-state-icon" alt="Logo JMH"><h5 class="empty-state-title">Aucun email trouvé</h5><p class="empty-state-desc">Aucun email n\'a été détecté dans la boîte mail.</p></div>';
             window.showToast('Aucun email trouvé', 'info');
             return;
         }
 
         let html = '<div class="list-group list-group-flush">';
         for (const s of samples) {
-            const badgeColor = s.allowed ? 'badge-success' : 'badge-danger';
+            const badgeClass = s.allowed ? 'badge-success' : 'badge-danger';
             const badgeText = s.allowed ? 'Autorisé' : 'Bloqué';
-            html += `<div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <strong class="text-primary">${s.subject || '(sans sujet)'}</strong>
-                        <br><small class="text-tertiary">De : ${s.from || s.raw_from}</small>
-                        <br><small class="text-tertiary">Date : ${s.date || ''}</small>
-                    </div>
-                    <span class="badge ${badgeColor}">${badgeText}</span>
-                </div>
-            </div>`;
+            html += '<div class="list-group-item">' +
+                '<div class="d-flex justify-content-between align-items-start">' +
+                    '<div>' +
+                        '<strong class="text-primary">' + (s.subject || '(sans sujet)') + '</strong>' +
+                        '<br><small class="text-tertiary">De : ' + (s.from || s.raw_from || '') + '</small>' +
+                        '<br><small class="text-tertiary">Date : ' + (s.date || '') + '</small>' +
+                    '</div>' +
+                    '<span class="badge ' + badgeClass + '">' + badgeText + '</span>' +
+                '</div>' +
+            '</div>';
         }
         html += '</div>';
         resultDiv.innerHTML = html;

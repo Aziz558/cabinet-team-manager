@@ -1408,7 +1408,9 @@ p {
     border-left: none;
     border-radius: 0;
 }
-
+.list-group-flush > .list-group-item:last-child {
+    border-bottom: 0;
+}
 .dropdown-item {
     color: var(--text-secondary);
 }
