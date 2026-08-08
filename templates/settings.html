@@ -3,99 +3,101 @@
 {% block title %}Paramètres{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
+<div class="row mb-4 animate-fade-in-up">
     <div class="col-12">
-        <h2><i class="bi bi-gear me-2"></i>Paramètres</h2>
-        <p class="text-muted">Paramétrez vos intégrations : PennyLane, Outlook, Teams, SMTP.</p>
+        <h2 class="text-gradient-animated"><i class="bi bi-gear me-2"></i>Paramètres</h2>
+        <p class="text-tertiary">Paramétrez vos intégrations : PennyLane, Outlook, Teams, SMTP.</p>
     </div>
 </div>
 
 <div class="row mb-4">
     <!-- SMTP Configuration -->
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-envelope me-2 text-danger"></i>SMTP / Outlook</h5>
-                <p class="card-text text-muted">Configurez l'envoi d'emails via Outlook/Office 365.</p>
+        <div class="card-premium h-100 animate-fade-in-up stagger-1">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-envelope me-2" style="color: var(--danger);"></i>SMTP / Outlook</h5>
+            </div>
+            <div class="card-body-premium">
+                <p class="text-tertiary small mb-3">Configurez l'envoi d'emails via Outlook/Office 365.</p>
                 <form id="smtpForm" class="mb-3">
                     <div class="mb-2">
                         <label class="form-label">Serveur SMTP</label>
                         {% set smtp_server = settings|selectattr('cle','equalto','MAIL_SERVER')|list|first %}
-                        <input type="text" name="MAIL_SERVER" class="form-control" value="{{ smtp_server.valeur if smtp_server else 'smtp.office365.com' }}">
+                        <input type="text" name="MAIL_SERVER" class="form-control input-premium" value="{{ smtp_server.valeur if smtp_server else 'smtp.office365.com' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Port</label>
                         {% set smtp_port = settings|selectattr('cle','equalto','MAIL_PORT')|list|first %}
-                        <input type="number" name="MAIL_PORT" class="form-control" value="{{ smtp_port.valeur if smtp_port else '587' }}">
+                        <input type="number" name="MAIL_PORT" class="form-control input-premium" value="{{ smtp_port.valeur if smtp_port else '587' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Identifiant</label>
                         {% set smtp_user = settings|selectattr('cle','equalto','MAIL_USERNAME')|list|first %}
-                        <input type="text" name="MAIL_USERNAME" class="form-control" value="{{ smtp_user.valeur if smtp_user else '' }}">
+                        <input type="text" name="MAIL_USERNAME" class="form-control input-premium" value="{{ smtp_user.valeur if smtp_user else '' }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Mot de passe</label>
                         {% set smtp_pass = settings|selectattr('cle','equalto','MAIL_PASSWORD')|list|first %}
-                        <input type="password" name="MAIL_PASSWORD" class="form-control" value="{{ smtp_pass.valeur if smtp_pass else '' }}">
+                        <input type="password" name="MAIL_PASSWORD" class="form-control input-premium" value="{{ smtp_pass.valeur if smtp_pass else '' }}">
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-2">Enregistrer SMTP</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer SMTP</button>
                 </form>
                 <div id="smtpResult" class="small mb-3"></div>
                 
-                <hr>
+                <hr style="border-color: var(--border-color);">
                 <h6 class="mt-3">OpenRouter / LLM</h6>
-                <p class="text-muted small">Utilisé pour améliorer la détection des tâches dans les mails.</p>
+                <p class="text-tertiary small">Utilisé pour améliorer la détection des tâches dans les mails.</p>
                 <form id="openrouterForm" class="mb-3">
                     <div class="mb-3">
                         <label class="form-label">Clé API OpenRouter</label>
                         {% set openrouter_key = settings|selectattr('cle','equalto','OPENROUTER_API_KEY')|list|first %}
-                        <input type="password" name="OPENROUTER_API_KEY" class="form-control" value="{{ openrouter_key.valeur if openrouter_key else '' }}">
+                        <input type="password" name="OPENROUTER_API_KEY" class="form-control input-premium" value="{{ openrouter_key.valeur if openrouter_key else '' }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Provider</label>
                         {% set openrouter_provider = settings|selectattr('cle','equalto','OPENROUTER_PROVIDER')|list|first %}
-                        <input type="text" name="OPENROUTER_PROVIDER" class="form-control" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: stepfun, openai, google, anthropic, nvidia, kilocode">
-                        <div class="form-text">Laisser vide pour tous les modèles. Sinon, utilisez le préfixe du modèle (ex: stepfun/, openai/).</div>
+                        <input type="text" name="OPENROUTER_PROVIDER" class="form-control input-premium" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: stepfun, openai, google, anthropic, nvidia, kilocode">
+                        <div class="form-text text-tertiary">Laisser vide pour tous les modèles. Sinon, utilisez le préfixe du modèle (ex: stepfun/, openai/).</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Modèle LLM par défaut</label>
-                        <select name="OPENROUTER_MODEL" class="form-select" id="openrouterModelSelect">
+                        <select name="OPENROUTER_MODEL" class="form-select input-premium" id="openrouterModelSelect">
                             <option value="">Chargement...</option>
                         </select>
-                        <div class="form-text">Modèle choisi parmi ceux disponibles pour votre clé.</div>
+                        <div class="form-text text-tertiary">Modèle choisi parmi ceux disponibles pour votre clé.</div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-2">Enregistrer OpenRouter</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer OpenRouter</button>
                 </form>
                 <div id="openrouterResult" class="small mb-3"></div>
 
-                <hr>
+                <hr style="border-color: var(--border-color);">
                 <h6 class="mt-3">Boîte mail dédiée (IMAP)</h6>
-                <p class="text-muted small">Transférez les mails à transformer en tâches vers cette boîte.</p>
+                <p class="text-tertiary small">Transférez les mails à transformer en tâches vers cette boîte.</p>
                 <form id="mailboxForm" class="mb-3">
                     <div class="mb-2">
                         <label class="form-label">Adresse mailbox</label>
                         {% set mailbox_user = settings|selectattr('cle','equalto','MAILBOX_USER')|list|first %}
-                        <input type="email" name="MAILBOX_USER" class="form-control" value="{{ mailbox_user.valeur if mailbox_user else '' }}">
+                        <input type="email" name="MAILBOX_USER" class="form-control input-premium" value="{{ mailbox_user.valeur if mailbox_user else '' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Mot de passe d'application</label>
                         {% set mailbox_pass = settings|selectattr('cle','equalto','MAILBOX_PASSWORD')|list|first %}
-                        <input type="password" name="MAILBOX_PASSWORD" class="form-control" value="{{ mailbox_pass.valeur if mailbox_pass else '' }}">
+                        <input type="password" name="MAILBOX_PASSWORD" class="form-control input-premium" value="{{ mailbox_pass.valeur if mailbox_pass else '' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Serveur IMAP</label>
                         {% set mailbox_server = settings|selectattr('cle','equalto','MAILBOX_SERVER')|list|first %}
-                        <input type="text" name="MAILBOX_SERVER" class="form-control" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
+                        <input type="text" name="MAILBOX_SERVER" class="form-control input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Port</label>
                         {% set mailbox_port = settings|selectattr('cle','equalto','MAILBOX_PORT')|list|first %}
-                        <input type="number" name="MAILBOX_PORT" class="form-control" value="{{ mailbox_port.valeur if mailbox_port else '993' }}">
+                        <input type="number" name="MAILBOX_PORT" class="form-control input-premium" value="{{ mailbox_port.valeur if mailbox_port else '993' }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">SSL</label>
                         {% set mailbox_ssl = settings|selectattr('cle','equalto','MAILBOX_USE_SSL')|list|first %}
-                        <select name="MAILBOX_USE_SSL" class="form-select">
+                        <select name="MAILBOX_USE_SSL" class="form-select input-premium">
                             <option value="true" {{ 'selected' if (mailbox_ssl.valeur if mailbox_ssl else 'true')|lower == 'true' else '' }}>Oui</option>
                             <option value="false" {{ 'selected' if (mailbox_ssl.valeur if mailbox_ssl else 'true')|lower == 'false' else '' }}>Non</option>
                         </select>
@@ -103,67 +105,67 @@
                     <div class="mb-3">
                         <label class="form-label">Dossier IMAP</label>
                         {% set mailbox_folder = settings|selectattr('cle','equalto','MAILBOX_FOLDER')|list|first %}
-                        <input type="text" name="MAILBOX_FOLDER" class="form-control" value="{{ mailbox_folder.valeur if mailbox_folder else 'INBOX' }}">
-                        <div class="form-text">Ex: INBOX, [Gmail]/All Mail. Laisser vide ou INBOX pour la boîte de réception.</div>
+                        <input type="text" name="MAILBOX_FOLDER" class="form-control input-premium" value="{{ mailbox_folder.valeur if mailbox_folder else 'INBOX' }}">
+                        <div class="form-text text-tertiary">Ex: INBOX, [Gmail]/All Mail. Laisser vide ou INBOX pour la boîte de réception.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Expéditeurs autorisés</label>
                         {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
-                        <textarea name="MAILBOX_ALLOWED_SENDERS" class="form-control" rows="3" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
-                        <div class="form-text">Laisser vide pour accepter tous les expéditeurs. Sinon, séparez les adresses par des virgules.</div>
+                        <textarea name="MAILBOX_ALLOWED_SENDERS" class="form-control input-premium" rows="3" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
+                        <div class="form-text text-tertiary">Laisser vide pour accepter tous les expéditeurs. Sinon, séparez les adresses par des virgules.</div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-2">Enregistrer Mailbox</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer Mailbox</button>
                 </form>
                 <div id="mailboxResult" class="small mb-3"></div>
 
-                <hr>
+                <hr style="border-color: var(--border-color);">
                 <h6 class="mt-3">Test d'envoi</h6>
                 <form id="testMailForm" class="mb-2">
                     <div class="mb-2">
                         <label class="form-label">Expéditeur</label>
-                        <input type="email" name="sender" class="form-control" value="">
+                        <input type="email" name="sender" class="form-control input-premium" value="">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Destinataire</label>
-                        <input type="email" name="recipient" class="form-control" value="{{ current_user.email }}">
+                        <input type="email" name="recipient" class="form-control input-premium" value="{{ current_user.email }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Sujet</label>
-                        <input type="text" name="subject" class="form-control" value="Test Cabinet Team Manager">
+                        <input type="text" name="subject" class="form-control input-premium" value="Test Cabinet Team Manager">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Message</label>
-                        <textarea name="body" class="form-control" rows="2">Ceci est un test d'envoi d'email depuis l'application.</textarea>
+                        <textarea name="body" class="form-control input-premium" rows="2">Ceci est un test d'envoi d'email depuis l'application.</textarea>
                     </div>
-                    <button type="submit" class="btn btn-success w-100">Envoyer un email test</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100">Envoyer un email test</button>
                 </form>
                 <div id="testMailResult" class="small"></div>
                 
-                <hr>
+                <hr style="border-color: var(--border-color);">
                 <h6 class="mt-3">Tests de connexion</h6>
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm" id="testPennyLaneBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testPennyLaneBtn">
                         <i class="bi bi-lightning me-1"></i>Tester PennyLane
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" id="testOutlookBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testOutlookBtn">
                         <i class="bi bi-envelope me-1"></i>Tester Outlook
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" id="testTeamsBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testTeamsBtn">
                         <i class="bi bi-chat-dots me-1"></i>Tester Teams
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" id="testOpenRouterBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testOpenRouterBtn">
                         <i class="bi bi-cpu me-1"></i>Tester OpenRouter
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" id="testMailboxBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testMailboxBtn">
                         <i class="bi bi-inbox me-1"></i>Tester Mailbox
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" id="debugMailboxBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="debugMailboxBtn">
                         <i class="bi bi-bug me-1"></i>Debug Mailbox
                     </button>
-                    <button class="btn btn-outline-info btn-sm" id="sendersMailboxBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="sendersMailboxBtn">
                         <i class="bi bi-person-lines-fill me-1"></i>Voir expéditeurs autorisés
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" id="searchMailboxBtn">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="searchMailboxBtn">
                         <i class="bi bi-search me-1"></i>Rechercher par expéditeur
                     </button>
                 </div>
@@ -174,15 +176,15 @@
 
     <!-- API Keys -->
     <div class="col-md-8">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0"><i class="bi bi-key me-2 text-primary"></i>Clés et paramètres</h5>
-                    <button class="btn btn-success btn-sm" id="addSettingBtn"><i class="bi bi-plus-lg me-1"></i>Ajouter</button>
-                </div>
+        <div class="card-premium animate-fade-in-up stagger-2">
+            <div class="card-header-premium d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0"><i class="bi bi-key me-2" style="color: var(--info);"></i>Clés et paramètres</h5>
+                <button class="btn-premium btn-premium-primary btn-press" id="addSettingBtn"><i class="bi bi-plus-lg me-1"></i>Ajouter</button>
+            </div>
+            <div class="card-body-premium">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle" id="settingsTable">
-                        <thead class="table-light">
+                    <table class="table-premium" id="settingsTable">
+                        <thead>
                             <tr>
                                 <th>Service</th>
                                 <th>Clé</th>
@@ -193,17 +195,19 @@
                         </thead>
                         <tbody>
                             {% for s in settings %}
-                            <tr>
-                                <td><span class="badge bg-secondary">{{ s.service }}</span></td>
+                            <tr class="hover-lift">
+                                <td><span class="badge badge-secondary">{{ s.service }}</span></td>
                                 <td>{{ s.cle }}</td>
                                 <td>{{ s.valeur if not s.masque else '••••••••' }}</td>
                                 <td>{{ s.type_valeur }}</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-danger delete-setting" data-id="{{ s.id }}"><i class="bi bi-trash"></i></button>
+                                    <button class="btn-premium btn-premium-secondary btn-press delete-setting" data-id="{{ s.id }}" style="padding: 0.375rem 0.75rem; font-size: 0.8rem;">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="5" class="text-center text-muted">Aucun paramètre enregistré.</td></tr>
+                            <tr><td colspan="5" class="text-center text-tertiary">Aucun paramètre enregistré.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -215,16 +219,16 @@
 
 <!-- Modal add setting -->
 <div class="modal fade" id="modalSetting" tabindex="-1">
-    <div class="modal-dialog">
-        <form class="modal-content" id="settingForm">
-            <div class="modal-header">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);" id="settingForm">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
                 <h5 class="modal-title">Ajouter un paramètre</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="color: var(--text-primary);">
                 <div class="mb-3">
                     <label class="form-label">Service</label>
-                    <select name="service" class="form-select">
+                    <select name="service" class="form-select input-premium">
                         <option value="general">Général</option>
                         <option value="pennylane">PennyLane</option>
                         <option value="outlook">Outlook</option>
@@ -235,15 +239,15 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Clé</label>
-                    <input type="text" name="cle" class="form-control" required placeholder="ex: PENNYLANE_API_KEY">
+                    <input type="text" name="cle" class="form-control input-premium" required placeholder="ex: PENNYLANE_API_KEY">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Valeur</label>
-                    <input type="text" name="valeur" class="form-control" required placeholder="valeur ou token">
+                    <input type="text" name="valeur" class="form-control input-premium" required placeholder="valeur ou token">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Type</label>
-                    <select name="type_valeur" class="form-select">
+                    <select name="type_valeur" class="form-select input-premium">
                         <option value="string">string</option>
                         <option value="password">password</option>
                         <option value="json">json</option>
@@ -254,9 +258,9 @@
                     <label class="form-check-label" for="masqueCheck">Masquer la valeur</label>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" class="btn-premium btn-premium-primary btn-press">Enregistrer</button>
             </div>
         </form>
     </div>
@@ -284,9 +288,9 @@ document.getElementById('smtpForm').addEventListener('submit', function(e) {
     }).then(r => r.json()))).then(results => {
         const failed = results.filter(r => !r.ok);
         if (failed.length === 0) {
-            box.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>SMTP enregistré.</span>';
+            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>SMTP enregistré.</span>';
         } else {
-            box.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
+            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }
     });
 });
@@ -313,9 +317,9 @@ document.getElementById('mailboxForm').addEventListener('submit', function(e) {
     }).then(r => r.json()))).then(results => {
         const failed = results.filter(r => !r.ok);
         if (failed.length === 0) {
-            box.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Mailbox enregistrée.</span>';
+            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Mailbox enregistrée.</span>';
         } else {
-            box.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
+            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }
     });
 });
@@ -338,9 +342,9 @@ document.getElementById('openrouterForm').addEventListener('submit', function(e)
     }).then(r => r.json()))).then(results => {
         const failed = results.filter(r => !r.ok);
         if (failed.length === 0) {
-            box.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>OpenRouter enregistré.</span>';
+            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>OpenRouter enregistré.</span>';
         } else {
-            box.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
+            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }
     });
 });
@@ -364,7 +368,7 @@ function loadOpenRouterModels() {
                 const errorMsg = data.message || 'Erreur inconnue';
                 select.innerHTML = '<option value="">Erreur chargement</option>';
                 if (resultBox) {
-                    resultBox.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur: ' + errorMsg + '</span>';
+                    resultBox.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur: ' + errorMsg + '</span>';
                 }
                 console.error('OpenRouter models error:', data);
                 return;
@@ -373,7 +377,7 @@ function loadOpenRouterModels() {
             select.innerHTML = '';
             
             if (resultBox && data.stage === 'models') {
-                resultBox.innerHTML = '<span class="text-info"><i class="bi bi-info-circle me-1"></i>' + models.length + ' modèle(s) chargé(s) pour provider: ' + providerLabel + '</span>';
+                resultBox.innerHTML = '<span style="color: var(--info);"><i class="bi bi-info-circle me-1"></i>' + models.length + ' modèle(s) chargé(s) pour provider: ' + providerLabel + '</span>';
             }
             
             if (!models.length) {
@@ -405,7 +409,7 @@ function loadOpenRouterModels() {
             const select = document.getElementById('openrouterModelSelect');
             if (select) select.innerHTML = '<option value="">Erreur</option>';
             if (resultBox) {
-                resultBox.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Erreur réseau: ' + err.message + '</span>';
+                resultBox.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur réseau: ' + err.message + '</span>';
             }
             console.error('OpenRouter models fetch error:', err);
         });
@@ -439,20 +443,29 @@ document.getElementById('testMailboxBtn').addEventListener('click', function() {
             if (res.allowed_senders && res.allowed_senders.length) {
                 html += '<br><small>Expéditeurs autorisés : ' + res.allowed_senders.join(', ') + '</small>';
             } else {
-                html += '<br><small class="text-warning">Aucun expéditeur autorisé configuré</small>';
+                html += '<br><small style="color: var(--warning);">Aucun expéditeur autorisé configuré</small>';
             }
             if (res.samples && res.samples.length) {
                 html += '<ul class="mb-0">';
                 res.samples.forEach(s => {
-                    html += '<li>' + (s.subject || '(sans sujet)') + '<br><small class="text-muted">De : ' + (s.from || 'inconnu') + '</small></li>';
+                    html += '<li>' + (s.subject || '(sans sujet)') + '<br><small class="text-tertiary">De : ' + (s.from || 'inconnu') + '</small></li>';
                 });
                 html += '</ul>';
             } else {
-                html += '<br><small class="text-muted">Aucun mail autorisé trouvé parmi les non lus.</small>';
+                html += '<br><small class="text-tertiary">Aucun mail autorisé trouvé parmi les non lus.</small>';
             }
             showIntegrationResult(html, true);
         });
 });
+
+function showIntegrationResult(html, isSuccess) {
+    const box = document.getElementById('testIntegrationResult');
+    if (isSuccess) {
+        box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + html + '</span>';
+    } else {
+        box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + html + '</span>';
+    }
+}
 
 // Test mail form
 document.getElementById('testMailForm').addEventListener('submit', function(e) {
@@ -472,9 +485,9 @@ document.getElementById('testMailForm').addEventListener('submit', function(e) {
         body: JSON.stringify(data),
     }).then(r => r.json()).then(res => {
         if (res.ok) {
-            box.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
+            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
         } else {
-            box.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
+            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
         }
     });
 });
@@ -501,30 +514,25 @@ document.getElementById('settingForm').addEventListener('submit', function(e) {
         if (res.ok) {
             location.reload();
         } else {
-            alert('Erreur: ' + (res.error || 'unknown'));
+            alert('Erreur: ' + (res.message || 'Inconnue'));
         }
     });
 });
 
+// Delete setting
 document.querySelectorAll('.delete-setting').forEach(btn => {
     btn.addEventListener('click', function() {
-        const id = this.dataset.id;
-        fetch('/api/settings/' + id, { method: 'DELETE' })
+        if (!confirm('Supprimer ce paramètre ?')) return;
+        fetch('/api/settings/' + this.dataset.id, { method: 'DELETE' })
             .then(r => r.json())
-            .then(res => { if (res.ok) location.reload(); });
+            .then(res => {
+                if (res.ok) location.reload();
+                else alert('Erreur: ' + (res.message || 'Inconnue'));
+            });
     });
 });
 
-// Integration tests
-function showIntegrationResult(message, isSuccess) {
-    const box = document.getElementById('testIntegrationResult');
-    if (isSuccess) {
-        box.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>' + message + '</span>';
-    } else {
-        box.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + message + '</span>';
-    }
-}
-
+// Other test buttons
 document.getElementById('testPennyLaneBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Test en cours...';
@@ -532,7 +540,6 @@ document.getElementById('testPennyLaneBtn').addEventListener('click', function()
         .then(r => r.json())
         .then(res => showIntegrationResult(res.message, res.ok));
 });
-
 document.getElementById('testOutlookBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Test en cours...';
@@ -540,7 +547,6 @@ document.getElementById('testOutlookBtn').addEventListener('click', function() {
         .then(r => r.json())
         .then(res => showIntegrationResult(res.message, res.ok));
 });
-
 document.getElementById('testTeamsBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Test en cours...';
@@ -548,95 +554,45 @@ document.getElementById('testTeamsBtn').addEventListener('click', function() {
         .then(r => r.json())
         .then(res => showIntegrationResult(res.message, res.ok));
 });
-
 document.getElementById('testOpenRouterBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Test en cours...';
     fetch('/api/test/openrouter', { method: 'POST' })
         .then(r => r.json())
-        .then(res => {
-            const detail = res.model ? '<br><small>Modèle : ' + res.model + '</small>' : '';
-            showIntegrationResult(res.message + detail, res.ok);
-            if (res.ok) {
-                console.log('OpenRouter test OK, loading models...');
-                loadOpenRouterModels();
-            } else {
-                console.error('OpenRouter test failed:', res);
-            }
-        });
+        .then(res => showIntegrationResult(res.message, res.ok));
 });
-
 document.getElementById('debugMailboxBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Debug en cours...';
-    fetch('/api/test/mailbox/debug', { method: 'POST' })
+    fetch('/api/mailbox/debug', { method: 'POST' })
         .then(r => r.json())
-        .then(res => {
-            if (!res.ok) {
-                showIntegrationResult(res.message, false);
-                return;
-            }
-            let html = '<strong>' + res.message + '</strong>';
-            if (res.samples && res.samples.length) {
-                html += '<ul class="mb-0">';
-                res.samples.forEach(s => {
-                    html += '<li>' + (s.subject || '(sans sujet)') + '<br>';
-                    html += '<small class="text-muted">Raw From: ' + (s.raw_from || 'inconnu') + '</small><br>';
-                    html += '<small class="text-muted">Extrait: ' + (s.from || 'inconnu') + ' -> ' + (s.allowed ? '<span class="text-success">AUTORISÉ</span>' : '<span class="text-danger">BLOQUÉ</span>') + '</small>';
-                    html += '</li>';
-                });
-                html += '</ul>';
-            }
-            showIntegrationResult(html, true);
-        });
+        .then(res => showIntegrationResult(res.message, res.ok));
 });
-
 document.getElementById('sendersMailboxBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Chargement...';
-    fetch('/api/test/mailbox/senders')
+    fetch('/api/mailbox/allowed-senders', { method: 'GET' })
         .then(r => r.json())
         .then(res => {
-            if (!res.ok) {
+            if (res.ok) {
+                box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Expéditeurs autorisés: ' + (res.senders || []).join(', ') + '</span>';
+            } else {
                 showIntegrationResult(res.message, false);
-                return;
             }
-            let html = '<strong>Expéditeurs autorisés configurés</strong>';
-            html += '<ul class="mb-0">';
-            (res.allowed_senders || []).forEach(s => {
-                html += '<li>' + s + '</li>';
-            });
-            html += '</ul>';
-            showIntegrationResult(html, true);
         });
 });
-
 document.getElementById('searchMailboxBtn').addEventListener('click', function() {
+    const sender = prompt('Email de l\'expéditeur à rechercher:');
+    if (!sender) return;
     const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Recherche en cours...';
-    fetch('/api/test/mailbox/search', { method: 'POST' })
+    box.textContent = 'Recherche...';
+    fetch('/api/mailbox/search-by-sender', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sender: sender})
+    })
         .then(r => r.json())
-        .then(res => {
-            if (!res.ok) {
-                showIntegrationResult(res.message, false);
-                return;
-            }
-            let html = '<strong>' + res.message + '</strong>';
-            if (res.results && res.results.length) {
-                html += '<ul class="mb-0">';
-                res.results.forEach(r => {
-                    html += '<li>' + r.sender + ' : ' + r.count + ' mail(s) non lu(s)';
-                    if (r.uids.length) {
-                        html += ' <small class="text-muted">(UID: ' + r.uids.join(', ') + ')</small>';
-                    }
-                    html += '</li>';
-                });
-                html += '</ul>';
-            } else {
-                html += '<br><small class="text-muted">Aucun résultat.</small>';
-            }
-            showIntegrationResult(html, true);
-        });
+        .then(res => showIntegrationResult(res.message, res.ok));
 });
 </script>
 {% endblock %}
