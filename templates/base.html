@@ -8,16 +8,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
-    <style>
-        /* FORCE TEXTE BLANC PARTOUT (fallback si style.css non chargé) */
-        *, *::before, *::after { color: #FFFFFF; }
-        body, .container, .container-fluid, main { color: #FFFFFF !important; }
-        h1, h2, h3, h4, h5, h6 { color: #FFFFFF !important; }
-        .text-dark, .text-body { color: #FFFFFF !important; }
-        .text-muted { color: #B8B8C0 !important; }
-        p, label, span, td, th, li, div, small, strong, b { color: #FFFFFF; }
-        a { color: #FF8C00; }
-    </style>
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;"></div>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
@@ -62,7 +54,7 @@
     <main class="container-fluid">
         <div class="row">
             {% if current_user.is_authenticated %}
-            <div class="col-auto bg-white border-end-subtle h-100 vh-100 d-none d-md-block" style="width: 260px;">
+            <div class="col-auto h-100 d-none d-md-block" style="width: 260px;">
                 {% include 'includes/sidebar.html' %}
             </div>
             {% endif %}
@@ -71,9 +63,19 @@
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                     {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                    {% set toast_class = {
+                        'success': 'toast-success',
+                        'danger': 'toast-danger',
+                        'warning': 'toast-warning',
+                        'info': 'toast-info'
+                    }.get(category, 'toast-info') %}
+                    <div class="toast show fade {{ toast_class }}" role="alert" style="min-width: 300px;">
+                        <div class="toast-header d-flex align-items-center">
+                            <i class="bi {% if category == 'success' %}bi-check-circle{% elif category == 'danger' %}bi-x-circle{% elif category == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
+                            <strong class="me-auto">Cabinet JMH</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Fermer"></button>
+                        </div>
+                        <div class="toast-body">{{ message }}</div>
                     </div>
                     {% endfor %}
                     {% endif %}
@@ -85,6 +87,47 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function() {
+        // Move flash toasts into the fixed toast container
+        var container = document.getElementById('toastContainer');
+        if (container) {
+            document.querySelectorAll('.toast').forEach(function(t) {
+                container.appendChild(t);
+                // Auto-dismiss after 5 seconds
+                setTimeout(function() {
+                    var bsToast = bootstrap.Toast.getOrCreateInstance(t, {delay: 5000, animation: true});
+                    bsToast.show();
+                }, 100);
+            });
+        }
+        // Convenience function for non-flashed toasts
+        window.showToast = function(message, category) {
+            category = category || 'info';
+            var cls = 'toast-info';
+            if (category === 'success') cls = 'toast-success';
+            if (category === 'danger') cls = 'toast-danger';
+            if (category === 'warning') cls = 'toast-warning';
+            var icon = 'bi-info-circle';
+            if (category === 'success') icon = 'bi-check-circle';
+            if (category === 'danger') icon = 'bi-x-circle';
+            if (category === 'warning') icon = 'bi-exclamation-triangle';
+            var html = '<div class="toast ' + cls + '" role="alert" style="min-width: 300px;">' +
+                '<div class="toast-header d-flex align-items-center">' +
+                '<i class="bi ' + icon + ' me-2"></i>' +
+                '<strong class="me-auto">Cabinet JMH</strong>' +
+                '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Fermer"></button>' +
+                '</div><div class="toast-body">' + message + '</div></div>';
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = html;
+            var t = wrapper.firstElementChild;
+            container.appendChild(t);
+            var bsToast = bootstrap.Toast.getOrCreateInstance(t, {delay: 5000, animation: true});
+            bsToast.show();
+            setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 5500);
+        };
+    })();
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

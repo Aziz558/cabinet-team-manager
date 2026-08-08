@@ -665,6 +665,64 @@ p {
     color: var(--orange-primary);
 }
 
+.badge-tertiary {
+    background: rgba(138, 138, 138, 0.2);
+    color: var(--text-muted);
+}
+
+.badge-purple {
+    background: rgba(155, 93, 229, 0.2);
+    color: var(--purple, #9B5DE5);
+}
+
+/* Premium button size variants */
+.btn-premium-sm {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.8rem;
+}
+.btn-premium-sm .bi { font-size: 0.9rem; }
+
+.btn-premium-success {
+    background: var(--success);
+    color: var(--bg-dark);
+    border: none;
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.3);
+}
+.btn-premium-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+}
+
+/* Premium form elements */
+.form-label-premium {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-medium);
+    margin-bottom: 0.5rem;
+}
+
+.form-text-premium {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* Premium modals */
+.modal-premium {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+}
+.modal-header-premium {
+    background: var(--bg-card-hover);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+}
+.modal-footer-premium {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .sidebar {
@@ -1108,4 +1166,226 @@ p {
 
 .stat-card {
     contain: layout style;
+}
+
+/* ==========================================================================
+   FIVE UI UPGRADES - Component CSS
+   ========================================================================== */
+
+/* ---------- TOAST NOTIFICATIONS ---------- */
+.toast-container {
+    z-index: 1080;
+}
+.toast {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+.toast-success { border-left: 4px solid var(--success); }
+.toast-warning { border-left: 4px solid var(--warning); }
+.toast-danger { border-left: 4px solid var(--danger); }
+.toast-info { border-left: 4px solid var(--info); }
+
+.toast-header {
+    background: var(--bg-card-hover);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold);
+}
+.toast-header .btn-close-white {
+    filter: invert(1) brightness(2);
+}
+.toast-body {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+}
+
+/* ---------- SKELETON LOADERS ---------- */
+.skeleton-text {
+    height: 1rem;
+    width: 100%;
+    background: var(--bg-card-hover);
+    border-radius: var(--radius-sm);
+    animation: shimmer 1.5s infinite;
+}
+.skeleton-text.sm { height: 0.75rem; }
+.skeleton-text.lg { height: 1.25rem; }
+.skeleton-text.rounded { border-radius: var(--radius-sm); }
+.skeleton-text.pill { border-radius: var(--radius-pill); max-width: 120px; }
+.skeleton-circle {
+    width: 40px;
+    height: 40px;
+    background: var(--bg-card-hover);
+    border-radius: 50%;
+    animation: shimmer 1.5s infinite;
+}
+.skeleton-card {
+    background: var(--bg-card-hover);
+    border-radius: var(--radius-lg);
+    animation: shimmer 1.5s infinite;
+}
+.skeleton-stat {
+    background: var(--bg-card-hover);
+    border-radius: var(--radius-md);
+    height: 120px;
+    width: 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* ---------- PROGRESS RINGS ---------- */
+.progress-ring {
+    width: 100px;
+    height: 100px;
+    transform: rotate(-90deg);
+}
+.progress-ring circle {
+    fill: transparent;
+    stroke-linecap: round;
+}
+.progress-ring .progress-ring-bg {
+    stroke: var(--border-color);
+    stroke-width: 6;
+}
+.progress-ring .progress-ring-progress {
+    stroke: var(--orange-primary);
+    stroke-width: 6;
+    stroke-dasharray: 240;
+    stroke-dashoffset: calc(240 - (240 * var(--progress, 0)) / 100);
+    transition: stroke-dashoffset 0.6s var(--transition);
+}
+.progress-ring-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    text-align: center;
+}
+.progress-ring-text .value {
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+.progress-ring-text .label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+/* ---------- AVATAR STACKS ---------- */
+.avatar-sm { width: 32px; height: 32px; }
+.avatar-md { width: 40px; height: 40px; }
+.avatar-lg { width: 48px; height: 48px; }
+.avatar-stack {
+    display: flex;
+    align-items: center;
+    margin-left: 0.5rem;
+}
+.avatar-stack img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-dark);
+    margin-left: -8px;
+    object-fit: cover;
+}
+.avatar-stack img:first-child { margin-left: 0; }
+.avatar-stack .avatar-more {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-card-hover);
+    border: 2px solid var(--bg-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    margin-left: -8px;
+}
+
+/* ---------- EMPTY STATE ILLUSTRATIONS ---------- */
+.empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+}
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    opacity: 0.6;
+}
+.empty-state-title {
+    font-size: 1.1rem;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+.empty-state-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+.empty-state .btn-premium {
+    min-width: 140px;
+}
+
+/* ---------- SIDEBAR NIGHTMARE FIX ---------- */
+/* The base template wraps sidebar in bg-white — override it */
+.bg-white { background: var(--bg-sidebar) !important; }
+.border-end-subtle { border-color: var(--border-color) !important; }
+
+/* Sidebar nav links: the sidebar.html uses .nav-link but CSS defined .sidebar-nav-item */
+.sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    margin: 0.25rem 1rem;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+    font-family: var(--font-primary);
+    font-size: 0.9rem;
+}
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-primary);
+}
+.sidebar .nav-link.active i,
+.sidebar .nav-link:hover i {
+    color: var(--orange-primary);
+}
+.sidebar .nav-link i {
+    font-size: 1.1rem;
+    width: 24px;
+    text-align: center;
+    margin-right: 0.75rem;
+    color: var(--orange-primary);
+}
+.sidebar .nav-link.active {
+    color: var(--text-primary);
+}
+.sidebar .nav-link.active i {
+    animation: pulse 2s infinite;
+}
+
+/* Sidebar dropdown menu dark fix */
+.dropdown-menu {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+.dropdown-item {
+    color: var(--text-secondary);
+}
+.dropdown-item:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+.dropdown-item.text-danger:hover {
+    background: rgba(244, 67, 54, 0.1);
 }

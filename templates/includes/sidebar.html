@@ -1,52 +1,44 @@
 {% if current_user.role in ('admin', 'manager') %}
-<div class="sidebar bg-white border-end-subtle h-100">
+<div class="sidebar h-100">
     <div class="sidebar-brand d-flex align-items-center p-3">
-        <span class="fw-bold fs-5 text-primary">Cabinet JMH</span>
+        <span class="fw-bold fs-5 text-gradient-animated">Cabinet JMH</span>
     </div>
     <hr class="sidebar-divider my-0">
     
     <div class="sidebar-menu">
-        <div class="nav">
+        <div class="nav sidebar-nav">
             <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
                 <i class="bi bi-speedometer2 me-2"></i>
                 <span>Dashboard</span>
             </a>
-            
             <a href="{{ url_for('taches_aujourdhui') }}" class="nav-link {% if request.endpoint == 'taches_aujourdhui' %}active{% endif %}">
                 <i class="bi bi-calendar-check me-2"></i>
                 <span>Tâches du jour</span>
             </a>
-            
             <a href="{{ url_for('mailbox_page') }}" class="nav-link {% if request.endpoint == 'mailbox_page' %}active{% endif %}">
                 <i class="bi bi-envelope me-2"></i>
                 <span>Boîte mail</span>
             </a>
-            
             <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
                 <i class="bi bi-lightbulb me-2"></i>
                 <span>Suggestions</span>
             </a>
-            
             <a href="{{ url_for('liste_membres') }}" class="nav-link {% if request.endpoint == 'liste_membres' %}active{% endif %}">
                 <i class="bi bi-people me-2"></i>
                 <span>Membres</span>
             </a>
-            
             <a href="{{ url_for('dossiers') }}" class="nav-link {% if request.endpoint == 'dossiers' %}active{% endif %}">
                 <i class="bi bi-folder me-2"></i>
                 <span>Dossiers</span>
             </a>
-            
             <a href="{{ url_for('taches') }}" class="nav-link {% if request.endpoint == 'taches' %}active{% endif %}">
                 <i class="bi bi-check2-square me-2"></i>
                 <span>Tâches</span>
             </a>
-            
             <a href="{{ url_for('team_select') }}" class="nav-link {% if request.endpoint == 'team_select' %}active{% endif %}">
                 <i class="bi bi-diagram-3 me-2"></i>
                 <span>Équipes</span>
             </a>
-            
             <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}">
                 <i class="bi bi-gear me-2"></i>
                 <span>Paramètres</span>
@@ -54,47 +46,43 @@
         </div>
     </div>
     
-    <div class="sidebar-footer mt-auto p-3">
+    <div class="sidebar-footer p-3">
         <div class="d-flex align-items-center">
             <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" 
-                 class="rounded-circle me-2" width="36" height="36" 
+                 class="rounded-circle me-2 avatar-md"
                  alt="{{ current_user.prenom }}">
             <div>
-                <small class="text-muted">{{ current_user.prenom }}</small><br>
-                <small class="text-primary fw-medium">{{ current_user.role|capitalize }}</small>
+                <small class="text-tertiary">{{ current_user.prenom }}</small><br>
+                <small class="fw-medium" style="color: var(--orange-primary);">{{ current_user.role|capitalize }}</small>
             </div>
         </div>
     </div>
 </div>
 {% else %}
-<div class="sidebar bg-white border-end-subtle h-100">
+<div class="sidebar h-100">
     <div class="sidebar-brand d-flex align-items-center p-3">
-        <span class="fw-bold fs-5 text-primary">Cabinet JMH</span>
+        <span class="fw-bold fs-5 text-gradient-animated">Cabinet JMH</span>
     </div>
     <hr class="sidebar-divider my-0">
     
     <div class="sidebar-menu">
-        <div class="nav">
+        <div class="nav sidebar-nav">
             <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
                 <i class="bi bi-speedometer2 me-2"></i>
                 <span>Dashboard</span>
             </a>
-            
             <a href="{{ url_for('taches_aujourdhui') }}" class="nav-link {% if request.endpoint == 'taches_aujourdhui' %}active{% endif %}">
                 <i class="bi bi-calendar-check me-2"></i>
                 <span>Tâches du jour</span>
             </a>
-            
             <a href="{{ url_for('mes_taches') }}" class="nav-link {% if request.endpoint == 'mes_taches' %}active{% endif %}">
                 <i class="bi bi-check-circle me-2"></i>
                 <span>Mes tâches</span>
             </a>
-            
             <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
                 <i class="bi bi-plus-lg me-2"></i>
                 <span>Nouvelle suggestion</span>
             </a>
-            
             <a href="{{ url_for('profil') }}" class="nav-link {% if request.endpoint == 'profil' %}active{% endif %}">
                 <i class="bi bi-person me-2"></i>
                 <span>Mon profil</span>
@@ -102,14 +90,14 @@
         </div>
     </div>
     
-    <div class="sidebar-footer mt-auto p-3">
+    <div class="sidebar-footer p-3">
         <div class="d-flex align-items-center">
             <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" 
-                 class="rounded-circle me-2" width="36" height="36" 
+                 class="rounded-circle me-2 avatar-md"
                  alt="{{ current_user.prenom }}">
             <div>
-                <small class="text-muted">{{ current_user.prenom }}</small><br>
-                <small class="text-primary fw-medium">{{ current_user.role|capitalize }}</small>
+                <small class="text-tertiary">{{ current_user.prenom }}</small><br>
+                <small class="fw-medium" style="color: var(--orange-primary);">{{ current_user.role|capitalize }}</small>
             </div>
         </div>
     </div>

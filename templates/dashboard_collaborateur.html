@@ -4,77 +4,136 @@
 
 {% block content %}
 <!-- Stats Grid -->
-<div class="stats-grid stagger-1">
-    <div class="stat-card hover-lift" style="border-color: rgba(255, 152, 0, 0.3);">
-        <div class="stat-card-icon" style="background: rgba(255, 152, 0, 0.15);">
-            <i class="bi bi-list-task" style="color: var(--warning);"></i>
+<div class="stats-grid stagger-1" id="kpiSkeletonsCollab">
+    <div class="skeleton-stat stagger-1"></div>
+    <div class="skeleton-stat stagger-2"></div>
+    <div class="skeleton-stat stagger-3"></div>
+</div>
+
+<!-- Actual KPIs -->
+<div class="stats-grid" id="kpiContentCollab" style="display: none;">
+    <div class="stat-card hover-lift stagger-1">
+        <div class="stat-card-icon">
+            <i class="bi bi-clipboard-check"></i>
+        </div>
+        <div class="stat-card-content">
+            <div class="stat-card-label">Mes tâches aujourd'hui</div>
+            <div class="stat-card-value">{{ kpi.taches_aujourdhui }}</div>
+            <div class="stat-card-trend">
+                <i class="bi bi-calendar-day"></i>
+                <span>Aujourd'hui</span>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card hover-lift stagger-2">
+        <div class="stat-card-icon" style="background: rgba(33, 150, 243, 0.15);">
+            <i class="bi bi-exclamation-triangle" style="color: var(--warning);"></i>
         </div>
         <div class="stat-card-content">
             <div class="stat-card-label">À faire</div>
-            <div class="stat-card-value" style="color: var(--warning);">{{ taches_a_faire|length }}</div>
-            <div class="stat-card-trend">
-                <i class="bi bi-arrow-right"></i>
-                <span>En attente</span>
+            <div class="stat-card-value">{{ kpi.taches_a_faire }}</div>
+            <div class="stat-card-trend down">
+                <i class="bi bi-arrow-down"></i>
+                <span>Urgent</span>
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift" style="border-color: rgba(33, 150, 243, 0.3);">
-        <div class="stat-card-icon" style="background: rgba(33, 150, 243, 0.15);">
-            <i class="bi bi-play-circle" style="color: var(--info);"></i>
+    <div class="stat-card hover-lift stagger-3">
+        <div class="stat-card-icon" style="background: rgba(155, 93, 229, 0.15);">
+            <i class="bi bi-graph-up-arrow" style="color: var(--purple, #9B5DE5);"></i>
         </div>
         <div class="stat-card-content">
-            <div class="stat-card-label">En cours</div>
-            <div class="stat-card-value" style="color: var(--info);">{{ taches_en_cours|length }}</div>
-            <div class="stat-card-trend">
-                <i class="bi bi-arrow-right"></i>
-                <span>Active</span>
-            </div>
-        </div>
-    </div>
-    <div class="stat-card hover-lift" style="border-color: rgba(76, 175, 80, 0.3);">
-        <div class="stat-card-icon" style="background: rgba(76, 175, 80, 0.15);">
-            <i class="bi bi-check2-circle" style="color: var(--success);"></i>
-        </div>
-        <div class="stat-card-content">
-            <div class="stat-card-label">Terminées</div>
-            <div class="stat-card-value" style="color: var(--success);">{{ taches_terminees|length }}</div>
+            <div class="stat-card-label">Taux d'avancement</div>
+            <div class="stat-card-value">{{ kpi.taux_completion or 0 }}%</div>
             <div class="stat-card-trend up">
-                <i class="bi bi-arrow-up"></i>
-                <span>Accompli</span>
+                <i class="bi bi-rocket"></i>
+                <span>Progression</span>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Tâches du jour -->
-<div class="card-premium mb-4 animate-fade-in-up stagger-2">
+<!-- Progress Ring -->
+<div class="row mb-4">
+    <div class="col-lg-4 mb-4">
+        <div class="card-premium h-100 animate-fade-in-up stagger-4">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-bullseye me-2" style="color: var(--orange-primary);"></i>Mes objectifs</h5>
+            </div>
+            <div class="card-body-premium">
+                <div class="d-flex justify-content-center mb-3">
+                    <div class="progress-ring text-center">
+                        <svg width="100" height="100">
+                            <circle class="progress-ring-bg" cx="50" cy="50" r="40" fill="transparent"></circle>
+                            <circle class="progress-ring-progress" cx="50" cy="50" r="40" fill="transparent" style="--progress: {{ kpi.taux_completion or 0 }}"></circle>
+                        </svg>
+                        <div class="progress-ring-text">
+                            <div class="value">{{ kpi.taux_completion or 0 }}%</div>
+                            <div class="label">Terminé</div>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-tertiary small">Sur {{ kpi.total_taches or 0 }} tâches au total</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8 mb-4">
+        <div class="card-premium h-100 animate-fade-in-up stagger-5">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Mes tâches d'aujourd'hui</h5>
+            </div>
+            <div class="card-body-premium">
+                {% if taches_jour %}
+                    {% for t in taches_jour %}
+                    <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
+                        <div>
+                            <strong>{{ t.titre }}</strong>
+                            <br><small class="text-tertiary">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}">
+                                {{ t.priorite }}
+                            </span>
+                            <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
+                                <button type="submit" class="btn-premium btn-premium-secondary btn-press">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+                        <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
+                        <p class="empty-state-desc">Tout est à jour ! Vous pouvez consulter vos tâches hebdomadaires.</p>
+                        <a href="{{ url_for('mes_taches') }}" class="btn-premium btn-premium-primary">
+                            <i class="bi bi-check2-square me-1"></i>Mes tâches
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tâches de la semaine -->
+<div class="card-premium animate-fade-in-up stagger-6">
     <div class="card-header-premium">
-        <h5 class="mb-0"><i class="bi bi-calendar-day me-2" style="color: var(--info);"></i>Mes tâches du jour</h5>
+        <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Mes tâches de la semaine</h5>
     </div>
     <div class="card-body-premium">
-        {% set taches_jour_collab = taches_a_faire | selectattr('date_echeance', 'equalto', today) | list %}
-        {% if taches_jour_collab %}
-            {% for t in taches_jour_collab %}
+        {% if taches_semaine %}
+            {% for t in taches_semaine %}
             <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
                 <div>
                     <strong>{{ t.titre }}</strong>
-                    {% if t.dossier %}
-                    <br><small class="text-tertiary">Dossier: {{ t.dossier.numero_dossier }}</small>
-                    {% endif %}
-                    <br><small class="text-tertiary">Échéance: {{ t.date_echeance.strftime('%d/%m/%Y') }}</small>
-                    {% if t.est_en_retard() %}
-                    <span style="color: var(--danger);" class="ms-2"><i class="bi bi-exclamation-triangle"></i> En retard</span>
-                    {% endif %}
-                    <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }} ms-2">
+                    <br><small class="text-tertiary">{{ t.date_echeance.strftime('%d/%m/%Y') }} - {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}">
                         {{ t.priorite }}
                     </span>
-                </div>
-                <div class="d-flex gap-2">
-                    <form method="POST" action="{{ url_for('prendre_en_charge', tache_id=t.id) }}">
-                        <button type="submit" class="btn-premium btn-premium-primary btn-press">
-                            <i class="bi bi-check-lg me-1"></i>Prendre en charge
-                        </button>
-                    </form>
                     <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
                         <button type="submit" class="btn-premium btn-premium-secondary btn-press">
                             <i class="bi bi-trash"></i>
@@ -84,141 +143,28 @@
             </div>
             {% endfor %}
         {% else %}
-            <div class="empty-state text-center py-4">
-                <i class="bi bi-calendar-check" style="font-size: 2rem; color: var(--success);"></i>
-                <p class="mb-0 mt-2 text-tertiary fw-medium">Aucune tâche due aujourd'hui.</p>
+            <div class="empty-state">
+                <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+                <h4 class="empty-state-title">Aucune tâche cette semaine</h4>
+                <p class="empty-state-desc">Toutes vos tâches sont à jour. Parfait travail !</p>
             </div>
         {% endif %}
     </div>
 </div>
+{% endblock %}
 
-<!-- Mes dossiers -->
-<div class="card-premium mb-4 animate-fade-in-up stagger-3">
-    <div class="card-header-premium">
-        <h5 class="mb-0"><i class="bi bi-folder me-2" style="color: var(--info);"></i>Mes dossiers</h5>
-    </div>
-    <div class="card-body-premium">
-        {% if mes_dossiers %}
-            <div class="table-responsive">
-                <table class="table-premium">
-                    <thead>
-                        <tr>
-                            <th>Numéro</th>
-                            <th>Intitulé</th>
-                            <th>Régime TVA</th>
-                            <th>Date limite</th>
-                            <th>Délai</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for d in mes_dossiers %}
-                        <tr>
-                            <td><strong>{{ d.numero_dossier }}</strong></td>
-                            <td>{{ d.intitule }}</td>
-                            <td><span class="badge badge-secondary">{{ d.regime_tva or '-' }}</span></td>
-                            <td class="text-tertiary small">{{ d.date_limite_declaration.strftime('%d/%m/%Y') if d.date_limite_declaration else '-' }}</td>
-                            <td>
-                                {% if d.date_limite_declaration %}
-                                    {% set delta = (d.date_limite_declaration - today).days %}
-                                    {% if delta < 0 %}
-                                        <span style="color: var(--danger);" class="fw-medium"><i class="bi bi-exclamation-triangle me-1"></i>{{ abs(delta) }} jours de retard</span>
-                                    {% elif delta <= 7 %}
-                                        <span style="color: var(--warning);" class="fw-medium"><i class="bi bi-clock me-1"></i>{{ delta }} jours restants</span>
-                                    {% else %}
-                                        <span style="color: var(--success);" class="fw-medium"><i class="bi bi-check-circle me-1"></i>{{ delta }} jours restants</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-tertiary">-</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="empty-state text-center py-4">
-                <i class="bi bi-folder-x" style="font-size: 2rem; color: var(--text-muted);"></i>
-                <p class="mb-0 mt-2 text-tertiary">Aucun dossier assigné.</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Tâches à faire -->
-<div class="card-premium mb-4 animate-fade-in-up stagger-4">
-    <div class="card-header-premium">
-        <h5 class="mb-0"><i class="bi bi-list-check me-2" style="color: var(--info);"></i>Tâches à faire</h5>
-    </div>
-    <div class="card-body-premium">
-        {% if taches_a_faire %}
-            {% for t in taches_a_faire %}
-            <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
-                <div>
-                    <strong>{{ t.titre }}</strong>
-                    {% if t.dossier %}
-                    <br><small class="text-tertiary">Dossier: {{ t.dossier.numero_dossier }}</small>
-                    {% endif %}
-                    <br><small class="text-tertiary">Échéance: {{ t.date_echeance.strftime('%d/%m/%Y') }}
-                        {% if t.est_en_retard() %}
-                        <span style="color: var(--danger);" class="ms-2"><i class="bi bi-exclamation-triangle"></i> En retard</span>
-                        {% endif %}
-                    </small>
-                    <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }} ms-2">
-                        {{ t.priorite }}
-                    </span>
-                </div>
-                <div class="d-flex gap-2">
-                    <form method="POST" action="{{ url_for('prendre_en_charge', tache_id=t.id) }}">
-                        <button type="submit" class="btn-premium btn-premium-primary btn-press">
-                            <i class="bi bi-check-lg me-1"></i>Prendre en charge
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
-                        <button type="submit" class="btn-premium btn-premium-secondary btn-press">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </form>
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state text-center py-4">
-                <i class="bi bi-trophy" style="font-size: 2rem; color: var(--warning);"></i>
-                <p class="mb-0 mt-2 text-tertiary fw-medium">Aucune tâche à faire. Bravo !</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Tâches en cours -->
-<div class="card-premium animate-fade-in-up stagger-5">
-    <div class="card-header-premium">
-        <h5 class="mb-0"><i class="bi bi-hourglass-split me-2" style="color: var(--info);"></i>Tâches en cours</h5>
-    </div>
-    <div class="card-body-premium">
-        {% if taches_en_cours %}
-            {% for t in taches_en_cours %}
-            <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
-                <div>
-                    <strong>{{ t.titre }}</strong>
-                    {% if t.dossier %}
-                    <br><small class="text-tertiary">Dossier: {{ t.dossier.numero_dossier }}</small>
-                    {% endif %}
-                </div>
-                <form method="POST" action="{{ url_for('terminer_tache', tache_id=t.id) }}">
-                    <button type="submit" class="btn-premium btn-premium-primary btn-press">
-                        <i class="bi bi-check-lg me-1"></i>Terminer
-                    </button>
-                </form>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state text-center py-4">
-                <i class="bi bi-inbox" style="font-size: 2rem; color: var(--text-muted);"></i>
-                <p class="mb-0 mt-2 text-tertiary">Aucune tâche en cours.</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
+{% block scripts %}
+<script>
+// Simulate loading
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        var sk = document.getElementById('kpiSkeletonsCollab');
+        var ct = document.getElementById('kpiContentCollab');
+        if (sk && ct) {
+            sk.style.display = 'none';
+            ct.style.display = 'grid';
+        }
+    }, 800);
+});
+</script>
 {% endblock %}

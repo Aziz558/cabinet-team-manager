@@ -4,20 +4,20 @@
 
 {% block content %}
 {% if current_user.role == 'manager' %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
     <h2 class="fw-semibold">Tâches</h2>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTache">
+    <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalTache">
         <i class="bi bi-plus-lg me-1"></i>Nouvelle tâche
     </button>
 </div>
 {% else %}
-<h2 class="fw-semibold">Mes tâches</h2>
+<h2 class="fw-semibold animate-fade-in-up">Mes tâches</h2>
 {% endif %}
 
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
+<div class="card-premium animate-fade-in-up">
+    <div class="card-body-premium p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table-premium">
                 <thead>
                     <tr>
                         <th>Titre</th>
@@ -35,45 +35,45 @@
                         <td>
                             <strong>{{ t.titre }}</strong>
                             {% if t.description %}
-                            <br><small class="text-muted text-truncate d-block" style="max-width: 260px;">{{ t.description }}</small>
+                            <br><small class="text-tertiary text-truncate d-block" style="max-width: 260px;">{{ t.description }}</small>
                             {% endif %}
                         </td>
-                        <td class="text-muted small">{{ t.dossier.numero_dossier if t.dossier else '-' }}</td>
+                        <td class="text-tertiary small">{{ t.dossier.numero_dossier if t.dossier else '-' }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <img src="{{ url_for('uploaded_file', filename=t.assigne.photo_profil) }}" class="rounded-circle" width="28" height="28" alt="">
+                                <img src="{{ url_for('uploaded_file', filename=t.assigne.photo_profil) }}" class="rounded-circle avatar-sm" alt="">
                                 <span class="small">{{ t.assigne.prenom }} {{ t.assigne.nom }}</span>
                             </div>
                         </td>
                         <td>
-                            <span class="badge {{ 'bg-danger' if t.priorite == 'haute' else 'bg-warning' if t.priorite == 'moyenne' else 'bg-success' }}">
+                            <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}">
                                 {{ t.priorite }}
                             </span>
                         </td>
-                        <td class="text-muted small">{{ t.date_echeance.strftime('%d/%m/%Y') }}</td>
+                        <td class="text-tertiary small">{{ t.date_echeance.strftime('%d/%m/%Y') }}</td>
                         <td>
-                            <span class="badge {{ 'bg-success' if t.statut == 'terminee' else 'bg-info' if t.statut == 'en_cours' else 'bg-secondary' }}">
+                            <span class="badge badge-{{ 'success' if t.statut == 'terminee' else 'info' if t.statut == 'en_cours' else 'tertiary' }}">
                                 {{ t.statut }}
                             </span>
                         </td>
                         <td class="text-end">
                             {% if current_user.role == 'membre' and t.statut == 'a_faire' %}
                             <form method="POST" action="{{ url_for('prendre_en_charge', tache_id=t.id) }}" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-primary">
+                                <button type="submit" class="btn-premium btn-premium-success btn-press btn-sm">
                                     <i class="bi bi-check-lg me-1"></i>Prendre
                                 </button>
                             </form>
                             {% endif %}
                             {% if t.statut == 'en_cours' and (current_user.role == 'manager' or t.assigne_a == current_user.id) %}
                             <form method="POST" action="{{ url_for('terminer_tache', tache_id=t.id) }}" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-success">
+                                <button type="submit" class="btn-premium btn-premium-success btn-press btn-sm">
                                     <i class="bi bi-check2-all me-1"></i>Terminer
                                 </button>
                             </form>
                             {% endif %}
                             {% if current_user.role == 'manager' or t.assigne_a == current_user.id %}
                             <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <button type="submit" class="btn-premium btn-premium-secondary btn-press btn-sm">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
@@ -90,24 +90,24 @@
 {% if current_user.role == 'manager' %}
 <div class="modal fade" id="modalTache" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <form class="modal-content" method="POST">
-            <div class="modal-header">
+        <form class="modal-content modal-premium" method="POST">
+            <div class="modal-header modal-header-premium">
                 <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Nouvelle tâche</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Titre</label>
-                    <input type="text" name="titre" class="form-control" required>
+                    <label class="form-label-premium">Titre</label>
+                    <input type="text" name="titre" class="input-premium" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-control" rows="3"></textarea>
+                    <label class="form-label-premium">Description</label>
+                    <textarea name="description" class="input-premium" rows="3"></textarea>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Dossier</label>
-                        <select name="dossier_id" class="form-select">
+                        <label class="form-label-premium">Dossier</label>
+                        <select name="dossier_id" class="input-premium">
                             <option value="">Aucun</option>
                             {% for d in dossiers %}
                             <option value="{{ d.id }}">{{ d.numero_dossier }} - {{ d.intitule }}</option>
@@ -115,31 +115,31 @@
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Date d'échéance</label>
-                        <input type="date" name="date_echeance" class="form-control" required>
+                        <label class="form-label-premium">Date d'échéance</label>
+                        <input type="date" name="date_echeance" class="input-premium" required>
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Assigner à (plusieurs possibles)</label>
-                    <select name="assigne_a" class="form-select" multiple size="5">
+                    <label class="form-label-premium">Assigner à (plusieurs possibles)</label>
+                    <select name="assigne_a" class="input-premium" multiple size="5">
                         {% for m in membres %}
                         <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }} - {{ m.poste or '' }}</option>
                         {% endfor %}
                     </select>
-                    <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs.</small>
+                    <small class="form-text-premium">Maintenez Ctrl pour sélectionner plusieurs.</small>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Priorité</label>
-                    <select name="priorite" class="form-select">
+                    <label class="form-label-premium">Priorité</label>
+                    <select name="priorite" class="input-premium">
                         <option value="basse">Basse</option>
                         <option value="moyenne" selected>Moyenne</option>
                         <option value="haute">Haute</option>
                     </select>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn btn-primary">
+            <div class="modal-footer modal-footer-premium">
+                <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" class="btn-premium btn-premium-primary">
                     <i class="bi bi-plus-lg me-1"></i>Créer et notifier
                 </button>
             </div>

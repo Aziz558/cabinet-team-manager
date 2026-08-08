@@ -3,54 +3,62 @@
 {% block title %}Dashboard Manager{% endblock %}
 
 {% block content %}
-<!-- Stats Grid -->
-<div class="stats-grid stagger-1">
-    <div class="stat-card hover-lift">
+<!-- Stats Grid with Skeleton Loading -->
+<div class="stats-grid stagger-1" id="kpiSkeletons">
+    <!-- Skeletons shown while loading -->
+    <div class="skeleton-stat stagger-1"></div>
+    <div class="skeleton-stat stagger-2"></div>
+    <div class="skeleton-stat stagger-3"></div>
+    <div class="skeleton-stat stagger-4"></div>
+</div>
+<!-- Actual KPIs (hidden until loaded) -->
+<div class="stats-grid stagger-1" id="kpiContent" style="display: none;">
+    <div class="stat-card hover-lift stagger-1">
         <div class="stat-card-icon">
             <i class="bi bi-people"></i>
         </div>
         <div class="stat-card-content">
             <div class="stat-card-label">Membres actifs</div>
-            <div class="stat-card-value">{{ kpi.membres_actifs }}</div>
+            <div class="stat-card-value" id="kpi-membres">{{ kpi.membres_actifs }}</div>
             <div class="stat-card-trend up">
                 <i class="bi bi-arrow-up"></i>
                 <span>Équipe complète</span>
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift">
+    <div class="stat-card hover-lift stagger-2">
         <div class="stat-card-icon" style="background: rgba(33, 150, 243, 0.15);">
             <i class="bi bi-folder2-open" style="color: var(--info);"></i>
         </div>
         <div class="stat-card-content">
             <div class="stat-card-label">Dossiers en cours</div>
-            <div class="stat-card-value">{{ kpi.dossiers_en_cours }}</div>
+            <div class="stat-card-value" id="kpi-dossiers">{{ kpi.dossiers_en_cours }}</div>
             <div class="stat-card-trend">
                 <i class="bi bi-archive"></i>
                 <span>Suivi actif</span>
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift">
+    <div class="stat-card hover-lift stagger-3">
         <div class="stat-card-icon" style="background: rgba(244, 67, 54, 0.15);">
             <i class="bi bi-exclamation-triangle" style="color: var(--danger);"></i>
         </div>
         <div class="stat-card-content">
             <div class="stat-card-label">Tâches en retard</div>
-            <div class="stat-card-value">{{ kpi.taches_retard }}</div>
+            <div class="stat-card-value" id="kpi-retard">{{ kpi.taches_retard }}</div>
             <div class="stat-card-trend down">
                 <i class="bi bi-arrow-down"></i>
                 <span>Attention requise</span>
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift">
+    <div class="stat-card hover-lift stagger-4">
         <div class="stat-card-icon" style="background: rgba(255, 152, 0, 0.15);">
             <i class="bi bi-star" style="color: var(--warning);"></i>
         </div>
         <div class="stat-card-content">
             <div class="stat-card-label">Haute priorité</div>
-            <div class="stat-card-value">{{ kpi.taches_haute_priorite }}</div>
+            <div class="stat-card-value" id="kpi-priorite">{{ kpi.taches_haute_priorite }}</div>
             <div class="stat-card-trend">
                 <i class="bi bi-flag"></i>
                 <span>Urgence</span>
@@ -85,13 +93,14 @@
     <div class="card-header-premium d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-lightbulb me-2" style="color: var(--warning);"></i>Suggestions automatiques</h5>
         <div class="d-flex align-items-center gap-2">
-            <span class="text-tertiary small">Basées sur les deadlines déclarations</span>
+            <span class="text-tertiary small">Basées sur les deadlines déclarées</span>
             <button class="btn-premium btn-premium-outline btn-premium-secondary" id="refreshSuggestionsBtn">
                 <i class="bi bi-arrow-clockwise me-1"></i>Actualiser
             </button>
         </div>
     </div>
     <div class="card-body-premium">
+        {% if suggestions %}
         <div class="table-responsive">
             <table class="table-premium">
                 <thead>
@@ -110,7 +119,7 @@
                         <td>
                             {% set u = membres | selectattr('id', 'equalto', s.assigne_a) | first %}
                             <div class="d-flex align-items-center gap-2">
-                                <img src="{{ url_for('uploaded_file', filename=u.photo_profil) }}" class="rounded-circle" width="28" height="28" alt="">
+                                <img src="{{ url_for('uploaded_file', filename=u.photo_profil) }}" class="rounded-circle avatar-sm" alt="">
                                 <span>{{ u.prenom }} {{ u.nom }}</span>
                             </div>
                         </td>
@@ -138,6 +147,13 @@
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div class="empty-state">
+            <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+            <h4 class="empty-state-title">Aucune suggestion pour le moment</h4>
+            <p class="empty-state-desc">Les suggestions apparaîtront automatiquement quand des deadlines approcheront.</p>
+        </div>
+        {% endif %}
         <div id="suggestionsResult" class="small mt-2"></div>
     </div>
 </div>
@@ -145,8 +161,31 @@
 
 <!-- Vue Équipe & Tâches -->
 <div class="row mb-4">
-    <div class="col-lg-6 mb-4">
+    <!-- Progress Rings Section -->
+    <div class="col-lg-4 mb-4">
         <div class="card-premium h-100 animate-fade-in-up stagger-4">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-speedometer2 me-2" style="color: var(--orange-primary);"></i>Avancement de l'équipe</h5>
+            </div>
+            <div class="card-body-premium">
+                <div class="d-flex justify-content-center mb-3">
+                    <div class="progress-ring text-center">
+                        <svg width="100" height="100">
+                            <circle class="progress-ring-bg" cx="50" cy="50" r="40" fill="transparent"></circle>
+                            <circle class="progress-ring-progress" cx="50" cy="50" r="40" fill="transparent" style="--progress: {{ kpi.taux_completion or 0 }}"></circle>
+                        </svg>
+                        <div class="progress-ring-text">
+                            <div class="value">{{ kpi.taux_completion or 0 }}%</div>
+                            <div class="label">Complété</div>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-tertiary small">Sur {{ kpi.total_taches or 0 }} tâches au total</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8 mb-4">
+        <div class="card-premium h-100 animate-fade-in-up stagger-5">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-people me-2"></i>Vue équipe</h5>
             </div>
@@ -166,7 +205,7 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ url_for('uploaded_file', filename=m.photo_profil) }}" class="rounded-circle" width="32" height="32" alt="">
+                                        <img src="{{ url_for('uploaded_file', filename=m.photo_profil) }}" class="rounded-circle avatar-sm" alt="">
                                         <strong>{{ m.prenom }} {{ m.nom }}</strong>
                                     </div>
                                 </td>
@@ -185,6 +224,10 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Tâches du jour & de la semaine -->
+<div class="row mb-4">
     <div class="col-lg-6 mb-4">
         <div class="card-premium mb-4 animate-fade-in-up stagger-5">
             <div class="card-header-premium">
@@ -211,13 +254,16 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div class="empty-state text-center py-4">
-                        <i class="bi bi-calendar-x" style="font-size: 2rem; color: var(--text-muted);"></i>
-                        <p class="mb-0 mt-2 text-tertiary">Aucune tâche pour aujourd'hui.</p>
+                    <div class="empty-state">
+                        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+                        <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
+                        <p class="empty-state-desc">Vous n'avez pas de tâches planifiées aujourd'hui. Profitez de cette journée !</p>
                     </div>
                 {% endif %}
             </div>
         </div>
+    </div>
+    <div class="col-lg-6 mb-4">
         <div class="card-premium animate-fade-in-up stagger-6">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Tâches de la semaine</h5>
@@ -243,9 +289,10 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div class="empty-state text-center py-4">
-                        <i class="bi bi-clipboard-x" style="font-size: 2rem; color: var(--text-muted);"></i>
-                        <p class="mb-0 mt-2 text-tertiary">Aucune tâche cette semaine.</p>
+                    <div class="empty-state">
+                        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+                        <h4 class="empty-state-title">Aucune tâche cette semaine</h4>
+                        <p class="empty-state-desc">Toutes les tâches de la semaine sont à jour. Parfait travail !</p>
                     </div>
                 {% endif %}
             </div>
@@ -256,27 +303,48 @@
 
 {% block scripts %}
 <script>
-document.getElementById('refreshSuggestionsBtn').addEventListener('click', function () {
-    const btn = this;
-    const result = document.getElementById('suggestionsResult');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Actualisation...';
-    result.innerHTML = '';
-    fetch('/api/suggestions/refresh', {method: 'POST'})
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
-            const count = (data.suggestions || []).length;
-            result.innerHTML = count
-                ? '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Suggestions actualisées : ' + count + '</span>'
-                : '<span style="color: var(--text-muted);">Aucune nouvelle suggestion.</span>';
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
-            result.innerHTML = '<span style="color: var(--danger);">Échec de l\'actualisation.</span>';
+// Simulate loading then show real content (shows skeleton loaders briefly)
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        var skeletons = document.getElementById('kpiSkeletons');
+        var content = document.getElementById('kpiContent');
+        if (skeletons && content) {
+            skeletons.style.display = 'none';
+            content.style.display = 'grid';
+        }
+    }, 800);
+
+    // Refresh suggestions with toast feedback
+    var refreshBtn = document.getElementById('refreshSuggestionsBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function () {
+            var btn = this;
+            var result = document.getElementById('suggestionsResult');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Actualisation...';
+            result.innerHTML = '';
+            fetch('/api/suggestions/refresh', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
+                    var count = (data.suggestions || []).length;
+                    if (count) {
+                        result.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Suggestions actualisées : ' + count + '</span>';
+                        window.showToast('Suggestions actualisées avec succès', 'success');
+                    } else {
+                        result.innerHTML = '<span style="color: var(--text-muted);">Aucune nouvelle suggestion.</span>';
+                        window.showToast('Aucune nouvelle suggestion', 'info');
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
+                    result.innerHTML = '<span style="color: var(--danger);">Échec de l\'actualisation.</span>';
+                    window.showToast('Échec de l\'actualisation des suggestions', 'danger');
+                });
         });
+    }
 });
 </script>
 {% endblock %}
