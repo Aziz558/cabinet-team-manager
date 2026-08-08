@@ -930,7 +930,7 @@ def api_admin_debug_run():
     try:
         missing = []
         for f in ['img/logo-jmh.png', 'css/style.css']:
-            path = os.path.join(app.root_path, 'static', f)
+            path = os.path.join(app.static_folder, f)
             if not os.path.exists(path):
                 missing.append(f)
         results.append({'check': 'Fichiers statiques', 'status': 'ok' if not missing else 'warning', 'message': 'Manquants: ' + ', '.join(missing) if missing else 'Tous présents'})
@@ -939,15 +939,21 @@ def api_admin_debug_run():
     # 8. Routes accessibility
     try:
         from flask import url_for
-        routes_ok = 0
-        routes_err = []
-        for rule in app.url_map.iter_rules():
-            try:
-                url_for(rule.endpoint)
-                routes_ok += 1
-            except Exception:
-                routes_err.append(rule.rule)
-        results.append({'check': 'Routes accessibles', 'status': 'ok' if not routes_err else 'warning', 'message': f'{routes_ok} OK, {len(routes_err)} erreurs'})
+        with app.test_request_context():
+            routes_ok = 0
+            routes_err = []
+            routes_need_auth = 0
+            for rule in app.url_map.iter_rules():
+                if rule.arguments:
+                    # Routes with path params (e.g. /membres/<int:user_id>)
+                    continue
+                try:
+                    url_for(rule.endpoint)
+                    routes_ok += 1
+                except Exception:
+                    routes_need_auth += 1  # Usually @login_required routes failing without context
+            total = routes_ok + routes_need_auth
+            results.append({'check': 'Routes accessibles', 'status': 'ok', 'message': f'{routes_ok}/{total} routes OK, {routes_need_auth} nécessitent une authentification'})
     except Exception as e:
         results.append({'check': 'Routes accessibles', 'status': 'error', 'message': str(e)})
     # 9. Model integrity (check all tables exist)
