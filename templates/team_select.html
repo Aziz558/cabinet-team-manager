@@ -9,13 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-1: #FFF9F0;
-            --bg-2: #F0F7FF;
-            --accent-1: #E07A5F;
+            --bg-1: #0F0F12;
+            --bg-2: #1A1A20;
+            --accent-1: #FF8C00;
             --accent-2: #2D9CDB;
             --accent-3: #9B5DE5;
             --accent-4: #00BFA6;
-            --text-dark: #2D2D2D;
+            --text-dark: #E8E8EC;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -98,7 +98,7 @@
         }
 
         .team-card {
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(26, 26, 32, 0.9);
             backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 1.8rem;
@@ -106,8 +106,8 @@
             transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             overflow: hidden;
-            border: 2px solid rgba(255,255,255,0.6);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border: 2px solid rgba(255,255,255,0.08);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             transform: translateY(0) rotate(0deg);
             animation: cardEntrance 0.6s ease backwards;
         }
@@ -343,6 +343,15 @@
                         Se connecter <i class="bi bi-arrow-right"></i>
                     </span>
                 </div>
+                {% if current_user.is_authenticated and current_user.role in ('admin', 'manager') %}
+                <div class="mt-3 text-end">
+                    <form method="POST" action="{{ url_for('supprimer_equipe', equipe_id=equipe.id) }}" class="d-inline" onsubmit="return confirm('Supprimer l\'équipe {{ equipe.nom }} ?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i> Supprimer
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
 

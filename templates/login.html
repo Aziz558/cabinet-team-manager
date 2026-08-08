@@ -9,12 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-1: #FFF9F0;
-            --bg-2: #F0F7FF;
-            --accent-1: #E07A5F;
+            --bg-1: #0F0F12;
+            --bg-2: #1A1A20;
+            --accent-1: #FF8C00;
             --accent-2: #2D9CDB;
-            --text-dark: #2D2D2D;
-            --equipe-color: {{ equipe_couleur|default("'#E07A5F'") }};
+            --text-dark: #E8E8EC;
+            --equipe-color: {{ equipe_couleur|default("'#FF8C00'") }};
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -138,14 +138,14 @@
 
         /* Login card */
         .login-card {
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(26, 26, 32, 0.92);
             backdrop-filter: blur(20px);
             border-radius: 24px;
             padding: 2.5rem;
             width: 100%;
             max-width: 400px;
-            border: 2px solid rgba(255,255,255,0.6);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            border: 2px solid rgba(255,255,255,0.08);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             animation: cardSlide 0.6s ease backwards;
             animation-delay: 0.2s;
             transition: all 0.4s ease;
@@ -212,19 +212,22 @@
         .form-control-custom {
             width: 100%;
             padding: 0.8rem 1rem;
-            border: 2px solid rgba(0,0,0,0.08);
+            border: 2px solid rgba(255,255,255,0.1);
             border-radius: 14px;
             font-size: 0.95rem;
             font-family: 'Inter', sans-serif;
             transition: all 0.3s ease;
-            background: rgba(255,255,255,0.7);
+            background: rgba(15,15,18,0.6);
+            color: var(--text-dark);
             outline: none;
         }
 
+        .form-control-custom::placeholder { color: var(--text-dark); opacity: 0.4; }
+
         .form-control-custom:focus {
             border-color: var(--equipe-color);
-            box-shadow: 0 0 0 4px rgba(224, 122, 95, 0.1);
-            background: white;
+            box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.15);
+            background: rgba(15,15,18,0.8);
         }
 
         .btn-login {
@@ -236,15 +239,15 @@
             font-weight: 600;
             font-size: 1rem;
             background: var(--equipe-color);
-            color: white;
+            color: #14130F;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            box-shadow: 0 8px 25px rgba(255, 140, 0, 0.3);
         }
 
         .btn-login:active {
@@ -274,7 +277,8 @@
             text-align: center;
             margin-top: 1.5rem;
             font-size: 0.85rem;
-            color: rgba(0,0,0,0.4);
+            color: var(--text-dark);
+            opacity: 0.6;
         }
 
         .login-footer a {

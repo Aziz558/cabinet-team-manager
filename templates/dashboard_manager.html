@@ -214,9 +214,16 @@ document.getElementById('refreshSuggestionsBtn').addEventListener('click', funct
                             <strong>{{ t.titre }}</strong>
                             <br><small class="text-muted">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
                         </div>
-                        <span class="badge {{ 'bg-danger' if t.priorite == 'haute' else 'bg-warning' if t.priorite == 'moyenne' else 'bg-success' }}">
-                            {{ t.priorite }}
-                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge {{ 'bg-danger' if t.priorite == 'haute' else 'bg-warning' if t.priorite == 'moyenne' else 'bg-success' }}">
+                                {{ t.priorite }}
+                            </span>
+                            <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     {% endfor %}
                 {% else %}
@@ -239,9 +246,16 @@ document.getElementById('refreshSuggestionsBtn').addEventListener('click', funct
                             <strong>{{ t.titre }}</strong>
                             <br><small class="text-muted">{{ t.date_echeance.strftime('%d/%m/%Y') }} - {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
                         </div>
-                        <span class="badge {{ 'bg-danger' if t.priorite == 'haute' else 'bg-warning' if t.priorite == 'moyenne' else 'bg-success' }}">
-                            {{ t.priorite }}
-                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge {{ 'bg-danger' if t.priorite == 'haute' else 'bg-warning' if t.priorite == 'moyenne' else 'bg-success' }}">
+                                {{ t.priorite }}
+                            </span>
+                            <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     {% endfor %}
                 {% else %}

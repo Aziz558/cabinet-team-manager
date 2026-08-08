@@ -135,22 +135,45 @@ def list_equipes():
     return jsonify({'ok': True, 'equipes': result})
 
 
-@app.route('/api/equipes', methods=['POST'])
+@app.route('/equipes', methods=['GET', 'POST'])
 @login_required
-def create_equipe():
+def equipes():
     if current_user.role not in ('admin', 'manager'):
-        return jsonify({'ok': False, 'message': 'Non autorisé'}), 403
-    nom = request.json.get('nom', '').strip()
-    if not nom:
-        return jsonify({'ok': False, 'message': 'Nom requis'}), 400
-    couleur = request.json.get('couleur', '#E07A5F')
-    icon = request.json.get('icon', 'bi-people')
-    description = request.json.get('description', '')
-    manager_id = request.json.get('manager_id')
-    equipe = Equipe(nom=nom, couleur=couleur, icon=icon, description=description, manager_id=manager_id)
-    db.session.add(equipe)
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        nom = request.form.get('nom', '').strip()
+        description = request.form.get('description', '').strip()
+        couleur = request.form.get('couleur', '#FF8C00')
+        icon = request.form.get('icon', 'bi-people')
+        if not nom:
+            flash('Le nom est requis.', 'danger')
+        else:
+            equipe = Equipe(nom=nom, description=description, couleur=couleur, icon=icon, manager_id=current_user.id)
+            db.session.add(equipe)
+            db.session.commit()
+            flash('Équipe créée.', 'success')
+            return redirect(url_for('equipes'))
+    all_equipes = Equipe.query.order_by(Equipe.nom).all()
+    return render_template('equipes.html', equipes=all_equipes)
+
+
+@app.route('/equipes/<int:equipe_id>/supprimer', methods=['POST'])
+@login_required
+def supprimer_equipe(equipe_id):
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    equipe = Equipe.query.get_or_404(equipe_id)
+    # Détacher les membres de cette équipe
+    try:
+        User.query.filter_by(equipe_id=equipe.id).update({User.equipe_id: None})
+    except Exception:
+        pass
+    db.session.delete(equipe)
     db.session.commit()
-    return jsonify({'ok': True, 'id': equipe.id, 'message': 'Équipe créée'})
+    flash(f'Équipe {equipe.nom} supprimée.', 'success')
+    return redirect(url_for('equipes'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -393,22 +416,27 @@ def modifier_membre(user_id):
     return redirect(url_for('liste_membres'))
 
 
-@app.route('/membres/<int:user_id>/desactiver', methods=['GET', 'POST'])
+@app.route('/membres/<int:user_id>/supprimer', methods=['POST'])
 @login_required
-def desactiver_membre(user_id):
+def supprimer_membre(user_id):
     if current_user.role != 'manager':
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
-        flash('Vous ne pouvez pas désactiver votre propre compte.', 'warning')
+        flash('Vous ne pouvez pas supprimer votre propre compte.', 'warning')
         return redirect(url_for('liste_membres'))
-    user.actif = not user.actif
+    try:
+        Tache.query.filter_by(assigne_a=user.id).delete()
+        Tache.query.filter_by(cree_par=user.id).update({Tache.cree_par: current_user.id})
+        Notification.query.filter_by(user_id=user.id).delete()
+        CommentaireTache.query.filter_by(user_id=user.id).delete()
+    except Exception:
+        pass
+    db.session.delete(user)
     db.session.commit()
-    status = 'réactivé' if user.actif else 'désactivé'
-    flash(f'Membre {status} avec succès.', 'success')
+    flash(f'Membre {user.prenom} {user.nom} supprimé.', 'success')
     return redirect(url_for('liste_membres'))
-
 
 @app.route('/membres/<int:user_id>')
 @login_required
@@ -722,6 +750,25 @@ def terminer_tache(tache_id):
             )
         flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('dashboard'))
+
+
+@app.route('/taches/<int:tache_id>/supprimer', methods=['POST'])
+@login_required
+def supprimer_tache(tache_id):
+    tache = Tache.query.get_or_404(tache_id)
+    if current_user.role != 'manager' and tache.assigne_a != current_user.id:
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    # Nettoyer notifications et commentaires liés
+    try:
+        Notification.query.filter_by(tache_id=tache.id).delete()
+        CommentaireTache.query.filter_by(tache_id=tache.id).delete()
+    except Exception:
+        pass
+    db.session.delete(tache)
+    db.session.commit()
+    flash('Tâche supprimée.', 'success')
+    return redirect(request.referrer or url_for('dashboard'))
 
 
 @app.route('/taches/<int:tache_id>/commenter', methods=['POST'])

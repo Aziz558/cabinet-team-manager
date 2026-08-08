@@ -72,13 +72,18 @@ function loadMesTaches() {
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">${t.titre}</h5>
-                            <p class="card-text">${t.description}</p>
+                            <p class="card-text">${t.description || ''}</p>
                             <p class="card-text"><small class="text-muted">Priorité: ${t.priorite} | Échéance: ${t.date_echeance}</small></p>
                             <p class="card-text"><small class="text-muted">Statut: ${t.statut}</small></p>
                             <div class="btn-group">
                                 <button class="btn btn-primary btn-sm" onclick="openPriseEnChargeModal(${t.id}, '${t.statut}')">
                                     <i class="bi bi-check2"></i> Mettre à jour le statut
                                 </button>
+                                <form method="POST" action="/taches/${t.id}/supprimer" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>

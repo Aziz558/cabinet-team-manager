@@ -71,6 +71,13 @@
                                 </button>
                             </form>
                             {% endif %}
+                            {% if current_user.role == 'manager' or t.assigne_a == current_user.id %}
+                            <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
