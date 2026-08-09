@@ -5,62 +5,64 @@
     </div>
     <hr class="sidebar-divider my-0">
     
-    <div class="sidebar-menu">
-        <div class="nav sidebar-nav">
+    <div class="sidebar-menu p-2">
+        <div class="nav sidebar-nav flex-column">
+            <!-- Principal -->
+            <div class="sidebar-section-title">Principal</div>
             <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                <i class="bi bi-speedometer2 me-2"></i>
-                <span>Dashboard</span>
+                <i class="bi bi-speedometer2 me-2"></i><span>Dashboard</span>
             </a>
             <a href="{{ url_for('taches_aujourdhui') }}" class="nav-link {% if request.endpoint == 'taches_aujourdhui' %}active{% endif %}">
-                <i class="bi bi-calendar-check me-2"></i>
-                <span>Tâches du jour</span>
+                <i class="bi bi-calendar-check me-2"></i><span>Tâches du jour</span>
             </a>
-            <a href="{{ url_for('mailbox_page') }}" class="nav-link {% if request.endpoint == 'mailbox_page' %}active{% endif %}">
-                <i class="bi bi-envelope me-2"></i>
-                <span>Boîte mail</span>
-            </a>
-            <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
-                <i class="bi bi-lightbulb me-2"></i>
-                <span>Suggestions</span>
-            </a>
-            <a href="{{ url_for('liste_membres') }}" class="nav-link {% if request.endpoint == 'liste_membres' %}active{% endif %}">
-                <i class="bi bi-people me-2"></i>
-                <span>Membres</span>
-            </a>
+
+            <!-- Espace de travail -->
+            <div class="sidebar-section-title">Espace de travail</div>
             <a href="{{ url_for('dossiers') }}" class="nav-link {% if request.endpoint == 'dossiers' %}active{% endif %}">
-                <i class="bi bi-folder me-2"></i>
-                <span>Dossiers</span>
-            </a>
-            <a href="{{ url_for('tva_taches') }}" class="nav-link {% if request.endpoint == 'tva_taches' %}active{% endif %}">
-                <i class="bi bi-receipt-certificate me-2"></i>
-                <span>Tâches TVA</span>
+                <i class="bi bi-folder me-2"></i><span>Dossiers</span>
             </a>
             <a href="{{ url_for('taches') }}" class="nav-link {% if request.endpoint == 'taches' %}active{% endif %}">
-                <i class="bi bi-check2-square me-2"></i>
-                <span>Tâches</span>
+                <i class="bi bi-check2-square me-2"></i><span>Tâches</span>
+            </a>
+            <a href="{{ url_for('tva_taches') }}" class="nav-link {% if request.endpoint == 'tva_taches' %}active{% endif %}">
+                <i class="bi bi-receipt-certificate me-2"></i><span>Tâches TVA</span>
+            </a>
+
+            <!-- Équipe -->
+            <div class="sidebar-section-title">Équipe</div>
+            <a href="{{ url_for('liste_membres') }}" class="nav-link {% if request.endpoint == 'liste_membres' %}active{% endif %}">
+                <i class="bi bi-people me-2"></i><span>Membres</span>
             </a>
             <a href="{{ url_for('equipes') }}" class="nav-link {% if request.endpoint == 'equipes' %}active{% endif %}">
-                <i class="bi bi-diagram-3 me-2"></i>
-                <span>Gérer équipes</span>
+                <i class="bi bi-diagram-3 me-2"></i><span>Gérer équipes</span>
+            </a>
+
+            <!-- Outils -->
+            <div class="sidebar-section-title">Outils</div>
+            <a href="{{ url_for('mailbox_page') }}" class="nav-link {% if request.endpoint == 'mailbox_page' %}active{% endif %}">
+                <i class="bi bi-envelope me-2"></i><span>Boîte mail</span>
+            </a>
+            <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
+                <i class="bi bi-lightbulb me-2"></i><span>Suggestions</span>
             </a>
             <a href="{{ url_for('team_select') }}" class="nav-link {% if request.endpoint == 'team_select' %}active{% endif %}">
-                <i class="bi bi-people me-2"></i>
-                <span>Sélection d'équipe</span>
+                <i class="bi bi-people me-2"></i><span>Équipes</span>
             </a>
             <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}">
-                <i class="bi bi-gear me-2"></i>
-                <span>Paramètres</span>
+                <i class="bi bi-gear me-2"></i><span>Paramètres</span>
             </a>
+
+            <!-- Admin -->
             {% if current_user.role == 'admin' %}
+            <div class="sidebar-section-title">Admin</div>
             <a href="{{ url_for('admin_debug') }}" class="nav-link {% if request.endpoint == 'admin_debug' %}active{% endif %}">
-                <i class="bi bi-bug me-2"></i>
-                <span>Debug Admin</span>
+                <i class="bi bi-bug me-2"></i><span>Debug Admin</span>
             </a>
             {% endif %}
         </div>
     </div>
     
-    <div class="sidebar-footer p-3">
+    <div class="sidebar-footer p-3 mt-auto">
         <div class="d-flex align-items-center">
             <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" 
                  class="rounded-circle me-2 avatar-md"
