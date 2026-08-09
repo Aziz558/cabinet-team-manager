@@ -40,6 +40,7 @@
                         <th>N°</th>
                         <th>Intitulé</th>
                         <th>Collaborateur</th>
+                        <th>Équipe</th>
                         <th>Régime TVA</th>
                         <th>Fréquence</th>
                         <th>Date limite</th>
@@ -59,6 +60,7 @@
                                 <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
                             </div>
                         </td>
+                        <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
                         <td>
                             {% if d.regime_tva == 'ca3' %}
                             <span class="badge badge-info">CA3</span>
@@ -141,6 +143,15 @@
                             <option value="">Non assigné</option>
                             {% for m in membres %}
                             <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Équipe</label>
+                        <select name="equipe_id" class="select-premium">
+                            <option value="">Non assignée</option>
+                            {% for eq in equipes %}
+                            <option value="{{ eq.id }}">{{ eq.nom }}</option>
                             {% endfor %}
                         </select>
                     </div>

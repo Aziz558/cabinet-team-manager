@@ -64,8 +64,10 @@ class Dossier(db.Model):
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     date_cloture = db.Column(db.DateTime)
     frequence_tva = db.Column(db.String(20), default='trimestrielle')  # mensuelle | trimestrielle
+    equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
 
     taches = db.relationship('Tache', backref='dossier', lazy='dynamic')
+    equipe = db.relationship('Equipe', backref='dossiers', lazy=True)
 
     def __repr__(self):
         return f'<Dossier {self.numero_dossier}>'

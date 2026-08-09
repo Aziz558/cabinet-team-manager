@@ -565,12 +565,13 @@ def dossiers():
     if current_user.role not in ('admin', 'manager'):
         # Collaborateur sees only their dossiers
         mes_dossiers = Dossier.query.filter_by(collaborateur_id=current_user.id).all()
-        return render_template('dossiers.html', dossiers=mes_dossiers, membres=[], Tache=Tache)
+        return render_template('dossiers.html', dossiers=mes_dossiers, membres=[], equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache)
     if request.method == 'POST':
         numero = request.form.get('numero_dossier', '').strip()
         intitule = request.form.get('intitule', '').strip()
         collaborateur_id = request.form.get('collaborateur_id', type=int)
-        date_limite_str = request.form.get('date_limite', '').strip()
+        equipe_id = request.form.get('equipe_id', type=int)
+        date_limite_str = request.form.get('date_limite_declaration', '').strip()
         date_limite = None
         if date_limite_str:
             date_limite = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
@@ -583,9 +584,10 @@ def dossiers():
                 numero_dossier=numero,
                 intitule=intitule,
                 collaborateur_id=collaborateur_id if collaborateur_id else None,
+                equipe_id=equipe_id if equipe_id else None,
                 regime_tva=request.form.get('regime_tva', '').strip() or None,
                 frequence_tva=request.form.get('frequence_tva', 'trimestrielle').strip(),
-                date_limite_declaration=datetime.strptime(request.form.get('date_limite_declaration', ''), '%Y-%m-%d').date() if request.form.get('date_limite_declaration') else None
+                date_limite_declaration=date_limite
             )
             db.session.add(dossier)
             db.session.commit()
@@ -638,7 +640,7 @@ def dossiers():
             team_member_ids.extend([m.id for m in eq.membres.all()])
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
-    return render_template('dossiers.html', dossiers=all_dossiers, membres=membres, Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
+    return render_template('dossiers.html', dossiers=all_dossiers, membres=membres, equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
 
 @app.route('/dossiers/<int:dossier_id>/modifier', methods=['POST'])
 @login_required
