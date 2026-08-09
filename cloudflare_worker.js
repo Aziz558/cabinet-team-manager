@@ -14,37 +14,59 @@ const WEBHOOK_URL = "https://ton-app.onrender.com/api/mailbox/inbound";
 const WEBHOOK_SECRET = "cabinet-jmh-secret-2026";
 const ALLOWED_SENDERS = []; // ex: ["client1@entreprise.com"]
 
+function extractHeaders(rawHeaders) {
+  const headers = {};
+  if (!rawHeaders) return headers;
+  try {
+    const lines = String(rawHeaders).split("\n");
+    for (const line of lines) {
+      const idx = line.indexOf(":");
+      if (idx > -1) {
+        const key = line.slice(0, idx).trim().toLowerCase();
+        const val = line.slice(idx + 1).trim();
+        headers[key] = val;
+      }
+    }
+  } catch (e) {
+    console.error("Header parse error:", e);
+  }
+  return headers;
+}
+
+function extractTextPart(raw) {
+  if (!raw) return "";
+  const str = String(raw);
+  const m = str.match(/Content-Type:\s*text/plain[^]*?\r?\n\r?\n([\s\S]*?)(?:\r?\n--|\z)/i);
+  if (m) return m[1].trim();
+  return str;
+}
+
 export default {
   async email(message, env, ctx) {
-    const headers = {
-      "Content-Type": "application/json",
-      "User-Agent": "Cloudflare-Email-Routing/1.0",
-      "X-Webhook-Secret": WEBHOOK_SECRET,
-    };
-
-    const from = message.from || "";
-    const to = message.to || "";
-    const subject = message.subject || "";
-    const bodyPlain = message.rawBCC || "";
+    const raw = await message.text();
+    const headers = extractHeaders(message.headers ? message.headers.raw : raw);
+    const from = (message.from || headers.from || headers.sender || "").trim();
+    const to = (message.to || headers.to || headers["x-original-to"] || "").trim();
+    const subject = (message.subject || headers.subject || "").trim();
+    const bodyPlain = extractTextPart(raw) || String(raw).slice(0, 2000);
     const bodyHtml = "";
 
     const payload = {
-      from: from,
-      to: to,
-      subject: subject,
+      from,
+      to,
+      subject,
       body_plain: bodyPlain,
       body_html: bodyHtml,
       timestamp: new Date().toISOString(),
-      message_id: message.headers["message-id"] || crypto.randomUUID(),
+      message_id: headers["message-id"] || headers["message-id"] || crypto.randomUUID(),
     };
 
-    // Filter allowed senders
     if (ALLOWED_SENDERS.length > 0) {
       const senderEmail = from.toLowerCase();
-      const isAllowed = ALLOWED_SENDERS.some(allowed =>
-        senderEmail === allowed.toLowerCase() ||
-        senderEmail.endsWith("@" + allowed.toLowerCase().split("@")[1])
-      );
+      const isAllowed = ALLOWED_SENDERS.some(allowed => {
+        const a = allowed.toLowerCase();
+        return senderEmail === a || senderEmail.endsWith("@" + a.split("@")[1]);
+      });
       if (!isAllowed) {
         console.log(`Blocked sender: ${from}`);
         return;
@@ -54,9 +76,12 @@ export default {
     try {
       const resp = await fetch(WEBHOOK_URL, {
         method: "POST",
-        headers: headers,
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Cloudflare-Email-Routing/1.0",
+          "X-Webhook-Secret": WEBHOOK_SECRET,
+        },
         body: JSON.stringify(payload),
-        // Verify signature in the worker if needed
       });
 
       if (!resp.ok) {
@@ -66,7 +91,6 @@ export default {
       console.error("Webhook error:", e);
     }
 
-    // Mark as delivered
     message.setReject(false);
-  }
-}
+  },
+};
