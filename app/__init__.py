@@ -107,7 +107,9 @@ def inject_equipe():
                 (Equipe.manager_id == current_user.id) | (Equipe.manager_id == None)
             ).order_by(Equipe.nom).all()
         else:
-            all_equipes_for_switch = Equipe.query.filter_by(equipe_id=current_user.equipe_id).all() if current_user.equipe_id else []
+            all_equipes_for_switch = Equipe.query.filter(
+                Equipe.id == current_user.equipe_id
+            ).all() if current_user.equipe_id else []
     else:
         all_equipes_for_switch = []
     return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
