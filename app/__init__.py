@@ -20,12 +20,14 @@ if database_url and database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
     use_postgres = True
 
-# For Render free tier, use SQLite to avoid PostgreSQL connection issues
+# For Render free tier, use a writable SQLite path by default
 # PostgreSQL can be enabled later by setting USE_POSTGRES=true
+db_path = os.path.join(basedir, '..', 'data', 'app.db')
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
 if os.environ.get('USE_POSTGRES', 'false').lower() == 'true' and database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
     if use_postgres:
         app.logger.info(f"Using SQLite instead of PostgreSQL. Set USE_POSTGRES=true to enable PostgreSQL.")
 
@@ -164,3 +166,13 @@ def internal_error(error):
     except Exception:
         pass
     return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos équipes ont été notifiées."), 500
+
+# Global exception handler for debugging
+@app.errorhandler(Exception)
+def handle_all_exceptions(e):
+    app.logger.error(f"Unhandled exception: {type(e).__name__}: {e}", exc_info=True)
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    return render_template('error.html', code=500, message=f"Erreur interne: {type(e).__name__}"), 500
