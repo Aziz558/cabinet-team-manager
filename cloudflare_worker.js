@@ -10,9 +10,9 @@
  * 2. Dans le Worker, configure WEBHOOK_URL et WEBHOOK_SECRET
  */
 
-const WEBHOOK_URL = "https://ton-app.onrender.com/api/mailbox/inbound";
-const WEBHOOK_SECRET = "cabinet-jmh-secret-2026";
-const ALLOWED_SENDERS = []; // ex: ["client1@entreprise.com"]
+const WEBHOOK_URL = env.WEBHOOK_URL || "https://ton-app.onrender.com/api/mailbox/inbound";
+const WEBHOOK_SECRET = env.WEBHOOK_SECRET || "";
+const ALLOWED_SENDERS = (env.ALLOWED_SENDERS || "").split(",").filter(Boolean);
 
 function extractHeaders(rawHeaders) {
   const headers = {};

@@ -173,8 +173,6 @@ def configurer_email_equipe(equipe_id):
         return redirect(url_for('equipes'))
     equipe = Equipe.query.get_or_404(equipe_id)
     equipe.equipe_email = request.form.get('equipe_email', '').strip() or None
-    equipe.equipe_email_password = request.form.get('equipe_email_password', '').strip() or None
-    equipe.equipe_mailbox = request.form.get('equipe_mailbox', '').strip() or 'imap.outlook.com'
     db.session.commit()
     flash(f'Email dédié configuré pour {equipe.nom}.', 'success')
     return redirect(url_for('equipes'))
@@ -1050,14 +1048,15 @@ def api_admin_debug_run():
         results.append({'check': 'Dossier uploads', 'status': 'ok' if exists else 'warning', 'message': f'Upload folder: {upload_folder} (exists={exists})'})
     except Exception as e:
         results.append({'check': 'Dossier uploads', 'status': 'error', 'message': str(e)})
-    # 5. Mailbox config
+    # 5. Cloudflare inbound config
     try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        configured = client.is_configured()
-        results.append({'check': 'Boîte mail (credentials)', 'status': 'ok' if configured else 'warning', 'message': f'Configured={configured}, user={client.user[:3]}***' if client.user else 'user=None'})
+        from app.integrations.inbound_mail import InboundMailClient
+        client = InboundMailClient()
+        inbound_enabled = client.is_configured()
+        secret_configured = bool(client.get_webhook_secret())
+        results.append({'check': 'Cloudflare inbound (webhook)', 'status': 'ok' if inbound_enabled else 'warning', 'message': f'Activé={inbound_enabled}, Secret={secret_configured}'})
     except Exception as e:
-        results.append({'check': 'Boîte mail (credentials)', 'status': 'error', 'message': str(e)})
+        results.append({'check': 'Cloudflare inbound (webhook)', 'status': 'error', 'message': str(e)})
     # 6. OpenRouter LLM config
     try:
         from app.integrations.openrouter import OpenRouterClient
@@ -1232,54 +1231,13 @@ def _build_suggestions():
                     'source': 'deadline'
                 })
 
-    # Suggestions depuis Outlook
+    # Suggestions IA à partir des messages Teams
     try:
-        from app.integrations import get_outlook
-        outlook = get_outlook()
-        if outlook.is_configured():
-            for item in outlook.suggest_tasks_from_mails():
-                suggestions.append({
-                    'titre': item.get('titre', 'Action mail'),
-                    'dossier_id': item.get('dossier_id'),
-                    'assigne_a': item.get('assigne_a'),
-                    'priorite': item.get('priorite', 'moyenne'),
-                    'date_echeance': item.get('date_echeance'),
-                    'source': 'outlook'
-                })
-    except Exception:
-        pass
-
-    # Suggestions depuis Teams
-    try:
-        from app.integrations import get_teams
-        teams = get_teams()
-        if teams.is_configured():
-            for item in teams.suggest_tasks_from_messages():
-                suggestions.append({
-                    'titre': item.get('titre', 'Action Teams'),
-                    'dossier_id': item.get('dossier_id'),
-                    'assigne_a': item.get('assigne_a'),
-                    'priorite': item.get('priorite', 'moyenne'),
-                    'date_echeance': item.get('date_echeance'),
-                    'source': 'teams'
-                })
-    except Exception:
-        pass
-
-    # Suggestions IA à partir des mails et messages Teams
-    try:
-        from app.integrations import get_openrouter, get_outlook as _outlook_client, get_teams as _teams_client
+        from app.integrations import get_openrouter, get_teams as _teams_client
         llm = get_openrouter()
-        outlook_client = _outlook_client()
         teams_client = _teams_client()
 
         texts = []
-        try:
-            if outlook_client.is_configured():
-                for m in outlook_client.fetch_recent_mails(limit=20):
-                    texts.append(f"- MAIL: {m.get('subject','')} | {m.get('body_preview','')}")
-        except Exception:
-            pass
         try:
             if teams_client.is_configured():
                 for m in teams_client.fetch_recent_messages(limit=20):
@@ -1398,38 +1356,6 @@ def test_mail():
     ok, msg = send_email_notification(recipient, subject, body, sender=sender)
     status = 200 if ok else 400
     return jsonify({'ok': ok, 'message': msg}), status
-@app.route('/api/test/outlook', methods=['POST'])
-@login_required
-def test_outlook():
-    try:
-        from app.integrations.outlook import OutlookMailClient
-        client_id = AppSetting.query.filter_by(cle='OUTLOOK_CLIENT_ID').first()
-        tenant_id = AppSetting.query.filter_by(cle='OUTLOOK_TENANT_ID').first()
-        client_secret = AppSetting.query.filter_by(cle='OUTLOOK_CLIENT_SECRET').first()
-        mailbox_email = AppSetting.query.filter_by(cle='OUTLOOK_MAILBOX_EMAIL').first()
-
-        if not all([client_id, tenant_id, client_secret]) or not all([client_id.valeur, tenant_id.valeur, client_secret.valeur]):
-            return jsonify({'ok': False, 'message': 'Identifiants Outlook non configurés.'}), 400
-
-        client = OutlookMailClient(
-            client_id=client_id.valeur,
-            tenant_id=tenant_id.valeur,
-            client_secret=client_secret.valeur,
-            mailbox_email=mailbox_email.valeur if mailbox_email else None
-        )
-
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Client Outlook non configuré.'}), 400
-
-        # Test token acquisition
-        token = client._get_access_token()
-        if not token:
-            return jsonify({'ok': False, 'message': 'Impossible d\'obtenir le token d\'accès.'}), 400
-
-        return jsonify({'ok': True, 'message': 'Connexion Outlook OK. Token obtenu.'})
-    except Exception as e:
-        app.logger.error(f"Erreur test Outlook: {e}")
-        return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
 @app.route('/api/test/teams', methods=['POST'])
 @login_required
 def test_teams():
@@ -1495,344 +1421,6 @@ def test_openrouter():
         })
     except Exception as e:
         app.logger.error(f"Erreur test OpenRouter: {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/test/mailbox', methods=['POST'])
-@login_required
-def test_mailbox():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-
-        imap = client._connect()
-        typ, data = imap.search(None, "UNSEEN")
-        if typ != "OK":
-            return jsonify({'ok': False, 'message': 'IMAP search UNSEEN failed', 'stage': 'imap'}), 500
-
-        ids = data[0].split() if data[0] else []
-        total_unseen = len(ids)
-        samples = []
-        allowed = getattr(client, 'allowed_senders', [])
-        for num in ids[:5]:
-            typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
-            if typ != "OK":
-                continue
-            raw = msg_data[0][1]
-            mail = email.message_from_bytes(raw)
-            subject = client._decode_mime_words(mail.get("Subject"))
-            from_addr = client._extract_email_from(client._decode_mime_words(mail.get("From")))
-            samples.append({
-                'uid': num.decode() if isinstance(num, bytes) else str(num),
-                'subject': subject,
-                'raw_from': client._decode_mime_words(mail.get("From")),
-                'from': from_addr,
-                'allowed': client._is_sender_allowed(from_addr),
-            })
-
-        allowed_samples = [s for s in samples if s['allowed']]
-
-        app.logger.info(
-            "Mailbox debug: total_unseen=%s allowed_senders=%s samples=%s",
-            total_unseen,
-            allowed,
-            [
-                {
-                    "subject": s["subject"],
-                    "raw_from": s["raw_from"],
-                    "from": s["from"],
-                    "allowed": s["allowed"],
-                }
-                for s in samples
-            ],
-        )
-
-        return jsonify({
-            'ok': True,
-            'message': f'{total_unseen} e-mail(s) non lu(s) détecté(s).',
-            'count': total_unseen,
-            'stage': 'imap',
-            'allowed_senders': allowed,
-            'samples': allowed_samples,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur test mailbox : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/test/mailbox/debug', methods=['POST'])
-@login_required
-def test_mailbox_debug():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-
-        imap = client._connect()
-        typ, data = imap.search(None, "UNSEEN")
-        if typ != "OK":
-            return jsonify({'ok': False, 'message': 'IMAP search UNSEEN failed', 'stage': 'imap'}), 500
-
-        ids = data[0].split() if data[0] else []
-        total_unseen = len(ids)
-        samples = []
-        allowed = getattr(client, 'allowed_senders', [])
-        for num in ids[:50]:
-            typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
-            if typ != "OK":
-                continue
-            raw = msg_data[0][1]
-            mail = email.message_from_bytes(raw)
-            subject = client._decode_mime_words(mail.get("Subject"))
-            raw_from = client._decode_mime_words(mail.get("From"))
-            from_addr = client._extract_email_from(raw_from)
-            date_hdr = client._decode_mime_words(mail.get("Date"))
-            samples.append({
-                'uid': num.decode() if isinstance(num, bytes) else str(num),
-                'subject': subject,
-                'raw_from': raw_from,
-                'from': from_addr,
-                'date': date_hdr,
-                'allowed': client._is_sender_allowed(from_addr),
-                'allowed_senders': allowed,
-            })
-
-        # Sort by date descending (most recent first)
-        samples.sort(key=lambda s: s.get('date') or '', reverse=True)
-
-        return jsonify({
-            'ok': True,
-            'message': f'{total_unseen} e-mail(s) non lu(s) détecté(s).',
-            'count': total_unseen,
-            'stage': 'imap',
-            'samples': samples,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur test mailbox debug : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/test/mailbox/senders', methods=['GET'])
-@login_required
-def test_mailbox_senders():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-
-        imap = client._connect()
-        imap.select(client.mailbox)
-        typ, data = imap.search(None, "ALL")
-        if typ != "OK":
-            return jsonify({'ok': False, 'message': 'IMAP search ALL failed', 'stage': 'imap'}), 500
-
-        ids = data[0].split() if data[0] else []
-        ids = list(reversed(ids))[:50]
-        samples = []
-        allowed = getattr(client, 'allowed_senders', [])
-        for num in ids:
-            typ, msg_data = imap.fetch(num, "(BODY.PEEK[])")
-            if typ != "OK":
-                continue
-            raw = msg_data[0][1]
-            mail = email.message_from_bytes(raw)
-            subject = client._decode_mime_words(mail.get("Subject"))
-            raw_from = client._decode_mime_words(mail.get("From"))
-            from_addr = client._extract_email_from(raw_from)
-            date_hdr = client._decode_mime_words(mail.get("Date"))
-            samples.append({
-                'uid': num.decode() if isinstance(num, bytes) else str(num),
-                'subject': subject,
-                'raw_from': raw_from,
-                'from': from_addr,
-                'date': date_hdr,
-                'allowed': client._is_sender_allowed(from_addr),
-                'allowed_senders': allowed,
-            })
-
-        samples.sort(key=lambda s: s.get('date') or '', reverse=True)
-        return jsonify({
-            'ok': True,
-            'stage': 'imap',
-            'allowed_senders': allowed,
-            'samples': samples,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur test mailbox senders : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/test/mailbox/search', methods=['POST'])
-@login_required
-def test_mailbox_search():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-
-        imap = client._connect()
-        selected_mailbox = getattr(client, 'mailbox', 'unknown')
-
-        # Get total message count
-        typ, data = imap.search(None, "ALL")
-        total_ids = data[0].split() if data[0] else []
-        total_count = len(total_ids)
-
-        # Get unseen count
-        typ, data = imap.search(None, "UNSEEN")
-        unseen_ids = data[0].split() if data[0] else []
-        unseen_count = len(unseen_ids)
-
-        # Search by allowed sender
-        allowed = getattr(client, 'allowed_senders', [])
-        results = []
-        for sender in allowed:
-            typ, data = imap.search(None, 'UNSEEN', 'FROM', sender)
-            if typ != "OK":
-                continue
-            ids = data[0].split() if data[0] else []
-            results.append({
-                'sender': sender,
-                'count': len(ids),
-                'uids': [num.decode() if isinstance(num, bytes) else str(num) for num in ids[:10]],
-            })
-
-        return jsonify({
-            'ok': True,
-            'message': f'Recherche par expéditeur autorisé : {len(allowed)} expéditeur(s) configuré(s).',
-            'allowed_senders': allowed,
-            'selected_mailbox': selected_mailbox,
-            'total_messages': total_count,
-            'unseen_messages': unseen_count,
-            'results': results,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur test mailbox search : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/test/mailbox/folders', methods=['GET'])
-@login_required
-def test_mailbox_folders():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-
-        imap = client._connect()
-        typ, data = imap.list()
-        folders = []
-        if typ == "OK":
-            for line in data:
-                if not line:
-                    continue
-                parts = line.decode('utf-8', errors='replace').split('"')
-                if len(parts) >= 3:
-                    folders.append(parts[-2].strip() if len(parts) >= 3 else parts[-1].strip())
-
-        return jsonify({
-            'ok': True,
-            'folders': folders,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur test mailbox folders : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/test/mailbox/folder-scan', methods=['POST'])
-@login_required
-def test_mailbox_folder_scan():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-
-        imap = client._connect()
-        allowed = getattr(client, 'allowed_senders', [])
-        folder_name = request.json.get('folder') if request.is_json else None
-        configured = getattr(client, 'mailbox', None)
-        candidates = []
-        if folder_name:
-            candidates.append(folder_name)
-        if configured and configured not in candidates:
-            candidates.append(configured)
-        for f in ["INBOX", '"[Gmail]/All Mail"', "[Gmail]/All Mail"]:
-            if f not in candidates:
-                candidates.append(f)
-
-        folder_results = []
-        for folder in candidates:
-            if not folder:
-                continue
-            try:
-                typ, data = imap.select(folder)
-                if typ != "OK":
-                    continue
-            except Exception:
-                continue
-            try:
-                typ, data = imap.search(None, "ALL")
-            except Exception:
-                continue
-            if typ != "OK":
-                continue
-            all_ids = data[0].split() if data[0] else []
-
-            # Find allowed emails by searching FROM each allowed sender
-            allowed_samples = []
-            for sender in allowed:
-                try:
-                    typ2, data2 = imap.search(None, 'FROM', sender)
-                except Exception:
-                    continue
-                if typ2 != "OK":
-                    continue
-                sender_ids = data2[0].split() if data2[0] else []
-                for num in sender_ids[:10]:
-                    typ3, msg_data = imap.fetch(num, "(BODY.PEEK[])")
-                    if typ3 != "OK":
-                        continue
-                    raw = msg_data[0][1]
-                    mail = email.message_from_bytes(raw)
-                    subject = client._decode_mime_words(mail.get("Subject"))
-                    raw_from = client._decode_mime_words(mail.get("From"))
-                    from_addr = client._extract_email_from(raw_from)
-                    allowed_samples.append({
-                        'subject': subject,
-                        'raw_from': raw_from,
-                        'from': from_addr,
-                        'allowed': True,
-                    })
-
-            # Also show last 5 general samples
-            general_samples = []
-            for num in all_ids[-5:]:
-                typ2, msg_data = imap.fetch(num, "(BODY.PEEK[])")
-                if typ2 != "OK":
-                    continue
-                raw = msg_data[0][1]
-                mail = email.message_from_bytes(raw)
-                subject = client._decode_mime_words(mail.get("Subject"))
-                raw_from = client._decode_mime_words(mail.get("From"))
-                from_addr = client._extract_email_from(raw_from)
-                general_samples.append({
-                    'subject': subject,
-                    'raw_from': raw_from,
-                    'from': from_addr,
-                    'allowed': client._is_sender_allowed(from_addr),
-                })
-
-            folder_results.append({
-                'folder': folder,
-                'count': len(all_ids),
-                'allowed_count': len(allowed_samples),
-                'allowed_samples': allowed_samples,
-                'samples': general_samples,
-            })
-
-        return jsonify({
-            'ok': True,
-            'message': 'Scan des dossiers IMAP avec échantillons et statut d\'autorisation.',
-            'allowed_senders': allowed,
-            'folder_results': folder_results,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur test mailbox folder-scan : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 @app.route('/api/suggestions', methods=['GET'])
 @login_required
@@ -1916,8 +1504,13 @@ def validate_suggestion(suggestion_id):
         db.session.commit()
 
         # Send email notification to assignee
-        from app.integrations.mailbox import send_task_assignment_email
-        send_task_assignment_email(tache, assignee_id)
+        assignee = User.query.get(assignee_id)
+        if assignee:
+            send_email_notification(
+                to_email=assignee.email,
+                subject=f"Nouvelle tâche: {tache.titre}",
+                body=f"Bonjour {assignee.prenom},\n\nUne nouvelle tâche vous a été assignée:\n{tache.titre}\n\nDescription: {tache.description or 'Aucune'}\nÉchéance: {tache.date_echeance}\n\nCordialement,\nCabinet JMH"
+            )
 
         return jsonify({'ok': True, 'message': 'Suggestion validée et tâche créée.', 'tache_id': tache.id})
     except Exception as e:
@@ -1961,19 +1554,6 @@ def reset_suggestions():
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
-@app.route('/api/mailbox/process', methods=['POST'])
-@login_required
-def process_mailbox():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-        count = client.process_new_messages(max_emails=3)
-        return jsonify({'ok': True, 'message': f'{count} mail(s) traité(s).', 'count': count})
-    except Exception as e:
-        app.logger.error(f"Erreur process mailbox : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 @app.route('/api/mailbox/inbound', methods=['POST'])
 def inbound_mail_webhook():
     """
@@ -2023,91 +1603,6 @@ def inbound_mail_webhook():
     except Exception as e:
         app.logger.error(f"Erreur inbound mailbox : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
-@app.route('/mailbox')
-@login_required
-def mailbox_page():
-    return render_template('mailbox.html')
-@app.route('/api/mailbox/process-debug', methods=['POST'])
-@login_required
-def process_mailbox_debug():
-    try:
-        from app.integrations.mailbox import MailboxClient
-        from app.models import SuggestionTache
-        client = MailboxClient()
-        if not client.is_configured():
-            return jsonify({'ok': False, 'message': 'Identifiants de la boîte mail non configurés.', 'stage': 'config'}), 400
-
-        # Step 1: fetch unseen
-        mails = client.fetch_unseen(limit=5)
-        fetch_info = {
-            'fetched_count': len(mails),
-            'sample_uids': [m.get('uid') for m in mails[:5]],
-            'sample_subjects': [m.get('subject') for m in mails[:5]],
-            'allowed_senders': getattr(client, 'allowed_senders', []),
-        }
-
-        # Step 2: check already processed
-        already_processed = []
-        for m in mails:
-            uid = m.get('uid')
-            if SuggestionTache.query.filter_by(mail_uid=uid).first():
-                already_processed.append(uid)
-
-        # Step 3: attempt extraction on first mail
-        extraction_result = None
-        suggestion_created = False
-        error_detail = None
-        if mails:
-            m = mails[0]
-            try:
-                from app.integrations.openrouter import OpenRouterClient
-                llm = OpenRouterClient()
-                llm_configured = llm.is_configured()
-                llm_result = None
-                if llm_configured:
-                    llm_result = client._analyze_with_llm(m['subject'], m['body'])
-                client_id = None
-                task_desc = None
-                if llm_result:
-                    client_id = llm_result.get('client_id')
-                    task_desc = llm_result.get('task')
-                if not client_id or not task_desc:
-                    client_id = client_id or client._resolve_client(m['subject'], m['body'])
-                    task_desc = task_desc or client._extract_task(m['subject'], m['body'])
-                extraction_result = {
-                    'uid': m.get('uid'),
-                    'subject': m.get('subject'),
-                    'body_preview': (m.get('body') or '')[:200],
-                    'llm_configured': llm_configured,
-                    'llm_result': llm_result,
-                    'client_id': client_id,
-                    'task_desc': task_desc,
-                }
-                if task_desc:
-                    client._create_suggestion(
-                        subject=m['subject'],
-                        body=m['body'],
-                        dossier_id=client_id,
-                        titre_suggere=m['subject'][:200],
-                        description_suggeree=task_desc,
-                        mail_uid=m.get('uid'),
-                    )
-                    suggestion_created = True
-            except Exception as e:
-                error_detail = str(e)
-
-        return jsonify({
-            'ok': True,
-            'stage': 'debug',
-            'fetch_info': fetch_info,
-            'already_processed': already_processed,
-            'extraction_result': extraction_result,
-            'suggestion_created': suggestion_created,
-            'error_detail': error_detail,
-        })
-    except Exception as e:
-        app.logger.error(f"Erreur process mailbox debug : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
 @app.route('/mes-taches')
 @login_required
 def mes_taches():

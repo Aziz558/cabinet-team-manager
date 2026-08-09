@@ -71,32 +71,47 @@
                 <div id="openrouterResult" class="small mb-3"></div>
 
                 <hr style="border-color: var(--border-color);">
-                <h6 class="mt-3">Réception par webhook inbound (Cloudflare Email Routing)</h6>
-                <p class="text-tertiary small">Routez les emails clients vers <code>/api/mailbox/inbound</code> via <a href="https://dash.cloudflare.com" target="_blank">Cloudflare Email Routing</a> + un Worker gratuit. Cette option remplace le polling IMAP.</p>
+                <h6 class="mt-3">Réception Cloudflare Email Routing</h6>
+                <p class="text-tertiary small">Routez vos emails via <a href="https://dash.cloudflare.com" target="_blank">Cloudflare Email Routing</a> vers <code>/api/mailbox/inbound</code>. Les tâches sont extraites automatiquement par l'IA.</p>
                 <form id="inboundForm" class="mb-3">
-                    <div class="mb-2">
-                        <label class="form-label">Mode inbound</label>
-                        {% set inbound_mode = settings|selectattr('cle','equalto','MAILBOX_INBOUND_MODE')|list|first %}
-                        <select name="MAILBOX_INBOUND_MODE" class="select-premium">
-                            <option value="false" {{ 'selected' if (inbound_mode.valeur if inbound_mode else 'false')|lower != 'true' else '' }}>Désactivé</option>
-                            <option value="true" {{ 'selected' if (inbound_mode.valeur if inbound_mode else 'false')|lower == 'true' else '' }}>Activé</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Secret de vérification</label>
-                        {% set inbound_secret = settings|selectattr('cle','equalto','MAILBOX_INBOUND_SECRET')|list|first %}
-                        <input type="password" name="MAILBOX_INBOUND_SECRET" class="input-premium" value="{{ inbound_secret.valeur if inbound_secret else '' }}">
-                        <div class="form-text text-tertiary">Clé secrète utilisée pour vérifier la signature HMAC du webhook.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Expéditeurs autorisés (optionnel)</label>
-                        {% set inbound_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
-                        <textarea name="MAILBOX_ALLOWED_SENDERS" class="input-premium" rows="2" placeholder="ex: client1@example.com, client2@example.com">{{ inbound_allowed.valeur if inbound_allowed else '' }}</textarea>
-                        <div class="form-text text-tertiary">Laisser vide pour accepter tous les expéditeurs. Sinon, séparez les adresses par des virgules.</div>
-                    </div>
-                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer inbound</button>
+                <div class="mb-2">
+                    <label class="form-label">Mode inbound</label>
+                    {% set inbound_mode = settings|selectattr('cle','equalto','MAILBOX_INBOUND_MODE')|list|first %}
+                    <select name="MAILBOX_INBOUND_MODE" class="select-premium">
+                        <option value="false" {{ 'selected' if (inbound_mode.valeur if inbound_mode else 'false')|lower != 'true' else '' }}>Désactivé</option>
+                        <option value="true" {{ 'selected' if (inbound_mode.valeur if inbound_mode else 'false')|lower == 'true' else '' }}>Activé</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Secret de vérification</label>
+                    {% set inbound_secret = settings|selectattr('cle','equalto','MAILBOX_INBOUND_SECRET')|list|first %}
+                    <input type="password" name="MAILBOX_INBOUND_SECRET" class="input-premium" value="{{ inbound_secret.valeur if inbound_secret else '' }}">
+                    <div class="form-text text-tertiary">Clé secrète partagée avec votre Worker Cloudflare.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Expéditeurs autorisés</label>
+                    {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
+                    <textarea name="MAILBOX_ALLOWED_SENDERS" class="input-premium" rows="2" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
+                    <div class="form-text text-tertiary">Laisser vide pour accepter tous les expéditeurs. Sinon, séparez les adresses par des virgules.</div>
+                </div>
+                <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer inbound</button>
                 </form>
                 <div id="inboundResult" class="small mb-3"></div>
+
+                <hr style="border-color: var(--border-color);">
+                <h6 class="mt-3">Tests de connexion</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testPennyLaneBtn">
+                        <i class="bi bi-lightning me-1"></i>Tester PennyLane
+                    </button>
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testTeamsBtn">
+                        <i class="bi bi-chat-dots me-1"></i>Tester Teams
+                    </button>
+                    <button class="btn-premium btn-premium-secondary btn-press" id="testOpenRouterBtn">
+                        <i class="bi bi-cpu me-1"></i>Tester OpenRouter
+                    </button>
+                </div>
+                <div id="testIntegrationResult" class="small mt-2"></div>
             </div>
         </div>
     </div>
@@ -222,31 +237,6 @@ document.getElementById('smtpForm').addEventListener('submit', function(e) {
     });
 });
 
-// Inbound form
-document.getElementById('inboundForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const entries = [
-        {cle: 'MAILBOX_INBOUND_MODE', valeur: formData.get('MAILBOX_INBOUND_MODE'), service: 'inbound', type_valeur: 'string', masque: false},
-        {cle: 'MAILBOX_INBOUND_SECRET', valeur: formData.get('MAILBOX_INBOUND_SECRET'), service: 'inbound', type_valeur: 'password', masque: true},
-        {cle: 'MAILBOX_ALLOWED_SENDERS', valeur: formData.get('MAILBOX_ALLOWED_SENDERS'), service: 'inbound', type_valeur: 'string', masque: false},
-    ];
-    const box = document.getElementById('inboundResult');
-    box.textContent = 'Enregistrement...';
-    Promise.all(entries.map(item => fetch('/api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(item),
-    }).then(r => r.json()))).then(results => {
-        const failed = results.filter(r => !r.ok);
-        if (failed.length === 0) {
-            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Paramètres inbound Cloudflare enregistrés.</span>';
-        } else {
-            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
-        }
-    });
-});
-
 // OpenRouter form
 document.getElementById('openrouterForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -270,10 +260,6 @@ document.getElementById('openrouterForm').addEventListener('submit', function(e)
             box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }
     });
-});
-
-document.getElementById('addSettingBtn').addEventListener('click', function() {
-    new bootstrap.Modal(document.getElementById('modalSetting')).show();
 });
 
 function loadOpenRouterModels() {
@@ -316,6 +302,7 @@ function loadOpenRouterModels() {
                 return;
             }
             
+            // Sort and add models
             models.sort().forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m;
@@ -323,6 +310,7 @@ function loadOpenRouterModels() {
                 select.appendChild(opt);
             });
 
+            // Restore previously saved model
             const savedModel = '{{ openrouter_model or "" }}';
             if (savedModel) {
                 select.value = savedModel;
@@ -346,11 +334,50 @@ if (providerInput) {
     providerInput.addEventListener('blur', loadOpenRouterModels);
 }
 
+// Load models on page load
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadOpenRouterModels);
 } else {
     loadOpenRouterModels();
 }
+
+function showIntegrationResult(html, isSuccess) {
+    const box = document.getElementById('testIntegrationResult');
+    if (isSuccess) {
+        box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + html + '</span>';
+    } else {
+        box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + html + '</span>';
+    }
+}
+
+// Test mail form
+document.getElementById('testMailForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = {
+        sender: formData.get('sender'),
+        recipient: formData.get('recipient'),
+        subject: formData.get('subject'),
+        body: formData.get('body'),
+    };
+    const box = document.getElementById('testMailResult');
+    box.textContent = 'Envoi en cours...';
+    fetch('/api/mail/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data),
+    }).then(r => r.json()).then(res => {
+        if (res.ok) {
+            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
+        } else {
+            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
+        }
+    });
+});
+
+document.getElementById('addSettingBtn').addEventListener('click', function() {
+    new bootstrap.Modal(document.getElementById('modalSetting')).show();
+});
 
 document.getElementById('settingForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -395,6 +422,7 @@ document.getElementById('inboundForm').addEventListener('submit', function(e) {
     const entries = [
         {cle: 'MAILBOX_INBOUND_MODE', valeur: formData.get('MAILBOX_INBOUND_MODE'), service: 'mailbox', type_valeur: 'string', masque: false},
         {cle: 'MAILBOX_INBOUND_SECRET', valeur: formData.get('MAILBOX_INBOUND_SECRET'), service: 'mailbox', type_valeur: 'password', masque: true},
+        {cle: 'MAILBOX_ALLOWED_SENDERS', valeur: formData.get('MAILBOX_ALLOWED_SENDERS'), service: 'mailbox', type_valeur: 'string', masque: false},
     ];
     const box = document.getElementById('inboundResult');
     box.textContent = 'Enregistrement...';
@@ -417,13 +445,6 @@ document.getElementById('testPennyLaneBtn').addEventListener('click', function()
         .then(r => r.json())
         .then(res => showIntegrationResult(res.message, res.ok));
 });
-document.getElementById('testOutlookBtn').addEventListener('click', function() {
-    const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Test en cours...';
-    fetch('/api/test/outlook', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => showIntegrationResult(res.message, res.ok));
-});
 document.getElementById('testTeamsBtn').addEventListener('click', function() {
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Test en cours...';
@@ -435,39 +456,6 @@ document.getElementById('testOpenRouterBtn').addEventListener('click', function(
     const box = document.getElementById('testIntegrationResult');
     box.textContent = 'Test en cours...';
     fetch('/api/test/openrouter', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => showIntegrationResult(res.message, res.ok));
-});
-document.getElementById('debugMailboxBtn').addEventListener('click', function() {
-    const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Debug en cours...';
-    fetch('/api/mailbox/debug', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => showIntegrationResult(res.message, res.ok));
-});
-document.getElementById('sendersMailboxBtn').addEventListener('click', function() {
-    const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Chargement...';
-    fetch('/api/mailbox/allowed-senders', { method: 'GET' })
-        .then(r => r.json())
-        .then(res => {
-            if (res.ok) {
-                box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Expéditeurs autorisés: ' + (res.senders || []).join(', ') + '</span>';
-            } else {
-                showIntegrationResult(res.message, false);
-            }
-        });
-});
-document.getElementById('searchMailboxBtn').addEventListener('click', function() {
-    const sender = prompt('Email de l\'expéditeur à rechercher:');
-    if (!sender) return;
-    const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Recherche...';
-    fetch('/api/mailbox/search-by-sender', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({sender: sender})
-    })
         .then(r => r.json())
         .then(res => showIntegrationResult(res.message, res.ok));
 });
