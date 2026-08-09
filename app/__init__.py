@@ -85,6 +85,23 @@ with app.app_context():
     except Exception as e:
         db.session.rollback()
         app.logger.warning(f"Could not create default team: {e}")
+    # Add team mailbox columns if missing
+    try:
+        inspector = db.inspect(db.engine)
+        if 'equipes' in inspector.get_table_names():
+            equipes_cols = [col['name'] for col in inspector.get_columns('equipes')]
+            with db.engine.begin() as conn:
+                if 'equipe_email' not in equipes_cols:
+                    conn.execute(db.text("ALTER TABLE equipes ADD COLUMN equipe_email VARCHAR(200)"))
+                    app.logger.info("Added equipe_email column")
+                if 'equipe_email_password' not in equipes_cols:
+                    conn.execute(db.text("ALTER TABLE equipes ADD COLUMN equipe_email_password VARCHAR(200)"))
+                    app.logger.info("Added equipe_email_password column")
+                if 'equipe_mailbox' not in equipes_cols:
+                    conn.execute(db.text("ALTER TABLE equipes ADD COLUMN equipe_mailbox VARCHAR(200)"))
+                    app.logger.info("Added equipe_mailbox column")
+    except Exception as e:
+        app.logger.warning(f"Migration error (equipes mailbox): {e}")
 
 @login_manager.user_loader
 def load_user(user_id):

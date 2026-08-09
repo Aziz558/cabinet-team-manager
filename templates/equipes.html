@@ -27,9 +27,19 @@
                 {% if e.manager %}
                 <small class="text-tertiary">Manager : {{ e.manager.prenom }} {{ e.manager.nom }}</small>
                 {% endif %}
+                <div class="mt-2 small">
+                    {% if e.equipe_email %}
+                    <i class="bi bi-envelope me-1" style="color:var(--orange-primary)"></i>{{ e.equipe_email }}
+                    {% else %}
+                    <span class="text-tertiary">Pas d'email dédié</span>
+                    {% endif %}
+                </div>
                 <div class="mt-3 d-flex gap-2">
                     <a href="{{ url_for('team_select') }}" class="btn-premium btn-premium-outline btn-premium-primary btn-sm">Voir</a>
                     {% if current_user.role == 'admin' %}
+                    <button class="btn-premium btn-premium-outline btn-sm" data-bs-toggle="modal" data-bs-target="#modalMailEquipe{{ e.id }}">
+                        <i class="bi bi-envelope"></i> Email équipe
+                    </button>
                     <form method="POST" action="{{ url_for('supprimer_equipe', equipe_id=e.id) }}" class="d-inline" onsubmit="return confirm('Supprimer l\'équipe {{ e.nom }} ? Les membres seront détachés.');">
                         <button type="submit" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">
                             <i class="bi bi-trash"></i> Supprimer
@@ -90,4 +100,43 @@
     </div>
 </div>
 {% endif %}
+
+{% for e in equipes %}
+<!-- Modal Email équipe -->
+<div class="modal fade" id="modalMailEquipe{{ e.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('configurer_email_equipe', equipe_id=e.id) }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-envelope me-2" style="color:var(--orange-primary)"></i>Email dédié - {{ e.nom }}</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
+                    <p class="text-tertiary small mb-3">Configurez une adresse email dédiée pour cette équipe. Les emails clients envoyés à cette adresse seront automatiquement attribués à l'équipe.</p>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Adresse email de l'équipe</label>
+                        <input type="email" name="equipe_email" class="input-premium" value="{{ e.equipe_email or '' }}" placeholder="equipe1@outlook.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Mot de passe / App password</label>
+                        <input type="password" name="equipe_email_password" class="input-premium" value="{{ e.equipe_email_password or '' }}" placeholder="••••••••">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Serveur IMAP (optionnel)</label>
+                        <input type="text" name="equipe_mailbox" class="input-premium" value="{{ e.equipe_mailbox or 'imap.outlook.com' }}" placeholder="imap.outlook.com">
+                    </div>
+                    <div class="alert alert-premium-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <small>Pour Outlook/Gmail, utilisez un mot de passe d'application. L'adresse email servira à envoyer et recevoir les mails de cette équipe.</small>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary"><i class="bi bi-check-lg me-1"></i>Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

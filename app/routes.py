@@ -14,7 +14,7 @@ import os
 from flask import send_from_directory
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
-def get_mail_config():
+def get_mail_config(equipe=None):
     username = AppSetting.query.filter_by(cle='MAIL_USERNAME').first()
     password = AppSetting.query.filter_by(cle='MAIL_PASSWORD').first()
     server = AppSetting.query.filter_by(cle='MAIL_SERVER').first()
@@ -22,7 +22,7 @@ def get_mail_config():
     use_tls = AppSetting.query.filter_by(cle='MAIL_USE_TLS').first()
     default_sender = AppSetting.query.filter_by(cle='MAIL_DEFAULT_SENDER').first()
 
-    return {
+    base = {
         'MAIL_USERNAME': (username.valeur if username else '') or app.config.get('MAIL_USERNAME', ''),
         'MAIL_PASSWORD': (password.valeur if password else '') or app.config.get('MAIL_PASSWORD', ''),
         'MAIL_SERVER': (server.valeur if server else '') or app.config.get('MAIL_SERVER', 'smtp.office365.com'),
@@ -30,9 +30,15 @@ def get_mail_config():
         'MAIL_USE_TLS': (use_tls.valeur if use_tls else 'true').lower() == 'true',
         'MAIL_DEFAULT_SENDER': (default_sender.valeur if default_sender else '') or app.config.get('MAIL_DEFAULT_SENDER', ''),
     }
-def send_email_notification(to_email, subject, body, sender=None):
+
+    if equipe and getattr(equipe, 'equipe_email', None):
+        base['MAIL_USERNAME'] = equipe.equipe_email
+        base['MAIL_PASSWORD'] = equipe.equipe_email_password or base['MAIL_PASSWORD']
+        base['MAIL_DEFAULT_SENDER'] = equipe.equipe_email or base['MAIL_DEFAULT_SENDER']
+    return base
+def send_email_notification(to_email, subject, body, sender=None, equipe=None):
     try:
-        config = get_mail_config()
+        config = get_mail_config(equipe=equipe)
         username = config.get('MAIL_USERNAME') or app.config.get('MAIL_USERNAME', '')
         password = config.get('MAIL_PASSWORD') or app.config.get('MAIL_PASSWORD', '')
         server_host = config.get('MAIL_SERVER') or app.config.get('MAIL_SERVER', 'smtp.office365.com')
@@ -41,9 +47,9 @@ def send_email_notification(to_email, subject, body, sender=None):
         default_sender = config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_DEFAULT_SENDER', '')
 
         if not username:
-            return False, 'MAIL_USERNAME non configuré. Allez dans Paramètres.'
+            return False, 'MAIL_USERNAME non configuré. Allez dans Paramètres ou configurez l\'email de l\'équipe.'
         if not password:
-            return False, 'MAIL_PASSWORD vide. Allez dans Paramètres.'
+            return False, 'MAIL_PASSWORD vide. Allez dans Paramètres ou configurez l\'email de l\'équipe.'
 
         from_email = sender or default_sender or username
 
@@ -171,6 +177,21 @@ def supprimer_equipe(equipe_id):
     db.session.commit()
     flash(f'Équipe {equipe.nom} supprimée.', 'success')
     return redirect(url_for('equipes'))
+
+@app.route('/equipes/<int:equipe_id>/email', methods=['POST'])
+@login_required
+def configurer_email_equipe(equipe_id):
+    if current_user.role != 'admin':
+        flash('Accès refusé — réservé à l\'administrateur.', 'danger')
+        return redirect(url_for('equipes'))
+    equipe = Equipe.query.get_or_404(equipe_id)
+    equipe.equipe_email = request.form.get('equipe_email', '').strip() or None
+    equipe.equipe_email_password = request.form.get('equipe_email_password', '').strip() or None
+    equipe.equipe_mailbox = request.form.get('equipe_mailbox', '').strip() or 'imap.outlook.com'
+    db.session.commit()
+    flash(f'Email dédié configuré pour {equipe.nom}.', 'success')
+    return redirect(url_for('equipes'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -604,7 +625,8 @@ def dossiers():
                 if collab:
                     msg = f"Un nouveau dossier vous a été assigné: {numero} - {intitule}"
                     create_notification(collab.id, msg, type_notification='assignation')
-                    send_email_notification(collab.email, "Nouveau dossier assigné", msg)
+                    equipe = getattr(collab, 'equipe', None)
+                    send_email_notification(collab.email, "Nouveau dossier assigné", msg, equipe=equipe)
             flash('Dossier créé avec succès.', 'success')
             return redirect(url_for('dossiers'))
     # Team-scoped: admin sees all, manager sees dossiers of their team members
@@ -825,7 +847,8 @@ def taches():
                     if user:
                         msg = f"Nouvelle tâche assignée: {titre} (Priorité: {priorite}, Échéance: {date_echeance.strftime('%d/%m/%Y')})"
                         create_notification(user.id, msg, type_notification='assignation')
-                        send_email_notification(user.email, f"Nouvelle tâche: {titre}", msg)
+                        equipe = getattr(current_user, 'equipe', None)
+                        send_email_notification(user.email, f"Nouvelle tâche: {titre}", msg, equipe=equipe)
                 flash('Tâche créée et notifications envoyées.', 'success')
                 return redirect(url_for('taches'))
         all_taches = Tache.query.order_by(Tache.date_echeance.desc()).all()
@@ -853,6 +876,7 @@ def prendre_en_charge(tache_id):
             tache_id=tache.id,
             type_notification='prise_en_charge'
         )
+        equipe = getattr(current_user, 'equipe', None)
         send_email_notification(
             User.query.get(tache.cree_par).email,
             f"Prise en charge: {tache.titre}",
@@ -879,6 +903,7 @@ def terminer_tache(tache_id):
                 tache_id=tache.id,
                 type_notification='completion'
             )
+            equipe = getattr(current_user, 'equipe', None)
             send_email_notification(
                 User.query.get(tache.cree_par).email,
                 f"Tâche terminée: {tache.titre}",
