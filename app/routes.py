@@ -565,7 +565,7 @@ def dossiers():
     if current_user.role not in ('admin', 'manager'):
         # Collaborateur sees only their dossiers
         mes_dossiers = Dossier.query.filter_by(collaborateur_id=current_user.id).all()
-        return render_template('dossiers.html', dossiers=mes_dossiers, membres=[])
+        return render_template('dossiers.html', dossiers=mes_dossiers, membres=[], Tache=Tache)
     if request.method == 'POST':
         numero = request.form.get('numero_dossier', '').strip()
         intitule = request.form.get('intitule', '').strip()
@@ -617,7 +617,28 @@ def dossiers():
             team_member_ids.extend([m.id for m in eq.membres.all()])
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
-    return render_template('dossiers.html', dossiers=all_dossiers, membres=membres)
+    # Team-scoped: admin sees active team's dossiers, manager sees dossiers of their team members
+    equipe_id = session.get('current_equipe_id')
+    current_equipe = None
+    all_equipes_for_switch = []
+    if equipe_id:
+        current_equipe = Equipe.query.get(equipe_id)
+    if current_user.role == 'admin':
+        if equipe_id and current_equipe:
+            team_member_ids = [m.id for m in current_equipe.membres.all()]
+            all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all() if team_member_ids else []
+            membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all() if team_member_ids else []
+        else:
+            all_dossiers = Dossier.query.all()
+            membres = User.query.filter_by(actif=True).all()
+    else:
+        team_member_ids = [current_user.id]
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
+        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+    return render_template('dossiers.html', dossiers=all_dossiers, membres=membres, Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
 
 @app.route('/dossiers/<int:dossier_id>/modifier', methods=['POST'])
 @login_required
