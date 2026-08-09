@@ -53,8 +53,8 @@ with app.app_context():
                     conn.execute(db.text("ALTER TABLE users ADD COLUMN equipe_id INTEGER"))
                     app.logger.info("Added equipe_id column to users table")
     except Exception as e:
-        app.logger.warning(f"Migration error (equipe_id): {e}")
-    # Add frequence_tva column to dossiers
+        app.logger.warning(f"Migration error (users.equipe_id): {e}")
+    # Add missing columns to dossiers
     try:
         inspector = db.inspect(db.engine)
         if 'dossiers' in inspector.get_table_names():
@@ -63,8 +63,12 @@ with app.app_context():
                 with db.engine.begin() as conn:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN frequence_tva VARCHAR(20) DEFAULT 'trimestrielle'"))
                     app.logger.info("Added frequence_tva column to dossiers table")
+            if 'equipe_id' not in dossiers_cols:
+                with db.engine.begin() as conn:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN equipe_id INTEGER"))
+                    app.logger.info("Added equipe_id column to dossiers table")
     except Exception as e:
-        app.logger.warning(f"Migration error (frequence_tva): {e}")
+        app.logger.warning(f"Migration error (dossiers): {e}")
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
