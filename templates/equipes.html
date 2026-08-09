@@ -40,6 +40,9 @@
                     <button class="btn-premium btn-premium-outline btn-sm" data-bs-toggle="modal" data-bs-target="#modalMailEquipe{{ e.id }}">
                         <i class="bi bi-envelope"></i> Email équipe
                     </button>
+                    <button class="btn-premium btn-premium-outline btn-sm" data-bs-toggle="modal" data-bs-target="#modalManagerEquipe{{ e.id }}">
+                        <i class="bi bi-person-gear"></i> Responsable
+                    </button>
                     <form method="POST" action="{{ url_for('supprimer_equipe', equipe_id=e.id) }}" class="d-inline" onsubmit="return confirm('Supprimer l\'équipe {{ e.nom }} ? Les membres seront détachés.');">
                         <button type="submit" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">
                             <i class="bi bi-trash"></i> Supprimer
@@ -125,6 +128,52 @@
                 <div class="modal-footer-premium">
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn-premium btn-premium-primary"><i class="bi bi-check-lg me-1"></i>Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% for e in equipes %}
+<!-- Modal Manager équipe -->
+<div class="modal fade" id="modalManagerEquipe{{ e.id }}" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('changer_manager_equipe', equipe_id=e.id) }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-person-gear me-2" style="color:var(--orange-primary)"></i>Responsable - {{ e.nom }}</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
+                    <p class="text-tertiary small mb-3">Sélectionnez le responsable de cette équipe.</p>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Responsable actuel</label>
+                        <div class="d-flex align-items-center gap-2 mb-3 p-3 rounded" style="background: var(--bg-card-hover);">
+                            {% if e.manager %}
+                            <img src="{{ url_for('uploaded_file', filename=e.manager.photo_profil) }}" class="rounded-circle" width="36" height="36" alt="">
+                            <div>
+                                <strong>{{ e.manager.prenom }} {{ e.manager.nom }}</strong><br>
+                                <small class="text-tertiary">{{ e.manager.email }}</small>
+                            </div>
+                            {% else %}
+                            <span class="text-tertiary">Aucun responsable défini</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Nouveau responsable</label>
+                        <select name="manager_id" class="select-premium">
+                            <option value="">Aucun</option>
+                            {% for u in managers %}
+                            <option value="{{ u.id }}" {{ 'selected' if e.manager_id == u.id else '' }}>{{ u.prenom }} {{ u.nom }} ({{ u.email }}) - {{ u.role }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press"><i class="bi bi-check-lg me-1"></i>Changer le responsable</button>
                 </div>
             </form>
         </div>

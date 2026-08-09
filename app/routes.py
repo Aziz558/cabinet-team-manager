@@ -164,7 +164,8 @@ def equipes():
             flash('Équipe créée.', 'success')
             return redirect(url_for('equipes'))
     all_equipes = Equipe.query.order_by(Equipe.nom).all()
-    return render_template('equipes.html', equipes=all_equipes)
+    managers = User.query.filter(User.role.in_(['admin', 'manager']), User.actif==True).order_by(User.role, User.prenom).all()
+    return render_template('equipes.html', equipes=all_equipes, managers=managers)
 @app.route('/equipes/<int:equipe_id>/supprimer', methods=['POST'])
 @login_required
 def supprimer_equipe(equipe_id):
@@ -192,6 +193,20 @@ def configurer_email_equipe(equipe_id):
     equipe.equipe_email = request.form.get('equipe_email', '').strip() or None
     db.session.commit()
     flash(f'Email dédié configuré pour {equipe.nom}.', 'success')
+    return redirect(url_for('equipes'))
+
+@app.route('/equipes/<int:equipe_id>/manager', methods=['POST'])
+@login_required
+def changer_manager_equipe(equipe_id):
+    """Admin can change the manager of a team."""
+    if current_user.role != 'admin':
+        flash('Accès refusé — réservé à l\'administrateur.', 'danger')
+        return redirect(url_for('equipes'))
+    equipe = Equipe.query.get_or_404(equipe_id)
+    manager_id = request.form.get('manager_id', '').strip()
+    equipe.manager_id = int(manager_id) if manager_id and manager_id.isdigit() else None
+    db.session.commit()
+    flash(f'Responsable changé pour {equipe.nom}.', 'success')
     return redirect(url_for('equipes'))
 
 @app.route('/login', methods=['GET', 'POST'])
