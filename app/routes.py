@@ -221,6 +221,12 @@ def login():
         else:
             flash('Email ou mot de passe incorrect.', 'danger')
     return render_template('login.html', equipe_nom=equipe_nom, equipe_icon=equipe_icon, equipe_couleur=equipe_couleur)
+# Global error handler for debugging
+@app.errorhandler(Exception)
+def handle_all_exceptions(e):
+    app.logger.error(f"Unhandled exception: {type(e).__name__}: {e}", exc_info=True)
+    return render_template('error.html', code=500, message=f"Erreur interne: {type(e).__name__}"), 500
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
