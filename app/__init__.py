@@ -15,23 +15,21 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 database_url = os.environ.get('DATABASE_URL')
+use_postgres = False
 if database_url and database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    use_postgres = True
 
-# Validate DB URL before initializing SQLAlchemy
-db_uri = app.config['SQLALCHEMY_DATABASE_URI']
-if db_uri and db_uri.startswith('postgresql://'):
-    try:
-        from urllib.parse import urlparse
-        parsed = urlparse(db_uri)
-        if not parsed.hostname:
-            app.logger.warning("DATABASE_URL has no hostname; falling back to SQLite")
-            app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
-    except Exception as e:
-        app.logger.warning(f"Cannot parse DATABASE_URL: {e}; falling back to SQLite")
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
+# For Render free tier, use SQLite to avoid PostgreSQL connection issues
+# PostgreSQL can be enabled later by setting USE_POSTGRES=true
+if os.environ.get('USE_POSTGRES', 'false').lower() == 'true' and database_url:
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
+    if use_postgres:
+        app.logger.info(f"Using SQLite instead of PostgreSQL. Set USE_POSTGRES=true to enable PostgreSQL.")
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.office365.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
@@ -55,7 +53,10 @@ from app import routes  # noqa: F401
 from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+    except Exception as e:
+        app.logger.warning(f"db.create_all failed: {e}")
     # Add missing columns to existing tables (for migration)
     try:
         inspector = db.inspect(db.engine)
