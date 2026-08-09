@@ -112,22 +112,14 @@
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
                 </div>
                 <div class="modal-body-premium">
-                    <p class="text-tertiary small mb-3">Configurez une adresse email dédiée pour cette équipe. Les emails clients envoyés à cette adresse seront automatiquement attribués à l'équipe.</p>
+                    <p class="text-tertiary small mb-3">Adresse email dédiée pour cette équipe. Routez les emails clients via <a href="https://dash.cloudflare.com" target="_blank">Cloudflare Email Routing</a> vers <code>/api/mailbox/inbound</code>.</p>
                     <div class="mb-3">
                         <label class="form-label-premium">Adresse email de l'équipe</label>
-                        <input type="email" name="equipe_email" class="input-premium" value="{{ e.equipe_email or '' }}" placeholder="equipe1@outlook.com" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label-premium">Mot de passe / App password</label>
-                        <input type="password" name="equipe_email_password" class="input-premium" value="{{ e.equipe_email_password or '' }}" placeholder="••••••••">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label-premium">Serveur IMAP (optionnel)</label>
-                        <input type="text" name="equipe_mailbox" class="input-premium" value="{{ e.equipe_mailbox or 'imap.outlook.com' }}" placeholder="imap.outlook.com">
+                        <input type="email" name="equipe_email" class="input-premium" value="{{ e.equipe_email or '' }}" placeholder="equipe-compta@ton-domaine.com" required>
                     </div>
                     <div class="alert alert-premium-warning">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        <small>Pour Outlook/Gmail, utilisez un mot de passe d'application. L'adresse email servira à envoyer et recevoir les mails de cette équipe.</small>
+                        <small>Cette adresse est utilisée pour router les emails entrants vers le webhook Cloudflare. Configurez la route dans votre espace Cloudflare.</small>
                     </div>
                 </div>
                 <div class="modal-footer-premium">

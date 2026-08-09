@@ -7,11 +7,11 @@ import csv
 import io
 import smtplib
 import email
-from app import app, db, mail
+from app import app, db
 from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe
-from flask_mail import Message
 import os
 from flask import send_from_directory
+from app.integrations import inbound_mail
 
 ADMIN_RESET_KEY = os.environ.get('ADMIN_RESET_KEY', 'cabinet-jmh-reset-2024')
 
@@ -41,89 +41,49 @@ def reset_admin():
         flash('Mot de passe admin réinitialisé. Vous pouvez vous connecter.', 'success')
         return redirect(url_for('login'))
     return render_template('reset_admin.html')
-def get_mail_config(equipe=None):
-    username = AppSetting.query.filter_by(cle='MAIL_USERNAME').first()
-    password = AppSetting.query.filter_by(cle='MAIL_PASSWORD').first()
-    server = AppSetting.query.filter_by(cle='MAIL_SERVER').first()
-    port = AppSetting.query.filter_by(cle='MAIL_PORT').first()
-    use_tls = AppSetting.query.filter_by(cle='MAIL_USE_TLS').first()
-    default_sender = AppSetting.query.filter_by(cle='MAIL_DEFAULT_SENDER').first()
 
-    base = {
-        'MAIL_USERNAME': (username.valeur if username else '') or app.config.get('MAIL_USERNAME', ''),
-        'MAIL_PASSWORD': (password.valeur if password else '') or app.config.get('MAIL_PASSWORD', ''),
-        'MAIL_SERVER': (server.valeur if server else '') or app.config.get('MAIL_SERVER', 'smtp.office365.com'),
-        'MAIL_PORT': int((port.valeur if port else '') or app.config.get('MAIL_PORT', 587)),
-        'MAIL_USE_TLS': (use_tls.valeur if use_tls else 'true').lower() == 'true',
-        'MAIL_DEFAULT_SENDER': (default_sender.valeur if default_sender else '') or app.config.get('MAIL_DEFAULT_SENDER', ''),
+
+# ============ EMAIL / INBOUND NOTIFICATIONS ============
+def get_mail_config(equipe=None):
+    """Return SMTP config for outgoing notifications only (not inbound)."""
+    return {
+        'MAIL_USERNAME': app.config.get('MAIL_USERNAME', ''),
+        'MAIL_PASSWORD': app.config.get('MAIL_PASSWORD', ''),
+        'MAIL_SERVER': app.config.get('MAIL_SERVER', 'smtp.office365.com'),
+        'MAIL_PORT': app.config.get('MAIL_PORT', 587),
+        'MAIL_DEFAULT_SENDER': app.config.get('MAIL_DEFAULT_SENDER', ''),
     }
 
-    if equipe and getattr(equipe, 'equipe_email', None):
-        base['MAIL_USERNAME'] = equipe.equipe_email
-        base['MAIL_PASSWORD'] = equipe.equipe_email_password or base['MAIL_PASSWORD']
-        base['MAIL_DEFAULT_SENDER'] = equipe.equipe_email or base['MAIL_DEFAULT_SENDER']
-    return base
-def send_email_notification(to_email, subject, body, sender=None, equipe=None):
+def send_email_notification(to_email, subject, body, sender=None):
+    """Send notification email via SMTP / Outlook."""
     try:
-        config = get_mail_config(equipe=equipe)
-        username = config.get('MAIL_USERNAME') or app.config.get('MAIL_USERNAME', '')
-        password = config.get('MAIL_PASSWORD') or app.config.get('MAIL_PASSWORD', '')
-        server_host = config.get('MAIL_SERVER') or app.config.get('MAIL_SERVER', 'smtp.office365.com')
-        server_port = config.get('MAIL_PORT', app.config.get('MAIL_PORT', 587))
-        use_tls = config.get('MAIL_USE_TLS', app.config.get('MAIL_USE_TLS', True))
-        default_sender = config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_DEFAULT_SENDER', '')
-
-        if not username:
-            return False, 'MAIL_USERNAME non configuré. Allez dans Paramètres ou configurez l\'email de l\'équipe.'
-        if not password:
-            return False, 'MAIL_PASSWORD vide. Allez dans Paramètres ou configurez l\'email de l\'équipe.'
-
-        from_email = sender or default_sender or username
-
-        app.logger.info(
-            "SMTP test: server=%s port=%s username=%s sender=%s recipient=%s",
-            server_host,
-            server_port,
-            username,
-            from_email,
-            to_email,
-        )
-
-        msg = Message(subject, recipients=[to_email], body=body, sender=from_email)
-        smtp = smtplib.SMTP(server_host, server_port, timeout=20)
-        smtp.ehlo()
-        if use_tls:
-            smtp.starttls()
-            smtp.ehlo()
-        smtp.login(username, password)
-        smtp.sendmail(from_email, [to_email], msg.as_string())
-        smtp.quit()
-        return True, f'Email envoyé à {to_email}'
+        config = get_mail_config()
+        username = config['MAIL_USERNAME']
+        password = config['MAIL_PASSWORD']
+        if not username or not password:
+            app.logger.warning("Mail not sent: MAIL_USERNAME/MAIL_PASSWORD not configured")
+            return False, 'Mail non configuré'
+        server_host = config['MAIL_SERVER']
+        server_port = int(config['MAIL_PORT'])
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        msg = MIMEMultipart()
+        msg['From'] = sender or config['MAIL_DEFAULT_SENDER'] or username
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+        server = smtplib.SMTP(server_host, server_port, timeout=15)
+        server.starttls()
+        server.login(username, password)
+        server.send_message(msg)
+        server.quit()
+        return True, 'OK'
     except Exception as e:
-        app.logger.error(f"Erreur envoi mail: {e}")
-        # Fallback vers Brevo API en cas d'échec SMTP
-        try:
-            from app.integrations.brevo import send_email_via_brevo_api
-            api_key = AppSetting.query.filter_by(cle='BREVO_API_KEY').first()
-            if api_key and api_key.valeur:
-                app.logger.info("SMTP échoué, bascule vers Brevo API")
-                ok = send_email_via_brevo_api(to_email=to_email, subject=subject, body=body)
-                if ok:
-                    return True, f'Email envoyé à {to_email} via Brevo API'
-        except Exception as e2:
-            app.logger.error(f"Brevo API fallback also failed: {e2}")
-        return False, f'Échec: {e}'
-def create_notification(user_id, message, tache_id=None, type_notification='info'):
-    notif = Notification(
-        user_id=user_id,
-        message=message,
-        tache_id=tache_id,
-        type_notification=type_notification
-    )
-    db.session.add(notif)
-    db.session.commit()
-    return notif
-# ============ AUTH ============
+        app.logger.error(f"send_email_notification error: {e}")
+        return False, str(e)
+
+
 
 @app.route('/')
 def index():
@@ -2017,28 +1977,47 @@ def process_mailbox():
 @app.route('/api/mailbox/inbound', methods=['POST'])
 def inbound_mail_webhook():
     """
-    Generic inbound webhook for Mailgun / SendGrid / Amazon SES / Postmark.
-    Activation: set AppSetting MAILBOX_INBOUND_MODE = true
-    Optional secret: MAILBOX_INBOUND_SECRET
-    Route can be mounted on a dedicated path via env if needed.
+    Cloudflare Email Routing inbound webhook.
+    Le Worker Cloudflare POSTe les emails reçus vers cette route.
+    Activation: active la route dans Paramètres > Réception par webhook inbound
+    Secret optionnel: X-Webhook-Secret header verification
     """
     try:
-        from app.integrations.inbound_mail import _get_inbound_client
+        client = inbound_mail.InboundMailClient()
+
+        # Verify secret if configured
         payload_bytes = request.get_data() or b""
-        signature = request.headers.get("X-Hub-Signature-256") or request.headers.get("X-Mailgun-Signature") or ""
-        client = _get_inbound_client()
+        signature = request.headers.get("X-Webhook-Secret", "")
+        if client.get_webhook_secret():
+            if not client._verify_signature(payload_bytes, signature):
+                app.logger.warning("Inbound webhook: signature invalide")
+                return jsonify({'ok': False, 'message': 'Signature invalide'}), 403
+
+        # Check if inbound mode is enabled
         if not client.is_configured():
-            app.logger.warning("Inbound mail disabled: MAILBOX_INBOUND_MODE not configured")
-            return jsonify({'ok': False, 'message': 'Mode inbound non activé'}), 501
-        if not client._verify_signature(payload_bytes, signature):
-            app.logger.warning("Inbound signature verification failed")
-            return jsonify({'ok': False, 'message': 'Signature invalide'}), 403
-        payload: Dict[str, Any] = {}
+            return jsonify({'ok': False, 'message': 'Mode inbound non activé dans Paramètres'}), 501
+
+        # Get payload
+        payload = {}
         if request.content_type and "application/json" in request.content_type:
             payload = request.get_json(silent=True) or {}
         else:
             payload = request.form.to_dict() if request.form else {}
-        result = client.process_payload(payload)
+
+        # Normalize payload to standard fields expected by process_webhook
+        normalized = {
+            "from": payload.get("from", payload.get("sender", "")),
+            "subject": payload.get("subject", ""),
+            "body": payload.get("body", payload.get("body_plain", payload.get("text", ""))),
+            "body_plain": payload.get("body_plain", payload.get("body-plain", "")),
+            "body_html": payload.get("body_html", payload.get("body-html", "")),
+            "to": payload.get("to", payload.get("recipient", "")),
+            "recipient": payload.get("recipient", payload.get("to", "")),
+            "message_id": payload.get("message_id", payload.get("Message-Id", "")),
+            "timestamp": payload.get("timestamp", ""),
+        }
+
+        result = client.process_payload(normalized)
         app.logger.info("Inbound mail processed: %s", result)
         return jsonify(result)
     except Exception as e:

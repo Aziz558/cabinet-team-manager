@@ -173,10 +173,8 @@ class Equipe(db.Model):
     icon = db.Column(db.String(50), default='bi-people')  # bootstrap icon class
     manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
-    # Team-specific mailbox for client emails (optional)
-    equipe_email = db.Column(db.String(200), nullable=True)
-    equipe_email_password = db.Column(db.String(200), nullable=True)
-    equipe_mailbox = db.Column(db.String(200), nullable=True)  # e.g. cabinet-jmh-equipe1@outlook.com
+    # Team-specific email for Cloudflare Email Routing inbound (optional)
+    equipe_email = db.Column(db.String(200), nullable=True)  # e.g. equipe-compta@ton-domaine.com
 
     manager = db.relationship('User', foreign_keys=[manager_id], backref='equipe_dirigee')
     membres = db.relationship('User', foreign_keys='User.equipe_id', backref='equipe', lazy='dynamic')

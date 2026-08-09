@@ -2,7 +2,6 @@ from flask import Flask, render_template
 from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
-from flask_mail import Mail
 import os
 from datetime import date as _date
 
@@ -32,14 +31,6 @@ else:
         app.logger.info(f"Using SQLite instead of PostgreSQL. Set USE_POSTGRES=true to enable PostgreSQL.")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.office365.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', os.environ.get('MAIL_USERNAME', ''))
-
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, '..', 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -47,7 +38,6 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Veuillez vous connecter.'
-mail = Mail(app)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -59,32 +49,18 @@ with app.app_context():
         db.create_all()
     except Exception as e:
         app.logger.warning(f"db.create_all failed: {e}")
-    # Add missing columns to existing tables (for migration)
+    # Migrate team email column if missing (Cloudflare Email Routing only)
     try:
         inspector = db.inspect(db.engine)
-        if 'users' in inspector.get_table_names():
-            columns = [col['name'] for col in inspector.get_columns('users')]
-            if 'equipe_id' not in columns:
-                with db.engine.begin() as conn:
-                    conn.execute(db.text("ALTER TABLE users ADD COLUMN equipe_id INTEGER"))
-                    app.logger.info("Added equipe_id column to users table")
+        if 'equipes' in inspector.get_table_names():
+            equipes_cols = [col['name'] for col in inspector.get_columns('equipes')]
+            with db.engine.begin() as conn:
+                if 'equipe_email' not in equipes_cols:
+                    conn.execute(db.text("ALTER TABLE equipes ADD COLUMN equipe_email VARCHAR(200)"))
+                    app.logger.info("Added equipe_email column")
     except Exception as e:
-        app.logger.warning(f"Migration error (users.equipe_id): {e}")
-    # Add missing columns to dossiers
-    try:
-        inspector = db.inspect(db.engine)
-        if 'dossiers' in inspector.get_table_names():
-            dossiers_cols = [col['name'] for col in inspector.get_columns('dossiers')]
-            if 'frequence_tva' not in dossiers_cols:
-                with db.engine.begin() as conn:
-                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN frequence_tva VARCHAR(20) DEFAULT 'trimestrielle'"))
-                    app.logger.info("Added frequence_tva column to dossiers table")
-            if 'equipe_id' not in dossiers_cols:
-                with db.engine.begin() as conn:
-                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN equipe_id INTEGER"))
-                    app.logger.info("Added equipe_id column to dossiers table")
-    except Exception as e:
-        app.logger.warning(f"Migration error (dossiers): {e}")
+        app.logger.warning(f"Migration error (equipes mailbox): {e}")
+
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
@@ -101,23 +77,6 @@ with app.app_context():
     except Exception as e:
         db.session.rollback()
         app.logger.warning(f"Could not create default team: {e}")
-    # Add team mailbox columns if missing
-    try:
-        inspector = db.inspect(db.engine)
-        if 'equipes' in inspector.get_table_names():
-            equipes_cols = [col['name'] for col in inspector.get_columns('equipes')]
-            with db.engine.begin() as conn:
-                if 'equipe_email' not in equipes_cols:
-                    conn.execute(db.text("ALTER TABLE equipes ADD COLUMN equipe_email VARCHAR(200)"))
-                    app.logger.info("Added equipe_email column")
-                if 'equipe_email_password' not in equipes_cols:
-                    conn.execute(db.text("ALTER TABLE equipes ADD COLUMN equipe_email_password VARCHAR(200)"))
-                    app.logger.info("Added equipe_email_password column")
-                if 'equipe_mailbox' not in equipes_cols:
-                    conn.execute(db.text("ALTER TABLE equipes ADD COLUMN equipe_mailbox VARCHAR(200)"))
-                    app.logger.info("Added equipe_mailbox column")
-    except Exception as e:
-        app.logger.warning(f"Migration error (equipes mailbox): {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
