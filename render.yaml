@@ -22,3 +22,5 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: USE_POSTGRES
+        value: false
