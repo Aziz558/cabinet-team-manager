@@ -655,6 +655,8 @@ def modifier_dossier(dossier_id):
     dossier.collaborateur_id = collaborateur_id if collaborateur_id else None
     dossier.regime_tva = request.form.get('regime_tva', dossier.regime_tva).strip() or None
     dossier.frequence_tva = request.form.get('frequence_tva', dossier.frequence_tva or 'trimestrielle').strip()
+    equipe_id = request.form.get('equipe_id', type=int)
+    dossier.equipe_id = equipe_id if equipe_id else None
     date_limite_str = request.form.get('date_limite_declaration', '').strip()
     if date_limite_str:
         dossier.date_limite_declaration = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
