@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-
 {% block title %}Dossiers{% endblock %}
 
 {% block content %}
 {% if current_user.role == 'manager' %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <h2 class="fw-semibold">Dossiers</h2>
+    <h2 class="fw-semibold"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Dossiers</h2>
     <div class="d-flex gap-2">
         <button class="btn-premium btn-premium-secondary btn-press" data-bs-toggle="modal" data-bs-target="#modalImport">
             <i class="bi bi-upload me-1"></i>Importer CSV
@@ -15,8 +14,10 @@
         </button>
     </div>
 </div>
+{% set show_actions = True %}
 {% else %}
-<h2 class="fw-semibold animate-fade-in-up">Mes dossiers</h2>
+<h2 class="fw-semibold animate-fade-in-up"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Mes dossiers</h2>
+{% set show_actions = False %}
 {% endif %}
 
 <div class="card-premium mb-3 animate-fade-in-up">
@@ -40,8 +41,11 @@
                         <th>Intitulé</th>
                         <th>Collaborateur</th>
                         <th>Régime TVA</th>
-                        <th>Date limite déclaration</th>
+                        <th>Fréquence</th>
+                        <th>Date limite</th>
                         <th>Délai restant</th>
+                        <th>Tâches TVA planifiées</th>
+                        {% if show_actions %}<th class="text-end">Actions</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -66,6 +70,7 @@
                             <span class="badge badge-tertiary">-</span>
                             {% endif %}
                         </td>
+                        <td class="text-tertiary small">{{ d.frequence_tva or '-' }}</td>
                         <td>{{ d.date_limite_declaration.strftime('%d/%m/%Y') if d.date_limite_declaration else '-' }}</td>
                         <td>
                             {% if d.date_limite_declaration %}
@@ -81,6 +86,28 @@
                             <span class="text-tertiary">-</span>
                             {% endif %}
                         </td>
+                        <td>
+                            {% set tva_taches = d.taches.filter(Tache.titre.like('%TVA%')).all() %}
+                            {% if tva_taches %}
+                            <span class="badge badge-tertiary">{{ tva_taches|length }} tâche(s)</span>
+                            {% else %}
+                            <span class="text-tertiary small">Aucune</span>
+                            {% endif %}
+                        </td>
+                        {% if show_actions %}
+                        <td class="text-end">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{{ url_for('fiche_membre', user_id=d.collaborateur.id) if d.collaborateur else '#' }}" class="btn-premium btn-premium-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('modifier_dossier', dossier_id=d.id) }}" class="d-inline">
+                                    <button type="button" class="btn-premium btn-premium-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalEdit{{ d.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -90,72 +117,86 @@
 </div>
 
 {% if current_user.role == 'manager' %}
+<!-- Modal Nouveau dossier -->
 <div class="modal fade" id="modalDossier" tabindex="-1">
     <div class="modal-dialog">
-        <form class="modal-premium" method="POST">
-            <div class="modal-header-premium">
-                <h5 class="modal-title">Nouveau dossier</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label-premium">Numéro de dossier</label>
-                    <input type="text" name="numero_dossier" class="input-premium" required>
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('dossiers') }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-folder-plus me-2" style="color:var(--orange-primary)"></i>Nouveau dossier</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label-premium">Intitulé</label>
-                    <input type="text" name="intitule" class="input-premium" required>
+                <div class="modal-body-premium">
+                    <div class="mb-3">
+                        <label class="form-label-premium">Numéro de dossier</label>
+                        <input type="text" name="numero_dossier" class="input-premium" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Intitulé</label>
+                        <input type="text" name="intitule" class="input-premium" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Collaborateur</label>
+                        <select name="collaborateur_id" class="select-premium">
+                            <option value="">Non assigné</option>
+                            {% for m in membres %}
+                            <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Régime TVA</label>
+                        <select name="regime_tva" class="select-premium" id="regimeTvaSelect" onchange="toggleFreq()">
+                            <option value="">-</option>
+                            <option value="ca3">CA3</option>
+                            <option value="ca12">CA12</option>
+                            <option value="exonere">Exonéré</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="freqContainer" style="display:none;">
+                        <label class="form-label-premium">Fréquence CA3</label>
+                        <select name="frequence_tva" class="select-premium">
+                            <option value="trimestrielle">Trimestrielle</option>
+                            <option value="mensuelle">Mensuelle</option>
+                        </select>
+                        <small class="text-tertiary">Les tâches de TVA seront planifiées automatiquement.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Date limite déclaration</label>
+                        <input type="date" name="date_limite_declaration" class="input-premium">
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label-premium">Collaborateur</label>
-                    <select name="collaborateur_id" class="input-premium">
-                        <option value="">Non assigné</option>
-                        {% for m in membres %}
-                        <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">Créer</button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label-premium">Régime TVA</label>
-                    <select name="regime_tva" class="input-premium">
-                        <option value="">-</option>
-                        <option value="ca3">CA3</option>
-                        <option value="ca12">CA12</option>
-                        <option value="exonere">Exonéré</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label-premium">Date limite déclaration</label>
-                    <input type="date" name="date_limite_declaration" class="input-premium">
-                </div>
-            </div>
-            <div class="modal-footer-premium">
-                <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn-premium btn-premium-primary">Créer</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
+<!-- Modal Import CSV -->
 <div class="modal fade" id="modalImport" tabindex="-1">
     <div class="modal-dialog">
-        <form class="modal-premium" method="POST" action="{{ url_for('importer_dossiers') }}" enctype="multipart/form-data">
-            <div class="modal-header-premium">
-                <h5 class="modal-title">Importer des dossiers</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-tertiary">Format CSV attendu : <code>numero_dossier,intitule,regime_tva,date_limite_declaration,collaborateur_email</code></p>
-                <div class="mb-3">
-                    <label class="form-label-premium">Fichier CSV</label>
-                    <input type="file" name="csv_file" class="input-premium" accept=".csv" required>
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('importer_dossiers') }}" enctype="multipart/form-data">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-upload me-2" style="color:var(--orange-primary)"></i>Importer des dossiers</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
                 </div>
-            </div>
-            <div class="modal-footer-premium">
-                <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn-premium btn-premium-primary">Importer</button>
-            </div>
-        </form>
+                <div class="modal-body-premium">
+                    <p class="text-tertiary">Format CSV attendu : <code>numero_dossier,intitule,regime_tva,frequence_tva,date_limite_declaration,collaborateur_email</code></p>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Fichier CSV</label>
+                        <input type="file" name="csv_file" class="input-premium" accept=".csv" required>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">Importer</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -170,5 +211,13 @@ document.getElementById('rechercheDossier')?.addEventListener('input', function(
         row.style.display = txt.includes(q) ? '' : 'none';
     });
 });
+
+function toggleFreq() {
+    const select = document.getElementById('regimeTvaSelect');
+    const container = document.getElementById('freqContainer');
+    if (select && container) {
+        container.style.display = (select.value === 'ca3') ? 'block' : 'none';
+    }
+}
 </script>
 {% endblock %}

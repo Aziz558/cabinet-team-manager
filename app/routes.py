@@ -269,20 +269,49 @@ def logout():
 @login_required
 def dashboard():
     if current_user.role in ('admin', 'manager'):
-        membres = User.query.filter_by(actif=True).all()
-        dossiers = Dossier.query.all()
-        taches = Tache.query.all()
+        # Team-scoped data
+        from flask import session
+        equipe_id = session.get('current_equipe_id')
+        if current_user.role == 'admin':
+            # Admin sees data from the active team context (or all if no team selected)
+            if equipe_id:
+                equipe = Equipe.query.get(equipe_id)
+                team_user_ids = [m.id for m in equipe.membres.all()] if equipe else []
+                membres = User.query.filter(User.id.in_(team_user_ids), User.actif==True).all()
+                dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_user_ids)).all()
+                taches = Tache.query.filter(Tache.assigne_a.in_(team_user_ids)).all()
+            else:
+                membres = User.query.filter_by(actif=True).all()
+                dossiers = Dossier.query.all()
+                taches = Tache.query.all()
+        else:
+            # Manager sees only their teams' data
+            mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+            team_user_ids = [current_user.id]
+            for eq in mes_equipes:
+                team_user_ids.extend([m.id for m in eq.membres.all()])
+            membres = User.query.filter(User.id.in_(team_user_ids), User.actif==True).all()
+            dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_user_ids)).all()
+            taches = Tache.query.filter(Tache.assigne_a.in_(team_user_ids)).all()
 
-        # KPIs
-        kpi = {
-            'membres_actifs': User.query.filter_by(actif=True, role='membre').count(),
-            'dossiers_en_cours': Dossier.query.count(),
-            'taches_retard': Tache.query.filter(Tache.statut != 'terminee', Tache.date_echeance < date.today()).count(),
-            'taches_haute_priorite': Tache.query.filter_by(priorite='haute', statut='a_faire').count(),
-        }
+        # KPIs (team-scoped)
+        today = date.today()
+        if current_user.role == 'admin' and equipe_id:
+            kpi = {
+                'membres_actifs': len(membres),
+                'dossiers_en_cours': len(dossiers),
+                'taches_retard': len([t for t in taches if t.statut != 'terminee' and t.date_echeance < today]),
+                'taches_haute_priorite': len([t for t in taches if t.priorite == 'haute' and t.statut == 'a_faire']),
+            }
+        else:
+            kpi = {
+                'membres_actifs': User.query.filter_by(actif=True, role='membre').count(),
+                'dossiers_en_cours': Dossier.query.count(),
+                'taches_retard': Tache.query.filter(Tache.statut != 'terminee', Tache.date_echeance < today).count(),
+                'taches_haute_priorite': Tache.query.filter_by(priorite='haute', statut='a_faire').count(),
+            }
 
         # Tâches du jour/semaine
-        today = date.today()
         from datetime import timedelta
         week_end = today + timedelta(days=7)
         taches_jour = [t for t in taches if t.date_echeance == today and t.statut != 'terminee']
@@ -555,10 +584,19 @@ def dossiers():
                 intitule=intitule,
                 collaborateur_id=collaborateur_id if collaborateur_id else None,
                 regime_tva=request.form.get('regime_tva', '').strip() or None,
+                frequence_tva=request.form.get('frequence_tva', 'trimestrielle').strip(),
                 date_limite_declaration=datetime.strptime(request.form.get('date_limite_declaration', ''), '%Y-%m-%d').date() if request.form.get('date_limite_declaration') else None
             )
             db.session.add(dossier)
             db.session.commit()
+            # Planifier les tâches TVA automatiques
+            if dossier.regime_tva in ('ca3', 'ca12'):
+                try:
+                    from app.tva_scheduler import planifier_taches_tva
+                    planifier_taches_tva(dossier, dossier.frequence_tva)
+                    flash('Tâches de TVA planifiées automatiquement.', 'info')
+                except Exception as e:
+                    app.logger.warning(f"TVA scheduling error: {e}")
             if collaborateur_id:
                 collab = User.query.get(collaborateur_id)
                 if collab:
@@ -593,10 +631,18 @@ def modifier_dossier(dossier_id):
     collaborateur_id = request.form.get('collaborateur_id', type=int)
     dossier.collaborateur_id = collaborateur_id if collaborateur_id else None
     dossier.regime_tva = request.form.get('regime_tva', dossier.regime_tva).strip() or None
+    dossier.frequence_tva = request.form.get('frequence_tva', dossier.frequence_tva or 'trimestrielle').strip()
     date_limite_str = request.form.get('date_limite_declaration', '').strip()
     if date_limite_str:
         dossier.date_limite_declaration = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
     db.session.commit()
+    # Re-planifier les tâches TVA si le régime a changé
+    if dossier.regime_tva in ('ca3', 'ca12'):
+        try:
+            from app.tva_scheduler import planifier_taches_tva
+            planifier_taches_tva(dossier, dossier.frequence_tva)
+        except Exception as e:
+            app.logger.warning(f"TVA scheduling error: {e}")
     flash('Dossier modifié.', 'success')
     return redirect(url_for('dossiers'))
 @app.route('/dossiers/importer', methods=['POST'])
@@ -652,6 +698,49 @@ def importer_dossiers():
         added += 1
     db.session.commit()
     flash(f'Import terminé : {added} dossiers ajoutés, {skipped} ignorés.', 'success')
+    return redirect(url_for('dossiers'))
+
+
+@app.route('/tva-taches')
+@login_required
+def tva_taches():
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dashboard'))
+    equipe_id = session.get('current_equipe_id')
+    if current_user.role == 'admin' and equipe_id:
+        equipe = Equipe.query.get(equipe_id)
+        team_user_ids = [m.id for m in equipe.membres.all()] if equipe else []
+        tva_tasks = Tache.query.filter(Tache.titre.like('%TVA%'), Tache.assigne_a.in_(team_user_ids)).order_by(Tache.date_echeance).all()
+        dossiers_equipe = Dossier.query.filter(Dossier.collaborateur_id.in_(team_user_ids)).all() if team_user_ids else []
+    elif current_user.role == 'manager':
+        team_user_ids = [current_user.id]
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        for eq in mes_equipes:
+            team_user_ids.extend([m.id for m in eq.membres.all()])
+        tva_tasks = Tache.query.filter(Tache.titre.like('%TVA%'), Tache.assigne_a.in_(team_user_ids)).order_by(Tache.date_echeance).all()
+        dossiers_equipe = Dossier.query.filter(Dossier.collaborateur_id.in_(team_user_ids)).all()
+    else:
+        tva_tasks = Tache.query.filter(Tache.titre.like('%TVA%')).all()
+        dossiers_equipe = Dossier.query.all()
+    return render_template('tva_taches.html', tva_tasks=tva_tasks, dossiers=dossiers_equipe)
+
+
+@app.route('/tva-planifier', methods=['POST'])
+@login_required
+def tva_planifier():
+    if current_user.role != 'admin':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    dossier_id = request.form.get('dossier_id', type=int)
+    dossier = Dossier.query.get_or_404(dossier_id)
+    try:
+        from app.tva_scheduler import planifier_taches_tva
+        planifier_taches_tva(dossier, dossier.frequence_tva or 'trimestrielle')
+        flash('Tâches TVA planifiées.', 'success')
+    except Exception as e:
+        app.logger.warning(f"TVA scheduling error: {e}")
+        flash('Erreur de planification.', 'danger')
     return redirect(url_for('dossiers'))
 # ============ TACHES ============
 

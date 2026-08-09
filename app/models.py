@@ -63,6 +63,7 @@ class Dossier(db.Model):
     date_limite_declaration = db.Column(db.Date)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     date_cloture = db.Column(db.DateTime)
+    frequence_tva = db.Column(db.String(20), default='trimestrielle')  # mensuelle | trimestrielle
 
     taches = db.relationship('Tache', backref='dossier', lazy='dynamic')
 

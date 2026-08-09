@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Tâches TVA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up stagger-1">
+    <h2 class="fw-semibold"><i class="bi bi-receipt-certificate me-2" style="color:var(--orange-primary)"></i>Tâches TVA planifiées</h2>
+    <a href="{{ url_for('dossiers') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
+        <i class="bi bi-folder me-1"></i>Retour dossiers
+    </a>
+</div>
+
+{% if current_equipe %}
+<div class="card-premium mb-3 animate-fade-in-up">
+    <div class="card-body-premium">
+        <div class="d-flex align-items-center gap-2">
+            <span class="team-context-icon" style="border-color: transparent; background: rgba(255,140,0,0.1);">
+                <span class="team-icon" style="background: {{ current_equipe.couleur or '#FF8C00' }};color: #fff;">
+                    <i class="bi {{ current_equipe.icon or 'bi-people' }}"></i>
+                </span>
+                <span class="team-context-name">{{ current_equipe.nom }}</span>
+            </span>
+            <span class="text-tertiary small">Équipe active</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card-premium animate-fade-in-up stagger-1">
+    <div class="card-body-premium">
+        {% if tva_tasks %}
+        <div class="table-responsive">
+            <table class="table-premium">
+                <thead>
+                    <tr>
+                        <th>Dossier</th>
+                        <th>Intitulé</th>
+                        <th>Régime</th>
+                        <th>Date limite</th>
+                        <th>Délai restant</th>
+                        <th>Statut</th>
+                        <th>Priorité</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tva_tasks %}
+                    <tr>
+                        <td><strong>{{ t.dossier.numero_dossier if t.dossier else '—' }}</strong></td>
+                        <td>{{ t.titre }}</td>
+                        <td class="text-tertiary small">{{ t.dossier.regime_tva if t.dossier else '—' }}</td>
+                        <td>{{ t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '—' }}</td>
+                        <td>
+                            {% set restant = (t.date_echeance - date.today()).days %}
+                            {% if restant < 0 %}
+                            <span class="text-danger fw-medium"><i class="bi bi-exclamation-triangle"></i> +{{ restant }} j</span>
+                            {% elif restant == 0 %}
+                            <span class="text-warning fw-medium">Aujourd'hui</span>
+                            {% else %}
+                            <span class="text-success fw-medium">{{ restant }} j</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.statut == 'terminee' %}
+                            <span class="badge badge-success">Terminée</span>
+                            {% elif t.statut == 'en_cours' %}
+                            <span class="badge badge-info">En cours</span>
+                            {% else %}
+                            <span class="badge badge-tertiary">À faire</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.priorite == 'haute' %}
+                            <span class="badge badge-warning">Haute</span>
+                            {% elif t.priorite == 'moyenne' %}
+                            <span class="badge badge-tertiary">Moyenne</span>
+                            {% else %}
+                            <span class="badge badge-tertiary">Basse</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+            <h4 class="empty-state-title">Aucune tâche TVA planifiée</h4>
+            <p class="empty-state-desc">Créez un dossier avec un régime TVA pour générer automatiquement les tâches de déclaration.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if dossiers %}
+<div class="card-premium animate-fade-in-up stagger-1" style="margin-top: 1rem;">
+    <div class="card-body-premium">
+        <h5 class="fw-semibold mb-3"><i class="bi bi-folder me-2"></i>Dossiers de cette équipe</h5>
+        <div class="table-responsive">
+            <table class="table-premium table-sm">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Intitulé</th>
+                        <th>Régime TVA</th>
+                        <th>Fréquence</th>
+                        <th>Date limite</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in dossiers %}
+                    <tr>
+                        <td><strong>{{ d.numero_dossier }}</strong></td>
+                        <td>{{ d.intitule }}</td>
+                        <td>
+                            {% if d.regime_tva == 'ca3' %}<span class="badge badge-info">CA3</span>
+                            {% elif d.regime_tva == 'ca12' %}<span class="badge badge-warning">CA12</span>
+                            {% elif d.regime_tva == 'exonere' %}<span class="badge badge-success">Exonéré</span>
+                            {% else %}<span class="badge badge-tertiary">-</span>{% endif %}
+                        </td>
+                        <td class="text-tertiary small">{{ d.frequence_tva or '-' }}</td>
+                        <td>{{ d.date_limite_declaration.strftime('%d/%m/%Y') if d.date_limite_declaration else '-' }}</td>
+                        <td class="text-end">
+                            {% if d.regime_tva and d.regime_tva != 'exonere' %}
+                            <form method="POST" action="{{ url_for('tva_planifier') }}">
+                                <input type="hidden" name="dossier_id" value="{{ d.id }}">
+                                <button type="submit" class="btn-premium btn-premium-success btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.7rem;">
+                                    <i class="bi bi-gear"></i> Planifier
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-tertiary small">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

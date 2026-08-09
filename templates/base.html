@@ -6,7 +6,7 @@
     <title>{% block title %}Cabinet Manager{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
     <!-- Toast container -->
     <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;"></div>
@@ -25,22 +25,29 @@
             <button class="btn-premium btn-premium-outline btn-premium-secondary btn-sm d-none d-md-inline-flex me-2" id="desktopSidebarToggle" type="button" style="border-color: var(--border-color); color: var(--text-tertiary);">
                 <i class="bi bi-caret-left"></i>
             </button>
-            {% endif %}
-            {% if current_user.is_authenticated and current_equipe %}
+            {% if current_equipe or all_equipes_for_switch %}
             <div class="dropdown me-2">
-                <div class="team-context-icon" style="border-color: {{ current_equipe.couleur or '#FF8C00' }};" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                    <span class="team-icon" style="background: {{ current_equipe.couleur or '#FF8C00' }};color: #fff;">
+                <div class="team-context-icon" style="border-color: {{ current_equipe.couleur if current_equipe else '#FF8C00' }};" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <span class="team-icon" style="background: {{ current_equipe.couleur if current_equipe else '#FF8C00' }};color: #fff;">
+                        {% if current_equipe %}
                         <i class="bi {{ current_equipe.icon or 'bi-people' }}"></i>
+                        {% else %}
+                        <i class="bi bi-diagram-2"></i>
+                        {% endif %}
                     </span>
-                    <span class="team-context-name">{{ current_equipe.nom }}</span>
+                    <span class="team-context-name">{{ current_equipe.nom if current_equipe else 'Toutes les équipes' }}</span>
                     <i class="bi bi-caret-down-fill ms-1"></i>
                 </div>
                 <ul class="dropdown-menu dropdown-menu-dark team-switcher">
+                    {% if current_equipe %}
                     <li><span class="dropdown-item-text text-tertiary small"><i class="bi bi-info-circle me-1"></i>Contexte équipe active</span></li>
+                    {% else %}
+                    <li><span class="dropdown-item-text text-tertiary small"><i class="bi bi-diagram-3 me-1"></i>Choisir une équipe</span></li>
+                    {% endif %}
                     <li><hr class="dropdown-divider"></li>
                     {% for eq in all_equipes_for_switch %}
                     <li>
-                        <a class="dropdown-item {% if current_equipe.id == eq.id %}active fw-medium{% endif %}" href="{{ url_for('set_team', equipe_id=eq.id) }}">
+                        <a class="dropdown-item {% if current_equipe and current_equipe.id == eq.id %}active fw-medium{% endif %}" href="{{ url_for('set_team', equipe_id=eq.id) }}">
                             <span class="team-icon" style="background: {{ eq.couleur or '#FF8C00' }};color: #fff;"><i class="bi {{ eq.icon or 'bi-people' }}"></i></span>
                             {{ eq.nom }}
                             {% if eq.nb_membres() > 0 %}<span class="badge badge-tertiary ms-1">{{ eq.nb_membres() }}</span>{% endif %}
@@ -50,7 +57,8 @@
                 </ul>
             </div>
             {% endif %}
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            {% endif %}
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -66,6 +74,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('liste_membres') }}"><i class="bi bi-people me-1"></i>Membres</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('dossiers') }}"><i class="bi bi-folder me-1"></i>Dossiers</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('taches') }}"><i class="bi bi-check2-square me-1"></i>Tâches</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('tva_taches') }}"><i class="bi bi-receipt-certificate me-1"></i>Tâches TVA</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('settings') }}"><i class="bi bi-gear me-1"></i>Paramètres</a></li>
                     {% endif %}
                 </ul>
@@ -75,7 +84,7 @@
                             <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" class="rounded-circle" width="32" height="32" alt="">
                             <span>{{ current_user.prenom }}</span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end  border-0 rounded-3">
+                        <ul class="dropdown-menu dropdown-menu-end border-0 rounded-3">
                             <li><a class="dropdown-item rounded-2" href="{{ url_for('profil') }}"><i class="bi bi-person me-2 text-tertiary"></i>Mon profil</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item rounded-2 text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Déconnexion</a></li>
@@ -162,20 +171,20 @@
             setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 5500);
         };
     })();
-    
+
     // Sidebar toggle (desktop collapse + mobile)
     (function() {
         var sidebarCol = document.getElementById('sidebarCol');
         var desktopToggle = document.getElementById('desktopSidebarToggle');
         var mobileToggle = document.getElementById('mobileSidebarToggle');
         var sidebar = sidebarCol ? sidebarCol.querySelector('.sidebar') : null;
-        
+
         if (!sidebarCol || !sidebar) return;
-        
+
         // State: 'full' (icons+text), 'icons' (icons only), 'hidden' (mobile)
         var state = localStorage.getItem('sidebarState') || 'full';
         applySidebarState(state);
-        
+
         function applySidebarState(s) {
             if (s === 'icons') {
                 sidebarCol.style.width = '60px';
@@ -206,15 +215,8 @@
                     desktopToggle.innerHTML = '<i class="bi bi-caret-left"></i>';
                 }
             }
-            // Adjust main content margin
-            var mainContent = sidebarCol.nextElementSibling;
-            if (mainContent) {
-                if (s === 'icons') {
-                    mainContent.style.marginLeft = '0';
-                }
-            }
         }
-        
+
         if (desktopToggle) {
             desktopToggle.addEventListener('click', function() {
                 if (sidebarCol.style.width === '60px') {
@@ -226,7 +228,7 @@
                 applySidebarState(state);
             });
         }
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', function() {
                 sidebarCol.classList.toggle('d-md-flex');
