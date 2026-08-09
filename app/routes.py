@@ -84,6 +84,23 @@ def send_email_notification(to_email, subject, body, sender=None):
         return False, str(e)
 
 
+def create_notification(user_id, message, type_notification='info', tache_id=None):
+    """Create a notification record for a user."""
+    try:
+        notification = Notification(
+            user_id=user_id,
+            message=message,
+            type_notification=type_notification,
+            tache_id=tache_id,
+            lu=False,
+        )
+        db.session.add(notification)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        app.logger.warning(f"create_notification failed: {e}")
+
+
 
 @app.route('/')
 def index():
@@ -372,13 +389,30 @@ def dashboard():
         taches_a_faire = [t for t in mes_taches if t.statut == 'a_faire']
         taches_en_cours = [t for t in mes_taches if t.statut == 'en_cours']
         taches_terminees = [t for t in mes_taches if t.statut == 'terminee']
+        today = date.today()
+        from datetime import timedelta
+        week_end = today + timedelta(days=7)
+        taches_jour = [t for t in mes_taches if t.date_echeance == today and t.statut != 'terminee']
+        taches_semaine = [t for t in mes_taches if today < t.date_echeance <= week_end and t.statut != 'terminee']
+        total = len(mes_taches)
+        taux = round(len(taches_terminees) / total * 100) if total > 0 else 0
+        taches_aujourdhui = len([t for t in mes_taches if t.date_echeance == today])
+        kpi = {
+            'taches_aujourdhui': taches_aujourdhui,
+            'taches_a_faire': len(taches_a_faire),
+            'taux_completion': taux,
+            'total_taches': total,
+        }
         return render_template(
             'dashboard_collaborateur.html',
             mes_dossiers=mes_dossiers,
             taches_a_faire=taches_a_faire,
             taches_en_cours=taches_en_cours,
             taches_terminees=taches_terminees,
-            today=date.today()
+            taches_jour=taches_jour,
+            taches_semaine=taches_semaine,
+            kpi=kpi,
+            today=today
         )
 # ============ MEMBRES ============
 
