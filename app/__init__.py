@@ -77,6 +77,37 @@ def load_user(user_id):
 # Make date available in templates
 app.jinja_env.globals['date'] = _date
 
+# Context processor — makes current_equipe available in all templates
+@app.context_processor
+def inject_equipe():
+    from flask import session
+    current_equipe = None
+    if current_user_is_authenticated():
+        equipe_id = session.get('current_equipe_id')
+        if equipe_id:
+            current_equipe = Equipe.query.get(equipe_id)
+        elif current_user.is_authenticated:
+            # Default to user's assigned team
+            current_equipe = current_user.equipe
+    # Teams visible in the navbar team-switcher dropdown (admin sees all, manager sees their teams + unassigned)
+    from flask import session
+    if current_user_is_authenticated():
+        if current_user.role == 'admin':
+            all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
+        elif current_user.role == 'manager':
+            all_equipes_for_switch = Equipe.query.filter(
+                (Equipe.manager_id == current_user.id) | (Equipe.manager_id == None)
+            ).order_by(Equipe.nom).all()
+        else:
+            all_equipes_for_switch = Equipe.query.filter_by(equipe_id=current_user.equipe_id).all() if current_user.equipe_id else []
+    else:
+        all_equipes_for_switch = []
+    return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
+
+def current_user_is_authenticated():
+    from flask_login import current_user
+    return current_user.is_authenticated
+
 # Global error handlers to avoid silent 500s
 @app.errorhandler(404)
 def not_found(error):

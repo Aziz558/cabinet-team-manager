@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask import render_template, request, redirect, url_for, flash, jsonify, send_from_directory, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from datetime import date, datetime
@@ -12,12 +12,8 @@ from app.models import User, Dossier, Tache, Notification, CommentaireTache, Per
 from flask_mail import Message
 import os
 from flask import send_from_directory
-
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
-
-
 def get_mail_config():
     username = AppSetting.query.filter_by(cle='MAIL_USERNAME').first()
     password = AppSetting.query.filter_by(cle='MAIL_PASSWORD').first()
@@ -34,8 +30,6 @@ def get_mail_config():
         'MAIL_USE_TLS': (use_tls.valeur if use_tls else 'true').lower() == 'true',
         'MAIL_DEFAULT_SENDER': (default_sender.valeur if default_sender else '') or app.config.get('MAIL_DEFAULT_SENDER', ''),
     }
-
-
 def send_email_notification(to_email, subject, body, sender=None):
     try:
         config = get_mail_config()
@@ -86,8 +80,6 @@ def send_email_notification(to_email, subject, body, sender=None):
         except Exception as e2:
             app.logger.error(f"Brevo API fallback also failed: {e2}")
         return False, f'Échec: {e}'
-
-
 def create_notification(user_id, message, tache_id=None, type_notification='info'):
     notif = Notification(
         user_id=user_id,
@@ -98,8 +90,6 @@ def create_notification(user_id, message, tache_id=None, type_notification='info
     db.session.add(notif)
     db.session.commit()
     return notif
-
-
 # ============ AUTH ============
 
 @app.route('/')
@@ -107,13 +97,24 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
-
-
 @app.route('/team-select')
 def team_select():
     equipes = Equipe.query.order_by(Equipe.nom).all()
     return render_template('team_select.html', equipes=equipes)
 
+
+
+@app.route('/set-team/<int:equipe_id>')
+@login_required
+def set_team(equipe_id):
+    """Set the current team in session for filtering dossiers/membres."""
+    equipe = Equipe.query.get_or_404(equipe_id)
+    if current_user.role != 'admin' and current_user.equipe_id != equipe_id:
+        flash("Vous n'avez pas accès à cette équipe.", 'danger')
+        return redirect(url_for('dashboard'))
+    session['current_equipe_id'] = equipe_id
+    flash(f"Contexte équipe: {equipe.nom}", 'info')
+    return redirect(url_for('dashboard'))
 
 @app.route('/api/equipes', methods=['GET'])
 @login_required
@@ -133,8 +134,6 @@ def list_equipes():
             'nb_membres': e.nb_membres(),
         })
     return jsonify({'ok': True, 'equipes': result})
-
-
 @app.route('/equipes', methods=['GET', 'POST'])
 @login_required
 def equipes():
@@ -156,8 +155,6 @@ def equipes():
             return redirect(url_for('equipes'))
     all_equipes = Equipe.query.order_by(Equipe.nom).all()
     return render_template('equipes.html', equipes=all_equipes)
-
-
 @app.route('/equipes/<int:equipe_id>/supprimer', methods=['POST'])
 @login_required
 def supprimer_equipe(equipe_id):
@@ -174,8 +171,6 @@ def supprimer_equipe(equipe_id):
     db.session.commit()
     flash(f'Équipe {equipe.nom} supprimée.', 'success')
     return redirect(url_for('equipes'))
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -205,8 +200,6 @@ def login():
         else:
             flash('Email ou mot de passe incorrect.', 'danger')
     return render_template('login.html', equipe_nom=equipe_nom, equipe_icon=equipe_icon, equipe_couleur=equipe_couleur)
-
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -264,16 +257,12 @@ def register():
                 app.logger.error(f"Registration error: {e}")
                 return jsonify({'error': str(e), 'type': type(e).__name__}), 500
     return render_template('register.html')
-
-
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     flash('Déconnexion réussie.', 'info')
     return redirect(url_for('login'))
-
-
 # ============ DASHBOARD ============
 
 @app.route('/dashboard')
@@ -350,8 +339,6 @@ def dashboard():
             taches_terminees=taches_terminees,
             today=date.today()
         )
-
-
 # ============ MEMBRES ============
 
 @app.route('/membres')
@@ -367,8 +354,6 @@ def liste_membres():
         (Equipe.manager_id == current_user.id) | (Equipe.manager_id == None)
     ).order_by(Equipe.nom).all() if current_user.role == 'manager' else toutes_equipes
     return render_template('membres.html', membres=membres, toutes_equipes=toutes_equipes, mes_equipes=mes_equipes)
-
-
 @app.route('/membres/<int:user_id>/assigner-equipe', methods=['POST'])
 @login_required
 def assigner_equipe(user_id):
@@ -389,8 +374,6 @@ def assigner_equipe(user_id):
     db.session.commit()
     flash(f'{user.prenom} {user.nom} assigné à l\'équipe.', 'success')
     return redirect(url_for('liste_membres'))
-
-
 @app.route('/membres/<int:user_id>/assigner-equipe-manager', methods=['POST'])
 @login_required
 def assigner_equipe_manager(user_id):
@@ -414,8 +397,6 @@ def assigner_equipe_manager(user_id):
     db.session.commit()
     flash(f'{user.prenom} {user.nom} classé dans l\'équipe.', 'success')
     return redirect(url_for('liste_membres'))
-
-
 @app.route('/membres/ajouter', methods=['POST'])
 @login_required
 def ajouter_membre():
@@ -449,8 +430,6 @@ def ajouter_membre():
 
     flash(f'Membre {prenom} {nom} ajouté avec succès.', 'success')
     return redirect(url_for('liste_membres'))
-
-
 @app.route('/membres/<int:user_id>/modifier', methods=['POST'])
 @login_required
 def modifier_membre(user_id):
@@ -466,8 +445,6 @@ def modifier_membre(user_id):
     db.session.commit()
     flash('Membre modifié.', 'success')
     return redirect(url_for('liste_membres'))
-
-
 @app.route('/membres/<int:user_id>/supprimer', methods=['POST'])
 @login_required
 def supprimer_membre(user_id):
@@ -522,8 +499,6 @@ def fiche_membre(user_id):
         taux_respect=taux_respect,
         score=score
     )
-
-
 @app.route('/membres/<int:user_id>/photo', methods=['POST'])
 @login_required
 def upload_photo(user_id):
@@ -553,8 +528,6 @@ def upload_photo(user_id):
     else:
         flash('Format non autorisé. Utilisez PNG, JPG ou GIF.', 'danger')
     return redirect(url_for('fiche_membre', user_id=user_id))
-
-
 # ============ DOSSIERS ============
 
 @app.route('/dossiers', methods=['GET', 'POST'])
@@ -594,10 +567,19 @@ def dossiers():
                     send_email_notification(collab.email, "Nouveau dossier assigné", msg)
             flash('Dossier créé avec succès.', 'success')
             return redirect(url_for('dossiers'))
-    all_dossiers = Dossier.query.all()
-    membres = User.query.filter_by(actif=True).all()
+    # Team-scoped: admin sees all, manager sees dossiers of their team members
+    if current_user.role == 'admin':
+        all_dossiers = Dossier.query.all()
+        membres = User.query.filter_by(actif=True).all()
+    else:
+        # Manager sees only dossiers of members in their team(s)
+        team_member_ids = [current_user.id]
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
+        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres)
-
 
 @app.route('/dossiers/<int:dossier_id>/modifier', methods=['POST'])
 @login_required
@@ -617,8 +599,6 @@ def modifier_dossier(dossier_id):
     db.session.commit()
     flash('Dossier modifié.', 'success')
     return redirect(url_for('dossiers'))
-
-
 @app.route('/dossiers/importer', methods=['POST'])
 @login_required
 def importer_dossiers():
@@ -673,8 +653,6 @@ def importer_dossiers():
     db.session.commit()
     flash(f'Import terminé : {added} dossiers ajoutés, {skipped} ignorés.', 'success')
     return redirect(url_for('dossiers'))
-
-
 # ============ TACHES ============
 
 @app.route('/taches/aujourdhui')
@@ -686,8 +664,6 @@ def taches_aujourdhui():
     else:
         taches = Tache.query.filter(Tache.assigne_a == current_user.id, Tache.date_echeance == today, Tache.statut != 'terminee').all()
     return render_template('taches.html', taches=taches, dossiers=[], membres=[], focus=today)
-
-
 @app.route('/taches', methods=['GET', 'POST'])
 @login_required
 def taches():
@@ -745,8 +721,6 @@ def taches():
     # Collaborateur sees only their tasks
     mes_taches = Tache.query.filter_by(assigne_a=current_user.id).order_by(Tache.date_echeance.asc()).all()
     return render_template('taches.html', taches=mes_taches, dossiers=[], membres=[])
-
-
 @app.route('/taches/<int:tache_id>/prendre_en_charge', methods=['POST'])
 @login_required
 def prendre_en_charge(tache_id):
@@ -772,8 +746,6 @@ def prendre_en_charge(tache_id):
         )
         flash('Tâche prise en charge.', 'success')
     return redirect(url_for('dashboard'))
-
-
 @app.route('/taches/<int:tache_id>/terminer', methods=['POST'])
 @login_required
 def terminer_tache(tache_id):
@@ -800,8 +772,6 @@ def terminer_tache(tache_id):
             )
         flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('dashboard'))
-
-
 @app.route('/taches/<int:tache_id>/supprimer', methods=['POST'])
 @login_required
 def supprimer_tache(tache_id):
@@ -819,8 +789,6 @@ def supprimer_tache(tache_id):
     db.session.commit()
     flash('Tâche supprimée.', 'success')
     return redirect(request.referrer or url_for('dashboard'))
-
-
 @app.route('/taches/<int:tache_id>/commenter', methods=['POST'])
 @login_required
 def commenter_tache(tache_id):
@@ -832,8 +800,6 @@ def commenter_tache(tache_id):
         db.session.commit()
         flash('Commentaire ajouté.', 'success')
     return redirect(request.referrer or url_for('dashboard'))
-
-
 # ============ NOTIFICATIONS ============
 
 @app.route('/notifications')
@@ -846,15 +812,11 @@ def notifications():
             n.lu = True
     db.session.commit()
     return jsonify({'notifications': [{'id': n.id, 'message': n.message, 'type': n.type_notification, 'date': n.date_envoi.strftime('%d/%m/%Y %H:%M'), 'lu': n.lu} for n in notifs]})
-
-
 @app.route('/notifications/non_lues')
 @login_required
 def notifications_non_lues():
     count = Notification.query.filter_by(user_id=current_user.id, lu=False).count()
     return jsonify({'count': count})
-
-
 # ============ PROFIL ============
 
 @app.route('/profil', methods=['GET', 'POST'])
@@ -908,15 +870,11 @@ def profil():
             flash('Profil mis à jour.', 'success')
             return redirect(url_for('profil'))
     return render_template('profil.html')
-
-
 # ============ FICHIERS ============
 
 @app.route('/static/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-
 # ============ ADMIN DEBUG ============\
 
 @app.route('/admin/debug')
@@ -926,8 +884,6 @@ def admin_debug():
         flash('Accès refusé. Compte admin requis.', 'danger')
         return redirect(url_for('dashboard'))
     return render_template('admin_debug.html')
-
-
 @app.route('/api/admin/debug/run', methods=['POST'])
 @login_required
 def api_admin_debug_run():
@@ -1015,8 +971,6 @@ def api_admin_debug_run():
     except Exception as e:
         results.append({'check': 'Modèles SQLAlchemy', 'status': 'error', 'message': str(e)})
     return jsonify({'ok': True, 'results': results})
-
-
 @app.route('/api/admin/debug/run-active', methods=['POST'])
 @login_required
 def api_admin_debug_run_active():
@@ -1052,8 +1006,6 @@ def api_admin_debug_run_active():
     except Exception as e:
         app.logger.error(f"Active debug error: {e}")
         return jsonify({'ok': False, 'message': str(e)}), 500
-
-
 # ============ API / AJAX ============
 
 @app.route('/api/equipe/stats')
@@ -1073,8 +1025,6 @@ def api_equipe_stats():
             'taches_a_faire': m.nb_taches_a_faire()
         })
     return jsonify(stats)
-
-
 @app.route('/api/suggestions', methods=['GET'])
 @login_required
 def api_suggestions():
@@ -1114,8 +1064,6 @@ def api_suggestions():
         app.logger.error(f"Erreur api_suggestions db merge : {e}")
         # Still return deadline-based suggestions
         return jsonify({'ok': True, 'suggestions': suggestions, 'count': len(suggestions)})
-
-
 @app.route('/api/suggestions/refresh', methods=['POST'])
 @login_required
 def api_suggestions_refresh():
@@ -1123,8 +1071,6 @@ def api_suggestions_refresh():
         return jsonify({'suggestions': []}), 403
     suggestions = _build_suggestions()
     return jsonify({'suggestions': suggestions})
-
-
 def _build_suggestions():
     suggestions = []
 
@@ -1238,14 +1184,10 @@ def _build_suggestions():
             seen.add(key)
             unique.append(s)
     return unique
-
-
 @app.route('/init-db')
 def init_db():
     db.create_all()
     return "Base de données initialisée."
-
-
 # ============ SETTINGS / INTEGRATIONS ============
 
 @app.route('/settings')
@@ -1258,8 +1200,6 @@ def settings():
             openrouter_model = s.valeur
             break
     return render_template('settings.html', settings=settings_list, openrouter_model=openrouter_model)
-
-
 @app.route('/api/settings', methods=['GET', 'POST'])
 @login_required
 def api_settings():
@@ -1298,8 +1238,6 @@ def api_settings():
         }
         for s in settings
     ])
-
-
 @app.route('/api/settings/<int:setting_id>', methods=['DELETE'])
 @login_required
 def delete_setting(setting_id):
@@ -1307,8 +1245,6 @@ def delete_setting(setting_id):
     db.session.delete(setting)
     db.session.commit()
     return jsonify({'ok': True})
-
-
 @app.route('/api/mail/test', methods=['POST'])
 @login_required
 def test_mail():
@@ -1320,8 +1256,6 @@ def test_mail():
     ok, msg = send_email_notification(recipient, subject, body, sender=sender)
     status = 200 if ok else 400
     return jsonify({'ok': ok, 'message': msg}), status
-
-
 @app.route('/api/test/outlook', methods=['POST'])
 @login_required
 def test_outlook():
@@ -1354,8 +1288,6 @@ def test_outlook():
     except Exception as e:
         app.logger.error(f"Erreur test Outlook: {e}")
         return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
-
-
 @app.route('/api/test/teams', methods=['POST'])
 @login_required
 def test_teams():
@@ -1388,8 +1320,6 @@ def test_teams():
     except Exception as e:
         app.logger.error(f"Erreur test Teams: {e}")
         return jsonify({'ok': False, 'message': f'Échec: {e}'}), 400
-
-
 @app.route('/api/openrouter/models', methods=['GET'])
 @login_required
 def openrouter_models():
@@ -1404,8 +1334,6 @@ def openrouter_models():
     except Exception as e:
         app.logger.error(f"Erreur openrouter models: {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/test/openrouter', methods=['POST'])
 @login_required
 def test_openrouter():
@@ -1426,8 +1354,6 @@ def test_openrouter():
     except Exception as e:
         app.logger.error(f"Erreur test OpenRouter: {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/test/mailbox', methods=['POST'])
 @login_required
 def test_mailbox():
@@ -1490,8 +1416,6 @@ def test_mailbox():
     except Exception as e:
         app.logger.error(f"Erreur test mailbox : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/test/mailbox/debug', methods=['POST'])
 @login_required
 def test_mailbox_debug():
@@ -1543,8 +1467,6 @@ def test_mailbox_debug():
     except Exception as e:
         app.logger.error(f"Erreur test mailbox debug : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/test/mailbox/senders', methods=['GET'])
 @login_required
 def test_mailbox_senders():
@@ -1594,8 +1516,6 @@ def test_mailbox_senders():
     except Exception as e:
         app.logger.error(f"Erreur test mailbox senders : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/test/mailbox/search', methods=['POST'])
 @login_required
 def test_mailbox_search():
@@ -1644,8 +1564,6 @@ def test_mailbox_search():
     except Exception as e:
         app.logger.error(f"Erreur test mailbox search : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/test/mailbox/folders', methods=['GET'])
 @login_required
 def test_mailbox_folders():
@@ -1673,8 +1591,6 @@ def test_mailbox_folders():
     except Exception as e:
         app.logger.error(f"Erreur test mailbox folders : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/test/mailbox/folder-scan', methods=['POST'])
 @login_required
 def test_mailbox_folder_scan():
@@ -1776,8 +1692,6 @@ def test_mailbox_folder_scan():
     except Exception as e:
         app.logger.error(f"Erreur test mailbox folder-scan : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/api/suggestions', methods=['GET'])
 @login_required
 def list_suggestions():
@@ -1814,8 +1728,6 @@ def list_suggestions():
     except Exception as e:
         app.logger.error(f"Erreur list suggestions : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
-
-
 @app.route('/api/suggestions/<int:suggestion_id>/validate', methods=['POST'])
 @login_required
 def validate_suggestion(suggestion_id):
@@ -1869,8 +1781,6 @@ def validate_suggestion(suggestion_id):
     except Exception as e:
         app.logger.error(f"Erreur validate suggestion : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
-
-
 @app.route('/api/suggestions/<int:suggestion_id>/reject', methods=['POST'])
 @login_required
 def reject_suggestion(suggestion_id):
@@ -1885,8 +1795,6 @@ def reject_suggestion(suggestion_id):
     except Exception as e:
         app.logger.error(f"Erreur reject suggestion : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
-
-
 @app.route('/suggestions')
 @login_required
 def suggestions_page():
@@ -1894,8 +1802,6 @@ def suggestions_page():
     users = User.query.filter_by(actif=True).all()
     dossiers = Dossier.query.order_by(Dossier.numero_dossier).all()
     return render_template('suggestions.html', users=users, dossiers=dossiers)
-
-
 @app.route('/api/suggestions/reset', methods=['POST'])
 @login_required
 def reset_suggestions():
@@ -1913,8 +1819,6 @@ def reset_suggestions():
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
-
-
 @app.route('/api/mailbox/process', methods=['POST'])
 @login_required
 def process_mailbox():
@@ -1928,14 +1832,10 @@ def process_mailbox():
     except Exception as e:
         app.logger.error(f"Erreur process mailbox : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/mailbox')
 @login_required
 def mailbox_page():
     return render_template('mailbox.html')
-
-
 @app.route('/api/mailbox/process-debug', methods=['POST'])
 @login_required
 def process_mailbox_debug():
@@ -2017,14 +1917,10 @@ def process_mailbox_debug():
     except Exception as e:
         app.logger.error(f"Erreur process mailbox debug : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-
-
 @app.route('/mes-taches')
 @login_required
 def mes_taches():
     return render_template('mes_taches.html')
-
-
 @app.route('/api/taches/mes-taches')
 @login_required
 def api_mes_taches():
@@ -2046,8 +1942,6 @@ def api_mes_taches():
     except Exception as e:
         app.logger.error(f"Erreur mes taches : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
-
-
 @app.route('/api/taches/<int:tache_id>/statut', methods=['POST'])
 @login_required
 def update_tache_statut(tache_id):
@@ -2072,5 +1966,3 @@ def update_tache_statut(tache_id):
     except Exception as e:
         app.logger.error(f"Erreur update statut : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
-
-

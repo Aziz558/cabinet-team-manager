@@ -26,7 +26,31 @@
                 <i class="bi bi-caret-left"></i>
             </button>
             {% endif %}
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            {% if current_user.is_authenticated and current_equipe %}
+            <div class="dropdown me-2">
+                <div class="team-context-icon" style="border-color: {{ current_equipe.couleur or '#FF8C00' }};" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <span class="team-icon" style="background: {{ current_equipe.couleur or '#FF8C00' }};color: #fff;">
+                        <i class="bi {{ current_equipe.icon or 'bi-people' }}"></i>
+                    </span>
+                    <span class="team-context-name">{{ current_equipe.nom }}</span>
+                    <i class="bi bi-caret-down-fill ms-1"></i>
+                </div>
+                <ul class="dropdown-menu dropdown-menu-dark team-switcher">
+                    <li><span class="dropdown-item-text text-tertiary small"><i class="bi bi-info-circle me-1"></i>Contexte équipe active</span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% for eq in all_equipes_for_switch %}
+                    <li>
+                        <a class="dropdown-item {% if current_equipe.id == eq.id %}active fw-medium{% endif %}" href="{{ url_for('set_team', equipe_id=eq.id) }}">
+                            <span class="team-icon" style="background: {{ eq.couleur or '#FF8C00' }};color: #fff;"><i class="bi {{ eq.icon or 'bi-people' }}"></i></span>
+                            {{ eq.nom }}
+                            {% if eq.nb_membres() > 0 %}<span class="badge badge-tertiary ms-1">{{ eq.nb_membres() }}</span>{% endif %}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
