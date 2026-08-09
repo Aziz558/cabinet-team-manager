@@ -1109,6 +1109,16 @@ def api_admin_debug_run():
         results.append({'check': 'Modèles SQLAlchemy', 'status': 'ok', 'message': 'Tous importables'})
     except Exception as e:
         results.append({'check': 'Modèles SQLAlchemy', 'status': 'error', 'message': str(e)})
+    # 10. Inbound webhook config
+    try:
+        from app.integrations.inbound_mail import InboundMailClient
+        inbound = InboundMailClient()
+        mode_row = AppSetting.query.filter_by(cle='MAILBOX_INBOUND_MODE').first()
+        mode = (mode_row.valeur if mode_row else 'false').lower() == 'true'
+        secret_ok = bool(inbound.secret)
+        results.append({'check': 'Inbound webhook', 'status': 'ok' if mode else 'warning', 'message': f'mode={mode}, secret={secret_ok}'})
+    except Exception as e:
+        results.append({'check': 'Inbound webhook', 'status': 'error', 'message': str(e)})
     return jsonify({'ok': True, 'results': results})
 @app.route('/api/admin/debug/run-active', methods=['POST'])
 @login_required
@@ -1971,6 +1981,36 @@ def process_mailbox():
     except Exception as e:
         app.logger.error(f"Erreur process mailbox : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
+@app.route('/api/mailbox/inbound', methods=['POST'])
+def inbound_mail_webhook():
+    """
+    Generic inbound webhook for Mailgun / SendGrid / Amazon SES / Postmark.
+    Activation: set AppSetting MAILBOX_INBOUND_MODE = true
+    Optional secret: MAILBOX_INBOUND_SECRET
+    Route can be mounted on a dedicated path via env if needed.
+    """
+    try:
+        from app.integrations.inbound_mail import _get_inbound_client
+        payload_bytes = request.get_data() or b""
+        signature = request.headers.get("X-Hub-Signature-256") or request.headers.get("X-Mailgun-Signature") or ""
+        client = _get_inbound_client()
+        if not client.is_configured():
+            app.logger.warning("Inbound mail disabled: MAILBOX_INBOUND_MODE not configured")
+            return jsonify({'ok': False, 'message': 'Mode inbound non activé'}), 501
+        if not client._verify_signature(payload_bytes, signature):
+            app.logger.warning("Inbound signature verification failed")
+            return jsonify({'ok': False, 'message': 'Signature invalide'}), 403
+        payload: Dict[str, Any] = {}
+        if request.content_type and "application/json" in request.content_type:
+            payload = request.get_json(silent=True) or {}
+        else:
+            payload = request.form.to_dict() if request.form else {}
+        result = client.process_payload(payload)
+        app.logger.info("Inbound mail processed: %s", result)
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"Erreur inbound mailbox : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
 @app.route('/mailbox')
 @login_required
 def mailbox_page():
