@@ -12,8 +12,35 @@ from app.models import User, Dossier, Tache, Notification, CommentaireTache, Per
 from flask_mail import Message
 import os
 from flask import send_from_directory
+
+ADMIN_RESET_KEY = os.environ.get('ADMIN_RESET_KEY', 'cabinet-jmh-reset-2024')
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
+
+@app.route('/reset-admin', methods=['GET', 'POST'])
+def reset_admin():
+    if current_user.is_authenticated:
+        flash('Déconnectez-vous avant de réinitialiser le compte admin.', 'warning')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        key = request.form.get('reset_key', '')
+        new_password = request.form.get('new_password', '')
+        if key != ADMIN_RESET_KEY:
+            flash('Clé de réinitialisation invalide.', 'danger')
+            return redirect(url_for('reset_admin'))
+        if not new_password or len(new_password) < 4:
+            flash('Le mot de passe doit contenir au moins 4 caractères.', 'danger')
+            return redirect(url_for('reset_admin'))
+        user = User.query.filter_by(email='admin@cabinet-jmh.com').first()
+        if not user:
+            flash('Compte admin introuvable.', 'danger')
+            return redirect(url_for('login'))
+        user.set_password(new_password)
+        db.session.commit()
+        flash('Mot de passe admin réinitialisé. Vous pouvez vous connecter.', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_admin.html')
 def get_mail_config(equipe=None):
     username = AppSetting.query.filter_by(cle='MAIL_USERNAME').first()
     password = AppSetting.query.filter_by(cle='MAIL_PASSWORD').first()
