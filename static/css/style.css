@@ -1087,6 +1087,12 @@ p {
     filter: invert(1) sepia(1) saturate(5000%) hue-rotate(330deg) brightness(2);
 }
 
+/* Small select */
+.select-premium.select-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+}
+
 /* Premium modals */
 .modal-premium {
     background: var(--bg-card);

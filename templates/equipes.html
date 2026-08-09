@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-
 {% block title %}Équipes{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up stagger-1">
     <h2 class="fw-semibold"><i class="bi bi-diagram-3 me-2" style="color:var(--orange-primary)"></i>Équipes</h2>
+    {% if current_user.role == 'admin' %}
     <button class="btn-premium btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalEquipe">
         <i class="bi bi-plus-lg me-1"></i>Nouvelle équipe
     </button>
+    {% endif %}
 </div>
 
 <div class="row">
@@ -28,11 +29,13 @@
                 {% endif %}
                 <div class="mt-3 d-flex gap-2">
                     <a href="{{ url_for('team_select') }}" class="btn-premium btn-premium-outline btn-premium-primary btn-sm">Voir</a>
+                    {% if current_user.role == 'admin' %}
                     <form method="POST" action="{{ url_for('supprimer_equipe', equipe_id=e.id) }}" class="d-inline" onsubmit="return confirm('Supprimer l\'équipe {{ e.nom }} ? Les membres seront détachés.');">
                         <button type="submit" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">
                             <i class="bi bi-trash"></i> Supprimer
                         </button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -48,6 +51,7 @@
     {% endfor %}
 </div>
 
+{% if current_user.role == 'admin' %}
 <!-- Modal Nouvelle équipe -->
 <div class="modal fade" id="modalEquipe" tabindex="-1">
     <div class="modal-dialog">
@@ -59,12 +63,12 @@
                 </div>
                 <div class="modal-body-premium">
                     <div class="mb-3">
-                        <label class="form-label-premium">Nom</label>
+                        <label class="form-label-premium">Nom de l'équipe</label>
                         <input type="text" name="nom" class="input-premium" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label-premium">Description</label>
-                        <textarea name="description" class="input-premium" rows="3"></textarea>
+                        <textarea name="description" class="input-premium" rows="3" placeholder="Description de l'équipe..."></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -79,11 +83,11 @@
                 </div>
                 <div class="modal-footer-premium">
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn-premium btn-premium-primary"><i class="bi bi-plus-lg me-1"></i>Créer</button>
+                    <button type="submit" class="btn-premium btn-premium-primary"><i class="bi bi-plus-lg me-1"></i>Créer l'équipe</button>
                 </div>
             </form>
         </div>
     </div>
-    </div>
 </div>
+{% endif %}
 {% endblock %}

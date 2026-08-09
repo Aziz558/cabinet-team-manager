@@ -361,7 +361,59 @@ def liste_membres():
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
     membres = User.query.all()
-    return render_template('membres.html', membres=membres)
+    toutes_equipes = Equipe.query.order_by(Equipe.nom).all()
+    # Manager ne voit que les équipes qu'il gère + équipes sans manager
+    mes_equipes = Equipe.query.filter(
+        (Equipe.manager_id == current_user.id) | (Equipe.manager_id == None)
+    ).order_by(Equipe.nom).all() if current_user.role == 'manager' else toutes_equipes
+    return render_template('membres.html', membres=membres, toutes_equipes=toutes_equipes, mes_equipes=mes_equipes)
+
+
+@app.route('/membres/<int:user_id>/assigner-equipe', methods=['POST'])
+@login_required
+def assigner_equipe(user_id):
+    """Admin assigns any user to any team."""
+    if current_user.role != 'admin':
+        flash('Accès refusé — réservé à l\'administrateur.', 'danger')
+        return redirect(url_for('liste_membres'))
+    user = User.query.get_or_404(user_id)
+    equipe_id = request.form.get('equipe_id', '').strip()
+    if equipe_id:
+        equipe = Equipe.query.get(equipe_id)
+        if equipe:
+            user.equipe_id = equipe.id
+        else:
+            user.equipe_id = None
+    else:
+        user.equipe_id = None
+    db.session.commit()
+    flash(f'{user.prenom} {user.nom} assigné à l\'équipe.', 'success')
+    return redirect(url_for('liste_membres'))
+
+
+@app.route('/membres/<int:user_id>/assigner-equipe-manager', methods=['POST'])
+@login_required
+def assigner_equipe_manager(user_id):
+    """Manager assigns a member to a team they manage (or unassigns)."""
+    if current_user.role != 'manager':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('liste_membres'))
+    user = User.query.get_or_404(user_id)
+    equipe_id = request.form.get('equipe_id', '').strip()
+
+    # Manager can only assign to teams they manage (or that are unassigned)
+    mes_equipes = Equipe.query.filter(
+        (Equipe.manager_id == current_user.id) | (Equipe.manager_id == None)
+    ).all()
+    mes_equipes_ids = [eq.id for eq in mes_equipes]
+
+    if equipe_id and int(equipe_id) in mes_equipes_ids:
+        user.equipe_id = int(equipe_id)
+    else:
+        user.equipe_id = None
+    db.session.commit()
+    flash(f'{user.prenom} {user.nom} classé dans l\'équipe.', 'success')
+    return redirect(url_for('liste_membres'))
 
 
 @app.route('/membres/ajouter', methods=['POST'])

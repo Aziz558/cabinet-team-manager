@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <h2 class="text-gradient-animated">Équipe</h2>
+    <h2 class="text-gradient-animated"><i class="bi bi-people me-2"></i>Membres</h2>
     <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalAjouter">
         <i class="bi bi-person-plus me-1"></i>Ajouter membre
     </button>
@@ -21,6 +21,12 @@
                         <th>Email</th>
                         <th>Rôle</th>
                         <th>Poste</th>
+                        {% if current_user.role == 'admin' %}
+                        <th>Équipe</th>
+                        {% endif %}
+                        {% if current_user.role == 'manager' %}
+                        <th>Classification</th>
+                        {% endif %}
                         <th>Statut</th>
                         <th>Actions</th>
                     </tr>
@@ -32,13 +38,37 @@
                         <td><strong>{{ m.prenom }} {{ m.nom }}</strong></td>
                         <td class="text-tertiary">{{ m.email }}</td>
                         <td>
-                            <span class="badge badge-{{ 'info' if m.role == 'manager' else 'secondary' }}">
+                            <span class="badge {{ 'badge-info' if m.role == 'manager' else 'badge-tertiary' if m.role == 'membre' else 'badge-orange' }}">
                                 {{ m.role }}
                             </span>
                         </td>
-                        <td>{{ m.poste or '-' }}</td>
+                        <td class="text-tertiary">{{ m.poste or '-' }}</td>
+                        {% if current_user.role == 'admin' %}
                         <td>
-                            <span class="badge badge-{{ 'success' if m.actif else 'danger' }}">
+                            <form method="POST" action="{{ url_for('assigner_equipe', user_id=m.id) }}" class="d-inline">
+                                <select name="equipe_id" class="select-premium select-sm" onchange="this.form.submit()">
+                                    <option value="">Aucune</option>
+                                    {% for eq in toutes_equipes %}
+                                    <option value="{{ eq.id }}" {{ 'selected' if m.equipe_id == eq.id else '' }}>{{ eq.nom }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+                        {% endif %}
+                        {% if current_user.role == 'manager' %}
+                        <td>
+                            <form method="POST" action="{{ url_for('assigner_equipe_manager', user_id=m.id) }}" class="d-inline">
+                                <select name="equipe_id" class="select-premium select-sm" onchange="this.form.submit()">
+                                    <option value="">Aucune</option>
+                                    {% for eq in mes_equipes %}
+                                    <option value="{{ eq.id }}" {{ 'selected' if m.equipe_id == eq.id else '' }}>{{ eq.nom }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <span class="badge {{ 'badge-success' if m.actif else 'badge-danger' }}">
                                 {{ 'Actif' if m.actif else 'Désactivé' }}
                             </span>
                         </td>
@@ -65,54 +95,59 @@
 <!-- Modal Ajouter -->
 <div class="modal fade" id="modalAjouter" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content-premium" style="background: var(--bg-card); border: 1px solid var(--border-color);" method="POST" action="{{ url_for('ajouter_membre') }}">
-            <div class="modal-header-premium">
-                <h5 class="mb-0">Ajouter un membre</h5>
-                <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
-            </div>
-            <div class="modal-body-premium">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label-premium">Prénom</label>
-                        <input type="text" name="prenom" class="input-premium" required>
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('ajouter_membre') }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-person-plus me-2" style="color:var(--orange-primary)"></i>Ajouter un membre</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Prénom</label>
+                            <input type="text" name="prenom" class="input-premium" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Nom</label>
+                            <input type="text" name="nom" class="input-premium" required>
+                        </div>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label-premium">Nom</label>
-                        <input type="text" name="nom" class="input-premium" required>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Email</label>
+                        <input type="email" name="email" class="input-premium" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Mot de passe</label>
+                        <input type="text" name="mot_de_passe" class="input-premium" required>
+                        <small class="text-tertiary">Le mot de passe sera communiqué au membre par email.</small>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Rôle</label>
+                            <select name="role" class="select-premium">
+                                <option value="membre">Membre</option>
+                                {% if current_user.role == 'admin' %}
+                                <option value="manager">Manager</option>
+                                <option value="admin">Admin</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Poste</label>
+                            <input type="text" name="poste" class="input-premium" placeholder="ex: Comptable">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Téléphone</label>
+                        <input type="text" name="telephone" class="input-premium">
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label-premium">Email</label>
-                    <input type="email" name="email" class="input-premium" required>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press">Ajouter</button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label-premium">Mot de passe</label>
-                    <input type="text" name="mot_de_passe" class="input-premium" required>
-                    <small class="text-tertiary">Le mot de passe sera communiqué au membre par email.</small>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label-premium">Rôle</label>
-                        <select name="role" class="select-premium">
-                            <option value="membre">Membre</option>
-                            <option value="manager">Manager</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label-premium">Poste</label>
-                        <input type="text" name="poste" class="input-premium" placeholder="ex: Comptable">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label-premium">Téléphone</label>
-                    <input type="text" name="telephone" class="input-premium">
-                </div>
-            </div>
-            <div class="modal-footer-premium">
-                <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn-premium btn-premium-primary btn-press">Ajouter</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
