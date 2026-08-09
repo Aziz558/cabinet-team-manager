@@ -20,6 +20,19 @@ if database_url and database_url.startswith('postgres://'):
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Validate DB URL before initializing SQLAlchemy
+db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+if db_uri and db_uri.startswith('postgresql://'):
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(db_uri)
+        if not parsed.hostname:
+            app.logger.warning("DATABASE_URL has no hostname; falling back to SQLite")
+            app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
+    except Exception as e:
+        app.logger.warning(f"Cannot parse DATABASE_URL: {e}; falling back to SQLite")
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "..", "instance", "app.db")}'
+
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.office365.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = True
