@@ -1,4 +1,5 @@
 from flask import Flask, render_template
+from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_mail import Mail
@@ -82,16 +83,16 @@ app.jinja_env.globals['date'] = _date
 def inject_equipe():
     from flask import session
     current_equipe = None
-    if current_user_is_authenticated():
+    if current_user.is_authenticated:
         equipe_id = session.get('current_equipe_id')
         if equipe_id:
             current_equipe = Equipe.query.get(equipe_id)
-        elif current_user.is_authenticated:
-            # Default to user's assigned team
+        # Default to user's assigned team
+        if current_user.equipe:
             current_equipe = current_user.equipe
     # Teams visible in the navbar team-switcher dropdown (admin sees all, manager sees their teams + unassigned)
     from flask import session
-    if current_user_is_authenticated():
+    if current_user.is_authenticated:
         if current_user.role == 'admin':
             all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
         elif current_user.role == 'manager':
@@ -103,10 +104,6 @@ def inject_equipe():
     else:
         all_equipes_for_switch = []
     return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
-
-def current_user_is_authenticated():
-    from flask_login import current_user
-    return current_user.is_authenticated
 
 # Global error handlers to avoid silent 500s
 @app.errorhandler(404)
