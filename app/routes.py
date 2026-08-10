@@ -1579,6 +1579,30 @@ def reject_suggestion(suggestion_id):
     except Exception as e:
         app.logger.error(f"Erreur reject suggestion : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+@app.route('/api/suggestions/<int:suggestion_id>/reanalyze', methods=['POST'])
+@login_required
+def reanalyze_suggestion(suggestion_id):
+    try:
+        from app.integrations.openrouter import OpenRouterClient
+        from app.integrations.inbound_mail import _analyze_with_llm
+        suggestion = SuggestionTache.query.get_or_404(suggestion_id)
+        if not suggestion.corps and not suggestion.sujet:
+            return jsonify({'ok': False, 'message': 'Email source introuvable pour cette suggestion.'}), 400
+        client = OpenRouterClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'OpenRouter non configuré.'}), 400
+        equipe = Equipe.query.get(suggestion.cree_par) if suggestion.cree_par else None
+        team_name = equipe.nom if equipe else ""
+        new_task = _analyze_with_llm(client, suggestion.sujet or "", suggestion.corps or "", team_name=team_name)
+        if not new_task:
+            return jsonify({'ok': False, 'message': "L'IA n'a pas pu extraire de tâche."}), 400
+        suggestion.description_suggeree = new_task
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'Analyse relancée.', 'task': new_task})
+    except Exception as e:
+        app.logger.error(f"Erreur reanalyze suggestion : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
 @app.route('/suggestions')
 @login_required
 def suggestions_page():
@@ -1718,6 +1742,59 @@ def process_mailbox():
         return jsonify({'ok': True, 'message': msg, 'count': count})
     except Exception as e:
         app.logger.error(f"Erreur mailbox process: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
+@app.route('/api/mailbox/process-all', methods=['POST'])
+@login_required
+def process_mailbox_all():
+    """Process ALL emails, including already seen ones."""
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Boîte mail non configurée. Allez dans Paramètres.'}), 400
+        mails = client.fetch_recent(limit=20)
+        count = 0
+        skipped = 0
+        for m in mails:
+            try:
+                uid = m["uid"]
+                if SuggestionTache.query.filter_by(mail_uid=uid).first():
+                    skipped += 1
+                    continue
+                subject = m.get("subject", "")
+                body = m.get("body", "")
+                sender = m.get("from", "")
+                if not _is_sender_allowed(sender):
+                    skipped += 1
+                    continue
+                equipe = _resolve_team_for_email(sender, m.get("to", ""))
+                team_name = equipe.nom if equipe else ""
+                client_id, task_desc = _extract_task_and_client(subject, body, sender, team_name=team_name)
+                if not task_desc:
+                    skipped += 1
+                    continue
+                team_member_id = equipe.manager_id if equipe else None
+                suggestion = SuggestionTache(
+                    sujet=subject[:200],
+                    corps=body or "",
+                    dossier_id=client_id,
+                    titre_suggere=subject[:200],
+                    description_suggeree=task_desc,
+                    mail_uid=uid,
+                    cree_par=team_member_id,
+                    priorite_suggeree="moyenne",
+                    statut="en_attente",
+                )
+                db.session.add(suggestion)
+                db.session.commit()
+                count += 1
+            except Exception:
+                db.session.rollback()
+        msg = f'{count} nouvelle(s) suggestion(s), {skipped} email(s) ignoré(s).'
+        return jsonify({'ok': True, 'message': msg, 'count': count, 'skipped': skipped})
+    except Exception as e:
+        app.logger.error(f"Erreur mailbox process-all: {e}")
         return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
 
 @app.route('/api/test/mailbox', methods=['POST'])

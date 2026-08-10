@@ -274,6 +274,7 @@ class MailboxClient:
             try:
                 uid = m["uid"]
                 if SuggestionTache.query.filter_by(mail_uid=uid).first():
+                    logger.info(f"Mailbox skip duplicate uid={uid}")
                     continue
 
                 subject = m.get("subject", "")
@@ -281,12 +282,14 @@ class MailboxClient:
                 sender = m.get("from", "")
 
                 if not _is_sender_allowed(sender):
+                    logger.info(f"Mailbox skip sender={sender} subject={subject[:60]}")
                     continue
 
                 client_id, task_desc = _extract_task_and_client(subject, body, sender)
 
                 if not task_desc:
                     AppSetting.insert_setting(f"MAILBOX_SKIPPED_{uid}", "skipped", "system")
+                    logger.info(f"Mailbox skip no_task uid={uid} subject={subject[:60]}")
                     continue
 
                 suggestion = SuggestionTache(

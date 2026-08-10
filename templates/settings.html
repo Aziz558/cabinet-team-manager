@@ -105,6 +105,9 @@
                 <button class="btn-premium btn-premium-success btn-press w-100" id="processMailboxBtn">
                     <i class="bi bi-arrow-repeat me-1"></i>Vérifier les nouveaux emails
                 </button>
+                <button class="btn-premium btn-premium-outline btn-premium-secondary btn-press w-100 mt-2" id="processAllMailboxBtn">
+                    <i class="bi bi-diagram-3 me-1"></i>Relancer l'analyse sur toute la boîte
+                </button>
                 <div id="processMailboxResult" class="small mt-2"></div>
                 <button class="btn-premium btn-premium-outline btn-premium-secondary btn-press w-100 mt-2" id="debugMailboxBtn">
                     <i class="bi bi-bug me-1"></i>Debug IMAP
@@ -341,6 +344,28 @@ document.getElementById('processMailboxBtn').addEventListener('click', function(
                 box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
                 if (res.count > 0) {
                     window.showToast(res.count + ' suggestion(s) créée(s) ! Allez dans Suggestions pour les voir.', 'success');
+                }
+            } else {
+                box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
+            }
+        });
+});
+
+document.getElementById('processAllMailboxBtn').addEventListener('click', function() {
+    const btn = this;
+    const box = document.getElementById('processMailboxResult');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Analyse en cours...';
+    box.textContent = '';
+    fetch('/api/mailbox/process-all', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-diagram-3 me-1"></i>Relancer l\'analyse sur toute la boîte';
+            if (res.ok) {
+                box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
+                if (res.count > 0) {
+                    window.showToast(res.count + ' suggestion(s) créée(s) !', 'success');
                 }
             } else {
                 box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
