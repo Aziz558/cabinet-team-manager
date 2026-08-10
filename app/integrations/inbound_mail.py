@@ -226,7 +226,8 @@ def _analyze_with_llm(llm, subject: str, body: str, team_name: str = "") -> Opti
             {"role": "system", "content": "Tu es un assistant comptable expert qui extrait des tâches actionnables à partir d'emails. Tu réponds uniquement en JSON."},
             {"role": "user", "content": prompt},
         ]
-        raw = llm.chat(messages, model=llm.model)
+        default_model = os.environ.get("LLM_MODEL", "meta-llama/llama-3.3-70b-instruct-free")
+        raw = llm.chat(messages, model=llm.model or default_model)
         if not raw:
             return None
         raw = raw.strip()
