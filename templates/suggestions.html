@@ -91,7 +91,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     loadSuggestions();
 });
-
+if (document.readyState === 'loading') {
+    // DOM masih building, DOMContentLoaded will fire
+} else {
+    // DOM sudah selesai, DOMContentLoaded sudah lewat — eksekusi langsung
+    loadSuggestions();
+}
 function loadSuggestions() {
     const status = new URLSearchParams(window.location.search).get('status') || 'en_attente';
     fetch(`/api/suggestions?status=${status}`)
