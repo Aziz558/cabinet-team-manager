@@ -1772,9 +1772,11 @@ def process_mailbox_all():
                 team_name = equipe.nom if equipe else ""
                 client_id, task_desc = _extract_task_and_client(subject, body, sender, team_name=team_name)
                 if not task_desc:
+                    app.logger.info(f"Mailbox process-all: no task extracted from sender={sender} subject={subject[:60]}")
                     skipped += 1
                     continue
                 team_member_id = equipe.manager_id if equipe else None
+                app.logger.info(f"Mailbox process-all: creating suggestion for sender={sender} subject={subject[:60]} equipe={team_name or 'none'} task={task_desc[:50]}")
                 suggestion = SuggestionTache(
                     sujet=subject[:200],
                     corps=body or "",
