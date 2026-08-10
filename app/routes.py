@@ -1750,6 +1750,7 @@ def process_mailbox_all():
     """Process ALL emails, including already seen ones."""
     try:
         from app.integrations.mailbox import MailboxClient
+        from app.integrations.inbound_mail import _is_sender_allowed, _resolve_team_for_email, _extract_task_and_client
         from app.models import SuggestionTache
         client = MailboxClient()
         if not client.is_configured():
