@@ -1760,16 +1760,20 @@ def process_mailbox_all():
             try:
                 uid = m["uid"]
                 if SuggestionTache.query.filter_by(mail_uid=uid).first():
+                    app.logger.info(f"Mailbox process-all: duplicate uid={uid}")
                     skipped += 1
                     continue
                 subject = m.get("subject", "")
                 body = m.get("body", "")
                 sender = m.get("from", "")
+                app.logger.info(f"Mailbox process-all: processing uid={uid} sender={sender} subject={subject[:60]}")
                 if not _is_sender_allowed(sender):
+                    app.logger.info(f"Mailbox process-all: sender not allowed: {sender}")
                     skipped += 1
                     continue
                 equipe = _resolve_team_for_email(sender, m.get("to", ""))
                 team_name = equipe.nom if equipe else ""
+                app.logger.info(f"Mailbox process-all: equipe resolved={team_name}")
                 client_id, task_desc = _extract_task_and_client(subject, body, sender, team_name=team_name)
                 if not task_desc:
                     app.logger.info(f"Mailbox process-all: no task extracted from sender={sender} subject={subject[:60]}")
@@ -1791,8 +1795,9 @@ def process_mailbox_all():
                 db.session.add(suggestion)
                 db.session.commit()
                 count += 1
-            except Exception:
+            except Exception as e:
                 db.session.rollback()
+                app.logger.error(f"Mailbox process-all error: {e}")
         msg = f'{count} nouvelle(s) suggestion(s), {skipped} email(s) ignoré(s).'
         return jsonify({'ok': True, 'message': msg, 'count': count, 'skipped': skipped})
     except Exception as e:
