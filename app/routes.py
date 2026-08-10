@@ -1747,55 +1747,49 @@ def process_mailbox():
 @app.route('/api/mailbox/process-all', methods=['POST'])
 @login_required
 def process_mailbox_all():
-    """Process ALL emails, including already seen ones."""
+    """Process ALL emails, including already seen ones. Uses session equipe or fallback."""
     try:
         from app.integrations.mailbox import MailboxClient
         from app.integrations.inbound_mail import _is_sender_allowed, _resolve_team_for_email, _extract_task_and_client
         from app.models import SuggestionTache
+        from flask import session
         client = MailboxClient()
         if not client.is_configured():
             return jsonify({'ok': False, 'message': 'Boîte mail non configurée. Allez dans Paramètres.'}), 400
         mails = client.fetch_recent(limit=20)
         count = 0
         skipped = 0
+        error_count = 0
         for m in mails:
             try:
                 uid = m["uid"]
                 if SuggestionTache.query.filter_by(mail_uid=uid).first():
-                    app.logger.info(f"Mailbox process-all: duplicate uid={uid}")
                     skipped += 1
                     continue
                 subject = m.get("subject", "")
                 body = m.get("body", "")
                 sender = m.get("from", "")
-                app.logger.info(f"Mailbox process-all: processing uid={uid} sender={sender} subject={subject[:60]}")
                 if not _is_sender_allowed(sender):
-                    app.logger.info(f"Mailbox process-all: sender not allowed: {sender}")
                     skipped += 1
                     continue
+                # Resolve team: session active first, then by email
                 equipe = None
-                from flask import session
                 if session.get('current_equipe_id'):
                     equipe = Equipe.query.get(session['current_equipe_id'])
                 if not equipe:
                     equipe = _resolve_team_for_email(sender, m.get("to", ""))
-                team_name = equipe.nom if equipe else ""
-                app.logger.info(f"Mailbox process-all: equipe resolved={team_name}")
+                team_name = equipe.nom if equipe else "none"
                 client_id, task_desc = _extract_task_and_client(subject, body, sender, team_name=team_name)
                 if not task_desc:
-                    app.logger.info(f"Mailbox process-all: no task extracted from sender={sender} subject={subject[:60]}")
-                    skipped += 1
-                    continue
-                team_member_id = equipe.manager_id if equipe else None
-                app.logger.info(f"Mailbox process-all: creating suggestion for sender={sender} subject={subject[:60]} equipe={team_name or 'none'} task={task_desc[:50]}")
+                    task_desc = f"Tâche: {subject[:30]}"
+                task_desc = task_desc[:50]
                 suggestion = SuggestionTache(
                     sujet=subject[:200],
                     corps=body or "",
-                    dossier_id=client_id,
+                    dossier_id=int(client_id) if client_id else None,
                     titre_suggere=subject[:200],
                     description_suggeree=task_desc,
                     mail_uid=uid,
-                    cree_par=team_member_id,
                     priorite_suggeree="moyenne",
                     statut="en_attente",
                 )
@@ -1804,9 +1798,10 @@ def process_mailbox_all():
                 count += 1
             except Exception as e:
                 db.session.rollback()
-                app.logger.error(f"Mailbox process-all error: {e}")
-        msg = f'{count} nouvelle(s) suggestion(s), {skipped} email(s) ignoré(s).'
-        return jsonify({'ok': True, 'message': msg, 'count': count, 'skipped': skipped})
+                app.logger.error(f"Mailbox process-all line error: {e}")
+                error_count += 1
+        msg = f'{count} suggestion(s) créée(s), {skipped} ignoré(s), {error_count} erreur(s).'
+        return jsonify({'ok': True, 'message': msg, 'count': count, 'skipped': skipped, 'errors': error_count})
     except Exception as e:
         app.logger.error(f"Erreur mailbox process-all: {e}")
         return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
@@ -1814,7 +1809,7 @@ def process_mailbox_all():
 @app.route('/api/mailbox/process-direct', methods=['POST'])
 @login_required
 def process_mailbox_direct():
-    """Process exactly the last 3 emails, print EVERYTHING, return debug info."""
+    """Process exactly the last 3 emails, return debug info for testing."""
     try:
         from app.integrations.mailbox import MailboxClient
         from app.integrations.inbound_mail import _is_sender_allowed, _resolve_team_for_email, _extract_task_and_client, get_allowed_senders
@@ -1829,9 +1824,11 @@ def process_mailbox_direct():
         user = User.query.get(session.get('user_id'))
         allowed = get_allowed_senders()
         debug = []
+        count = 0
 
         debug.append(f"User: {user.email if user else 'none'}")
         debug.append(f"Allowed senders: {allowed}")
+        debug.append(f"Session equipe_id: {session.get('current_equipe_id')}")
         debug.append(f"Mails fetched: {len(mails)}")
 
         for i, m in enumerate(mails):
@@ -1842,7 +1839,6 @@ def process_mailbox_direct():
             debug.append(f"\n--- Email {i+1} (uid={uid}) ---")
             debug.append(f"  subject={subject[:80]}")
             debug.append(f"  from={sender}")
-            debug.append(f"  body_preview={body[:100]}")
 
             already = SuggestionTache.query.filter_by(mail_uid=uid).first()
             debug.append(f"  already_in_db: {bool(already)}")
@@ -1853,18 +1849,18 @@ def process_mailbox_direct():
                 continue
 
             equipe = None
-            from flask import session
             if session.get('current_equipe_id'):
                 equipe = Equipe.query.get(session['current_equipe_id'])
             if not equipe:
                 equipe = _resolve_team_for_email(sender, m.get("to", ""))
-            debug.append(f"  equipe: {equipe.nom if equipe else None}")
+            debug.append(f"  equipe: {equipe.nom if equipe else 'none'}")
 
             client_id, task_desc = _extract_task_and_client(subject, body, sender)
-            debug.append(f"  task_desc: {task_desc}")
             if not task_desc:
                 task_desc = f"Tâche: {subject[:30]}"
             task_desc = task_desc[:50]
+            debug.append(f"  task_desc: {task_desc}")
+
             s = SuggestionTache(
                 sujet=subject[:200], corps=body or "",
                 dossier_id=int(client_id) if client_id else None, titre_suggere=subject[:200],
@@ -1873,12 +1869,13 @@ def process_mailbox_direct():
             )
             db.session.add(s)
             db.session.commit()
+            count += 1
             debug.append(f"  -> CREATED suggestion id={s.id}")
 
         return jsonify({
             'ok': True,
             'debug': '\n'.join(debug),
-            'count': len(mails),
+            'count': count,
         })
     except Exception as e:
         import traceback
