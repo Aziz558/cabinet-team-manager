@@ -21,6 +21,13 @@ services:
       - key: MAIL_DEFAULT_SENDER
         sync: false
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: cabinet-team-manager-db
+          property: connectionString
       - key: USE_POSTGRES
-        value: false
+        value: "true"
+
+databases:
+  - name: cabinet-team-manager-db
+    plan: free
+    region: frankfurt
