@@ -33,7 +33,7 @@ services:
       - key: MAILBOX_FOLDER
         value: INBOX
       - key: MAILBOX_ALLOWED_SENDERS
-        value: mohamed-aziz.jlassi@cabinet-jmh.com
+        value: mohamed-aziz.jlassi@cabinet-jmh.com, admin@cabinet-jmh.com
       - key: OPENROUTER_API_KEY
         sync: false
       - key: DATABASE_URL
