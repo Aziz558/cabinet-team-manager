@@ -196,7 +196,13 @@ class MailboxClient:
             conn = imaplib.IMAP4_SSL(self.server, self.port)
         else:
             conn = imaplib.IMAP4(self.server, self.port)
-        conn.login(self.user, self.password)
+        try:
+            conn.login(self.user, self.password)
+        except imaplib.IMAP4.error as e:
+            msg = str(e)
+            if 'LOGIN' in msg or 'AUTHENTICATE' in msg or 'AUTH' in msg:
+                raise RuntimeError("IMAP login refusé : vérifie l'adresse, le mot de passe d'application et la 2FA sur le compte Microsoft.") from e
+            raise RuntimeError(f"IMAP login impossible : {msg}") from e
         return conn
 
     def fetch_unseen(self, limit: int = 10) -> List[Dict[str, Any]]:

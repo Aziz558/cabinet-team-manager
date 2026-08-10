@@ -1749,10 +1749,12 @@ def test_mailbox_debug():
         if not client.is_configured():
             return jsonify({'ok': False, 'message': 'Boîte mail non configurée.'}), 400
         conn = client._connect()
-        conn.select(client.mailbox)
-        status, folders = conn.list()
+        select_status, select_data = conn.select(client.mailbox)
+        if select_status != 'OK':
+            return jsonify({'ok': False, 'message': f"IMAP: impossible d'ouvrir le dossier '{client.mailbox}'. Vérifie le nom du dossier dans Outlook."}), 200
+        list_status, folders = conn.list()
         folder_list = []
-        if status == 'OK':
+        if list_status == 'OK':
             for line in folders:
                 try:
                     folder_list.append(line.decode('utf-8', errors='replace'))
