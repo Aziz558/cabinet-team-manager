@@ -88,7 +88,7 @@
                     <div class="mb-2">
                         <label class="form-label">Serveur IMAP</label>
                         {% set mailbox_server = settings|selectattr('cle','equalto','MAILBOX_SERVER')|list|first %}
-                        <input type="text" name="MAILBOX_SERVER" class="input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
+                        <input type="text" name="MAILBOX_SERVER" class="input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'outlook.office365.com' }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Expéditeurs autorisés</label>

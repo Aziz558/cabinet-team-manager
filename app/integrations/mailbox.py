@@ -182,7 +182,7 @@ class MailboxClient:
     def __init__(self):
         self.user = _get_setting("MAILBOX_USER") or os.environ.get("MAILBOX_USER", "")
         self.password = _get_setting("MAILBOX_PASSWORD") or os.environ.get("MAILBOX_PASSWORD", "")
-        self.server = _get_setting("MAILBOX_SERVER") or os.environ.get("MAILBOX_SERVER", "imap.gmail.com")
+        self.server = _get_setting("MAILBOX_SERVER") or os.environ.get("MAILBOX_SERVER", "outlook.office365.com")
         self.port = int(_get_setting("MAILBOX_PORT") or os.environ.get("MAILBOX_PORT", "993"))
         self.use_ssl = (_get_setting("MAILBOX_USE_SSL") or os.environ.get("MAILBOX_USE_SSL", "true")).lower() == "true"
         self.mailbox = _get_setting("MAILBOX_FOLDER") or os.environ.get("MAILBOX_FOLDER", "INBOX")
