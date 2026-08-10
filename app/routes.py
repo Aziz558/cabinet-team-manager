@@ -1701,3 +1701,40 @@ def update_tache_statut(tache_id):
     except Exception as e:
         app.logger.error(f"Erreur update statut : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
+# ============ MAILBOX IMAP (Outlook) ============
+
+@app.route('/api/mailbox/process', methods=['POST'])
+@login_required
+def process_mailbox():
+    """Check Outlook IMAP inbox and create suggestions from new emails."""
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Boîte mail non configurée. Allez dans Paramètres.'}), 400
+        count = client.process_new_messages(max_emails=5)
+        msg = f'{count} nouvelle(s) suggestion(s) créée(s).' if count else 'Aucun nouvel email pertinent.'
+        return jsonify({'ok': True, 'message': msg, 'count': count})
+    except Exception as e:
+        app.logger.error(f"Erreur mailbox process: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
+@app.route('/api/test/mailbox', methods=['POST'])
+@login_required
+def test_mailbox():
+    """Test IMAP connection and show unseen count."""
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Boîte mail non configurée.'}), 400
+        mails = client.fetch_unseen(limit=3)
+        return jsonify({
+            'ok': True,
+            'message': f'Connexion OK — {len(mails)} email(s) non lu(s) trouvé(s).',
+            'count': len(mails),
+            'samples': [{'subject': m['subject'], 'from': m['from']} for m in mails],
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'message': f'Erreur de connexion: {e}'}), 500
