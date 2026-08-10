@@ -1794,7 +1794,21 @@ def process_mailbox_all():
                     statut="en_attente",
                 )
                 db.session.add(suggestion)
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    try:
+                        from sqlalchemy import text
+                        db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
+                        db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN titre_suggere TYPE VARCHAR(500)"))
+                        db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN sujet TYPE VARCHAR(500)"))
+                        db.session.commit()
+                        db.session.add(suggestion)
+                        db.session.commit()
+                    except Exception as e2:
+                        db.session.rollback()
+                        raise e2
                 count += 1
             except Exception as e:
                 db.session.rollback()
@@ -1868,7 +1882,22 @@ def process_mailbox_direct():
                 priorite_suggeree="moyenne", statut="en_attente",
             )
             db.session.add(s)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                # Fix varchar(50) -> TEXT on the fly
+                try:
+                    from sqlalchemy import text
+                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
+                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN titre_suggere TYPE VARCHAR(500)"))
+                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN sujet TYPE VARCHAR(500)"))
+                    db.session.commit()
+                    db.session.add(s)
+                    db.session.commit()
+                except Exception as e2:
+                    db.session.rollback()
+                    raise e2
             count += 1
             debug.append(f"  -> CREATED suggestion id={s.id}")
 
