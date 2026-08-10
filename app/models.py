@@ -199,7 +199,7 @@ class SuggestionTache(db.Model):
     valide_par = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     date_validation = db.Column(db.DateTime, nullable=True)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
-    mail_uid = db.Column(db.String(50), nullable=True, unique=True)
+    mail_uid = db.Column(db.String(64), nullable=True, unique=True)
     priorite_suggeree = db.Column(db.String(20), default='moyenne')  # haute | moyenne | basse
 
     dossier = db.relationship('Dossier', backref='suggestions')

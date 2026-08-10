@@ -56,20 +56,22 @@ except Exception as e:
 # Ensure DB tables exist and migrate
 try:
     with app.app_context():
-        from app.models import SuggestionTache
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
-        cols = [c['name'] for c in inspector.get_columns('suggestions_taches')]
-        if 'description_suggeree' in cols:
-            # Check if it's varchar(50) and fix it
-            for c in inspector.get_columns('suggestions_taches'):
-                if c['name'] == 'description_suggeree' and 'varchar' in str(c['type']).lower():
-                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
-                    db.session.commit()
-                    print("✅ Migrated description_suggeree: varchar -> TEXT")
-                    break
+        for c in inspector.get_columns('suggestions_taches'):
+            if c['name'] == 'description_suggeree' and 'varchar' in str(c['type']).lower():
+                db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
+                print("✅ Migrated description_suggeree: varchar -> TEXT")
+            if c['name'] == 'mail_uid' and 'varchar' in str(c['type']).lower() and '50' in str(c['type']):
+                db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN mail_uid TYPE VARCHAR(100)"))
+                print("✅ Migrated mail_uid: varchar(50) -> varchar(100)")
+        db.session.commit()
 except Exception as e:
     print(f"⚠️ Schema init failed: {e}")
+    try:
+        db.session.rollback()
+    except:
+        pass
 
 from app import routes  # noqa: F401
 from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401

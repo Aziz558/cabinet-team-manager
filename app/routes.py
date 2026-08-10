@@ -1783,32 +1783,20 @@ def process_mailbox_all():
                 if not task_desc:
                     task_desc = f"Tâche: {subject[:30]}"
                 task_desc = task_desc[:50]
+                # Truncate UID to fit varchar(64)
+                uid_short = uid[:64]
                 suggestion = SuggestionTache(
                     sujet=subject[:200],
                     corps=body or "",
                     dossier_id=int(client_id) if client_id else None,
                     titre_suggere=subject[:200],
                     description_suggeree=task_desc,
-                    mail_uid=uid,
+                    mail_uid=uid_short,
                     priorite_suggeree="moyenne",
                     statut="en_attente",
                 )
                 db.session.add(suggestion)
-                try:
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
-                    try:
-                        from sqlalchemy import text
-                        db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
-                        db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN titre_suggere TYPE VARCHAR(500)"))
-                        db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN sujet TYPE VARCHAR(500)"))
-                        db.session.commit()
-                        db.session.add(suggestion)
-                        db.session.commit()
-                    except Exception as e2:
-                        db.session.rollback()
-                        raise e2
+                db.session.commit()
                 count += 1
             except Exception as e:
                 db.session.rollback()
@@ -1875,29 +1863,18 @@ def process_mailbox_direct():
             task_desc = task_desc[:50]
             debug.append(f"  task_desc: {task_desc}")
 
+            # Truncate UID to fit varchar(64)
+            uid_short = uid[:64]
+            debug.append(f"  uid_short: {uid_short} (len={len(uid_short)})")
+
             s = SuggestionTache(
                 sujet=subject[:200], corps=body or "",
                 dossier_id=int(client_id) if client_id else None, titre_suggere=subject[:200],
-                description_suggeree=task_desc, mail_uid=uid,
+                description_suggeree=task_desc, mail_uid=uid_short,
                 priorite_suggeree="moyenne", statut="en_attente",
             )
             db.session.add(s)
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                # Fix varchar(50) -> TEXT on the fly
-                try:
-                    from sqlalchemy import text
-                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
-                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN titre_suggere TYPE VARCHAR(500)"))
-                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN sujet TYPE VARCHAR(500)"))
-                    db.session.commit()
-                    db.session.add(s)
-                    db.session.commit()
-                except Exception as e2:
-                    db.session.rollback()
-                    raise e2
+            db.session.commit()
             count += 1
             debug.append(f"  -> CREATED suggestion id={s.id}")
 
