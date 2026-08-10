@@ -110,6 +110,24 @@ def _resolve_equipe_from_recipient(recipient: str) -> Optional[Equipe]:
         return None
 
 
+def _resolve_equipe_from_sender(sender: str) -> Optional[Equipe]:
+    """Resolve team from the sender email address."""
+    if not sender:
+        return None
+    try:
+        return Equipe.query.filter(Equipe.manager.has(User.email == sender)).first()
+    except Exception:
+        return None
+
+
+def _resolve_team_for_email(sender: str, recipient: str) -> Optional[Equipe]:
+    """Resolve team using recipient first, then sender."""
+    equipe = _resolve_equipe_from_recipient(recipient)
+    if equipe:
+        return equipe
+    return _resolve_equipe_from_sender(sender)
+
+
 def _resolve_client(subject: str, body: str) -> Optional[int]:
     """Try to find a Dossier from subject/body regex."""
     from app.models import Dossier
@@ -256,8 +274,8 @@ def process_webhook(data: Dict[str, Any]) -> Dict[str, Any]:
         if existing:
             return {"ok": True, "message": "Déjà traité", "skipped": True, "uid": uid}
 
-        # Resolve team from recipient
-        equipe = _resolve_equipe_from_recipient(recipient)
+        # Resolve team from recipient, fallback to sender
+        equipe = _resolve_team_for_email(sender_email, recipient)
 
         # Extract task and client
         client_id, task_desc = _extract_task_and_client(subject, body, sender_email)
@@ -273,10 +291,19 @@ def process_webhook(data: Dict[str, Any]) -> Dict[str, Any]:
                 "subject": subject,
             }
 
+        if not equipe:
+            return {
+                "ok": False,
+                "message": "Équipe non identifiée. Vérifie l'adresse email d'équipe ou l'expéditeur autorisé.",
+                "stage": "team_resolution",
+                "from": sender_email,
+                "recipient": recipient,
+            }
+
         # Determine assigned team user id
         team_member_id = None
-        if equipe:
-            team_member_id = equipe.manager_id if equipe.manager_id else None
+        if equipe.manager_id:
+            team_member_id = equipe.manager_id
 
         # Create suggestion
         suggestion = SuggestionTache(
