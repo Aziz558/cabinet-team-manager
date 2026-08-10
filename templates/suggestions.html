@@ -135,6 +135,11 @@ function loadSuggestions() {
             });
             html += '</div>';
             container.innerHTML = html;
+        })
+        .catch(err => {
+            console.error('loadSuggestions error:', err);
+            const container = document.getElementById('suggestionsList');
+            if (container) container.innerHTML = '<div class="text-danger p-3">Erreur chargement: ' + err.message + '</div>';
         });
 }
 
