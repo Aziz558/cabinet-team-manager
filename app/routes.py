@@ -1471,43 +1471,7 @@ def test_openrouter():
     except Exception as e:
         app.logger.error(f"Erreur test OpenRouter: {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/suggestions', methods=['GET'])
-@login_required
-def list_suggestions():
-    try:
-        from app.models import SuggestionTache
-        from app import db
-        status = request.args.get('status', 'en_attente')
-
-        try:
-            total_count = db.session.query(SuggestionTache).count()
-            all_statuses = db.session.query(SuggestionTache.statut).distinct().all()
-        except Exception as table_err:
-            return jsonify({'ok': False, 'message': f'Table error: {table_err}', 'total_in_db': -1}), 500
-
-        if status == 'all':
-            suggestions = SuggestionTache.query.order_by(SuggestionTache.date_creation.desc()).all()
-        else:
-            suggestions = SuggestionTache.query.filter_by(statut=status).order_by(SuggestionTache.date_creation.desc()).all()
-        result = []
-        for s in suggestions:
-            result.append({
-                'id': s.id,
-                'sujet': s.sujet,
-                'titre_suggere': s.titre_suggere,
-                'description_suggeree': s.description_suggeree,
-                'dossier_id': s.dossier_id,
-                'dossier_nom': s.dossier.nom if s.dossier else None,
-                'priorite_suggeree': s.priorite_suggeree,
-                'statut': s.statut,
-                'mail_uid': s.mail_uid,
-                'date_creation': s.date_creation.strftime('%Y-%m-%d %H:%M') if s.date_creation else None,
-            })
-        return jsonify({'ok': True, 'count': len(result), 'total_in_db': total_count, 'distinct_statuses': [s[0] for s in all_statuses], 'suggestions': result})
-    except Exception as e:
-        app.logger.error(f"Erreur list suggestions : {e}")
-        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
-@app.route('/api/suggestions/<int:suggestion_id>/validate', methods=['POST'])
+@app.route('/api/suggestions/refresh', methods=['POST'])
 @login_required
 def validate_suggestion(suggestion_id):
     try:
