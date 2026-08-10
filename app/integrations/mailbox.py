@@ -185,7 +185,7 @@ class MailboxClient:
         self.server = _get_setting("MAILBOX_SERVER") or os.environ.get("MAILBOX_SERVER", "imap.gmail.com")
         self.port = int(_get_setting("MAILBOX_PORT") or os.environ.get("MAILBOX_PORT", "993"))
         self.use_ssl = (_get_setting("MAILBOX_USE_SSL") or os.environ.get("MAILBOX_USE_SSL", "true")).lower() == "true"
-        self.mailbox = _get_setting("MAILBOX_FOLDER") or os.environ.get("MAILBOX_FOLDER", "INBOX")
+        self.mailbox = _get_setting("MAILBOX_FOLDER") or os.environ.get("MAILBOX_FOLDER", "[Gmail]/Tous les messages")
         self.allowed_senders = get_allowed_senders()
 
     def is_configured(self) -> bool:

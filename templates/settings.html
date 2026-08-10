@@ -88,9 +88,15 @@
                     <div class="mb-2">
                         <label class="form-label">Serveur IMAP</label>
                         {% set mailbox_server = settings|selectattr('cle','equalto','MAILBOX_SERVER')|list|first %}
-                        <input type="text" name="MAILBOX_SERVER" class="input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'outlook.office365.com' }}">
+                        <input type="text" name="MAILBOX_SERVER" class="input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-2">
+                        <label class="form-label">Dossier IMAP</label>
+                        {% set mailbox_folder = settings|selectattr('cle','equalto','MAILBOX_FOLDER')|list|first %}
+                        <input type="text" name="MAILBOX_FOLDER" class="input-premium" value="{{ mailbox_folder.valeur if mailbox_folder else '[Gmail]/Tous les messages' }}">
+                        <div class="form-text text-tertiary">Gmail: [Gmail]/Tous les messages</div>
+                    </div>
+                    <div class="mb-2">
                         <label class="form-label">Expéditeurs autorisés</label>
                         {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
                         <textarea name="MAILBOX_ALLOWED_SENDERS" class="input-premium" rows="2" placeholder="ex: client1@exemple.com, client2@exemple.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
