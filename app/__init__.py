@@ -46,6 +46,13 @@ login_manager.login_message = 'Veuillez vous connecter.'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Auto-migrate DB schema on startup
+try:
+    from migrate_schema import migrate_description_column
+    migrate_description_column()
+except Exception as e:
+    print(f"⚠️ Schema migration failed: {e}")
+
 from app import routes  # noqa: F401
 from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
