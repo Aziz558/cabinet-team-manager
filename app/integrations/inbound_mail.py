@@ -280,10 +280,17 @@ def process_webhook(data: Dict[str, Any]) -> Dict[str, Any]:
         if existing:
             return {"ok": True, "message": "Déjà traité", "skipped": True, "uid": uid}
 
-        # Resolve team from recipient, fallback to sender
-        equipe = _resolve_team_for_email(sender_email, recipient)
-        team_name = equipe.nom if equipe else ""
-        app.logger.info(f"Mailbox email from={sender_email} recipient={recipient} equipe={team_name or 'none'}")
+        # Resolve team: session active equipe first, then recipient, fallback to sender
+        equipe = None
+        from flask import session
+        if session.get('current_equipe_id'):
+            equipe = Equipe.query.get(session['current_equipe_id'])
+        if not equipe:
+            equipe = _resolve_team_for_email(sender_email, recipient)
+        if not equipe:
+            equipe = _resolve_team_for_email(sender_email, sender_email)
+        team_name = equipe.nom if equipe else "none"
+        app.logger.info(f"Mailbox email from={sender_email} recipient={recipient} session_equipe={session.get('current_equipe_id')} resolved={team_name}")
 
         # Extract task and client
         client_id, task_desc = _extract_task_and_client(subject, body, sender_email, team_name=team_name)

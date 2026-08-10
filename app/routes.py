@@ -1773,7 +1773,12 @@ def process_mailbox_all():
                     app.logger.info(f"Mailbox process-all: sender not allowed: {sender}")
                     skipped += 1
                     continue
-                equipe = _resolve_team_for_email(sender, m.get("to", ""))
+                equipe = None
+                from flask import session
+                if session.get('current_equipe_id'):
+                    equipe = Equipe.query.get(session['current_equipe_id'])
+                if not equipe:
+                    equipe = _resolve_team_for_email(sender, m.get("to", ""))
                 team_name = equipe.nom if equipe else ""
                 app.logger.info(f"Mailbox process-all: equipe resolved={team_name}")
                 client_id, task_desc = _extract_task_and_client(subject, body, sender, team_name=team_name)
@@ -1847,7 +1852,12 @@ def process_mailbox_direct():
             if not allowed_check:
                 continue
 
-            equipe = _resolve_team_for_email(sender, m.get("to", ""))
+            equipe = None
+            from flask import session
+            if session.get('current_equipe_id'):
+                equipe = Equipe.query.get(session['current_equipe_id'])
+            if not equipe:
+                equipe = _resolve_team_for_email(sender, m.get("to", ""))
             debug.append(f"  equipe: {equipe.nom if equipe else None}")
 
             client_id, task_desc = _extract_task_and_client(subject, body, sender)
