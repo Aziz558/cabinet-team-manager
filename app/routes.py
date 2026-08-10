@@ -1874,9 +1874,13 @@ def process_mailbox_direct():
                 priorite_suggeree="moyenne", statut="en_attente",
             )
             db.session.add(s)
-            db.session.commit()
-            count += 1
-            debug.append(f"  -> CREATED suggestion id={s.id}")
+            try:
+                db.session.commit()
+                count += 1
+                debug.append(f"  -> CREATED suggestion id={s.id}")
+            except Exception:
+                db.session.rollback()
+                debug.append(f"  -> SKIPPED (already exists or error)")
 
         return jsonify({
             'ok': True,
