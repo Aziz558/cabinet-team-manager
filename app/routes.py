@@ -1867,7 +1867,7 @@ def process_mailbox_direct():
                 task_desc = f"Tâche liée à: {subject}"
             s = SuggestionTache(
                 sujet=subject[:200], corps=body or "",
-                dossier_id=client_id or "", titre_suggere=subject[:200],
+                dossier_id=int(client_id) if client_id else None, titre_suggere=subject[:200],
                 description_suggeree=task_desc, mail_uid=uid,
                 priorite_suggeree="moyenne", statut="en_attente",
             )
