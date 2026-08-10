@@ -9,9 +9,9 @@
     <p class="text-tertiary mb-4">Validez ou rejetez les suggestions générées automatiquement à partir des emails.</p>
 
     <div class="d-flex flex-wrap gap-2 mb-4 animate-fade-in-up stagger-2">
-        <a href="{{ url_for('list_suggestions') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">En attente</a>
-        <a href="{{ url_for('list_suggestions', status='validee') }}" class="btn-premium btn-premium-outline btn-premium-success btn-sm">Validées</a>
-        <a href="{{ url_for('list_suggestions', status='rejetee') }}" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">Rejetées</a>
+        <a href="{{ url_for('api_suggestions') }}?status=en_attente" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">En attente</a>
+        <a href="{{ url_for('api_suggestions') }}?status=validee" class="btn-premium btn-premium-outline btn-premium-success btn-sm">Validées</a>
+        <a href="{{ url_for('api_suggestions') }}?status=rejetee" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">Rejetées</a>
         <button class="btn-premium btn-premium-outline btn-premium-warning btn-sm ms-auto" id="resetBtn" onclick="resetSuggestions()">
             <i class="bi bi-arrow-clockwise"></i> Réinitialiser
         </button>
