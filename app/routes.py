@@ -1750,6 +1750,7 @@ def process_mailbox_all():
     """Process ALL emails, including already seen ones."""
     try:
         from app.integrations.mailbox import MailboxClient
+        from app.models import SuggestionTache
         client = MailboxClient()
         if not client.is_configured():
             return jsonify({'ok': False, 'message': 'Boîte mail non configurée. Allez dans Paramètres.'}), 400
