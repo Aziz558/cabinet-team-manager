@@ -1806,6 +1806,73 @@ def process_mailbox_all():
         app.logger.error(f"Erreur mailbox process-all: {e}")
         return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
 
+@app.route('/api/mailbox/process-direct', methods=['POST'])
+@login_required
+def process_mailbox_direct():
+    """Process exactly the last 3 emails, print EVERYTHING, return debug info."""
+    try:
+        from app.integrations.mailbox import MailboxClient
+        from app.integrations.inbound_mail import _is_sender_allowed, _resolve_team_for_email, _extract_task_and_client
+        from app.models import SuggestionTache
+        from flask import session
+
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Boîte mail non configurée.'}), 400
+
+        mails = client.fetch_recent(limit=3)
+        user = User.query.get(session.get('user_id'))
+        allowed = get_allowed_senders()
+        debug = []
+
+        debug.append(f"User: {user.email if user else 'none'}")
+        debug.append(f"Allowed senders: {allowed}")
+        debug.append(f"Mails fetched: {len(mails)}")
+
+        for i, m in enumerate(mails):
+            uid = m.get("uid", "?")
+            subject = m.get("subject", "")
+            sender = m.get("from", "")
+            body = m.get("body", "")[:200]
+            debug.append(f"\n--- Email {i+1} (uid={uid}) ---")
+            debug.append(f"  subject={subject[:80]}")
+            debug.append(f"  from={sender}")
+            debug.append(f"  body_preview={body[:100]}")
+
+            already = SuggestionTache.query.filter_by(mail_uid=uid).first()
+            debug.append(f"  already_in_db: {bool(already)}")
+
+            allowed_check = _is_sender_allowed(sender)
+            debug.append(f"  sender_allowed: {allowed_check}")
+            if not allowed_check:
+                continue
+
+            equipe = _resolve_team_for_email(sender, m.get("to", ""))
+            debug.append(f"  equipe: {equipe.nom if equipe else None}")
+
+            client_id, task_desc = _extract_task_and_client(subject, body, sender)
+            debug.append(f"  task_desc: {task_desc}")
+            if task_desc:
+                s = SuggestionTache(
+                    sujet=subject[:200], corps=body or "",
+                    dossier_id=client_id, titre_suggere=subject[:200],
+                    description_suggeree=task_desc, mail_uid=uid,
+                    priorite_suggeree="moyenne", statut="en_attente",
+                )
+                db.session.add(s)
+                db.session.commit()
+                debug.append(f"  -> CREATED suggestion id={s.id}")
+
+        return jsonify({
+            'ok': True,
+            'debug': '\n'.join(debug),
+            'count': len(mails),
+        })
+    except Exception as e:
+        import traceback
+        app.logger.error(f"process-direct error: {e}\n{traceback.format_exc()}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}', 'trace': traceback.format_exc()}), 500
+
 @app.route('/api/test/mailbox', methods=['POST'])
 @login_required
 def test_mailbox():

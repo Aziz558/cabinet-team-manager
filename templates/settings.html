@@ -114,7 +114,11 @@
                 <button class="btn-premium btn-premium-outline btn-premium-secondary btn-press w-100 mt-2" id="processAllMailboxBtn">
                     <i class="bi bi-diagram-3 me-1"></i>Relancer l'analyse sur toute la boîte
                 </button>
+                <button class="btn-premium btn-premium-outline btn-premium-danger btn-press w-100 mt-2" id="processDirectMailboxBtn">
+                    <i class="bi bi-bug me-1"></i>Debug: analyser les 3 derniers emails
+                </button>
                 <div id="processMailboxResult" class="small mt-2"></div>
+                <div id="processDirectResult" class="small mt-2" style="font-family:monospace;white-space:pre-wrap;"></div>
                 <button class="btn-premium btn-premium-outline btn-premium-secondary btn-press w-100 mt-2" id="debugMailboxBtn">
                     <i class="bi bi-bug me-1"></i>Debug IMAP
                 </button>
@@ -375,6 +379,25 @@ document.getElementById('processAllMailboxBtn').addEventListener('click', functi
                 }
             } else {
                 box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
+            }
+        });
+});
+
+document.getElementById('processDirectMailboxBtn').addEventListener('click', function() {
+    const btn = this;
+    const box = document.getElementById('processDirectResult');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Debug...';
+    box.textContent = '';
+    fetch('/api/mailbox/process-direct', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-bug me-1"></i>Debug: analyser les 3 derniers emails';
+            if (res.ok) {
+                box.textContent = 'DEBUG:\n' + res.debug + '\n\n' + (res.trace || '');
+            } else {
+                box.textContent = 'ERROR: ' + res.message;
             }
         });
 });
