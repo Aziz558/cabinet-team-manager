@@ -1738,3 +1738,52 @@ def test_mailbox():
         })
     except Exception as e:
         return jsonify({'ok': False, 'message': f'Erreur de connexion: {e}'}), 500
+
+@app.route('/api/test/mailbox-debug', methods=['POST'])
+@login_required
+def test_mailbox_debug():
+    """Debug IMAP: list folders and a few recent messages."""
+    try:
+        from app.integrations.mailbox import MailboxClient
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'Boîte mail non configurée.'}), 400
+        conn = client._connect()
+        conn.select(client.mailbox)
+        status, folders = conn.list()
+        folder_list = []
+        if status == 'OK':
+            for line in folders:
+                try:
+                    folder_list.append(line.decode('utf-8', errors='replace'))
+                except Exception:
+                    folder_list.append(str(line))
+        conn.select('INBOX')
+        status, data = conn.search(None, 'ALL')
+        ids = data[0].split() if data[0] and status == 'OK' else []
+        samples = []
+        for num in ids[-5:]:
+            try:
+                status, msg_data = conn.fetch(num, '(BODY.PEEK[HEADER.FIELDS (SUBJECT FROM)])')
+                if status == 'OK':
+                    header = msg_data[0][1].decode('utf-8', errors='replace')
+                    subj = ''
+                    frm = ''
+                    for line in header.splitlines():
+                        if line.lower().startswith('subject:'):
+                            subj = line.split(':', 1)[1].strip()
+                        elif line.lower().startswith('from:'):
+                            frm = line.split(':', 1)[1].strip()
+                    samples.append({'subject': subj, 'from': frm})
+            except Exception:
+                pass
+        conn.logout()
+        return jsonify({
+            'ok': True,
+            'selected_mailbox': client.mailbox,
+            'folders': folder_list[:20],
+            'inbox_count': len(ids),
+            'samples': samples,
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'message': f'Erreur debug mailbox: {e}'}), 500
