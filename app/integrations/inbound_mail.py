@@ -159,7 +159,7 @@ def _extract_task_regex(subject: str, body: str) -> Optional[str]:
     return None
 
 
-def _extract_task_and_client(subject: str, body: str, sender: str):
+def _extract_task_and_client(subject: str, body: str, sender: str, team_name: str = ""):
     """Extract task and client_id via LLM first, regex fallback."""
     client_id = None
     task_desc = None
@@ -169,7 +169,7 @@ def _extract_task_and_client(subject: str, body: str, sender: str):
         from app.integrations.openrouter import OpenRouterClient
         llm = OpenRouterClient()
         if llm.is_configured():
-            task_desc = _analyze_with_llm(llm, subject, body)
+            task_desc = _analyze_with_llm(llm, subject, body, team_name=team_name)
             if not task_desc:
                 # Fallback to regex
                 task_desc = _extract_task_regex(subject, body)
@@ -185,7 +185,7 @@ def _extract_task_and_client(subject: str, body: str, sender: str):
     return client_id, task_desc
 
 
-def _analyze_with_llm(llm, subject: str, body: str) -> Optional[str]:
+def _analyze_with_llm(llm, subject: str, body: str, team_name: str = "") -> Optional[str]:
     """Use LLM to extract a task from email."""
     try:
         feedback = ""
@@ -204,19 +204,24 @@ def _analyze_with_llm(llm, subject: str, body: str) -> Optional[str]:
         except Exception:
             pass
 
+        team_context = f"Équipe concernée: {team_name}\n" if team_name else ""
         prompt = (
             "Tu es un assistant comptable pour le Cabinet JMH.\n"
             "Analyse l'email ci-dessous et extrais une tâche actionnable.\n\n"
+            "CONTEXTE:\n"
+            "- C'est un cabinet comptable.\n"
+            "- Les emails clients concernent souvent: déclarations fiscales, bilan, TVA, paie, dossiers clients.\n"
+            "- Si c'est une demande client, extrais l'action concrète à faire.\n\n"
+            f"{team_context}"
             "RÈGLES:\n"
             "- 'task': une phrase courte décrivant l'action à faire (pas juste le sujet du mail).\n"
-            "- Si l'email est une notification (LinkedIn, Binance, etc.), réponds {\"task\": null}.\n"
+            "- Si l'email est une notification automatique (LinkedIn, Binance, etc.), réponds {\"task\": null}.\n"
             "- Réponds STRICTEMENT en JSON: {\"task\": \"...\"}\n\n"
         )
         if feedback:
             prompt += f"EXEMPLES DE TÂCHES CORRECTEMENT FORMULÉES:\n{feedback}\n"
 
         prompt += f"Sujet: {subject}\n\nCorps de l'email:\n{body[:2000] if body else '(vide)'}\n\nRéponse JSON:"
-
         messages = [
             {"role": "system", "content": "Tu es un assistant comptable expert qui extrait des tâches actionnables à partir d'emails. Tu réponds uniquement en JSON."},
             {"role": "user", "content": prompt},
@@ -276,9 +281,11 @@ def process_webhook(data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Resolve team from recipient, fallback to sender
         equipe = _resolve_team_for_email(sender_email, recipient)
+        team_name = equipe.nom if equipe else ""
+        app.logger.info(f"Mailbox email from={sender_email} recipient={recipient} equipe={team_name or 'none'}")
 
         # Extract task and client
-        client_id, task_desc = _extract_task_and_client(subject, body, sender_email)
+        client_id, task_desc = _extract_task_and_client(subject, body, sender_email, team_name=team_name)
 
         if not task_desc:
             # Record as skipped
