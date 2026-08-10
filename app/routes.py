@@ -1812,7 +1812,7 @@ def process_mailbox_direct():
     """Process exactly the last 3 emails, print EVERYTHING, return debug info."""
     try:
         from app.integrations.mailbox import MailboxClient
-        from app.integrations.inbound_mail import _is_sender_allowed, _resolve_team_for_email, _extract_task_and_client
+        from app.integrations.inbound_mail import _is_sender_allowed, _resolve_team_for_email, _extract_task_and_client, get_allowed_senders
         from app.models import SuggestionTache
         from flask import session
 
