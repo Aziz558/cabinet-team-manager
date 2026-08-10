@@ -21,11 +21,11 @@ services:
       - key: MAIL_DEFAULT_SENDER
         value: "Cabinet JMH <mohamed-aziz.jlassi@cabinet-jmh.com>"
       - key: MAILBOX_USER
-        value: cabinet.manager.jmh@outlook.com
+        value: cabinet.jmh.taches@gmail.com
       - key: MAILBOX_PASSWORD
         sync: false
       - key: MAILBOX_SERVER
-        value: outlook.office365.com
+        value: imap.gmail.com
       - key: MAILBOX_PORT
         value: "993"
       - key: MAILBOX_USE_SSL
