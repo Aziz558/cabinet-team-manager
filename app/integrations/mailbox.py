@@ -201,11 +201,19 @@ class MailboxClient:
 
     def fetch_unseen(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Fetch unseen emails from the inbox."""
+        return self._fetch_emails("UNSEEN", limit)
+
+    def fetch_recent(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """Fetch most recent emails regardless of seen status."""
+        return self._fetch_emails("ALL", limit)
+
+    def _fetch_emails(self, search_criteria: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Generic method to fetch emails by search criteria."""
         results = []
         try:
             conn = self._connect()
             conn.select(self.mailbox)
-            typ, data = conn.search(None, "UNSEEN")
+            typ, data = conn.search(None, search_criteria)
             if typ != "OK":
                 conn.logout()
                 return results

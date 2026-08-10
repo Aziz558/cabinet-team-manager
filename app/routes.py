@@ -1729,10 +1729,10 @@ def test_mailbox():
         client = MailboxClient()
         if not client.is_configured():
             return jsonify({'ok': False, 'message': 'Boîte mail non configurée.'}), 400
-        mails = client.fetch_unseen(limit=3)
+        mails = client.fetch_recent(limit=5)
         return jsonify({
             'ok': True,
-            'message': f'Connexion OK — {len(mails)} email(s) non lu(s) trouvé(s).',
+            'message': f'Connexion OK — {len(mails)} email(s) récent(s) trouvé(s).',
             'count': len(mails),
             'samples': [{'subject': m['subject'], 'from': m['from']} for m in mails],
         })
