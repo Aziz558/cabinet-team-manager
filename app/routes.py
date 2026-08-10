@@ -1852,16 +1852,18 @@ def process_mailbox_direct():
 
             client_id, task_desc = _extract_task_and_client(subject, body, sender)
             debug.append(f"  task_desc: {task_desc}")
-            if task_desc:
-                s = SuggestionTache(
-                    sujet=subject[:200], corps=body or "",
-                    dossier_id=client_id, titre_suggere=subject[:200],
-                    description_suggeree=task_desc, mail_uid=uid,
-                    priorite_suggeree="moyenne", statut="en_attente",
-                )
-                db.session.add(s)
-                db.session.commit()
-                debug.append(f"  -> CREATED suggestion id={s.id}")
+            if not task_desc:
+                # Fallback: use subject as task description
+                task_desc = f"Tâche liée à: {subject}"
+            s = SuggestionTache(
+                sujet=subject[:200], corps=body or "",
+                dossier_id=client_id or "", titre_suggere=subject[:200],
+                description_suggeree=task_desc, mail_uid=uid,
+                priorite_suggeree="moyenne", statut="en_attente",
+            )
+            db.session.add(s)
+            db.session.commit()
+            debug.append(f"  -> CREATED suggestion id={s.id}")
 
         return jsonify({
             'ok': True,
