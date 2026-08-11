@@ -105,12 +105,11 @@ def send_task_assigned_email_brevo(tache, assignee_id: int) -> bool:
     </body>
     </html>
     """
-    eq = tache.dossier.equipe if tache.dossier and hasattr(tache.dossier, 'equipe') else None
     html_content = render_template_string(
         template,
         prenom=user.prenom,
         nom=user.nom,
-        cree_par=tache.creeur.nom if hasattr(tache, 'creeur') and tache.creeur else 'Votre manager',
+        cree_par=tache.createur.nom if hasattr(tache, 'createur') and tache.createur else 'Votre manager',
         titre=tache.titre,
         description=tache.description or '',
         priorite=tache.priorite,

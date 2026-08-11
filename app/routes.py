@@ -890,9 +890,11 @@ def taches():
                         # Brevo notification
                         try:
                             from app.integrations.brevo import send_task_assigned_email_brevo
-                            send_task_assigned_email_brevo(tache, int(user_id))
-                        except Exception:
-                            pass
+                            result = send_task_assigned_email_brevo(tache, int(user_id))
+                            if not result:
+                                app.logger.warning('Brevo email not sent to user %s', user_id)
+                        except Exception as e:
+                            app.logger.error('Brevo email error for user %s: %s', user_id, e)
                 flash('Tâche créée et notifications envoyées.', 'success')
                 return redirect(url_for('taches'))
         all_taches = Tache.query.order_by(Tache.date_echeance.desc()).all()
@@ -923,9 +925,11 @@ def prendre_en_charge(tache_id):
         # Notify manager via Brevo
         try:
             from app.integrations.brevo import send_task_taken_email_brevo
-            send_task_taken_email_brevo(tache, f"{current_user.prenom} {current_user.nom}")
-        except Exception:
-            pass
+            result = send_task_taken_email_brevo(tache, f"{current_user.prenom} {current_user.nom}")
+            if not result:
+                app.logger.warning('Brevo email not sent (prise en charge) for tache %s', tache.id)
+        except Exception as e:
+            app.logger.error('Brevo email error (prise en charge) for tache %s: %s', tache.id, e)
         flash('Tâche prise en charge.', 'success')
     return redirect(url_for('dashboard'))
 @app.route('/taches/<int:tache_id>/terminer', methods=['POST'])
@@ -949,9 +953,11 @@ def terminer_tache(tache_id):
             )
             try:
                 from app.integrations.brevo import send_task_completed_email_brevo
-                send_task_completed_email_brevo(tache, f"{current_user.prenom} {current_user.nom}")
-            except Exception:
-                pass
+                result = send_task_completed_email_brevo(tache, f"{current_user.prenom} {current_user.nom}")
+                if not result:
+                    app.logger.warning('Brevo email not sent (completion) for tache %s', tache.id)
+            except Exception as e:
+                app.logger.error('Brevo email error (completion) for tache %s: %s', tache.id, e)
         flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('dashboard'))
 @app.route('/taches/<int:tache_id>/supprimer', methods=['POST'])
