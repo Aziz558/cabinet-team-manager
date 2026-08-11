@@ -888,15 +888,22 @@ def taches():
                         msg = f"Nouvelle tâche assignée: {titre} (Priorité: {priorite}, Échéance: {date_echeance.strftime('%d/%m/%Y')})"
                         create_notification(user.id, msg, type_notification='assignation', tache_id=tache.id)
                         # Brevo notification
+                        import traceback
                         try:
                             from app.integrations.brevo import send_task_assigned_email_brevo
                             result = send_task_assigned_email_brevo(tache, int(user_id))
                             if not result:
                                 app.logger.warning('BREVO: email not sent to user %s', user_id)
                                 print(f'BREVO_DEBUG: email not sent to user {user_id}', flush=True)
+                            else:
+                                app.logger.info('BREVO: email sent to user %s', user_id)
+                                print(f'BREVO_DEBUG: email sent to user {user_id}', flush=True)
                         except Exception as e:
+                            error_detail = traceback.format_exc()
                             app.logger.error('BREVO: email error for user %s: %s', user_id, e)
+                            app.logger.error('BREVO: traceback: %s', error_detail)
                             print(f'BREVO_DEBUG: email error for user {user_id}: {e}', flush=True)
+                            print(f'BREVO_TRACEBACK: {error_detail}', flush=True)
                 flash('Tâche créée et notifications envoyées.', 'success')
                 return redirect(url_for('taches'))
         all_taches = Tache.query.order_by(Tache.date_echeance.desc()).all()
