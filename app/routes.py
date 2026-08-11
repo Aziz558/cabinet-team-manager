@@ -1994,3 +1994,131 @@ def test_mailbox_debug():
         })
     except Exception as e:
         return jsonify({'ok': False, 'message': f'Erreur debug mailbox: {e}'}), 500
+
+# ============ API ROUTES MANQUANTES ============
+
+@app.route('/api/taches')
+@login_required
+def api_taches():
+    """Retourne toutes les tâches avec leurs détails (admin/manager)."""
+    try:
+        from app.models import Tache
+        statut = request.args.get('statut', None)
+        priorite = request.args.get('priorite', None)
+        q = Tache.query
+        if statut:
+            q = q.filter_by(statut=statut)
+        if priorite:
+            q = q.filter_by(priorite=priorite)
+        taches = q.order_by(Tache.date_creation.desc()).all()
+        result = []
+        for t in taches:
+            assigne = User.query.get(t.assigne_a) if t.assigne_a else None
+            result.append({
+                'id': t.id,
+                'titre': t.titre,
+                'description': t.description,
+                'priorite': t.priorite,
+                'statut': t.statut,
+                'date_echeance': t.date_echeance.isoformat() if t.date_echeance else '',
+                'date_creation': t.date_creation.isoformat() if t.date_creation else '',
+                'assigne_a': t.assigne_a,
+                'assigne_nom': f"{assigne.prenom} {assigne.nom}" if assigne else None,
+                'dossier_id': t.dossier_id,
+            })
+        return jsonify({'ok': True, 'count': len(result), 'taches': result})
+    except Exception as e:
+        app.logger.error(f"Erreur api taches: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
+@app.route('/api/dossiers')
+@login_required
+def api_dossiers():
+    """Retourne tous les dossiers avec leurs détails (admin/manager)."""
+    try:
+        from app.models import Dossier
+        all_dossiers = Dossier.query.order_by(Dossier.date_creation.desc()).all()
+        result = []
+        for d in all_dossiers:
+            collab = User.query.get(d.collaborateur_id) if d.collaborateur_id else None
+            equipe = Equipe.query.get(d.equipe_id) if d.equipe_id else None
+            taches_count = Tache.query.filter_by(dossier_id=d.id).count()
+            result.append({
+                'id': d.id,
+                'numero': d.numero_dossier,
+                'intitule': d.intitule,
+                'collaborateur_id': d.collaborateur_id,
+                'collaborateur_nom': f"{collab.prenom} {collab.nom}" if collab else None,
+                'equipe_id': d.equipe_id,
+                'equipe_nom': equipe.nom if equipe else None,
+                'regime_tva': d.regime_tva or '',
+                'frequence_tva': d.frequence_tva or '',
+                'date_limite_declaration': d.date_limite_declaration.isoformat() if d.date_limite_declaration else '',
+                'taches_count': taches_count,
+            })
+        return jsonify({'ok': True, 'count': len(result), 'dossiers': result})
+    except Exception as e:
+        app.logger.error(f"Erreur api dossiers: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
+@app.route('/api/users')
+@login_required
+def api_users():
+    """Retourne tous les utilisateurs (admin uniquement)."""
+    try:
+        if current_user.role != 'admin':
+            return jsonify({'ok': False, 'message': 'Accès refusé. Admin uniquement.'}), 403
+        users = User.query.filter_by(actif=True).order_by(User.prenom).all()
+        result = []
+        for u in users:
+            equipe = Equipe.query.get(u.equipes[0].id) if u.equipes else None
+            # Compter tâches assignées
+            taches_a_faire = Tache.query.filter_by(assigne_a=u.id, statut='a_faire').count()
+            taches_en_cours = Tache.query.filter_by(assigne_a=u.id, statut='en_cours').count()
+            taches_terminees = Tache.query.filter_by(assigne_a=u.id, statut='terminee').count()
+            result.append({
+                'id': u.id,
+                'email': u.email,
+                'prenom': u.prenom,
+                'nom': u.nom,
+                'role': u.role,
+                'actif': u.actif,
+                'equipe_id': u.equipes[0].id if u.equipes else None,
+                'equipe_nom': equipe.nom if equipe else None,
+                'taches_a_faire': taches_a_faire,
+                'taches_en_cours': taches_en_cours,
+                'taches_terminees': taches_terminees,
+                'taches_total': taches_a_faire + taches_en_cours + taches_terminees,
+            })
+        return jsonify({'ok': True, 'count': len(result), 'users': result})
+    except Exception as e:
+        app.logger.error(f"Erreur api users: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
+@app.route('/api/notifications')
+@login_required
+def api_notifications():
+    """Retourne les notifications de l'utilisateur connecté."""
+    try:
+        from app.models import Notification
+        limite = int(request.args.get('limite', 50))
+        non_lues = request.args.get('non_lues', 'false').lower() == 'true'
+        from app.models import Notification
+        q = Notification.query.filter_by(destinataire_id=current_user.id)
+        if non_lues:
+            q = q.filter_by(lu=False)
+        notifications = q.order_by(Notification.date_creation.desc()).limit(limite).all()
+        result = []
+        for n in notifications:
+            result.append({
+                'id': n.id,
+                'message': n.message,
+                'type': n.type_notification,
+                'lu': n.lu,
+                'date': n.date_creation.isoformat() if n.date_creation else '',
+            })
+        return jsonify({'ok': True, 'count': len(result), 'notifications': result})
+    except Exception as e:
+        app.logger.error(f"Erreur api notifications: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
