@@ -42,8 +42,11 @@
             <a href="{{ url_for('settings') }}#mailbox" class="nav-link">
                 <i class="bi bi-envelope me-2"></i><span>Boîte mail</span>
             </a>
-            <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
+            <a href="{{ url_for('suggestions_page') }}{% if current_user.role in ('admin', 'manager') %}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
                 <i class="bi bi-lightbulb me-2"></i><span>Suggestions</span>
+            </a>
+            <a href="{{ url_for('notifications_page') }}{% if request.endpoint == 'notifications_page' %}active{% endif %}">
+                <i class="bi bi-bell me-2"></i><span>Notifications</span>
             </a>
             <a href="{{ url_for('team_select') }}" class="nav-link {% if request.endpoint == 'team_select' %}active{% endif %}">
                 <i class="bi bi-people me-2"></i><span>Équipes</span>
@@ -95,9 +98,13 @@
                 <i class="bi bi-check-circle me-2"></i>
                 <span>Mes tâches</span>
             </a>
-            <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
+            <a href="{{ url_for('suggestions_page') }}{% if request.endpoint == 'suggestions_page' %}active{% endif %}">
                 <i class="bi bi-plus-lg me-2"></i>
                 <span>Nouvelle suggestion</span>
+            </a>
+            <a href="{{ url_for('notifications_page') }}{% if request.endpoint == 'notifications_page' %}active{% endif %}">
+                <i class="bi bi-bell me-2"></i>
+                <span>Notifications</span>
             </a>
             <a href="{{ url_for('profil') }}" class="nav-link {% if request.endpoint == 'profil' %}active{% endif %}">
                 <i class="bi bi-person me-2"></i>

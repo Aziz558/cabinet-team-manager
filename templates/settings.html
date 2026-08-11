@@ -76,6 +76,21 @@
                 <div id="openrouterResult" class="small mb-3"></div>
 
                 <hr style="border-color: var(--border-color);">
+                <h6 class="mt-3"><i class="bi bi-envelope-paper me-1" style="color:var(--info)"></i>Brevo (Sendinblue) — Notifications tâches</h6>
+                <p class="text-tertiary small">Envoyer les notifications de tâches via Brevo au lieu de SMTP. Créez une clé API sur <a href="https://app.brevo.com/settings/keys/api" target="_blank">brevey.com/settings/keys/api</a>.</p>
+                <form id="brevoForm" class="mb-3">
+                    <div class="mb-2">
+                        <label class="form-label">Clé API Brevo</label>
+                        {% set brevo_key = settings|selectattr('cle','equalto','BREVO_API_KEY')|list|first %}
+                        <input type="password" name="BREVO_API_KEY" class="input-premium" value="{{ brevo_key.valeur if brevo_key else '' }}">
+                    </div>
+                    <button type="submit" class="btn-premium btn-premium-success btn-press w-100 mb-2">
+                        <i class="bi bi-envelope-paper me-1"></i>Enregistrer Brevo
+                    </button>
+                </form>
+                <div id="brevoResult" class="small mb-3"></div>
+
+                <hr style="border-color: var(--border-color);">
                 <h6 class="mt-3" id="mailbox"><i class="bi bi-envelope me-1" style="color:var(--orange-primary)"></i>Boîte mail Gmail (IMAP)</h6>
                 <p class="text-tertiary small">Configurez une boîte Gmail dédiée. L'application lira les emails reçus et créera des suggestions de tâches via l'IA.</p>
                 <form id="mailboxForm" class="mb-3">
@@ -290,6 +305,29 @@ document.getElementById('smtpForm').addEventListener('submit', function(e) {
         const failed = results.filter(r => !r.ok);
         if (failed.length === 0) {
             box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>SMTP enregistré.</span>';
+        } else {
+            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
+        }
+    });
+});
+
+// Brevo form
+document.getElementById('brevoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const entries = [
+        {cle: 'BREVO_API_KEY', valeur: formData.get('BREVO_API_KEY'), service: 'mail', type_valeur: 'password', masque: true},
+    ];
+    const box = document.getElementById('brevoResult');
+    box.textContent = 'Enregistrement...';
+    Promise.all(entries.map(item => fetch('/api/settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(item),
+    }).then(r => r.json()))).then(results => {
+        const failed = results.filter(r => !r.ok);
+        if (failed.length === 0) {
+            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Brevo enregistré. Les notifications de tâches utiliseront Brevo.</span>';
         } else {
             box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }

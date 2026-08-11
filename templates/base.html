@@ -27,6 +27,11 @@
         </div>
         <div class="app-topbar-right">
             {% if current_user.is_authenticated %}
+            <!-- Notification bell -->
+            <a href="{{ url_for('notifications_page') }}" class="notif-bell-link" style="margin-right:12px;position:relative;text-decoration:none;color:var(--text-primary);font-size:18px;">
+                <i class="bi bi-bell"></i>
+                <span class="notif-badge" id="notifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:8px;padding:0 4px;">0</span>
+            </a>
             {% if current_equipe or all_equipes_for_switch %}
             <div class="dropdown">
                 <div class="team-context-icon" style="border-color: {{ current_equipe.couleur if current_equipe else '#FF8C00' }};" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
@@ -156,7 +161,29 @@
         };
     })();
 
-    // Sidebar toggle (desktop collapse + mobile)
+    // Notification badge polling
+    (function() {
+        var badge = document.getElementById('notifBadge');
+        if (!badge) return;
+        function fetchNotifCount() {
+            fetch('/notifications/non_lues')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.count > 0) {
+                        badge.style.display = 'inline-block';
+                        badge.textContent = data.count > 99 ? '99+' : data.count;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(function() {});
+        }
+        // Check immediately, then every 30 seconds
+        fetchNotifCount();
+        setInterval(fetchNotifCount, 30000);
+    })();
+
+    // Sidebar toggle
     (function() {
         var sidebarCol = document.getElementById('sidebarCol');
         var toggle = document.getElementById('sidebarToggle');

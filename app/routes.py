@@ -886,9 +886,13 @@ def taches():
                     user = User.query.get(int(user_id))
                     if user:
                         msg = f"Nouvelle tâche assignée: {titre} (Priorité: {priorite}, Échéance: {date_echeance.strftime('%d/%m/%Y')})"
-                        create_notification(user.id, msg, type_notification='assignation')
-                        equipe = getattr(current_user, 'equipe', None)
-                        send_email_notification(user.email, f"Nouvelle tâche: {titre}", msg, equipe=equipe)
+                        create_notification(user.id, msg, type_notification='assignation', tache_id=tache.id)
+                        # Brevo notification
+                        try:
+                            from app.integrations.brevo import send_task_assigned_email_brevo
+                            send_task_assigned_email_brevo(tache, int(user_id))
+                        except Exception:
+                            pass
                 flash('Tâche créée et notifications envoyées.', 'success')
                 return redirect(url_for('taches'))
         all_taches = Tache.query.order_by(Tache.date_echeance.desc()).all()
@@ -916,12 +920,12 @@ def prendre_en_charge(tache_id):
             tache_id=tache.id,
             type_notification='prise_en_charge'
         )
-        equipe = getattr(current_user, 'equipe', None)
-        send_email_notification(
-            User.query.get(tache.cree_par).email,
-            f"Prise en charge: {tache.titre}",
-            f"{current_user.prenom} {current_user.nom} a pris en charge la tâche: {tache.titre}"
-        )
+        # Notify manager via Brevo
+        try:
+            from app.integrations.brevo import send_task_taken_email_brevo
+            send_task_taken_email_brevo(tache, f"{current_user.prenom} {current_user.nom}")
+        except Exception:
+            pass
         flash('Tâche prise en charge.', 'success')
     return redirect(url_for('dashboard'))
 @app.route('/taches/<int:tache_id>/terminer', methods=['POST'])
@@ -935,7 +939,7 @@ def terminer_tache(tache_id):
         tache.statut = 'terminee'
         tache.date_completion = datetime.utcnow()
         db.session.commit()
-        # Notify manager
+        # Notify manager via Brevo
         if tache.cree_par != current_user.id:
             create_notification(
                 tache.cree_par,
@@ -943,12 +947,11 @@ def terminer_tache(tache_id):
                 tache_id=tache.id,
                 type_notification='completion'
             )
-            equipe = getattr(current_user, 'equipe', None)
-            send_email_notification(
-                User.query.get(tache.cree_par).email,
-                f"Tâche terminée: {tache.titre}",
-                f"{current_user.prenom} {current_user.nom} a terminé la tâche: {tache.titre}"
-            )
+            try:
+                from app.integrations.brevo import send_task_completed_email_brevo
+                send_task_completed_email_brevo(tache, f"{current_user.prenom} {current_user.nom}")
+            except Exception:
+                pass
         flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('dashboard'))
 @app.route('/taches/<int:tache_id>/supprimer', methods=['POST'])
@@ -981,14 +984,18 @@ def commenter_tache(tache_id):
     return redirect(request.referrer or url_for('dashboard'))
 # ============ NOTIFICATIONS ============
 
-@app.route('/notifications')
+@app.route('/notifications', methods=['GET'])
 @login_required
-def notifications():
+def notifications_page():
+    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.date_envoi.desc()).limit(100).all()
+    return render_template('notifications.html', notifications=notifications)
+
+@app.route('/notifications', methods=['POST'])
+@login_required
+def notifications_mark_all_read():
     notifs = Notification.query.filter_by(user_id=current_user.id).limit(50).all()
-    # Mark as read
     for n in notifs:
-        if not n.lu:
-            n.lu = True
+        n.lu = True
     db.session.commit()
     return jsonify({'notifications': [{'id': n.id, 'message': n.message, 'type': n.type_notification, 'date': n.date_envoi.strftime('%d/%m/%Y %H:%M'), 'lu': n.lu} for n in notifs]})
 @app.route('/notifications/non_lues')
