@@ -114,7 +114,7 @@ function loadSuggestions() {
                 <div class="col-md-6 mb-4">
                     <div class="card-premium h-100 hover-lift animate-fade-in-up">
                         <div class="card-body-premium">
-                            <h5 class="mb-2">${s.titre_suggere || s.sujet || 'Suggestion'}</h5>
+                            <h5 class="mb-2">${s.titre_suggere || s.sujet || s.titre || 'Suggestion'}</h5>
                             <p class="text-tertiary mb-3">${s.description_suggeree || 'Aucune description'}</p>
                             ${s.dossier_nom ? `<p class="text-tertiary small mb-1"><i class="bi bi-folder2 me-1"></i>Dossier: ${s.dossier_nom}</p>` : ''}
                             <p class="text-tertiary small mb-2"><i class="bi bi-flag me-1" style="color:${s.priorite_suggeree === 'haute' ? 'var(--danger)' : s.priorite_suggeree === 'moyenne' ? 'var(--warning)' : 'var(--success)'}"></i>Priorité suggérée: ${s.priorite_suggeree || 'Normale'}</p>
