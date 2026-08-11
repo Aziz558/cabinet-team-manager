@@ -2107,7 +2107,7 @@ def api_notifications():
         q = Notification.query.filter_by(user_id=current_user.id)
         if non_lues:
             q = q.filter_by(lu=False)
-        notifications = q.order_by(Notification.date_creation.desc()).limit(limite).all()
+        notifications = q.order_by(Notification.date_envoi.desc()).limit(limite).all()
         result = []
         for n in notifications:
             result.append({
@@ -2115,7 +2115,7 @@ def api_notifications():
                 'message': n.message,
                 'type': n.type_notification,
                 'lu': n.lu,
-                'date': n.date_creation.isoformat() if n.date_creation else '',
+                'date': n.date_envoi.isoformat() if n.date_envoi else '',
             })
         return jsonify({'ok': True, 'count': len(result), 'notifications': result})
     except Exception as e:
