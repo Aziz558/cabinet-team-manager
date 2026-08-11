@@ -1610,10 +1610,10 @@ def refresh_mailbox_suggestions():
         from app import db
         from app.models import AppSetting
         from app.integrations.mailbox import MailboxClient
+        from flask_login import current_user
 
-        # Vérification que l'utilisateur est manager/admin
-        current_user_role = session.get('user_role', '')
-        if current_user_role not in ['manager', 'admin']:
+        # Vérification que l'utilisateur est manager/admin via current_user
+        if current_user.role not in ['manager', 'admin']:
             return jsonify({'ok': False, 'message': 'Accès réservé au manager ou administrateur.'}), 403
 
         # Vérification que la mailbox est configurée
