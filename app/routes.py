@@ -1598,6 +1598,49 @@ def reset_suggestions():
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
+@app.route('/api/suggestions/refresh_mailbox', methods=['POST'])
+@login_required
+def refresh_mailbox_suggestions():
+    """
+    Scan la mailbox pour de nouveaux emails et créer des suggestions.
+    Réservé au manager/admin uniquement.
+    """
+    try:
+        from app import db
+        from app.models import AppSetting
+        from app.integrations.mailbox import MailboxClient
+
+        # Vérification que l'utilisateur est manager/admin
+        current_user_role = session.get('user_role', '')
+        if current_user_role not in ['manager', 'admin']:
+            return jsonify({'ok': False, 'message': 'Accès réservé au manager ou administrateur.'}), 403
+
+        # Vérification que la mailbox est configurée
+        client = MailboxClient()
+        if not client.is_configured():
+            return jsonify({'ok': False, 'message': 'La boîte mailbox n\'est pas configurée dans les paramètres.'}), 400
+
+        # On supprime les marqueurs de skip pour permettre de relire les emails
+        skipped = AppSetting.query.filter(AppSetting.cle.like('MAILBOX_SKIPPED_%')).all()
+        for s in skipped:
+            db.session.delete(s)
+        db.session.commit()
+
+        # On scanne les emails non lus
+        processed = client.process_new_messages(max_emails=10)
+        
+        return jsonify({
+            'ok': True,
+            'message': f'Scan terminé : {processed} nouvelle(s) suggestion(s) créée(s).',
+            'processed': processed,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur refresh_mailbox: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur lors du scan: {e}'}), 500
+
 @app.route('/api/mailbox/inbound', methods=['POST'])
 def inbound_mail_webhook():
     """

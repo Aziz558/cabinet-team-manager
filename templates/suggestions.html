@@ -12,6 +12,11 @@
         <a href="{{ url_for('api_suggestions') }}?status=en_attente" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">En attente</a>
         <a href="{{ url_for('api_suggestions') }}?status=validee" class="btn-premium btn-premium-outline btn-premium-success btn-sm">Validées</a>
         <a href="{{ url_for('api_suggestions') }}?status=rejetee" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">Rejetées</a>
+        {% if session.get('user_role') in ['manager', 'admin'] %}
+        <button class="btn-premium btn-premium-outline btn-premium-info btn-sm" id="refreshMailboxBtn" onclick="refreshMailbox()">
+            <i class="bi bi-envelope-arrow-up"></i> Scanne la mailbox
+        </button>
+        {% endif %}
         <button class="btn-premium btn-premium-outline btn-premium-warning btn-sm ms-auto" id="resetBtn" onclick="resetSuggestions()">
             <i class="bi bi-arrow-clockwise"></i> Réinitialiser
         </button>
@@ -218,6 +223,35 @@ function resetSuggestions() {
             } else {
                 showToast('Erreur: ' + res.message, 'danger');
             }
+        });
+}
+
+function refreshMailbox() {
+    const btn = document.getElementById('refreshMailboxBtn');
+    if (!btn) return;
+    
+    // Disable button and show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyse en cours...';
+    
+    fetch('/api/suggestions/refresh_mailbox', {method: 'POST'})
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) {
+                showToast(res.message || 'Mailbox analysée !', 'success');
+                loadSuggestions();
+            } else {
+                showToast('Erreur: ' + (res.message || 'Impossible d\'analyser la mailbox'), 'danger');
+            }
+        })
+        .catch(err => {
+            console.error('refreshMailbox error:', err);
+            showToast('Erreur de connexion', 'danger');
+        })
+        .finally(() => {
+            // Restore button
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-envelope-arrow-up"></i> Scanne la mailbox';
         });
 }
 </script>
