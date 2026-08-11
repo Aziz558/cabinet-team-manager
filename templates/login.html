@@ -82,45 +82,70 @@
             padding: 1.5rem;
         }
 
-        /* Logo */
+        /* Logo — BIGGER & PREMIUM */
         .login-logo {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
+        }
+        .login-logo .logo-wrapper {
+            display: inline-block;
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+        .login-logo .logo-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -8px;
+            border-radius: 28px;
+            background: conic-gradient(from 0deg, #FF8C00, transparent, #FF8C00, transparent);
+            animation: logoSpin 4s linear infinite;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            padding: 2px;
+        }
+        @keyframes logoSpin {
+            to { transform: rotate(360deg); }
         }
         .login-logo img {
-            width: 72px;
-            height: 72px;
-            border-radius: 20px;
-            border: 2px solid rgba(255, 140, 0, 0.2);
-            padding: 4px;
-            background: rgba(255, 255, 255, 0.03);
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
+            width: 96px;
+            height: 96px;
+            border-radius: 24px;
+            background: #0a0a0a;
+            padding: 6px;
+            position: relative;
+            z-index: 1;
+            transition: all 0.4s ease;
         }
         .login-logo img:hover {
-            border-color: rgba(255, 140, 0, 0.5);
-            box-shadow: 0 0 30px rgba(255, 140, 0, 0.15);
+            transform: scale(1.05);
         }
         .login-logo h1 {
-            font-weight: 700;
-            font-size: 1.5rem;
+            font-weight: 800;
+            font-size: 1.75rem;
             color: #FFFFFF;
             margin-bottom: 0.25rem;
+            letter-spacing: -0.5px;
         }
-        .login-logo p {
-            color: #666666;
-            font-size: 0.9rem;
+        .login-logo .tagline {
+            color: #888888;
+            font-size: 0.85rem;
+            letter-spacing: 0.3px;
+        }
+        .login-logo .tagline span {
+            color: #FF8C00;
         }
 
-        /* Login card */
+        /* Login card — glassmorphism premium */
         .login-card {
             background: rgba(10, 10, 10, 0.85);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 16px;
-            padding: 2rem;
+            border-radius: 20px;
+            padding: 2.25rem;
             transition: all 0.4s ease;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
         .login-card.fade-out {
             opacity: 0;
@@ -137,10 +162,10 @@
 
         .login-card .input-premium-custom {
             width: 100%;
-            padding: 0.85rem 1rem;
+            padding: 0.9rem 1rem;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
+            border-radius: 12px;
             color: #FFFFFF;
             font-size: 0.95rem;
             font-family: 'Inter', sans-serif;
@@ -148,7 +173,7 @@
             transition: all 0.25s ease;
         }
         .login-card .input-premium-custom::placeholder {
-            color: #666666;
+            color: #555555;
         }
         .login-card .input-premium-custom:focus {
             border-color: rgba(255, 140, 0, 0.4);
@@ -162,9 +187,9 @@
 
         .btn-login {
             width: 100%;
-            padding: 0.85rem;
+            padding: 0.9rem;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             background: linear-gradient(135deg, #FF8C00, #FFA726);
             color: #000000;
             font-weight: 600;
@@ -173,6 +198,10 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         .btn-login:hover {
             transform: translateY(-2px);
@@ -180,6 +209,16 @@
         }
         .btn-login:active {
             transform: translateY(0);
+        }
+        .btn-login .btn-shimmer {
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            animation: shimmer 2.5s infinite;
+        }
+        @keyframes shimmer {
+            to { left: 100%; }
         }
 
         .login-divider {
@@ -203,7 +242,7 @@
 
         .alert-custom {
             padding: 0.75rem 1rem;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 0.85rem;
             margin-bottom: 1rem;
         }
@@ -222,7 +261,7 @@
         .portal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.92);
             backdrop-filter: blur(40px);
             -webkit-backdrop-filter: blur(40px);
             z-index: 1000;
@@ -241,21 +280,54 @@
             opacity: 0;
             transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
             pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
         }
         .portal-logo.active {
             opacity: 1;
             transform: translate(-50%, -50%) scale(1);
         }
         .portal-logo img {
-            width: 100px;
-            height: 100px;
-            border-radius: 24px;
-            box-shadow: 0 0 60px rgba(255, 140, 0, 0.3);
+            width: 120px;
+            height: 120px;
+            border-radius: 28px;
+            box-shadow: 0 0 80px rgba(255, 140, 0, 0.35);
+        }
+        .portal-logo .portal-text {
+            color: #FF8C00;
+            font-weight: 600;
+            font-size: 1.2rem;
+            opacity: 0;
+            animation: portalTextIn 0.5s 0.4s forwards;
+        }
+        @keyframes portalTextIn {
+            to { opacity: 1; }
+        }
+
+        /* Particles */
+        .particle {
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            background: #FF8C00;
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+            animation: particleFloat 6s ease-in-out infinite;
+        }
+        @keyframes particleFloat {
+            0%, 100% { transform: translateY(0) scale(0); opacity: 0; }
+            50% { transform: translateY(-100vh) scale(1); opacity: 0.6; }
         }
 
         @media (max-width: 480px) {
             .login-container { padding: 1rem; }
             .login-card { padding: 1.5rem; }
+            .login-logo img { width: 72px; height: 72px; }
+            .login-logo h1 { font-size: 1.4rem; }
         }
     </style>
 </head>
@@ -266,17 +338,28 @@
     <div class="orb orb-3"></div>
     <div class="grid-overlay"></div>
 
+    <!-- Particles -->
+    <div class="particle" style="left:10%;top:80%;animation-delay:0s;"></div>
+    <div class="particle" style="left:25%;top:60%;animation-delay:1.5s;"></div>
+    <div class="particle" style="left:45%;top:70%;animation-delay:3s;"></div>
+    <div class="particle" style="left:65%;top:85%;animation-delay:0.8s;"></div>
+    <div class="particle" style="left:80%;top:55%;animation-delay:2.2s;"></div>
+    <div class="particle" style="left:90%;top:90%;animation-delay:4s;"></div>
+
     <!-- Portal effect -->
     <div class="portal-overlay" id="portalOverlay"></div>
     <div class="portal-logo" id="portalLogo">
         <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
+        <div class="portal-text">Cabinet JMH</div>
     </div>
 
     <div class="login-container">
         <div class="login-logo">
-            <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
+            <div class="logo-wrapper">
+                <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
+            </div>
             <h1>Cabinet JMH</h1>
-            <p>Gestion d'équipe &amp; comptabilité</p>
+            <p class="tagline">Gestion d'équipe <span>&amp;</span> comptabilité</p>
         </div>
 
         <div class="login-card" id="loginCard">
@@ -302,6 +385,7 @@
                            placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn-login" id="loginBtn">
+                    <span class="btn-shimmer"></span>
                     Se connecter <i class="bi bi-arrow-right ms-1"></i>
                 </button>
             </form>
