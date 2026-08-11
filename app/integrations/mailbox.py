@@ -1,7 +1,7 @@
 """
-Gmail IMAP Mailbox Client.
+Gmail IMAP Mailbox Client — version intelligente.
 Polls a dedicated Gmail inbox for incoming client emails,
-extracts tasks via LLM (OpenRouter) or regex fallback,
+extracts PDF attachments + uses LLM (OpenRouter) avec contexte riche (dossiers existants, profil manager),
 and creates SuggestionTache records.
 
 Setup:
@@ -21,6 +21,8 @@ import os
 import re
 import time
 from email.header import decode_header
+from email.parser import BytesParser
+from email.policy import default
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 
@@ -28,6 +30,15 @@ from app import app, db
 from app.models import SuggestionTache, AppSetting, Equipe
 
 logger = logging.getLogger(__name__)
+
+# Import the intelligent extractor
+from app.integrations.email_extractor import (
+    extract_pdf_text,
+    extract_email_content,
+    analyze_email_intelligent,
+    create_suggestion_from_analysis,
+    quick_extract_from_body,
+)
 
 
 def _get_setting(cle: str) -> Optional[str]:
@@ -90,94 +101,8 @@ def _is_sender_allowed(sender: str) -> bool:
     return False
 
 
-def _resolve_client(subject: str, body: str) -> Optional[int]:
-    """Try to find a Dossier from subject/body regex."""
-    from app.models import Dossier
-    text = f"{subject} {body}"
-    m = re.search(r'(?:dossier|client|affaire)\s*[\-:\s]*([\w\d\-]+)', text, re.I)
-    if m:
-        key = m.group(1).strip()
-        try:
-            dossier = Dossier.query.filter(
-                (Dossier.numero_dossier.ilike(f"%{key}%")) | (Dossier.intitule.ilike(f"%{key}%"))
-            ).first()
-            if dossier:
-                return dossier.id
-        except Exception:
-            pass
-    return None
-
-
-def _extract_task_regex(subject: str, body: str) -> Optional[str]:
-    """Regex fallback for task extraction."""
-    text = f"{subject} {body}"
-    triggers = [
-        r"(?:à faire|action|tâche|faire|préparer|valider|envoyer|merci de)\s*[\-:\s]*(.+)",
-    ]
-    for pat in triggers:
-        m = re.search(pat, text, re.I | re.S)
-        if m:
-            return m.group(1).strip().split("\n")[0][:200]
-    return None
-
-
-def _analyze_with_llm(llm, subject: str, body: str) -> Optional[str]:
-    """Use LLM to extract a task from email content."""
-    import json
-    try:
-        prompt = (
-            "Tu es un assistant comptable pour le Cabinet JMH.\n"
-            "Analyse l'email ci-dessous et extrais une tâche actionnable.\n\n"
-            "RÈGLES:\n"
-            "- 'task': une phrase courte décrivant l'action à faire.\n"
-            "- Si l'email est une notification automatique, réponds {\"task\": null}.\n"
-            "- Réponds STRICTEMENT en JSON: {\"task\": \"...\"}\n\n"
-            f"Sujet: {subject}\n\n"
-            f"Corps:\n{body[:2000] if body else '(vide)'}\n\nRéponse JSON:"
-        )
-        messages = [
-            {"role": "system", "content": "Tu es un assistant comptable expert. Réponds uniquement en JSON."},
-            {"role": "user", "content": prompt},
-        ]
-        raw = llm.chat(messages, model=llm.model)
-        if not raw:
-            return None
-        raw = raw.strip()
-        if raw.startswith("```"):
-            raw = re.sub(r"```(?:json)?", "", raw).replace("```", "").strip()
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            task = (data.get("task") or "").strip()[:200]
-            return task if task else None
-    except Exception:
-        pass
-    return None
-
-
-def _extract_task_and_client(subject: str, body: str, sender: str):
-    """Extract task and client_id via LLM first, regex fallback."""
-    client_id = None
-    task_desc = None
-
-    try:
-        from app.integrations.openrouter import OpenRouterClient
-        llm = OpenRouterClient()
-        if llm.is_configured():
-            task_desc = _analyze_with_llm(llm, subject, body)
-            if not task_desc:
-                task_desc = _extract_task_regex(subject, body)
-        else:
-            task_desc = _extract_task_regex(subject, body)
-    except Exception as e:
-        logger.warning(f"LLM analysis failed, falling back to regex: {e}")
-        task_desc = _extract_task_regex(subject, body)
-
-    client_id = _resolve_client(subject, body)
-    return client_id, task_desc
-
-
 class MailboxClient:
-    """Gmail IMAP client for polling incoming emails."""
+    """Gmail IMAP client for polling incoming emails — avec extraction PDF + LLM intelligent."""
 
     def __init__(self):
         self.user = _get_setting("MAILBOX_USER") or os.environ.get("MAILBOX_USER", "")
@@ -214,7 +139,7 @@ class MailboxClient:
         return self._fetch_emails("ALL", limit)
 
     def _fetch_emails(self, search_criteria: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Generic method to fetch emails by search criteria."""
+        """Generic method to fetch emails by search criteria — avec extraction PDF."""
         results = []
         try:
             conn = self._connect()
@@ -231,31 +156,47 @@ class MailboxClient:
                     if typ != "OK":
                         continue
                     raw = msg_data[0][1]
-                    mail = email.message_from_bytes(raw)
+                    
+                    # Parse with policy for better handling
+                    try:
+                        mail = email.message_from_bytes(raw, policy=default)
+                    except Exception:
+                        mail = email.message_from_bytes(raw)
 
                     subject = _decode_mime_words(mail.get("Subject", ""))
                     from_addr = _extract_email_from(_decode_mime_words(mail.get("From", "")))
                     message_id = mail.get("Message-ID", mail.get("Message-Id", ""))
 
-                    body = ""
-                    if mail.is_multipart():
-                        for part in mail.walk():
-                            if part.get_content_type() == "text/plain":
-                                try:
-                                    body += part.get_payload(decode=True).decode("utf-8", errors="replace")
-                                except Exception:
-                                    pass
-                    else:
-                        try:
-                            body = mail.get_payload(decode=True).decode("utf-8", errors="replace")
-                        except Exception:
-                            pass
+                    # Use new extractor for full content + PDFs
+                    body_plain, body_html = "", ""
+                    pdf_texts = []
+                    try:
+                        subject_full, body_plain, pdf_texts = extract_email_content(mail)
+                        subject = subject_full or subject
+                    except Exception as e:
+                        logger.warning(f"PDF extraction failed for email {num}: {e}")
+                        # Fallback to old method
+                        body_plain = ""
+                        if mail.is_multipart():
+                            for part in mail.walk():
+                                if part.get_content_type() == "text/plain":
+                                    try:
+                                        body_plain += part.get_payload(decode=True).decode("utf-8", errors="replace")
+                                    except Exception:
+                                        pass
+                        else:
+                            try:
+                                body_plain = mail.get_payload(decode=True).decode("utf-8", errors="replace")
+                            except Exception:
+                                pass
 
                     results.append({
                         "uid": _build_uid(from_addr, subject, message_id),
                         "subject": subject,
                         "from": from_addr,
-                        "body": body[:5000],
+                        "body": body_plain[:8000],
+                        "pdf_texts": pdf_texts,
+                        "pdf_count": len(pdf_texts),
                         "raw_from": _decode_mime_words(mail.get("From", "")),
                     })
                 except Exception as e:
@@ -267,7 +208,7 @@ class MailboxClient:
         return results
 
     def process_new_messages(self, max_emails: int = 5) -> int:
-        """Poll unseen emails and create suggestions."""
+        """Poll unseen emails and create suggestions — avec LLM intelligent."""
         mails = self.fetch_unseen(limit=max_emails)
         count = 0
         for m in mails:
@@ -280,32 +221,50 @@ class MailboxClient:
                 subject = m.get("subject", "")
                 body = m.get("body", "")
                 sender = m.get("from", "")
+                pdf_texts = m.get("pdf_texts", [])
+                pdf_count = m.get("pdf_count", 0)
 
                 if not _is_sender_allowed(sender):
                     logger.info(f"Mailbox skip sender={sender} subject={subject[:60]}")
                     continue
 
-                client_id, task_desc = _extract_task_and_client(subject, body, sender)
+                # Log what we found
+                logger.info(f"Processing email: subject='{subject[:60]}' body_len={len(body)} pdfs={pdf_count}")
 
-                if not task_desc:
-                    AppSetting.insert_setting(f"MAILBOX_SKIPPED_{uid}", "skipped", "system")
-                    logger.info(f"Mailbox skip no_task uid={uid} subject={subject[:60]}")
-                    continue
+                # Use the intelligent extractor with PDFs
+                analysis = analyze_email_intelligent(subject, body, pdf_texts, sender)
 
-                suggestion = SuggestionTache(
-                    sujet=subject[:200],
-                    corps=body or "",
-                    dossier_id=client_id,
-                    titre_suggere=subject[:200],
-                    description_suggeree=task_desc,
-                    mail_uid=uid,
-                    priorite_suggeree="moyenne",
-                    statut="en_attente",
-                )
+                if not analysis:
+                    # Fallback to regex if LLM fails or returns nothing
+                    task_desc = quick_extract_from_body(body, subject)
+                    if not task_desc:
+                        AppSetting.insert_setting(f"MAILBOX_SKIPPED_{uid}", "skipped", "system")
+                        logger.info(f"Mailbox skip no_task uid={uid} subject={subject[:60]}")
+                        continue
+                    
+                    # Create simple suggestion with regex fallback
+                    suggestion = SuggestionTache(
+                        sujet=subject[:200],
+                        corps=body or "",
+                        titre_suggere=subject[:200],
+                        description_suggeree=task_desc,
+                        mail_uid=uid,
+                        priorite_suggeree="moyenne",
+                        statut="en_attente",
+                    )
+                else:
+                    # Create suggestion from intelligent analysis
+                    suggestion = create_suggestion_from_analysis(
+                        subject, body, pdf_texts, uid, sender
+                    )
+                    if not suggestion:
+                        logger.warning(f"Failed to create suggestion from analysis for uid={uid}")
+                        continue
+
                 db.session.add(suggestion)
                 db.session.commit()
                 count += 1
-                logger.info(f"Suggestion créée depuis email: {subject[:60]}")
+                logger.info(f"Suggestion créée: '{analysis.get('titre', subject[:40])}' dossier={analysis.get('dossier_nom')} priorite={analysis.get('priorite')}")
             except Exception as e:
                 db.session.rollback()
                 logger.warning(f"Email processing error: {e}")

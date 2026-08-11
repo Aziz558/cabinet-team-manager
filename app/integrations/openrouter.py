@@ -46,7 +46,7 @@ class OpenRouterClient:
         payload: Dict[str, Any] = {
             "model": model or self.model,
             "messages": messages,
-            "max_tokens": 300,
+            "max_tokens": 1500,
         }
         try:
             resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=20)
