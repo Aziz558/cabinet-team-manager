@@ -42,7 +42,7 @@
             <a href="{{ url_for('settings') }}#mailbox" class="nav-link">
                 <i class="bi bi-envelope me-2"></i><span>Boîte mail</span>
             </a>
-            <a href="{{ url_for('suggestions_page') }}{% if current_user.role in ('admin', 'manager') %}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
+            <a href="{{ url_for('suggestions_page') }}" class="nav-link {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
                 <i class="bi bi-lightbulb me-2"></i><span>Suggestions</span>
             </a>
             <a href="{{ url_for('notifications_page') }}{% if request.endpoint == 'notifications_page' %}active{% endif %}">
