@@ -1477,7 +1477,30 @@ def validate_suggestion(suggestion_id):
     try:
         from app.models import SuggestionTache, Tache, Notification
         data = request.get_json() or {}
-        suggestion = SuggestionTache.query.get_or_404(suggestion_id)
+        suggestion = SuggestionTache.query.get(suggestion_id)
+        # Handle deadline suggestions (no DB record — suggestion_id=0)
+        if not suggestion and suggestion_id == 0:
+            from flask import abort
+            from datetime import date
+            did = data.get('dossier_id') or data.get('dossier')
+            if did:
+                dossier = Dossier.query.get(int(did))
+                if dossier:
+                    suggestion = SuggestionTache(
+                        titre_suggere=f"Déclaration {dossier.regime_tva or 'fiscale'} - {dossier.numero_dossier}",
+                        description_suggeree="",
+                        statut='en_attente',
+                        source='deadline',
+                        dossier_id=dossier.id,
+                        assigne_a=dossier.collaborateur_id,
+                        date_echeance_suggeree=dossier.date_limite_declaration,
+                        priorite_suggeree='haute' if (dossier.date_limite_declaration - date.today()).days <= 3 else 'moyenne',
+                    )
+                    db.session.add(suggestion)
+                    db.session.commit()
+        if not suggestion:
+            from flask import abort
+            abort(404)
         suggestion.statut = 'validee'
         suggestion.valide_par = current_user.id
         suggestion.date_validation = datetime.utcnow()
