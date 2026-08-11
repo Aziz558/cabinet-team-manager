@@ -12,7 +12,7 @@
 
 <!-- Actual KPIs -->
 <div class="stats-grid" id="kpiContentCollab" style="display: none;">
-    <div class="stat-card hover-lift stagger-1">
+    <div class="stat-card stagger-1">
         <div class="stat-card-icon">
             <i class="bi bi-clipboard-check"></i>
         </div>
@@ -25,7 +25,7 @@
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift stagger-2">
+    <div class="stat-card stagger-2">
         <div class="stat-card-icon" style="background: rgba(33, 150, 243, 0.15);">
             <i class="bi bi-exclamation-triangle" style="color: var(--warning);"></i>
         </div>
@@ -38,7 +38,7 @@
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift stagger-3">
+    <div class="stat-card stagger-3">
         <div class="stat-card-icon" style="background: rgba(155, 93, 229, 0.15);">
             <i class="bi bi-graph-up-arrow" style="color: var(--purple, #9B5DE5);"></i>
         </div>
@@ -85,7 +85,7 @@
             <div class="card-body-premium">
                 {% if taches_jour %}
                     {% for t in taches_jour %}
-                    <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
+                    <div class="task-item d-flex justify-content-between align-items-center p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
                         <div>
                             <strong>{{ t.titre }}</strong>
                             <br><small class="text-tertiary">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
@@ -125,7 +125,7 @@
     <div class="card-body-premium">
         {% if taches_semaine %}
             {% for t in taches_semaine %}
-            <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
+            <div class="task-item d-flex justify-content-between align-items-center p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
                 <div>
                     <strong>{{ t.titre }}</strong>
                     <br><small class="text-tertiary">{{ t.date_echeance.strftime('%d/%m/%Y') }} - {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>

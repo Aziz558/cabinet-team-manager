@@ -13,7 +13,7 @@
 </div>
 <!-- Actual KPIs (hidden until loaded) -->
 <div class="stats-grid stagger-1" id="kpiContent" style="display: none;">
-    <div class="stat-card hover-lift stagger-1">
+    <div class="stat-card stagger-1">
         <div class="stat-card-icon">
             <i class="bi bi-people"></i>
         </div>
@@ -26,7 +26,7 @@
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift stagger-2">
+    <div class="stat-card stagger-2">
         <div class="stat-card-icon" style="background: rgba(33, 150, 243, 0.15);">
             <i class="bi bi-folder2-open" style="color: var(--info);"></i>
         </div>
@@ -39,7 +39,7 @@
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift stagger-3">
+    <div class="stat-card stagger-3">
         <div class="stat-card-icon" style="background: rgba(244, 67, 54, 0.15);">
             <i class="bi bi-exclamation-triangle" style="color: var(--danger);"></i>
         </div>
@@ -52,7 +52,7 @@
             </div>
         </div>
     </div>
-    <div class="stat-card hover-lift stagger-4">
+    <div class="stat-card stagger-4">
         <div class="stat-card-icon" style="background: rgba(255, 152, 0, 0.15);">
             <i class="bi bi-star" style="color: var(--warning);"></i>
         </div>
@@ -236,7 +236,7 @@
             <div class="card-body-premium">
                 {% if taches_jour %}
                     {% for t in taches_jour %}
-                    <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
+                    <div class="task-item d-flex justify-content-between align-items-center p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
                         <div>
                             <strong>{{ t.titre }}</strong>
                             <br><small class="text-tertiary">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
@@ -271,7 +271,7 @@
             <div class="card-body-premium">
                 {% if taches_semaine %}
                     {% for t in taches_semaine %}
-                    <div class="task-item d-flex justify-content-between align-items-center hover-lift p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
+                    <div class="task-item d-flex justify-content-between align-items-center p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
                         <div>
                             <strong>{{ t.titre }}</strong>
                             <br><small class="text-tertiary">{{ t.date_echeance.strftime('%d/%m/%Y') }} - {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>

@@ -10,7 +10,7 @@
     </button>
 </div>
 
-<div class="card-premium hover-lift animate-fade-in-up stagger-1">
+<div class="card-premium animate-fade-in-up stagger-1">
     <div class="card-body-premium">
         <div class="table-responsive">
             <table class="table-premium">
@@ -33,7 +33,7 @@
                 </thead>
                 <tbody>
                     {% for m in membres %}
-                    <tr class="hover-lift">
+                    <tr>
                         <td><img src="{{ url_for('uploaded_file', filename=m.photo_profil) }}" class="rounded-circle" width="36" height="36" alt=""></td>
                         <td><strong>{{ m.prenom }} {{ m.nom }}</strong></td>
                         <td class="text-tertiary">{{ m.email }}</td>

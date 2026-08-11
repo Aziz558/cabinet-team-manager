@@ -172,13 +172,13 @@ p {
 
 .card-premium:hover {
     background: var(--bg-card-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-    border-color: rgba(255, 140, 0, 0.15);
+    transform: none;
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-color);
 }
 
 .card-premium:active {
-    transform: translateY(-1px);
+    transform: none;
 }
 
 .card-header-premium {
@@ -223,8 +223,8 @@ p {
 
 .btn-premium-primary:hover {
     background: linear-gradient(135deg, #FFB347 0%, #FF8C00 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(255, 140, 0, 0.3);
+    transform: none;
+    box-shadow: 0 2px 10px rgba(255, 140, 0, 0.2);
 }
 
 .btn-premium-primary:active {
@@ -265,7 +265,7 @@ p {
 }
 .btn-premium-success:hover {
     background: #5cdf66;
-    transform: translateY(-1px);
+    transform: none;
 }
 .btn-premium-warning {
     background: var(--warning);
@@ -273,7 +273,7 @@ p {
 }
 .btn-premium-warning:hover {
     background: #ffb74d;
-    transform: translateY(-1px);
+    transform: none;
 }
 .btn-premium-danger {
     background: var(--danger);
@@ -281,7 +281,7 @@ p {
 }
 .btn-premium-danger:hover {
     background: #ff6b6b;
-    transform: translateY(-1px);
+    transform: none;
 }
 .btn-premium-info {
     background: var(--info);
@@ -289,7 +289,7 @@ p {
 }
 .btn-premium-info:hover {
     background: #63d1f8;
-    transform: translateY(-1px);
+    transform: none;
 }
 
 /* Outline variants (for combined btn-premium-outline + color) */
@@ -847,8 +847,8 @@ p {
 
 .stat-card:hover {
     background: var(--bg-card-hover);
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: none;
+    box-shadow: var(--shadow-md);
 }
 
 .stat-card-icon {
@@ -1075,8 +1075,8 @@ p {
     box-shadow: 0 0 12px rgba(76, 175, 80, 0.3);
 }
 .btn-premium-success:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+    transform: none;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
 }
 
 /* Premium form elements */
@@ -1269,12 +1269,10 @@ p {
 /* Bootstrap text-end utility */
 .text-end { text-align: right !important; }
 
-/* hover-lift — card hover effect */
+/* hover-lift — card hover effect (DISABLED globally, kept for team_select) */
 .hover-lift {
-    transition: var(--transition);
 }
 .hover-lift:hover {
-    transform: translateY(-2px);
 }
 
 /* Team context icon in navbar */
@@ -1586,7 +1584,7 @@ p {
 .animate-scale-in { animation: scaleIn 0.4s var(--transition) forwards; }
 .animate-slide-down { animation: slideDown 0.5s var(--transition) forwards; }
 .animate-pulse-glow { animation: pulse-glow 2s infinite; }
-.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-float { animation: none; }
 .animate-glow-pulse { animation: glow-pulse 2s infinite; }
 
 /* Stagger Delays */
@@ -1597,24 +1595,24 @@ p {
 .stagger-5 { animation-delay: 0.5s; }
 .stagger-6 { animation-delay: 0.6s; }
 
-/* Card Hover Lift */
+/* Card Hover Lift — DISABLED globally, kept for team_select */
 .hover-lift {
     transition: transform var(--transition), box-shadow var(--transition);
 }
 
 .hover-lift:hover {
-    transform: translateY(-6px);
-    box-shadow: var(--shadow-lg);
+    transform: none;
+    box-shadow: none;
 }
 
-/* Card Tilt Effect */
+/* Card Tilt Effect — DISABLED */
 .tilt-card {
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    transform-style: preserve-3d;
+    transform-style: none;
 }
 
 .tilt-card:hover {
-    transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) scale(1.02);
+    transform: none;
 }
 
 /* Image Zoom on Hover */
@@ -1746,7 +1744,7 @@ p {
     transition: all var(--transition-fast);
 }
 
-.interactive:hover { transform: translateY(-2px); }
+.interactive:hover { transform: none; }
 .interactive:active { transform: scale(0.98); }
 
 /* Loading Spinner */
@@ -2157,7 +2155,7 @@ p {
 }
 
 .card-premium:hover, .stat-card:hover {
-    animation: card-glow 2s ease-in-out infinite;
+    animation: none;
 }
 
 /* Premium border glow on hover */
@@ -2174,7 +2172,7 @@ p {
 }
 
 .card-premium:hover::before {
-    opacity: 1;
+    opacity: 0;
 }
 
 /* Shine effect on cards */
@@ -2204,19 +2202,19 @@ p {
 }
 
 .card-premium:hover::after {
-    opacity: 1;
-    animation: card-shine 1.5s ease-in-out infinite;
+    opacity: 0;
+    animation: none;
 }
 
-/* Floating cards with hover lift */
+/* Floating cards with hover lift — DISABLED globally, kept for team_select */
 .hover-lift {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
                 box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .hover-lift:hover {
-    transform: translateY(-6px) scale(1.01);
-    box-shadow: 0 12px 40px rgba(255, 140, 0, 0.2);
+    transform: none;
+    box-shadow: none;
 }
 
 /* Premium button pulse glow */
@@ -2287,7 +2285,7 @@ p {
 }
 
 .badge-float {
-    animation: float-badge 3s ease-in-out infinite;
+    animation: none;
 }
 
 /* Stats card counter highlight */
@@ -2342,9 +2340,9 @@ p {
 }
 
 .suggestion-card:hover {
-    border-color: var(--orange-primary);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(255, 140, 0, 0.15);
+    border-color: var(--border-color);
+    transform: none;
+    box-shadow: var(--shadow-md);
 }
 
 .suggestion-card .suggestion-status {

@@ -196,7 +196,7 @@
                         </thead>
                         <tbody>
                             {% for s in settings %}
-                            <tr class="hover-lift">
+                            <tr>
                                 <td><span class="badge badge-secondary">{{ s.service }}</span></td>
                                 <td>{{ s.cle }}</td>
                                 <td>{{ s.valeur if not s.masque else '••••••••' }}</td>
