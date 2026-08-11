@@ -1487,13 +1487,12 @@ def validate_suggestion(suggestion_id):
                 dossier = Dossier.query.get(int(did))
                 if dossier:
                     suggestion = SuggestionTache(
+                        sujet=f"deadline-{dossier.numero_dossier}",
+                        corps=f"Deadline: {dossier.regime_tva or 'fiscale'} - {dossier.numero_dossier}",
                         titre_suggere=f"Déclaration {dossier.regime_tva or 'fiscale'} - {dossier.numero_dossier}",
                         description_suggeree="",
                         statut='en_attente',
-                        source='deadline',
                         dossier_id=dossier.id,
-                        assigne_a=dossier.collaborateur_id,
-                        date_echeance_suggeree=dossier.date_limite_declaration,
                         priorite_suggeree='haute' if (dossier.date_limite_declaration - date.today()).days <= 3 else 'moyenne',
                     )
                     db.session.add(suggestion)
