@@ -12,7 +12,7 @@
         <a href="{{ url_for('api_suggestions') }}?status=en_attente" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">En attente</a>
         <a href="{{ url_for('api_suggestions') }}?status=validee" class="btn-premium btn-premium-outline btn-premium-success btn-sm">Validées</a>
         <a href="{{ url_for('api_suggestions') }}?status=rejetee" class="btn-premium btn-premium-outline btn-premium-danger btn-sm">Rejetées</a>
-        {% if session.get('user_role') in ['manager', 'admin'] %}
+        {% if current_user.is_authenticated and current_user.role in ['manager', 'admin'] %}
         <button class="btn-premium btn-premium-outline btn-premium-info btn-sm" id="refreshMailboxBtn" onclick="refreshMailbox()">
             <i class="bi bi-envelope-arrow-up"></i> Scanne la mailbox
         </button>
@@ -115,6 +115,8 @@ function loadSuggestions() {
 
             let html = '<div class="row stagger-1">';
             data.suggestions.forEach(s => {
+                const suggestionId = s.id || null;
+                const hasId = suggestionId !== null && suggestionId !== undefined;
                 html += `
                 <div class="col-md-6 mb-4">
                     <div class="card-premium h-100 hover-lift animate-fade-in-up">
@@ -124,7 +126,9 @@ function loadSuggestions() {
                             ${s.dossier_nom ? `<p class="text-tertiary small mb-1"><i class="bi bi-folder2 me-1"></i>Dossier: ${s.dossier_nom}</p>` : ''}
                             <p class="text-tertiary small mb-2"><i class="bi bi-flag me-1" style="color:${s.priorite_suggeree === 'haute' ? 'var(--danger)' : s.priorite_suggeree === 'moyenne' ? 'var(--warning)' : 'var(--success)'}"></i>Priorité suggérée: ${s.priorite_suggeree || 'Normale'}</p>
                             <small class="text-muted">Créée le ${s.date_creation || s.date_echeance || "-"} ${s.source ? `| Source: ${s.source}` : ''}</small>
+                            ${!hasId ? '<p class="text-danger small mt-2"><i class="bi bi-exclamation-triangle"></i> Cette suggestion n\'a pas d\'ID valide (données incomplètes)</p>' : ''}
                             <div class="mt-3 d-flex gap-2">
+                                ${hasId ? `
                                 <button class="btn-premium btn-premium-success btn-sm" onclick="openValidateModal(${s.id}, '${(s.titre_suggere || s.sujet || '').replace(/'/g, "\\'")}', '${(s.description_suggeree || '').replace(/'/g, "\\'")}')">
                                     <i class="bi bi-check"></i> Valider
                                 </button>
@@ -135,6 +139,7 @@ function loadSuggestions() {
                                 <button class="btn-premium btn-premium-outline btn-premium-danger btn-sm" onclick="deleteSuggestion(${s.id}, '${(s.titre_suggere || s.sujet || '').replace(/'/g, "\\'")}')">
                                     <i class="bi bi-trash"></i> Supprimer
                                 </button>
+                                ` : '<button class="btn-premium btn-sm" disabled style="opacity:0.5"><i class="bi bi-lock"></i> Actions indisponibles</button>'}
                             </div>
                         </div>
                     </div>
