@@ -93,6 +93,17 @@ with app.app_context():
     except Exception as e:
         app.logger.warning(f"Migration error (equipes mailbox): {e}")
 
+    # Migrate: add photo_base64 column if missing
+    try:
+        inspector = db.inspect(db.engine)
+        users_cols = [col['name'] for col in inspector.get_columns('users')]
+        if 'photo_base64' not in users_cols:
+            with db.engine.begin() as conn:
+                conn.execute(db.text("ALTER TABLE users ADD COLUMN photo_base64 TEXT"))
+                app.logger.info("✅ Added photo_base64 column to users table")
+    except Exception as e:
+        app.logger.warning(f"Migration error (photo_base64): {e}")
+
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
