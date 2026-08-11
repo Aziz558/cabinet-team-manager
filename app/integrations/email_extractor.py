@@ -152,6 +152,18 @@ def load_dossiers_for_context() -> List[Dict[str, Any]]:
     return dossiers
 
 
+def load_custom_instructions() -> str:
+    """Load custom LLM instructions from AppSetting."""
+    try:
+        from app.models import AppSetting
+        setting = AppSetting.query.filter_by(cle='LLM_CUSTOM_INSTRUCTIONS').first()
+        if setting and setting.valeur:
+            return str(setting.valeur).strip()
+    except Exception:
+        pass
+    return ''
+
+
 def load_manager_context() -> Dict[str, Any]:
     """Load manager/team context for LLM."""
     context = {
@@ -175,7 +187,8 @@ def load_manager_context() -> Dict[str, Any]:
 
 
 def _build_smart_prompt(subject: str, body: str, pdf_texts: List[str],
-                        dossiers: List[Dict], manager_ctx: Dict[str, Any]) -> str:
+                        dossiers: List[Dict], manager_ctx: Dict[str, Any],
+                        custom_instructions: str = '') -> str:
     """Build a rich LLM prompt with maximum context for intelligent extraction.
 
     This prompt is designed to:
@@ -207,6 +220,11 @@ def _build_smart_prompt(subject: str, body: str, pdf_texts: List[str],
         pdf_content = "\nPIECES JOINTES (PDF):\n"
         for pdf_text in pdf_texts[:5]:  # Limit to 5 PDFs for speed
             pdf_content += f"{pdf_text[:1500]}\n\n"
+
+    # Build custom instructions block
+    custom_instructions_block = ""
+    if custom_instructions and custom_instructions.strip():
+        custom_instructions_block = f"\nINSTRUCTIONS PERSONNALISÉES:\n{custom_instructions}\n\n"
 
     prompt = f"""Tu es un assistant comptable expert pour le Cabinet JMH{manager_info}.
 
@@ -244,7 +262,7 @@ REGLE POUR DATE:
 - Si pas de date, mets "2026-08-31" (fin de mois par défaut)
 - Formats courants: JJ/MM/AAAA, "avant le X", "échéance: ..."
 
-{dossier_list}EMAIL À ANALYSER:
+{custom_instructions_block}{dossier_list}EMAIL À ANALYSER:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SUJET: {subject}
 
@@ -367,9 +385,10 @@ def analyze_email_intelligent(subject: str, body: str, pdf_texts: List[str],
     # Load context (fast)
     dossiers = load_dossiers_for_context()
     manager_ctx = load_manager_context()
+    custom_instructions = load_custom_instructions()
 
     # Build rich prompt
-    prompt = _build_smart_prompt(subject, body, pdf_texts, dossiers, manager_ctx)
+    prompt = _build_smart_prompt(subject, body, pdf_texts, dossiers, manager_ctx, custom_instructions)
 
     # Call LLM
     try:

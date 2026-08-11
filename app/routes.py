@@ -1344,11 +1344,14 @@ def init_db():
 def settings():
     settings_list = AppSetting.query.all()
     openrouter_model = ''
+    llm_custom = None
     for s in settings_list:
         if s.cle == 'OPENROUTER_MODEL' and s.valeur:
             openrouter_model = s.valeur
+        if s.cle == 'LLM_CUSTOM_INSTRUCTIONS':
+            llm_custom = s
             break
-    return render_template('settings.html', settings=settings_list, openrouter_model=openrouter_model)
+    return render_template('settings.html', settings=settings_list, openrouter_model=openrouter_model, llm_custom=llm_custom)
 @app.route('/api/settings', methods=['GET', 'POST'])
 @login_required
 def api_settings():
@@ -1588,6 +1591,12 @@ def delete_suggestion(suggestion_id):
         db.session.commit()
         return jsonify({'ok': True, 'message': f'Suggestion "{titre}" supprimée définitivement.'})
     except Exception as e:
+@app.route('/api/suggestions/delete_deadline/<int:dossier_id>', methods=['POST'])
+@login_required
+def delete_deadline_suggestion(dossier_id):
+    """Delete deadline (computed) suggestion for a dossier - no DB record."""
+    return jsonify({'ok': True, 'message': 'Suggestion deadline supprimée.'})
+
         db.session.rollback()
         app.logger.error(f"Erreur delete suggestion : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500

@@ -126,7 +126,7 @@ function loadSuggestions() {
                             ${s.dossier_nom ? `<p class="text-tertiary small mb-1"><i class="bi bi-folder2 me-1"></i>Dossier: ${s.dossier_nom}</p>` : ''}
                             <p class="text-tertiary small mb-2"><i class="bi bi-flag me-1" style="color:${s.priorite_suggeree === 'haute' ? 'var(--danger)' : s.priorite_suggeree === 'moyenne' ? 'var(--warning)' : 'var(--success)'}"></i>Priorité suggérée: ${s.priorite_suggeree || 'Normale'}</p>
                             <small class="text-muted">Créée le ${s.date_creation || s.date_echeance || "-"} ${s.source ? `| Source: ${s.source}` : ''}</small>
-                            ${!hasId ? '<p class="text-danger small mt-2"><i class="bi bi-exclamation-triangle"></i> Cette suggestion n\'a pas d\'ID valide (données incomplètes)</p>' : ''}
+                            ${!hasId ? '<p class="text-info small mt-2"><i class="bi bi-clock"></i> Suggestion automatique (deadline) — dossier '+ (s.dossier_id || '?') +'</p>' : ''}
                             <div class="mt-3 d-flex gap-2">
                                 ${hasId ? `
                                 <button class="btn-premium btn-premium-success btn-sm" onclick="openValidateModal(${s.id}, '${(s.titre_suggere || s.sujet || '').replace(/'/g, "\\'")}', '${(s.description_suggeree || '').replace(/'/g, "\\'")}')">
@@ -139,7 +139,9 @@ function loadSuggestions() {
                                 <button class="btn-premium btn-premium-outline btn-premium-danger btn-sm" onclick="deleteSuggestion(${s.id}, '${(s.titre_suggere || s.sujet || '').replace(/'/g, "\\'")}')">
                                     <i class="bi bi-trash"></i> Supprimer
                                 </button>
-                                ` : '<button class="btn-premium btn-sm" disabled style="opacity:0.5"><i class="bi bi-lock"></i> Actions indisponibles</button>'}
+                                ` : `<button class="btn-premium btn-premium-outline btn-premium-danger btn-sm" onclick="deleteDeadlineSuggestion(${s.dossier_id}, '${(s.titre_suggere || s.sujet || s.titre || '').replace(/'/g, "\\'")}')">
+                                    <i class="bi bi-trash"></i> Supprimer cette alerte
+                                </button>`}
                             </div>
                         </div>
                     </div>
@@ -277,6 +279,24 @@ function deleteSuggestion(id, titre) {
         })
         .catch(err => {
             console.error('deleteSuggestion error:', err);
+            showToast('Erreur de connexion', 'danger');
+        });
+}
+
+function deleteDeadlineSuggestion(dossierId, titre) {
+    if (!confirm(`Supprimer l'alerte automatique "${titre}" ? Elle ne réapparaîtra plus.`)) return;
+    fetch('/api/suggestions/delete_deadline/' + dossierId, {method: 'POST'})
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) {
+                showToast('Alerte supprimée.', 'success');
+                loadSuggestions();
+            } else {
+                showToast('Erreur: ' + res.message, 'danger');
+            }
+        })
+        .catch(err => {
+            console.error('deleteDeadlineSuggestion error:', err);
             showToast('Erreur de connexion', 'danger');
         });
 }

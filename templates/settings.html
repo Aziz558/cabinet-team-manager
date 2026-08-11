@@ -66,6 +66,11 @@
                         </select>
                         <div class="form-text text-tertiary">Modèle choisi parmi ceux disponibles pour votre clé.</div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Instructions personnalisées LLM</label>
+                        <textarea name="LLM_CUSTOM_INSTRUCTIONS" class="input-premium" rows="4" placeholder="Instructions à inclure dans chaque prompt LLM pour améliorer l'extraction...">{{ llm_custom.valeur if llm_custom else '' }}</textarea>
+                        <div class="form-text text-tertiary">Ces instructions seront ajoutées au prompt système à chaque analyse d'email. Ex: "Le sujet concerne toujours des déclarations fiscales. Ignore les emails marketing."</div>
+                    </div>
                     <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer OpenRouter</button>
                 </form>
                 <div id="openrouterResult" class="small mb-3"></div>
@@ -436,6 +441,7 @@ document.getElementById('openrouterForm').addEventListener('submit', function(e)
         {cle: 'OPENROUTER_API_KEY', valeur: formData.get('OPENROUTER_API_KEY'), service: 'llm', type_valeur: 'password', masque: true},
         {cle: 'OPENROUTER_MODEL', valeur: formData.get('OPENROUTER_MODEL'), service: 'llm', type_valeur: 'string', masque: false},
         {cle: 'OPENROUTER_PROVIDER', valeur: formData.get('OPENROUTER_PROVIDER'), service: 'llm', type_valeur: 'string', masque: false},
+        {cle: 'LLM_CUSTOM_INSTRUCTIONS', valeur: formData.get('LLM_CUSTOM_INSTRUCTIONS'), service: 'llm', type_valeur: 'string', masque: false},
     ];
     const box = document.getElementById('openrouterResult');
     box.textContent = 'Enregistrement...';
