@@ -607,6 +607,15 @@ def upload_photo(user_id):
         filename = secure_filename(f"user_{user_id}_{file.filename}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
+        # Also store as base64 for persistence across deploys
+        try:
+            import base64
+            with open(filepath, 'rb') as img_file:
+                b64_data = base64.b64encode(img_file.read()).decode('utf-8')
+                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
+                user.photo_base64 = f"data:image/{ext};base64,{b64_data}"
+        except Exception as e:
+            app.logger.error(f"Base64 conversion error: {e}")
         # Delete old photo if not default
         if user.photo_profil and user.photo_profil != 'default.png':
             old_path = os.path.join(app.config['UPLOAD_FOLDER'], user.photo_profil)
@@ -1049,6 +1058,15 @@ def profil():
                         os.makedirs(upload_folder, exist_ok=True)
                     filepath = os.path.join(upload_folder, filename)
                     file.save(filepath)
+                    # Also store as base64 for persistence
+                    try:
+                        import base64
+                        with open(filepath, 'rb') as img_file:
+                            b64_data = base64.b64encode(img_file.read()).decode('utf-8')
+                            ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
+                            current_user.photo_base64 = f"data:image/{ext};base64,{b64_data}"
+                    except Exception as e:
+                        app.logger.error(f"Base64 conversion error: {e}")
                     # Delete old photo if not default
                     if current_user.photo_profil and current_user.photo_profil != 'default.png':
                         old_path = os.path.join(upload_folder, current_user.photo_profil)
@@ -1091,9 +1109,29 @@ def profil():
 def uploaded_file(filename):
     from datetime import datetime
     import os
+    # Try to serve from photo_base64 first (persistent across deploys)
+    from flask import Response
+    # Extract user_id from filename pattern: user_{id}_*
+    import re
+    match = re.match(r'user_(\d+)_.*', filename)
+    if match:
+        user_id = int(match.group(1))
+        user = User.query.get(user_id)
+        if user and user.photo_base64:
+            response = Response(user.photo_base64.split(',')[1] if ',' in user.photo_base64 else user.photo_base64, 
+                              mimetype='image/png')
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            # Set correct mimetype from base64 header
+            if 'data:image/' in user.photo_base64:
+                mime = user.photo_base64.split(';')[0].split(':')[1]
+                response = Response(user.photo_base64.split(',')[1], mimetype=mime)
+                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            return response
+    # Fallback to file on disk
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(filepath):
-        mtime = os.path.getmtime(filepath)
         response = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'

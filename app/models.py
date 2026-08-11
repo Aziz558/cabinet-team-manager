@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     nom = db.Column(db.String(80), nullable=False)
     prenom = db.Column(db.String(80), nullable=False)
     photo_profil = db.Column(db.String(200), default='default.png')
+    photo_base64 = db.Column(db.Text, nullable=True)
     role = db.Column(db.String(20), nullable=False, default='membre')  # admin | manager | membre
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
     poste = db.Column(db.String(120))  # e.g., "Comptable", "Auditeur"
