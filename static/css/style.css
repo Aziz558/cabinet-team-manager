@@ -2241,9 +2241,18 @@ p {
     width: 60px !important;
     overflow: hidden;
 }
-.sidebar-collapsed .sidebar-brand span { display: none; }
-.sidebar-collapsed .sidebar-footer { text-align: center; }
-.sidebar-collapsed .sidebar-footer .avatar-md { margin-right: 0; }
+.sidebar-collapsed .sidebar-nav-item span,
+.sidebar-collapsed .sidebar-section-title,
+.sidebar-collapsed .sidebar-brand-text,
+.sidebar-collapsed .sidebar-subtitle,
+.sidebar-collapsed .sidebar-user-info { display: none; }
+.sidebar-collapsed .sidebar-nav-item { justify-content: center; padding: 0.55rem 0; }
+.sidebar-collapsed .sidebar-nav-item i { margin: 0; }
+.sidebar-collapsed .sidebar-nav-item.active::before { display: none; }
+.sidebar-collapsed .sidebar-brand { justify-content: center; padding: 1rem 0; }
+.sidebar-collapsed .sidebar-footer { padding: 0.5rem 0; display: flex; justify-content: center; }
+.sidebar-collapsed .sidebar-user { justify-content: center; }
+.sidebar-collapsed .sidebar-menu { padding: 0.5rem 0.25rem; }
 
 /* Sidebar nav links: the sidebar.html uses .nav-link but CSS defined .sidebar-nav-item */
 .sidebar .nav-link {

@@ -199,24 +199,35 @@
                 sidebarCol.style.width = '60px';
                 sidebarCol.classList.add('sidebar-collapsed');
                 sidebar.classList.add('sidebar-collapsed');
-                document.querySelectorAll('.sidebar-nav .nav-link span').forEach(function(span) {
-                    span.style.display = 'none';
+                // Hide text elements
+                document.querySelectorAll('.sidebar-nav-item span, .sidebar-section-title, .sidebar-brand-text, .sidebar-user-info, .sidebar-subtitle').forEach(function(el) {
+                    el.style.display = 'none';
                 });
-                document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-                    link.classList.add('px-2');
+                document.querySelectorAll('.sidebar-nav-item').forEach(function(link) {
                     link.style.justifyContent = 'center';
+                    link.style.padding = '0.55rem 0';
                 });
+                document.querySelectorAll('.sidebar-nav-item i').forEach(function(icon) {
+                    icon.style.margin = '0';
+                });
+                document.querySelectorAll('.sidebar-nav-item.active').forEach(function(item) {
+                    item.style.position = 'relative';
+                });
+                document.querySelectorAll('.sidebar-nav-item.active::before').forEach(function() {});
                 toggle.innerHTML = '<i class="bi bi-caret-right"></i>';
             } else {
-                sidebarCol.style.width = '220px';
+                sidebarCol.style.width = '240px';
                 sidebarCol.classList.remove('sidebar-collapsed');
                 sidebar.classList.remove('sidebar-collapsed');
-                document.querySelectorAll('.sidebar-nav .nav-link span').forEach(function(span) {
-                    span.style.display = '';
+                document.querySelectorAll('.sidebar-nav-item span, .sidebar-section-title, .sidebar-brand-text, .sidebar-user-info, .sidebar-subtitle').forEach(function(el) {
+                    el.style.display = '';
                 });
-                document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-                    link.classList.remove('px-2');
+                document.querySelectorAll('.sidebar-nav-item').forEach(function(link) {
                     link.style.justifyContent = '';
+                    link.style.padding = '';
+                });
+                document.querySelectorAll('.sidebar-nav-item i').forEach(function(icon) {
+                    icon.style.margin = '';
                 });
                 toggle.innerHTML = '<i class="bi bi-list"></i>';
             }
