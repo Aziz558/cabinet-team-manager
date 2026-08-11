@@ -132,6 +132,9 @@ function loadSuggestions() {
                                     <i class="bi bi-x"></i> Rejeter
                                 </button>
                                 <button class="btn-premium btn-premium-outline btn-premium-secondary btn-sm" onclick="reanalyzeSuggestion(${s.id}, '${(s.mail_uid || '').replace(/'/g, "\\'")}')" title="Relancer l'analyse IA"><i class="bi bi-arrow-repeat"></i></button>
+                                <button class="btn-premium btn-premium-outline btn-premium-danger btn-sm" onclick="deleteSuggestion(${s.id}, '${(s.titre_suggere || s.sujet || '').replace(/'/g, "\\'")}')">
+                                    <i class="bi bi-trash"></i> Supprimer
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -252,6 +255,24 @@ function refreshMailbox() {
             // Restore button
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-envelope-arrow-up"></i> Scanne la mailbox';
+        });
+}
+
+function deleteSuggestion(id, titre) {
+    if (!confirm(`Supprimer la suggestion "${titre}" ? Cette action est irréversible.`)) return;
+    fetch(`/api/suggestions/${id}/delete`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) {
+                showToast('Suggestion supprimée.', 'success');
+                loadSuggestions();
+            } else {
+                showToast('Erreur: ' + res.message, 'danger');
+            }
+        })
+        .catch(err => {
+            console.error('deleteSuggestion error:', err);
+            showToast('Erreur de connexion', 'danger');
         });
 }
 </script>

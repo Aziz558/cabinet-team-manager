@@ -1551,6 +1551,25 @@ def reject_suggestion(suggestion_id):
         app.logger.error(f"Erreur reject suggestion : {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
 
+@app.route('/api/suggestions/<int:suggestion_id>/delete', methods=['DELETE'])
+@login_required
+def delete_suggestion(suggestion_id):
+    """
+    Supprimer définitivement une suggestion.
+    Cette action est irréversible - la suggestion est supprimée comme si elle n'avait jamais existé.
+    """
+    try:
+        from app.models import SuggestionTache
+        suggestion = SuggestionTache.query.get_or_404(suggestion_id)
+        titre = suggestion.titre_suggere or suggestion.sujet or 'Suggestion'
+        db.session.delete(suggestion)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': f'Suggestion "{titre}" supprimée définitivement.'})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur delete suggestion : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
 @app.route('/api/suggestions/<int:suggestion_id>/reanalyze', methods=['POST'])
 @login_required
 def reanalyze_suggestion(suggestion_id):
