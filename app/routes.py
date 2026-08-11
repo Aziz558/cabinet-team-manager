@@ -2071,7 +2071,7 @@ def api_users():
         users = User.query.filter_by(actif=True).order_by(User.prenom).all()
         result = []
         for u in users:
-            equipe = Equipe.query.get(u.equipes[0].id) if u.equipes else None
+            equipe = Equipe.query.get(u.equipe_id) if u.equipe_id else None
             # Compter tâches assignées
             taches_a_faire = Tache.query.filter_by(assigne_a=u.id, statut='a_faire').count()
             taches_en_cours = Tache.query.filter_by(assigne_a=u.id, statut='en_cours').count()
@@ -2104,7 +2104,7 @@ def api_notifications():
         limite = int(request.args.get('limite', 50))
         non_lues = request.args.get('non_lues', 'false').lower() == 'true'
         from app.models import Notification
-        q = Notification.query.filter_by(destinataire_id=current_user.id)
+        q = Notification.query.filter_by(user_id=current_user.id)
         if non_lues:
             q = q.filter_by(lu=False)
         notifications = q.order_by(Notification.date_creation.desc()).limit(limite).all()
