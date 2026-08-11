@@ -1591,14 +1591,30 @@ def delete_suggestion(suggestion_id):
         db.session.commit()
         return jsonify({'ok': True, 'message': f'Suggestion "{titre}" supprimée définitivement.'})
     except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur delete suggestion : {e}")
+        return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
+
 @app.route('/api/suggestions/delete_deadline/<int:dossier_id>', methods=['POST'])
 @login_required
 def delete_deadline_suggestion(dossier_id):
     """Delete deadline (computed) suggestion for a dossier - no DB record."""
-    return jsonify({'ok': True, 'message': 'Suggestion deadline supprimée.'})
-
+    try:
+        from app.models import AppSetting
+        # Read existing dismissed dossiers
+        setting = AppSetting.query.filter_by(cle='DEADLINE_DISMISSED_DOSSIERS').first()
+        dismissed = set()
+        if setting and setting.valeur:
+            dismissed = {x.strip() for x in str(setting.valeur).split(',') if x.strip()}
+        dismissed.add(str(dossier_id))
+        AppSetting.query.filter_by(cle='DEADLINE_DISMISSED_DOSSIERS').delete()
+        new_setting = AppSetting(cle='DEADLINE_DISMISSED_DOSSIERS', valeur=','.join(sorted(dismissed)))
+        db.session.add(new_setting)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'Suggestion deadline supprimée.'})
+    except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Erreur delete suggestion : {e}")
+        app.logger.error(f"Erreur delete deadline: {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}'}), 500
 
 @app.route('/api/suggestions/<int:suggestion_id>/reanalyze', methods=['POST'])
