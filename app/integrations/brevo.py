@@ -32,7 +32,7 @@ def send_email_via_brevo_api(
     payload = {
         'sender': {
             'name': sender_name,
-            'email': 'jlassiaziz418@gmail.com',
+            'email': 'cabinet.manager.jmh@gmail.com',
         },
         'to': [{'email': to_email}],
         'subject': subject,
