@@ -1488,6 +1488,13 @@ def validate_suggestion(suggestion_id):
         due_date = data.get('date_echeance') or data.get('due_date')
         priority = data.get('priorite', 'moyenne') or data.get('priority', 'moyenne')
         dossier_id = data.get('dossier_id')
+        if dossier_id == '' or dossier_id is None:
+            dossier_id = None
+        elif isinstance(dossier_id, str):
+            try:
+                dossier_id = int(dossier_id) if dossier_id else None
+            except (ValueError, TypeError):
+                dossier_id = None
 
         if not assignee_id or not due_date:
             return jsonify({'ok': False, 'message': 'Collaborateur et date d\'échéance requis.'}), 400
