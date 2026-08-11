@@ -36,10 +36,10 @@
     }
   }
 
-  // ─── Floating Card Effect (like ref site) ──────────────────────
+  // ─── Floating Card Effect (Équipe only) ──────────────────────
   function animateCards() {
-    // Floating parallax cards on scroll
-    gsap.utils.toArray('.card-premium, .stat-card, .suggestion-card').forEach(function (card, i) {
+    // Floating parallax cards on scroll — ONLY inside .equipe-cards-container
+    gsap.utils.toArray('.equipe-cards-container .card-premium').forEach(function (card, i) {
       // Skip if already has a data attribute
       if (card.hasAttribute('data-animated')) return;
       card.setAttribute('data-animated', 'true');
