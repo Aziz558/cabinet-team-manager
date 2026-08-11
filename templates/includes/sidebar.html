@@ -79,7 +79,7 @@
     <!-- Bottom: user profile -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
-            <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" 
+            <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}?v={{ cache_buster }}" 
                  class="rounded-circle sidebar-avatar"
                  alt="{{ current_user.prenom }}">
             <div class="sidebar-user-info">
@@ -134,7 +134,7 @@
     <!-- Bottom: user profile -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
-            <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" 
+            <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}?v={{ cache_buster }}" 
                  class="rounded-circle sidebar-avatar"
                  alt="{{ current_user.prenom }}">
             <div class="sidebar-user-info">

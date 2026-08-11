@@ -1089,7 +1089,21 @@ def profil():
 
 @app.route('/static/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    from datetime import datetime
+    import os
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(filepath):
+        mtime = os.path.getmtime(filepath)
+        response = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+    # Fallback to default
+    default = os.path.join(app.config['UPLOAD_FOLDER'], 'default.png')
+    if os.path.exists(default):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], 'default.png')
+    return '', 404
 # ============ ADMIN DEBUG ============\
 
 @app.route('/admin/debug')

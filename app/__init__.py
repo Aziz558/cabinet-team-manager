@@ -3,7 +3,7 @@ from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 import os
-from datetime import date as _date
+from datetime import date as _date, datetime as _datetime
 
 app = Flask(
     __name__,
@@ -119,7 +119,7 @@ app.jinja_env.globals['date'] = _date
 
 # Context processor — makes current_equipe available in all templates
 @app.context_processor
-def inject_equipe():
+def inject_globals():
     from flask import session
     current_equipe = None
     if current_user.is_authenticated:
@@ -144,7 +144,8 @@ def inject_equipe():
             ).all() if current_user.equipe_id else []
     else:
         all_equipes_for_switch = []
-    return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
+    return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch,
+                cache_buster=_datetime.utcnow().timestamp)
 
 # Global error handlers to avoid silent 500s
 @app.errorhandler(404)

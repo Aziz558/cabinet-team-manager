@@ -66,7 +66,7 @@
             {% endif %}
             <div class="dropdown">
                 <a class="app-user-toggle" href="#" data-bs-toggle="dropdown">
-                    <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}" class="rounded-circle" width="32" height="32" alt="">
+                    <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}?v={{ cache_buster }}" class="rounded-circle" width="32" height="32" alt="">
                     <span class="app-user-name d-none d-md-inline">{{ current_user.prenom }}</span>
                     <i class="bi bi-caret-down-fill ms-1"></i>
                 </a>
