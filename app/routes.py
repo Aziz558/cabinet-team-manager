@@ -2083,7 +2083,7 @@ def api_users():
                 'nom': u.nom,
                 'role': u.role,
                 'actif': u.actif,
-                'equipe_id': u.equipes[0].id if u.equipes else None,
+                'equipe_id': u.equipe_id,
                 'equipe_nom': equipe.nom if equipe else None,
                 'taches_a_faire': taches_a_faire,
                 'taches_en_cours': taches_en_cours,
