@@ -1004,12 +1004,6 @@ def notifications_non_lues():
     count = Notification.query.filter_by(user_id=current_user.id, lu=False).count()
     return jsonify({'count': count})
 
-@app.route('/api/notifications')
-@login_required
-def api_notifications():
-    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.date_envoi.desc()).limit(100).all()
-    return jsonify({'notifications': [{'id': n.id, 'message': n.message, 'type': n.type_notification, 'date': n.date_envoi.strftime('%d/%m/%Y %H:%M'), 'lu': n.lu} for n in notifs]})
-
 @app.route('/api/notifications/mark-all-read', methods=['POST'])
 @login_required
 def api_mark_all_read():
