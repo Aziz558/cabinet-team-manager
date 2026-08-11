@@ -1471,7 +1471,7 @@ def test_openrouter():
     except Exception as e:
         app.logger.error(f"Erreur test OpenRouter: {e}")
         return jsonify({'ok': False, 'message': f'Échec : {e}', 'stage': 'error'}), 500
-@app.route('/api/suggestions/refresh', methods=['POST'])
+@app.route('/api/suggestions/<int:suggestion_id>/validate', methods=['POST'])
 @login_required
 def validate_suggestion(suggestion_id):
     try:
@@ -1484,9 +1484,9 @@ def validate_suggestion(suggestion_id):
         db.session.commit()
 
         # Create actual task from validated suggestion
-        assignee_id = data.get('assignee')
-        due_date = data.get('due_date')
-        priority = data.get('priority', 'moyenne')
+        assignee_id = data.get('collaborateur_id') or data.get('assignee')
+        due_date = data.get('date_echeance') or data.get('due_date')
+        priority = data.get('priorite', 'moyenne') or data.get('priority', 'moyenne')
         dossier_id = data.get('dossier_id')
 
         if not assignee_id or not due_date:
