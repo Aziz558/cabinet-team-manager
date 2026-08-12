@@ -57,13 +57,6 @@ class User(UserMixin, db.Model):
                     return url_for('static', filename='uploads/' + self.photo_profil)
         except Exception:
             pass
-        try:
-            from app.models import PhotoUtilisateur
-            photo = PhotoUtilisateur.query.filter_by(user_id=self.id).first()
-            if photo and getattr(photo, 'photo_data', None):
-                return photo.photo_data
-        except Exception:
-            pass
         return None
 
     def __repr__(self):

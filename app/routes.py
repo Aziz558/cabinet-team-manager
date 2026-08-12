@@ -628,27 +628,7 @@ def upload_photo(user_id):
         filename = secure_filename(f"user_{user_id}_{file.filename}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
-        app.logger.info(f"📸 [upload_photo] saved file: {filepath} exists={os.path.exists(filepath)} size={os.path.getsize(filepath) if os.path.exists(filepath) else -1}")
-        # Also store as base64 for persistence across deploys
-        try:
-            import base64
-            with open(filepath, 'rb') as img_file:
-                b64_data = base64.b64encode(img_file.read()).decode('utf-8')
-                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
-                photo_data = f"data:image/{ext};base64,{b64_data}"
-                # Save to dedicated photos table
-                existing = PhotoUtilisateur.query.filter_by(user_id=user_id).first()
-                if existing:
-                    existing.photo_data = photo_data
-                    existing.filename = filename
-                else:
-                    existing = PhotoUtilisateur(user_id=user_id, filename=filename, photo_data=photo_data)
-                    db.session.add(existing)
-                db.session.commit()
-                app.logger.info(f"✅ [upload_photo] Saved photo base64 for user {user_id} to photos table")
-        except Exception as e:
-            app.logger.error(f"❌ [upload_photo] Base64 save error: {e}")
-            db.session.rollback()
+        app.logger.info(f"[UPLOAD_PHOTO_START] saved file: {filepath} exists={os.path.exists(filepath)} size={os.path.getsize(filepath) if os.path.exists(filepath) else -1}")
         # Delete old photo if not default
         if user.photo_profil and user.photo_profil != 'default.png':
             old_path = os.path.join(app.config['UPLOAD_FOLDER'], user.photo_profil)
@@ -656,7 +636,7 @@ def upload_photo(user_id):
                 os.remove(old_path)
         user.photo_profil = filename
         db.session.commit()
-        app.logger.info(f"📸 [upload_photo] user.photo_profil updated={user.photo_profil}")
+        app.logger.info(f"[UPLOAD_PHOTO_START] user.photo_profil updated={user.photo_profil}")
         flash('Photo mise à jour.', 'success')
     else:
         flash('Format non autorisé. Utilisez PNG, JPG ou GIF.', 'danger')
