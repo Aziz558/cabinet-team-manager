@@ -607,13 +607,20 @@ def upload_photo(user_id):
         filename = secure_filename(f"user_{user_id}_{file.filename}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
-        # Also store as base64 for persistence across deploys
+        # Also store as base64 for persistence across deploys (raw SQL, no model column needed)
         try:
             import base64
             with open(filepath, 'rb') as img_file:
                 b64_data = base64.b64encode(img_file.read()).decode('utf-8')
                 ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
-                user.photo_base64 = f"data:image/{ext};base64,{b64_data}"
+                with db.engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_base64 TEXT"))
+                    conn.execute(
+                        text("UPDATE users SET photo_base64 = :data WHERE id = :id"),
+                        {"data": f"data:image/{ext};base64,{b64_data}", "id": user_id}
+                    )
+                    conn.commit()
+                    app.logger.info(f"✅ Saved photo base64 for user {user_id}")
         except Exception as e:
             app.logger.error(f"Base64 conversion error: {e}")
         # Delete old photo if not default
@@ -1064,7 +1071,15 @@ def profil():
                         with open(filepath, 'rb') as img_file:
                             b64_data = base64.b64encode(img_file.read()).decode('utf-8')
                             ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
-                            current_user.photo_base64 = f"data:image/{ext};base64,{b64_data}"
+                            # Save base64 via raw SQL (no model column needed)
+                            with db.engine.connect() as conn:
+                                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_base64 TEXT"))
+                                conn.execute(
+                                    text("UPDATE users SET photo_base64 = :data WHERE id = :id"),
+                                    {"data": f"data:image/{ext};base64,{b64_data}", "id": current_user.id}
+                                )
+                                conn.commit()
+                                app.logger.info(f"✅ Saved photo base64 for user {current_user.id}")
                     except Exception as e:
                         app.logger.error(f"Base64 conversion error: {e}")
                     # Delete old photo if not default
@@ -1108,27 +1123,33 @@ def profil():
 @app.route('/static/uploads/<filename>')
 def uploaded_file(filename):
     from datetime import datetime
-    import os
+    import os, re
     # Try to serve from photo_base64 first (persistent across deploys)
     from flask import Response
-    # Extract user_id from filename pattern: user_{id}_*
-    import re
     match = re.match(r'user_(\d+)_.*', filename)
     if match:
         user_id = int(match.group(1))
-        user = User.query.get(user_id)
-        if user and user.photo_base64:
-            response = Response(user.photo_base64.split(',')[1] if ',' in user.photo_base64 else user.photo_base64, 
-                              mimetype='image/png')
-            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
-            # Set correct mimetype from base64 header
-            if 'data:image/' in user.photo_base64:
-                mime = user.photo_base64.split(';')[0].split(':')[1]
-                response = Response(user.photo_base64.split(',')[1], mimetype=mime)
-                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            return response
+        try:
+            with db.engine.connect() as conn:
+                row = conn.execute(
+                    text("SELECT photo_base64 FROM users WHERE id = :id"),
+                    {"id": user_id}
+                ).fetchone()
+                if row and row[0]:
+                    b64_data = row[0]
+                    if 'data:image/' in b64_data:
+                        mime = b64_data.split(';')[0].split(':')[1]
+                        data = b64_data.split(',', 1)[1]
+                    else:
+                        mime = 'image/png'
+                        data = b64_data
+                    resp = Response(data, mimetype=mime)
+                    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    resp.headers['Pragma'] = 'no-cache'
+                    resp.headers['Expires'] = '0'
+                    return resp
+        except Exception as e:
+            app.logger.error(f"Photo base64 read error: {e}")
     # Fallback to file on disk
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(filepath):

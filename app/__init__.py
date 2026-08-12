@@ -161,7 +161,7 @@ def inject_globals():
     else:
         all_equipes_for_switch = []
     return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch,
-                cache_buster=_datetime.utcnow().timestamp)
+                cache_buster=int(_datetime.utcnow().timestamp()))
 
 # Global error handlers to avoid silent 500s
 @app.errorhandler(404)
