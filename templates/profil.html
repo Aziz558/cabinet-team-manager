@@ -82,12 +82,10 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Debug photo source for admin
 document.addEventListener('DOMContentLoaded', function () {
   var photoImg = document.querySelector('.user-icon-badge-lg img[data-photo-src]');
   if (photoImg) {
@@ -98,7 +96,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-// Handle photo upload form submission
 document.getElementById('photoUploadForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const formData = new FormData(this);
@@ -107,11 +104,11 @@ document.getElementById('photoUploadForm')?.addEventListener('submit', async fun
         window.showToast('Veuillez sélectionner une image.', 'warning');
         return;
     }
-    
+
     const btn = this.querySelector('label[for="photoInput"]');
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Envoi...';
-    
+
     try {
         const response = await fetch('/profil', {
             method: 'POST',
@@ -133,19 +130,12 @@ document.getElementById('photoUploadForm')?.addEventListener('submit', async fun
     }
 });
 
-// Show file name when selected
 document.getElementById('photoInput')?.addEventListener('change', function() {
     const fileName = this.files?.[0]?.name || 'Aucun fichier';
     const fileNameDisplay = document.getElementById('fileNameDisplay');
     if (fileNameDisplay) {
         fileNameDisplay.textContent = fileName;
     }
-});
-</script>
-{% endblock %}
-document.getElementById('photoInput')?.addEventListener('change', function(e) {
-    const name = e.target.files[0]?.name || 'Aucun fichier';
-    document.getElementById('fileNameDisplay').textContent = name;
 });
 </script>
 {% endblock %}
