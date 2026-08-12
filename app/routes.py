@@ -372,18 +372,7 @@ def dashboard():
                     alertes.append({'type': 'warning', 'msg': f"Dossier {d.numero_dossier} : deadline dans {delta} jours"})
 
         # Suggestions de tâches automatiques basées sur deadlines
-        suggestions = []
-        for d in dossiers:
-            if d.date_limite_declaration:
-                delta = (d.date_limite_declaration - today).days
-                if 0 <= delta <= 14 and d.collaborateur_id:
-                    suggestions.append({
-                        'titre': f"Déclaration {d.regime_tva or 'fiscale'} - {d.numero_dossier}",
-                        'dossier_id': d.id,
-                        'assigne_a': d.collaborateur_id,
-                        'priorite': 'haute' if delta <= 3 else 'moyenne',
-                        'date_echeance': d.date_limite_declaration,
-                    })
+        suggestions = _build_suggestions()
 
         return render_template(
             'dashboard_manager.html',
@@ -1413,9 +1402,18 @@ def _build_suggestions():
 
     # Suggestions depuis les deadlines des dossiers
     today = date.today()
+    dismissed_dossiers = set()
+    try:
+        from app.models import AppSetting
+        setting = AppSetting.query.filter_by(cle='DEADLINE_DISMISSED_DOSSIERS').first()
+        if setting and setting.valeur:
+            dismissed_dossiers = {x.strip() for x in str(setting.valeur).split(',') if x.strip()}
+    except Exception:
+        pass
+
     dossiers = Dossier.query.all()
     for d in dossiers:
-        if d.date_limite_declaration:
+        if d.date_limite_declaration and str(d.id) not in dismissed_dossiers:
             delta = (d.date_limite_declaration - today).days
             if 0 <= delta <= 14 and d.collaborateur_id:
                 suggestions.append({
