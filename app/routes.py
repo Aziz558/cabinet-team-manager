@@ -935,6 +935,21 @@ def taches():
                     if suggestion:
                         db.session.delete(suggestion)
                         db.session.commit()
+                # If the suggestion was a deadline suggestion (no DB record), mark the dossier as dismissed
+                # so that the same deadline suggestion does not reappear.
+                else:
+                    dossier_id = request.form.get('dossier_id', type=int)
+                    if dossier_id:
+                        from app.models import AppSetting
+                        setting = AppSetting.query.filter_by(cle='DEADLINE_DISMISSED_DOSSIERS').first()
+                        dismissed = set()
+                        if setting and setting.valeur:
+                            dismissed = {x.strip() for x in str(setting.valeur).split(',') if x.strip()}
+                        dismissed.add(str(dossier_id))
+                        AppSetting.query.filter_by(cle='DEADLINE_DISMISSED_DOSSIERS').delete()
+                        new_setting = AppSetting(cle='DEADLINE_DISMISSED_DOSSIERS', valeur=','.join(sorted(dismissed)))
+                        db.session.add(new_setting)
+                        db.session.commit()
                 return redirect(url_for('taches'))
         all_taches = Tache.query.order_by(Tache.date_echeance.desc()).all()
         dossiers = Dossier.query.all()
