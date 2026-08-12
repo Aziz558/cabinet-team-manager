@@ -607,6 +607,7 @@ def upload_photo(user_id):
         filename = secure_filename(f"user_{user_id}_{file.filename}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
+        app.logger.info(f"📸 [upload_photo] saved file: {filepath} exists={os.path.exists(filepath)} size={os.path.getsize(filepath) if os.path.exists(filepath) else -1}")
         # Also store as base64 for persistence across deploys
         try:
             import base64
@@ -623,9 +624,9 @@ def upload_photo(user_id):
                     existing = PhotoUtilisateur(user_id=user_id, filename=filename, photo_data=photo_data)
                     db.session.add(existing)
                 db.session.commit()
-                app.logger.info(f"✅ Saved photo base64 for user {user_id} to photos table")
+                app.logger.info(f"✅ [upload_photo] Saved photo base64 for user {user_id} to photos table")
         except Exception as e:
-            app.logger.error(f"Base64 save error: {e}")
+            app.logger.error(f"❌ [upload_photo] Base64 save error: {e}")
             db.session.rollback()
         # Delete old photo if not default
         if user.photo_profil and user.photo_profil != 'default.png':
@@ -634,6 +635,7 @@ def upload_photo(user_id):
                 os.remove(old_path)
         user.photo_profil = filename
         db.session.commit()
+        app.logger.info(f"📸 [upload_photo] user.photo_profil updated={user.photo_profil}")
         flash('Photo mise à jour.', 'success')
     else:
         flash('Format non autorisé. Utilisez PNG, JPG ou GIF.', 'danger')
@@ -1069,6 +1071,7 @@ def profil():
                         os.makedirs(upload_folder, exist_ok=True)
                     filepath = os.path.join(upload_folder, filename)
                     file.save(filepath)
+                    app.logger.info(f"📸 [profil] saved file: {filepath} exists={os.path.exists(filepath)} size={os.path.getsize(filepath) if os.path.exists(filepath) else -1}")
                     # Also store as base64 for persistence
                     try:
                         import base64
@@ -1085,9 +1088,9 @@ def profil():
                                 existing = PhotoUtilisateur(user_id=current_user.id, filename=filename, photo_data=photo_data)
                                 db.session.add(existing)
                             db.session.commit()
-                            app.logger.info(f"✅ Saved photo base64 for user {current_user.id} to photos table")
+                            app.logger.info(f"✅ [profil] Saved photo base64 for user {current_user.id} to photos table")
                     except Exception as e:
-                        app.logger.error(f"Photo save error: {e}")
+                        app.logger.error(f"❌ [profil] Photo save error: {e}")
                         db.session.rollback()
                     # Delete old photo if not default
                     if current_user.photo_profil and current_user.photo_profil != 'default.png':
@@ -1096,6 +1099,7 @@ def profil():
                             os.remove(old_path)
                     current_user.photo_profil = filename
                     db.session.commit()
+                    app.logger.info(f"📸 [profil] current_user.photo_profil updated={current_user.photo_profil}")
                     # Fetch request → JSON, regular form submit → redirect
                     if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
                         return jsonify({'ok': True, 'message': 'Photo de profil mise à jour.', 'photo_url': url_for('uploaded_file', filename=filename)}), 200
@@ -1131,6 +1135,7 @@ def profil():
 def uploaded_file(filename):
     from datetime import datetime
     import os, re
+    app.logger.info(f"🔎 [uploaded_file] requested={filename}")
     # Try to serve from photos table first (persistent across deploys)
     from flask import Response
     match = re.match(r'user_(\d+)_.*', filename)
@@ -1138,6 +1143,7 @@ def uploaded_file(filename):
         user_id = int(match.group(1))
         try:
             photo = PhotoUtilisateur.query.filter_by(user_id=user_id).first()
+            app.logger.info(f"🔎 [uploaded_file] user_id={user_id} photo_record={photo is not None} has_data={bool(photo.photo_data) if photo else False}")
             if photo and photo.photo_data:
                 b64_data = photo.photo_data
                 if 'data:image/' in b64_data:
@@ -1146,25 +1152,31 @@ def uploaded_file(filename):
                 else:
                     mime = 'image/png'
                     data = b64_data
+                app.logger.info(f"✅ [uploaded_file] serving base64 for {filename} mime={mime} len={len(data)}")
                 resp = Response(data, mimetype=mime)
                 resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 resp.headers['Pragma'] = 'no-cache'
                 resp.headers['Expires'] = '0'
                 return resp
+            app.logger.info(f"⚠️ [uploaded_file] no base64 for {filename}, falling back to disk")
         except Exception as e:
-            app.logger.error(f"Photo base64 read error: {e}")
+            app.logger.error(f"❌ [uploaded_file] Photo base64 read error: {e}")
     # Fallback to file on disk
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    app.logger.info(f"🔎 [uploaded_file] disk fallback path={filepath} exists={os.path.exists(filepath)}")
     if os.path.exists(filepath):
         response = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+        app.logger.info(f"✅ [uploaded_file] serving disk file {filename}")
         return response
     # Fallback to default
     default = os.path.join(app.config['UPLOAD_FOLDER'], 'default.png')
+    app.logger.info(f"⚠️ [uploaded_file] {filename} not found, returning default={os.path.exists(default)}")
     if os.path.exists(default):
         return send_from_directory(app.config['UPLOAD_FOLDER'], 'default.png')
+    app.logger.info(f"❌ [uploaded_file] nothing found for {filename}")
     return '', 404
 # ============ ADMIN DEBUG ============\
 
