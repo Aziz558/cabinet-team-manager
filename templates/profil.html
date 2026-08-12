@@ -11,6 +11,11 @@
             <div class="card-body-premium">
                 <div class="text-center mb-4">
                     <div class="position-relative d-inline-block">
+                        {% if current_user.photo_profil %}
+                        <span class="user-icon-badge user-icon-badge-lg">
+                            <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img" style="width:96px;height:96px;">
+                        </span>
+                        {% else %}
                         {% set p_icon = 'bi-person' %}
                         {% if current_user.role == 'admin' %}
                           {% set p_icon = 'bi-person-badge' %}
@@ -18,6 +23,7 @@
                           {% set p_icon = 'bi-person-lines-fill' %}
                         {% endif %}
                         <span class="user-icon-badge user-icon-badge-lg"><i class="bi {{ p_icon }}"></i></span>
+                        {% endif %}
                     </div>
                     <div class="mt-2">
                         <h4 class="mb-1">{{ current_user.prenom }} {{ current_user.nom }}</h4>
