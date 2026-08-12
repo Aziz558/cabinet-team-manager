@@ -16,12 +16,18 @@
     <header class="app-topbar">
         <div class="app-topbar-left">
             <a class="app-brand" href="{{ url_for('dashboard') }}">
-                <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="JMH" width="34" height="34" class="rounded-circle app-brand-logo">
+                <span class="app-brand-icon"><i class="bi bi-briefcase-fill"></i></span>
                 <span class="app-brand-text">Cabinet JMH</span>
             </a>
             {% if current_user.is_authenticated %}
+            {% set role_icon = 'bi-person' %}
+            {% if current_user.role == 'admin' %}
+              {% set role_icon = 'bi-person-badge' %}
+            {% elif current_user.role == 'manager' %}
+              {% set role_icon = 'bi-person-lines-fill' %}
+            {% endif %}
             <button class="app-topbar-toggle" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
-                <i class="bi bi-list"></i>
+                <i class="bi {{ role_icon }} fs-4"></i>
             </button>
             {% endif %}
         </div>
@@ -66,7 +72,13 @@
             {% endif %}
             <div class="dropdown">
                 <a class="app-user-toggle" href="#" data-bs-toggle="dropdown">
-                    <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil) }}?v={{ cache_buster }}" class="rounded-circle" width="32" height="32" alt="">
+                    {% set top_icon = 'bi-person' %}
+                    {% if current_user.role == 'admin' %}
+                      {% set top_icon = 'bi-person-badge' %}
+                    {% elif current_user.role == 'manager' %}
+                      {% set top_icon = 'bi-person-lines-fill' %}
+                    {% endif %}
+                    <span class="app-user-icon"><i class="bi {{ top_icon }}"></i></span>
                     <span class="app-user-name d-none d-md-inline">{{ current_user.prenom }}</span>
                     <i class="bi bi-caret-down-fill ms-1"></i>
                 </a>

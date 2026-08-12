@@ -11,9 +11,13 @@
             <div class="card-body-premium">
                 <div class="text-center mb-4">
                     <div class="position-relative d-inline-block">
-                        <img src="{{ url_for('uploaded_file', filename=current_user.photo_profil or 'default.png') }}?v={{ cache_buster }}" 
-                             class="rounded-circle mb-3" width="100" height="100" alt=""
-                             style="border: 3px solid var(--orange-primary); object-fit: cover;">
+                        {% set p_icon = 'bi-person' %}
+                        {% if current_user.role == 'admin' %}
+                          {% set p_icon = 'bi-person-badge' %}
+                        {% elif current_user.role == 'manager' %}
+                          {% set p_icon = 'bi-person-lines-fill' %}
+                        {% endif %}
+                        <span class="user-icon-badge user-icon-badge-lg"><i class="bi {{ p_icon }}"></i></span>
                     </div>
                     <div class="mt-2">
                         <h4 class="mb-1">{{ current_user.prenom }} {{ current_user.nom }}</h4>

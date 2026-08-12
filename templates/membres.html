@@ -34,7 +34,15 @@
                 <tbody>
                     {% for m in membres %}
                     <tr>
-                        <td><img src="{{ url_for('uploaded_file', filename=m.photo_profil) }}?v={{ cache_buster }}" class="rounded-circle" width="36" height="36" alt=""></td>
+                        <td>
+                            {% set m_icon = 'bi-person' %}
+                            {% if m.role == 'admin' %}
+                              {% set m_icon = 'bi-person-badge' %}
+                            {% elif m.role == 'manager' %}
+                              {% set m_icon = 'bi-person-lines-fill' %}
+                            {% endif %}
+                            <span class="user-icon-badge"><i class="bi {{ m_icon }}"></i></span>
+                        </td>
                         <td><strong>{{ m.prenom }} {{ m.nom }}</strong></td>
                         <td class="text-tertiary">{{ m.email }}</td>
                         <td>

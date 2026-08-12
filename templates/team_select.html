@@ -307,7 +307,13 @@
             <div class="team-card" style="--card-color: {{ equipe.couleur }}" onclick="window.location.href='{{ url_for('login', equipe=equipe.id) }}'">
                 <div class="team-card-header">
                     {% if equipe.manager and equipe.manager.photo_profil and equipe.manager.photo_profil != 'default.png' %}
-                    <img src="{{ url_for('uploaded_file', filename=equipe.manager.photo_profil) }}?v={{ cache_buster }}" class="manager-avatar" alt="{{ equipe.manager.nom_complet() }}">
+                    {% set eq_icon = 'bi-person' %}
+                    {% if equipe.manager.role == 'admin' %}
+                      {% set eq_icon = 'bi-person-badge' %}
+                    {% elif equipe.manager.role == 'manager' %}
+                      {% set eq_icon = 'bi-person-lines-fill' %}
+                    {% endif %}
+                    <span class="manager-avatar-icon"><i class="bi {{ eq_icon }}"></i></span>
                     {% elif equipe.manager %}
                     <div class="manager-avatar-placeholder">
                         {{ equipe.manager.prenom[0]|upper }}{{ equipe.manager.nom[0]|upper }}

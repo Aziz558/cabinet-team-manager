@@ -2638,3 +2638,47 @@ p {
         display: none; /* Remove pseudo-elements on mobile */
     }
 }
+
+/* Role avatar icons */
+.user-icon-badge,
+.manager-avatar-icon,
+.sidebar-user-icon,
+.app-user-icon,
+.app-brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 140, 0, 0.35);
+}
+.user-icon-badge,
+.manager-avatar-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+}
+.user-icon-badge-lg {
+    width: 100px;
+    height: 100px;
+    font-size: 40px;
+}
+.sidebar-user-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+}
+.app-user-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+}
+.app-brand-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    background: rgba(255, 140, 0, 0.12);
+    color: var(--orange-primary);
+    border: 1px solid rgba(255, 140, 0, 0.35);
+}

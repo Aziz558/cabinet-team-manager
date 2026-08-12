@@ -5,7 +5,13 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-4 animate-fade-in-up stagger-1">
     <div class="d-flex align-items-center gap-3">
-        <img src="{{ url_for('uploaded_file', filename=user.photo_profil) }}?v={{ cache_buster }}" class="avatar-lg me-3" alt="">
+        {% set f_icon = 'bi-person' %}
+        {% if user.role == 'admin' %}
+          {% set f_icon = 'bi-person-badge' %}
+        {% elif user.role == 'manager' %}
+          {% set f_icon = 'bi-person-lines-fill' %}
+        {% endif %}
+        <span class="user-icon-badge user-icon-badge-lg"><i class="bi {{ f_icon }}"></i></span>
         <div>
             <h2 class="fw-semibold mb-1">{{ user.prenom }} {{ user.nom }}</h2>
             <p class="text-tertiary mb-1">{{ user.poste or 'Membre de l\'équipe' }}</p>

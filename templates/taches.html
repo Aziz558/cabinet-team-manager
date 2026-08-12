@@ -48,8 +48,13 @@
         </div>
         <div class="task-card-footer">
             <div class="task-assignee">
-                <img src="{{ url_for('uploaded_file', filename=t.assigne.photo_profil) }}?v={{ cache_buster }}" 
-                     class="rounded-circle task-avatar" alt="">
+                {% set t_icon = 'bi-person' %}
+                {% if t.assigne.role == 'admin' %}
+                  {% set t_icon = 'bi-person-badge' %}
+                {% elif t.assigne.role == 'manager' %}
+                  {% set t_icon = 'bi-person-lines-fill' %}
+                {% endif %}
+                <span class="user-icon-badge"><i class="bi {{ t_icon }}"></i></span>
                 <span>{{ t.assigne.prenom }}</span>
             </div>
             <div class="task-actions">

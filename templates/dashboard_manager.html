@@ -119,7 +119,13 @@
                         <td>
                             {% set u = membres | selectattr('id', 'equalto', s.assigne_a) | first %}
                             <div class="d-flex align-items-center gap-2">
-                                <img src="{{ url_for('uploaded_file', filename=u.photo_profil) }}?v={{ cache_buster }}" class="rounded-circle avatar-sm" alt="">
+                                {% set member_icon = 'bi-person' %}
+                                {% if u.role == 'admin' %}
+                                  {% set member_icon = 'bi-person-badge' %}
+                                {% elif u.role == 'manager' %}
+                                  {% set member_icon = 'bi-person-lines-fill' %}
+                                {% endif %}
+                                <span class="user-icon-badge"><i class="bi {{ member_icon }}"></i></span>
                                 <span>{{ u.prenom }} {{ u.nom }}</span>
                             </div>
                         </td>
@@ -205,7 +211,13 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ url_for('uploaded_file', filename=m.photo_profil) }}?v={{ cache_buster }}" class="rounded-circle avatar-sm" alt="">
+                                        {% set member_icon2 = 'bi-person' %}
+                                        {% if m.role == 'admin' %}
+                                          {% set member_icon2 = 'bi-person-badge' %}
+                                        {% elif m.role == 'manager' %}
+                                          {% set member_icon2 = 'bi-person-lines-fill' %}
+                                        {% endif %}
+                                        <span class="user-icon-badge"><i class="bi {{ member_icon2 }}"></i></span>
                                         <strong>{{ m.prenom }} {{ m.nom }}</strong>
                                     </div>
                                 </td>

@@ -57,7 +57,13 @@
                         <td>{{ d.intitule }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <img src="{{ url_for('uploaded_file', filename=d.collaborateur.photo_profil) if d.collaborateur else '' }}?v={{ cache_buster }}" class="rounded-circle avatar-sm" alt="" onerror="this.style.display='none'">
+                                {% set d_icon = 'bi-person' %}
+                                {% if d.collaborateur and d.collaborateur.role == 'admin' %}
+                                  {% set d_icon = 'bi-person-badge' %}
+                                {% elif d.collaborateur and d.collaborateur.role == 'manager' %}
+                                  {% set d_icon = 'bi-person-lines-fill' %}
+                                {% endif %}
+                                <span class="user-icon-badge"><i class="bi {{ d_icon }}"></i></span>
                                 <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
                             </div>
                         </td>

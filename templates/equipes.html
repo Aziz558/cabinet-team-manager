@@ -151,7 +151,13 @@
                         <label class="form-label-premium">Responsable actuel</label>
                         <div class="d-flex align-items-center gap-2 mb-3 p-3 rounded" style="background: var(--bg-card-hover);">
                             {% if e.manager %}
-                            <img src="{{ url_for('uploaded_file', filename=e.manager.photo_profil) }}?v={{ cache_buster }}" class="rounded-circle" width="36" height="36" alt="">
+                            {% set e_icon = 'bi-person' %}
+                            {% if e.manager.role == 'admin' %}
+                              {% set e_icon = 'bi-person-badge' %}
+                            {% elif e.manager.role == 'manager' %}
+                              {% set e_icon = 'bi-person-lines-fill' %}
+                            {% endif %}
+                            <span class="user-icon-badge"><i class="bi {{ e_icon }}"></i></span>
                             <div>
                                 <strong>{{ e.manager.prenom }} {{ e.manager.nom }}</strong><br>
                                 <small class="text-tertiary">{{ e.manager.email }}</small>
