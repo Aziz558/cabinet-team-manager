@@ -186,6 +186,20 @@ class Equipe(db.Model):
         return f'<Equipe {self.nom}>'
 
 
+class PhotoUtilisateur(db.Model):
+    __tablename__ = 'photos'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    filename = db.Column(db.String(255), nullable=False)
+    photo_data = db.Column(db.Text, nullable=True)  # base64 data: data:image/png;base64,...
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='photos')
+
+    def __repr__(self):
+        return f'<Photo {self.filename} for user {self.user_id}>'
+
+
 class SuggestionTache(db.Model):
     __tablename__ = 'suggestions_taches'
     id = db.Column(db.Integer, primary_key=True)

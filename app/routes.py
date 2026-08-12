@@ -8,7 +8,7 @@ import io
 import smtplib
 import email
 from app import app, db
-from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe
+from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe, PhotoUtilisateur
 import os
 from flask import send_from_directory
 from app.integrations import inbound_mail
@@ -607,22 +607,26 @@ def upload_photo(user_id):
         filename = secure_filename(f"user_{user_id}_{file.filename}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
-        # Also store as base64 for persistence across deploys (raw SQL, no model column needed)
+        # Also store as base64 for persistence across deploys
         try:
             import base64
             with open(filepath, 'rb') as img_file:
                 b64_data = base64.b64encode(img_file.read()).decode('utf-8')
                 ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
-                with db.engine.connect() as conn:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_base64 TEXT"))
-                    conn.execute(
-                        text("UPDATE users SET photo_base64 = :data WHERE id = :id"),
-                        {"data": f"data:image/{ext};base64,{b64_data}", "id": user_id}
-                    )
-                    conn.commit()
-                    app.logger.info(f"✅ Saved photo base64 for user {user_id}")
+                photo_data = f"data:image/{ext};base64,{b64_data}"
+                # Save to dedicated photos table
+                existing = PhotoUtilisateur.query.filter_by(user_id=user_id).first()
+                if existing:
+                    existing.photo_data = photo_data
+                    existing.filename = filename
+                else:
+                    existing = PhotoUtilisateur(user_id=user_id, filename=filename, photo_data=photo_data)
+                    db.session.add(existing)
+                db.session.commit()
+                app.logger.info(f"✅ Saved photo base64 for user {user_id} to photos table")
         except Exception as e:
-            app.logger.error(f"Base64 conversion error: {e}")
+            app.logger.error(f"Base64 save error: {e}")
+            db.session.rollback()
         # Delete old photo if not default
         if user.photo_profil and user.photo_profil != 'default.png':
             old_path = os.path.join(app.config['UPLOAD_FOLDER'], user.photo_profil)
@@ -1071,17 +1075,20 @@ def profil():
                         with open(filepath, 'rb') as img_file:
                             b64_data = base64.b64encode(img_file.read()).decode('utf-8')
                             ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
-                            # Save base64 via raw SQL (no model column needed)
-                            with db.engine.connect() as conn:
-                                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_base64 TEXT"))
-                                conn.execute(
-                                    text("UPDATE users SET photo_base64 = :data WHERE id = :id"),
-                                    {"data": f"data:image/{ext};base64,{b64_data}", "id": current_user.id}
-                                )
-                                conn.commit()
-                                app.logger.info(f"✅ Saved photo base64 for user {current_user.id}")
+                            photo_data = f"data:image/{ext};base64,{b64_data}"
+                            # Save to dedicated photos table
+                            existing = PhotoUtilisateur.query.filter_by(user_id=current_user.id).first()
+                            if existing:
+                                existing.photo_data = photo_data
+                                existing.filename = filename
+                            else:
+                                existing = PhotoUtilisateur(user_id=current_user.id, filename=filename, photo_data=photo_data)
+                                db.session.add(existing)
+                            db.session.commit()
+                            app.logger.info(f"✅ Saved photo base64 for user {current_user.id} to photos table")
                     except Exception as e:
-                        app.logger.error(f"Base64 conversion error: {e}")
+                        app.logger.error(f"Photo save error: {e}")
+                        db.session.rollback()
                     # Delete old photo if not default
                     if current_user.photo_profil and current_user.photo_profil != 'default.png':
                         old_path = os.path.join(upload_folder, current_user.photo_profil)
@@ -1124,30 +1131,26 @@ def profil():
 def uploaded_file(filename):
     from datetime import datetime
     import os, re
-    # Try to serve from photo_base64 first (persistent across deploys)
+    # Try to serve from photos table first (persistent across deploys)
     from flask import Response
     match = re.match(r'user_(\d+)_.*', filename)
     if match:
         user_id = int(match.group(1))
         try:
-            with db.engine.connect() as conn:
-                row = conn.execute(
-                    text("SELECT photo_base64 FROM users WHERE id = :id"),
-                    {"id": user_id}
-                ).fetchone()
-                if row and row[0]:
-                    b64_data = row[0]
-                    if 'data:image/' in b64_data:
-                        mime = b64_data.split(';')[0].split(':')[1]
-                        data = b64_data.split(',', 1)[1]
-                    else:
-                        mime = 'image/png'
-                        data = b64_data
-                    resp = Response(data, mimetype=mime)
-                    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                    resp.headers['Pragma'] = 'no-cache'
-                    resp.headers['Expires'] = '0'
-                    return resp
+            photo = PhotoUtilisateur.query.filter_by(user_id=user_id).first()
+            if photo and photo.photo_data:
+                b64_data = photo.photo_data
+                if 'data:image/' in b64_data:
+                    mime = b64_data.split(';')[0].split(':')[1]
+                    data = b64_data.split(',', 1)[1]
+                else:
+                    mime = 'image/png'
+                    data = b64_data
+                resp = Response(data, mimetype=mime)
+                resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                resp.headers['Pragma'] = 'no-cache'
+                resp.headers['Expires'] = '0'
+                return resp
         except Exception as e:
             app.logger.error(f"Photo base64 read error: {e}")
     # Fallback to file on disk
