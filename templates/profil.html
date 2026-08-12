@@ -102,6 +102,15 @@ document.addEventListener('DOMContentLoaded', function () {
   } else {
     console.log('[PROFIL_PHOTO_DEBUG] no data-photo-profil found');
   }
+  var raw = document.querySelector('[data-photo-profil]')?.getAttribute('data-photo-profil') || '';
+  if (raw) {
+    var testSrc = '/static/uploads/' + encodeURIComponent(raw);
+    console.log('[PROFIL_PHOTO_DEBUG] test_src=', testSrc);
+    var testImg = new Image();
+    testImg.onload = function() { console.log('[PROFIL_PHOTO_DEBUG] test_src_status=ok'); };
+    testImg.onerror = function() { console.log('[PROFIL_PHOTO_DEBUG] test_src_status=missing'); };
+    testImg.src = testSrc;
+  }
 });
 
 document.getElementById('photoUploadForm')?.addEventListener('submit', async function(e) {
