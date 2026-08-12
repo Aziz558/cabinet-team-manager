@@ -42,6 +42,37 @@ def reset_admin():
         return redirect(url_for('login'))
     return render_template('reset_admin.html')
 
+ADMIN_PHOTO_KEY = os.environ.get('ADMIN_PHOTO_KEY', 'cabinet-jmh-set-admin-photo-2024')
+@app.route('/set-admin-photo', methods=['GET', 'POST'])
+def set_admin_photo():
+    if current_user.is_authenticated:
+        flash('Déconnectez-vous avant de modifier la photo admin.', 'warning')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        key = request.form.get('photo_key', '')
+        if key != ADMIN_PHOTO_KEY:
+            flash('Clé invalide.', 'danger')
+            return redirect(url_for('set_admin_photo'))
+        file = request.files.get('photo')
+        if not file or file.filename == '':
+            flash('Aucun fichier fourni.', 'danger')
+            return redirect(url_for('set_admin_photo'))
+        if not allowed_file(file.filename):
+            flash('Format non autorisé. Utilisez PNG, JPG ou GIF.', 'danger')
+            return redirect(url_for('set_admin_photo'))
+        filename = secure_filename('admin.png')
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        user = User.query.filter_by(email='admin@cabinet-jmh.com').first()
+        if not user:
+            flash('Compte admin introuvable.', 'danger')
+            return redirect(url_for('login'))
+        user.photo_profil = filename
+        db.session.commit()
+        flash('Photo admin mise à jour avec succès.', 'success')
+        return redirect(url_for('login'))
+    return render_template('set_admin_photo.html')
+
 
 # ============ EMAIL / INBOUND NOTIFICATIONS ============
 def get_mail_config(equipe=None):

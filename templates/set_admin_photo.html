@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Définir photo admin{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card-premium animate-fade-in-up">
+      <div class="card-header-premium">
+        <h5 class="mb-0"><i class="bi bi-image me-2" style="color:var(--orange-primary)"></i>Photo admin</h5>
+      </div>
+      <div class="card-body-premium">
+        <form method="POST" enctype="multipart/form-data" class="mb-3">
+          <div class="mb-3">
+            <label class="form-label-premium">Clé</label>
+            <input type="text" name="photo_key" class="input-premium" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label-premium">Image</label>
+            <input type="file" name="photo" accept="image/png,image/jpeg,image/gif" class="input-premium" required>
+          </div>
+          <button type="submit" class="btn-premium btn-premium-primary btn-press w-100">Enregistrer</button>
+        </form>
+        <p class="text-tertiary small mb-0">Cette action n’est possible que si vous êtes déconnecté.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
