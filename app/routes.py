@@ -73,6 +73,20 @@ def set_admin_photo():
         return redirect(url_for('login'))
     return render_template('set_admin_photo.html')
 
+@app.route('/api/admin/fix-photo', methods=['POST'])
+def fix_admin_photo():
+    if current_user.is_authenticated:
+        return jsonify({'ok': False, 'message': 'Déconnectez-vous avant de modifier la photo admin.'}), 400
+    key = request.form.get('photo_key', '') or request.args.get('photo_key', '')
+    if key != ADMIN_PHOTO_KEY:
+        return jsonify({'ok': False, 'message': 'Clé invalide.'}), 403
+    user = User.query.filter_by(email='admin@cabinet-jmh.com').first()
+    if not user:
+        return jsonify({'ok': False, 'message': 'Compte admin introuvable.'}), 404
+    user.photo_profil = 'admin.png'
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'Photo admin réinitialisée vers admin.png.', 'photo_profil': user.photo_profil})
+
 
 # ============ EMAIL / INBOUND NOTIFICATIONS ============
 def get_mail_config(equipe=None):

@@ -55,6 +55,11 @@ class User(UserMixin, db.Model):
                 filepath = os.path.join('static', 'uploads', self.photo_profil)
                 if os.path.exists(filepath):
                     return url_for('static', filename='uploads/' + self.photo_profil)
+                # Fallback sur admin.png pour le compte admin si le fichier configuré est absent
+                if self.email == 'admin@cabinet-jmh.com':
+                    fallback = os.path.join('static', 'uploads', 'admin.png')
+                    if os.path.exists(fallback):
+                        return url_for('static', filename='uploads/admin.png')
         except Exception:
             pass
         return None
