@@ -73,6 +73,22 @@ except Exception as e:
     except:
         pass
 
+# Migrate: add photo_base64 column if missing (MUST run before db.create_all + model imports)
+try:
+    with app.app_context():
+        from sqlalchemy import inspect, text as _text
+        # Use raw connection to avoid model dependency
+        with db.engine.connect() as conn:
+            inspector = inspect(conn)
+            if 'users' in inspector.get_table_names():
+                users_cols = [col['name'] for col in inspector.get_columns('users')]
+                if 'photo_base64' not in users_cols:
+                    conn.execute(_text("ALTER TABLE users ADD COLUMN photo_base64 TEXT"))
+                    conn.commit()
+                    print("✅ Added photo_base64 column to users table")
+except Exception as e:
+    print(f"⚠️ photo_base64 migration: {e}")
+
 from app import routes  # noqa: F401
 from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
@@ -92,17 +108,6 @@ with app.app_context():
                     app.logger.info("Added equipe_email column")
     except Exception as e:
         app.logger.warning(f"Migration error (equipes mailbox): {e}")
-
-    # Migrate: add photo_base64 column if missing
-    try:
-        inspector = db.inspect(db.engine)
-        users_cols = [col['name'] for col in inspector.get_columns('users')]
-        if 'photo_base64' not in users_cols:
-            with db.engine.begin() as conn:
-                conn.execute(db.text("ALTER TABLE users ADD COLUMN photo_base64 TEXT"))
-                app.logger.info("✅ Added photo_base64 column to users table")
-    except Exception as e:
-        app.logger.warning(f"Migration error (photo_base64): {e}")
 
     # Create default team if none exists
     try:
