@@ -1421,7 +1421,7 @@ def _build_suggestions():
                     'dossier_id': d.id,
                     'assigne_a': d.collaborateur_id,
                     'priorite': 'haute' if delta <= 3 else 'moyenne',
-                    'date_echeance': d.date_limite_declaration.strftime('%Y-%m-%d'),
+                    'date_echeance': d.date_limite_declaration,
                     'source': 'deadline'
                 })
 
