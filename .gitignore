@@ -7,3 +7,4 @@ venv/
 .venv/
 static/uploads/*
 !static/uploads/.gitkeep
+!static/uploads/admin.png
