@@ -928,9 +928,9 @@ def taches():
                             print(f'BREVO_DEBUG: email error for user {user_id}: {e}', flush=True)
                             print(f'BREVO_TRACEBACK: {error_detail}', flush=True)
                 flash('Tâche créée et notifications envoyées.', 'success')
-                # Delete the suggestion if it was a DB-backed suggestion (suggestion_id > 0)
+                # Delete the suggestion if it was a DB-backed suggestion (suggestion_id is not None)
                 suggestion_id = request.form.get('suggestion_id', type=int)
-                if suggestion_id and suggestion_id > 0:
+                if suggestion_id is not None:
                     suggestion = SuggestionTache.query.get(suggestion_id)
                     if suggestion:
                         db.session.delete(suggestion)
