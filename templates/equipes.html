@@ -151,7 +151,7 @@
                         <label class="form-label-premium">Responsable actuel</label>
                         <div class="d-flex align-items-center gap-2 mb-3 p-3 rounded" style="background: var(--bg-card-hover);">
                             {% if e.manager %}
-                            <img src="{{ url_for('uploaded_file', filename=e.manager.photo_profil) }}" class="rounded-circle" width="36" height="36" alt="">
+                            <img src="{{ url_for('uploaded_file', filename=e.manager.photo_profil) }}?v={{ cache_buster }}" class="rounded-circle" width="36" height="36" alt="">
                             <div>
                                 <strong>{{ e.manager.prenom }} {{ e.manager.nom }}</strong><br>
                                 <small class="text-tertiary">{{ e.manager.email }}</small>

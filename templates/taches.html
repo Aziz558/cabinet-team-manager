@@ -48,7 +48,7 @@
         </div>
         <div class="task-card-footer">
             <div class="task-assignee">
-                <img src="{{ url_for('uploaded_file', filename=t.assigne.photo_profil) }}" 
+                <img src="{{ url_for('uploaded_file', filename=t.assigne.photo_profil) }}?v={{ cache_buster }}" 
                      class="rounded-circle task-avatar" alt="">
                 <span>{{ t.assigne.prenom }}</span>
             </div>
