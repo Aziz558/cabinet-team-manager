@@ -592,6 +592,7 @@ def fiche_membre(user_id):
 @app.route('/membres/<int:user_id>/photo', methods=['POST'])
 @login_required
 def upload_photo(user_id):
+    app.logger.info("���🚀 [upload_photo] entered for user_id=%s", user_id)
     if current_user.role != 'manager' and current_user.id != user_id:
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dashboard'))
