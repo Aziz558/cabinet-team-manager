@@ -701,6 +701,14 @@ p {
     border: 2px solid rgba(255, 140, 0, 0.15);
     flex-shrink: 0;
 }
+.sidebar-user-img {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 140, 0, 0.15);
+    flex-shrink: 0;
+}
 .sidebar-user-info {
     display: flex;
     flex-direction: column;

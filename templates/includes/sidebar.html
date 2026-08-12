@@ -79,6 +79,11 @@
     <!-- Bottom: user profile -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
+            {% if current_user.photo_profil %}
+            <span class="sidebar-user-icon">
+                <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img">
+            </span>
+            {% else %}
             {% set role_icon = 'bi-person' %}
             {% if current_user.role == 'admin' %}
               {% set role_icon = 'bi-person-badge' %}
@@ -88,6 +93,7 @@
             <span class="sidebar-user-icon">
                 <i class="bi {{ role_icon }} fs-4"></i>
             </span>
+            {% endif %}
             <div class="sidebar-user-info">
                 <span class="sidebar-user-name">{{ current_user.prenom }} {{ current_user.nom }}</span>
                 <span class="sidebar-user-role">{{ current_user.role|capitalize }}</span>
@@ -140,6 +146,11 @@
     <!-- Bottom: user profile -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
+            {% if current_user.photo_profil %}
+            <span class="sidebar-user-icon">
+                <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img">
+            </span>
+            {% else %}
             {% set role_icon = 'bi-person' %}
             {% if current_user.role == 'admin' %}
               {% set role_icon = 'bi-person-badge' %}
@@ -149,6 +160,7 @@
             <span class="sidebar-user-icon">
                 <i class="bi {{ role_icon }} fs-4"></i>
             </span>
+            {% endif %}
             <div class="sidebar-user-info">
                 <span class="sidebar-user-name">{{ current_user.prenom }} {{ current_user.nom }}</span>
                 <span class="sidebar-user-role">{{ current_user.role|capitalize }}</span>

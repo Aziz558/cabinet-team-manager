@@ -72,6 +72,11 @@
             {% endif %}
             <div class="dropdown">
                 <a class="app-user-toggle" href="#" data-bs-toggle="dropdown">
+                    {% if current_user.photo_profil %}
+                    <span class="app-user-icon">
+                        <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;">
+                    </span>
+                    {% else %}
                     {% set top_icon = 'bi-person' %}
                     {% if current_user.role == 'admin' %}
                       {% set top_icon = 'bi-person-badge' %}
@@ -79,6 +84,7 @@
                       {% set top_icon = 'bi-person-lines-fill' %}
                     {% endif %}
                     <span class="app-user-icon"><i class="bi {{ top_icon }}"></i></span>
+                    {% endif %}
                     <span class="app-user-name d-none d-md-inline">{{ current_user.prenom }}</span>
                     <i class="bi bi-caret-down-fill ms-1"></i>
                 </a>
