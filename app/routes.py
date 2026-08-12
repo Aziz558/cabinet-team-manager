@@ -8,7 +8,7 @@ import io
 import smtplib
 import email
 from app import app, db
-from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe, PhotoUtilisateur
+from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe, PhotoUtilisateur, SuggestionTache
 import os
 from flask import send_from_directory
 from app.integrations import inbound_mail
@@ -928,6 +928,13 @@ def taches():
                             print(f'BREVO_DEBUG: email error for user {user_id}: {e}', flush=True)
                             print(f'BREVO_TRACEBACK: {error_detail}', flush=True)
                 flash('Tâche créée et notifications envoyées.', 'success')
+                # Delete the suggestion if it was a DB-backed suggestion (suggestion_id > 0)
+                suggestion_id = request.form.get('suggestion_id', type=int)
+                if suggestion_id and suggestion_id > 0:
+                    suggestion = SuggestionTache.query.get(suggestion_id)
+                    if suggestion:
+                        db.session.delete(suggestion)
+                        db.session.commit()
                 return redirect(url_for('taches'))
         all_taches = Tache.query.order_by(Tache.date_echeance.desc()).all()
         dossiers = Dossier.query.all()
