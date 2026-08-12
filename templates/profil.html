@@ -12,6 +12,8 @@
                 <div class="text-center mb-4">
                     <div class="position-relative d-inline-block">
                         {% set photo_src = current_user.photo_display_src() %}
+                        {% set raw_photo_profil = current_user.photo_profil %}
+                        <span data-photo-profil="{{ raw_photo_profil or '' }}"></span>
                         {% if photo_src %}
                         <span class="user-icon-badge user-icon-badge-lg">
                             <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:96px;height:96px;" data-photo-src="{{ photo_src }}">
