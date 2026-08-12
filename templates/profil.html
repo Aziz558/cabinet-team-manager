@@ -94,6 +94,12 @@ document.addEventListener('DOMContentLoaded', function () {
   } else {
     console.log('[PROFIL_PHOTO_DEBUG] no photo img found');
   }
+  var photoProfil = document.querySelector('[data-photo-profil]');
+  if (photoProfil) {
+    console.log('[PROFIL_PHOTO_DEBUG] photo_profil=', photoProfil.getAttribute('data-photo-profil'));
+  } else {
+    console.log('[PROFIL_PHOTO_DEBUG] no data-photo-profil found');
+  }
 });
 
 document.getElementById('photoUploadForm')?.addEventListener('submit', async function(e) {
