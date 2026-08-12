@@ -49,6 +49,23 @@ class User(UserMixin, db.Model):
     def nb_taches_a_faire(self):
         return Tache.query.filter_by(assigne_a=self.id, statut='a_faire').count()
 
+    def photo_display_src(self):
+        try:
+            if self.photo_profil:
+                filepath = os.path.join('static', 'uploads', self.photo_profil)
+                if os.path.exists(filepath):
+                    return url_for('static', filename='uploads/' + self.photo_profil)
+        except Exception:
+            pass
+        try:
+            from app.models import PhotoUtilisateur
+            photo = PhotoUtilisateur.query.filter_by(user_id=self.id).first()
+            if photo and getattr(photo, 'photo_data', None):
+                return photo.photo_data
+        except Exception:
+            pass
+        return None
+
     def __repr__(self):
         return f'<User {self.email}>'
 

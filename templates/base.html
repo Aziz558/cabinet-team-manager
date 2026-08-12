@@ -72,9 +72,10 @@
             {% endif %}
             <div class="dropdown">
                 <a class="app-user-toggle" href="#" data-bs-toggle="dropdown">
-                    {% if current_user.photo_profil %}
+                    {% set photo_src = current_user.photo_display_src() %}
+                    {% if photo_src %}
                     <span class="app-user-icon">
-                        <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;">
+                        <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;">
                     </span>
                     {% else %}
                     {% set top_icon = 'bi-person' %}

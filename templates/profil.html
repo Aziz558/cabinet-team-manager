@@ -11,9 +11,10 @@
             <div class="card-body-premium">
                 <div class="text-center mb-4">
                     <div class="position-relative d-inline-block">
-                        {% if current_user.photo_profil %}
+                        {% set photo_src = current_user.photo_display_src() %}
+                        {% if photo_src %}
                         <span class="user-icon-badge user-icon-badge-lg">
-                            <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img" style="width:96px;height:96px;">
+                            <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:96px;height:96px;">
                         </span>
                         {% else %}
                         {% set p_icon = 'bi-person' %}

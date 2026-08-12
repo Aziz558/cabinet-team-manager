@@ -79,9 +79,10 @@
     <!-- Bottom: user profile -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
-            {% if current_user.photo_profil %}
+            {% set photo_src = current_user.photo_display_src() %}
+            {% if photo_src %}
             <span class="sidebar-user-icon">
-                <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img">
+                <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img">
             </span>
             {% else %}
             {% set role_icon = 'bi-person' %}
@@ -146,9 +147,10 @@
     <!-- Bottom: user profile -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
-            {% if current_user.photo_profil %}
+            {% set photo_src = current_user.photo_display_src() %}
+            {% if photo_src %}
             <span class="sidebar-user-icon">
-                <img src="{{ url_for('static', filename='uploads/' + current_user.photo_profil) }}?v={{ cache_buster }}" alt="photo" class="sidebar-user-img">
+                <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img">
             </span>
             {% else %}
             {% set role_icon = 'bi-person' %}
