@@ -16,6 +16,9 @@
     </div>
 </div>
 {% set show_actions = True %}
+{% elif current_user.role == 'membre' %}
+<h2 class="fw-semibold animate-fade-in-up"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Mes dossiers</h2>
+{% set show_actions = False %}
 {% else %}
 <h2 class="fw-semibold animate-fade-in-up"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Mes dossiers</h2>
 {% set show_actions = False %}
@@ -47,6 +50,7 @@
                         <th>Date limite</th>
                         <th>Délai restant</th>
                         <th>Tâches TVA planifiées</th>
+                        <th>Tâches restantes</th>
                         {% if show_actions %}<th class="text-end">Actions</th>{% endif %}
                     </tr>
                 </thead>
@@ -102,6 +106,10 @@
                             {% else %}
                             <span class="text-tertiary small">Aucune</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            {% set taches_restantes = d.taches.filter(Tache.statut != 'terminee').count() %}
+                            <span class="badge badge-tertiary">{{ taches_restantes }}</span>
                         </td>
                         {% if show_actions %}
                         <td class="text-end">

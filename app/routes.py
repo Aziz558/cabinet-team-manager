@@ -716,6 +716,15 @@ def dossiers():
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres, equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch)
 
+@app.route('/mes-dossiers')
+@login_required
+def mes_dossiers():
+    if current_user.role == 'membre':
+        mes_dossiers = Dossier.query.filter_by(collaborateur_id=current_user.id).all()
+        return render_template('dossiers.html', dossiers=mes_dossiers, membres=[], equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache, current_equipe=None, all_equipes_for_switch=[])
+    flash('Accès refusé.', 'danger')
+    return redirect(url_for('dashboard'))
+
 @app.route('/dossiers/<int:dossier_id>/modifier', methods=['POST'])
 @login_required
 def modifier_dossier(dossier_id):

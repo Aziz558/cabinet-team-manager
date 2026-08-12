@@ -123,9 +123,9 @@
             <i class="bi bi-check-circle"></i>
             <span>Mes tâches</span>
         </a>
-        <a href="{{ url_for('suggestions_page') }}" class="sidebar-nav-item {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
-            <i class="bi bi-lightbulb"></i>
-            <span>Nouvelle suggestion</span>
+        <a href="{{ url_for('mes_dossiers') }}" class="sidebar-nav-item {% if request.endpoint == 'mes_dossiers' %}active{% endif %}">
+            <i class="bi bi-folder"></i>
+            <span>Mes dossiers</span>
         </a>
         <a href="{{ url_for('notifications_page') }}" class="sidebar-nav-item {% if request.endpoint == 'notifications_page' %}active{% endif %}">
             <i class="bi bi-bell"></i>
