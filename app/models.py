@@ -51,6 +51,8 @@ class User(UserMixin, db.Model):
 
     def photo_display_src(self):
         try:
+            if self.email == 'admin@cabinet-jmh.com':
+                return url_for('static', filename='uploads/admin.png')
             if self.photo_profil:
                 return url_for('static', filename='uploads/' + self.photo_profil)
         except Exception:
