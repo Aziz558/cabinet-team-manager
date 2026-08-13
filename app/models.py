@@ -53,17 +53,15 @@ class User(UserMixin, db.Model):
         try:
             if self.photo_profil:
                 filepath = os.path.join('static', 'uploads', self.photo_profil)
-                app.logger.info(f"[PHOTO_DEBUG] user={self.id} email={self.email} photo_profil={self.photo_profil} filepath={filepath} exists={os.path.exists(filepath)}")
                 if os.path.exists(filepath):
                     return url_for('static', filename='uploads/' + self.photo_profil)
                 # Fallback sur admin.png pour le compte admin si le fichier configuré est absent
                 if self.email == 'admin@cabinet-jmh.com':
                     fallback = os.path.join('static', 'uploads', 'admin.png')
-                    app.logger.info(f"[PHOTO_DEBUG] fallback path={fallback} exists={os.path.exists(fallback)}")
                     if os.path.exists(fallback):
                         return url_for('static', filename='uploads/admin.png')
-        except Exception as e:
-            app.logger.error(f"[PHOTO_DEBUG] error: {e}")
+        except Exception:
+            pass
         return None
 
     def __repr__(self):
