@@ -52,19 +52,7 @@ class User(UserMixin, db.Model):
     def photo_display_src(self):
         try:
             if self.photo_profil:
-                try:
-                    from flask import current_app
-                    base = current_app.root_path
-                except Exception:
-                    base = os.getcwd()
-                filepath = os.path.join(base, 'static', 'uploads', self.photo_profil)
-                if os.path.exists(filepath):
-                    return url_for('static', filename='uploads/' + self.photo_profil)
-                # Fallback sur admin.png pour le compte admin si le fichier configuré est absent
-                if self.email == 'admin@cabinet-jmh.com':
-                    fallback = os.path.join(base, 'static', 'uploads', 'admin.png')
-                    if os.path.exists(fallback):
-                        return url_for('static', filename='uploads/admin.png')
+                return url_for('static', filename='uploads/' + self.photo_profil)
         except Exception:
             pass
         return None
