@@ -1118,31 +1118,6 @@ def profil():
                     filepath = os.path.join(upload_folder, filename)
                     file.save(filepath)
                     app.logger.info(f"📸 [profil] saved file: {filepath} exists={os.path.exists(filepath)} size={os.path.getsize(filepath) if os.path.exists(filepath) else -1}")
-                    # Also store as base64 for persistence
-                    try:
-                        import base64
-                        with open(filepath, 'rb') as img_file:
-                            b64_data = base64.b64encode(img_file.read()).decode('utf-8')
-                            ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
-                            photo_data = f"data:image/{ext};base64,{b64_data}"
-                            # Save to dedicated photos table
-                            existing = PhotoUtilisateur.query.filter_by(user_id=current_user.id).first()
-                            if existing:
-                                existing.photo_data = photo_data
-                                existing.filename = filename
-                            else:
-                                existing = PhotoUtilisateur(user_id=current_user.id, filename=filename, photo_data=photo_data)
-                                db.session.add(existing)
-                            db.session.commit()
-                            app.logger.info(f"✅ [profil] Saved photo base64 for user {current_user.id} to photos table")
-                    except Exception as e:
-                        app.logger.error(f"❌ [profil] Photo save error: {e}")
-                        db.session.rollback()
-                    # Delete old photo if not default
-                    if current_user.photo_profil and current_user.photo_profil != 'default.png':
-                        old_path = os.path.join(upload_folder, current_user.photo_profil)
-                        if os.path.exists(old_path):
-                            os.remove(old_path)
                     current_user.photo_profil = filename
                     db.session.commit()
                     app.logger.info(f"📸 [profil] current_user.photo_profil updated={current_user.photo_profil}")
