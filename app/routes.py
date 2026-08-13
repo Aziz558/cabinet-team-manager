@@ -1153,51 +1153,15 @@ def profil():
 
 @app.route('/static/uploads/<filename>')
 def uploaded_file(filename):
-    from datetime import datetime
-    import os, re
+    import os
     app.logger.info(f"🔎 [uploaded_file] requested={filename}")
-    # Try to serve from photos table first (persistent across deploys)
-    from flask import Response
-    match = re.match(r'user_(\d+)_.*', filename)
-    if match:
-        user_id = int(match.group(1))
-        try:
-            photo = PhotoUtilisateur.query.filter_by(user_id=user_id).first()
-            app.logger.info(f"🔎 [uploaded_file] user_id={user_id} photo_record={photo is not None} has_data={bool(photo.photo_data) if photo else False}")
-            if photo and photo.photo_data:
-                b64_data = photo.photo_data
-                if 'data:image/' in b64_data:
-                    mime = b64_data.split(';')[0].split(':')[1]
-                    data = b64_data.split(',', 1)[1]
-                else:
-                    mime = 'image/png'
-                    data = b64_data
-                app.logger.info(f"✅ [uploaded_file] serving base64 for {filename} mime={mime} len={len(data)}")
-                resp = Response(data, mimetype=mime)
-                resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                resp.headers['Pragma'] = 'no-cache'
-                resp.headers['Expires'] = '0'
-                return resp
-            app.logger.info(f"⚠️ [uploaded_file] no base64 for {filename}, falling back to disk")
-        except Exception as e:
-            app.logger.error(f"❌ [uploaded_file] Photo base64 read error: {e}")
-    # Fallback to file on disk
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    app.logger.info(f"🔎 [uploaded_file] disk fallback path={filepath} exists={os.path.exists(filepath)}")
+    upload_folder = app.config.get('UPLOAD_FOLDER') or os.path.join('static', 'uploads')
+    filepath = os.path.join(upload_folder, filename)
+    app.logger.info(f"🔎 [uploaded_file] filepath={filepath} exists={os.path.exists(filepath)}")
     if os.path.exists(filepath):
-        response = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        app.logger.info(f"✅ [uploaded_file] serving disk file {filename}")
-        return response
-    # Fallback to default
-    default = os.path.join(app.config['UPLOAD_FOLDER'], 'default.png')
-    app.logger.info(f"⚠️ [uploaded_file] {filename} not found, returning default={os.path.exists(default)}")
-    if os.path.exists(default):
-        return send_from_directory(app.config['UPLOAD_FOLDER'], 'default.png')
-    app.logger.info(f"❌ [uploaded_file] nothing found for {filename}")
-    return '', 404
+        return send_from_directory(upload_folder, filename)
+    app.logger.error(f"❌ [uploaded_file] missing file={filename}")
+    return jsonify({'error': 'File not found'}), 404
 # ============ ADMIN DEBUG ============\
 
 @app.route('/admin/debug')
