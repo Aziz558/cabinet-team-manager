@@ -306,7 +306,11 @@
             {% for equipe in equipes %}
             <div class="team-card" style="--card-color: {{ equipe.couleur }}" onclick="window.location.href='{{ url_for('login', equipe=equipe.id) }}'">
                 <div class="team-card-header">
-                    {% if equipe.manager and equipe.manager.photo_profil and equipe.manager.photo_profil != 'default.png' %}
+                    {% if equipe.manager %}
+                    {% set eq_photo = equipe.manager.photo_display_src() %}
+                    {% if eq_photo %}
+                    <span class="manager-avatar-icon"><img src="{{ eq_photo }}" alt="photo" class="sidebar-user-img" style="width:40px;height:40px;"></span>
+                    {% elif equipe.manager.photo_profil and equipe.manager.photo_profil != 'default.png' %}
                     {% set eq_icon = 'bi-person' %}
                     {% if equipe.manager.role == 'admin' %}
                       {% set eq_icon = 'bi-person-badge' %}
@@ -314,10 +318,11 @@
                       {% set eq_icon = 'bi-person-lines-fill' %}
                     {% endif %}
                     <span class="manager-avatar-icon"><i class="bi {{ eq_icon }}"></i></span>
-                    {% elif equipe.manager %}
+                    {% else %}
                     <div class="manager-avatar-placeholder">
                         {{ equipe.manager.prenom[0]|upper }}{{ equipe.manager.nom[0]|upper }}
                     </div>
+                    {% endif %}
                     {% else %}
                     <div class="manager-avatar-placeholder">
                         <i class="bi {{ equipe.icon }}"></i>

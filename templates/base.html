@@ -20,14 +20,22 @@
                 <span class="app-brand-text">Cabinet JMH</span>
             </a>
             {% if current_user.is_authenticated %}
+            {% set photo_src = current_user.photo_display_src() %}
+            {% if photo_src %}
+            <span class="app-user-icon">
+                <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;">
+            </span>
+            {% else %}
             {% set role_icon = 'bi-person' %}
             {% if current_user.role == 'admin' %}
               {% set role_icon = 'bi-person-badge' %}
             {% elif current_user.role == 'manager' %}
               {% set role_icon = 'bi-person-lines-fill' %}
             {% endif %}
+            <span class="app-user-icon"><i class="bi {{ role_icon }}"></i></span>
+            {% endif %}
             <button class="app-topbar-toggle" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
-                <i class="bi {{ role_icon }} fs-4"></i>
+                <i class="bi bi-list fs-4"></i>
             </button>
             {% endif %}
         </div>

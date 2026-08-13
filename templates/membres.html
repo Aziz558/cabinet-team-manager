@@ -35,6 +35,10 @@
                     {% for m in membres %}
                     <tr>
                         <td>
+                            {% set m_photo = m.photo_display_src() %}
+                            {% if m_photo %}
+                            <span class="user-icon-badge"><img src="{{ m_photo }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;"></span>
+                            {% else %}
                             {% set m_icon = 'bi-person' %}
                             {% if m.role == 'admin' %}
                               {% set m_icon = 'bi-person-badge' %}
@@ -42,6 +46,7 @@
                               {% set m_icon = 'bi-person-lines-fill' %}
                             {% endif %}
                             <span class="user-icon-badge"><i class="bi {{ m_icon }}"></i></span>
+                            {% endif %}
                         </td>
                         <td><strong>{{ m.prenom }} {{ m.nom }}</strong></td>
                         <td class="text-tertiary">{{ m.email }}</td>

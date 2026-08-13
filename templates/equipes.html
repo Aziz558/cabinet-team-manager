@@ -151,6 +151,10 @@
                         <label class="form-label-premium">Responsable actuel</label>
                         <div class="d-flex align-items-center gap-2 mb-3 p-3 rounded" style="background: var(--bg-card-hover);">
                             {% if e.manager %}
+                            {% set e_photo = e.manager.photo_display_src() %}
+                            {% if e_photo %}
+                            <span class="user-icon-badge"><img src="{{ e_photo }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;"></span>
+                            {% else %}
                             {% set e_icon = 'bi-person' %}
                             {% if e.manager.role == 'admin' %}
                               {% set e_icon = 'bi-person-badge' %}
@@ -158,6 +162,7 @@
                               {% set e_icon = 'bi-person-lines-fill' %}
                             {% endif %}
                             <span class="user-icon-badge"><i class="bi {{ e_icon }}"></i></span>
+                            {% endif %}
                             <div>
                                 <strong>{{ e.manager.prenom }} {{ e.manager.nom }}</strong><br>
                                 <small class="text-tertiary">{{ e.manager.email }}</small>

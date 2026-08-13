@@ -119,6 +119,10 @@
                         <td>
                             {% set u = membres | selectattr('id', 'equalto', s.assigne_a) | first %}
                             <div class="d-flex align-items-center gap-2">
+                                {% set member_photo = u.photo_display_src() if u else None %}
+                                {% if member_photo %}
+                                <span class="user-icon-badge"><img src="{{ member_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                                {% else %}
                                 {% set member_icon = 'bi-person' %}
                                 {% if u.role == 'admin' %}
                                   {% set member_icon = 'bi-person-badge' %}
@@ -126,6 +130,7 @@
                                   {% set member_icon = 'bi-person-lines-fill' %}
                                 {% endif %}
                                 <span class="user-icon-badge"><i class="bi {{ member_icon }}"></i></span>
+                                {% endif %}
                                 <span>{{ u.prenom }} {{ u.nom }}</span>
                             </div>
                         </td>

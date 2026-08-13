@@ -15,11 +15,9 @@
                         {% if not photo_src and current_user.email == 'admin@cabinet-jmh.com' %}
                           {% set photo_src = url_for('static', filename='uploads/admin.png') %}
                         {% endif %}
-                        {% set raw_photo_profil = current_user.photo_profil %}
-                        <span data-photo-profil="{{ raw_photo_profil or '' }}"></span>
                         {% if photo_src %}
                         <span class="user-icon-badge user-icon-badge-lg">
-                            <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:96px;height:96px;" data-photo-src="{{ photo_src }}">
+                            <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:96px;height:96px;">
                         </span>
                         {% else %}
                         {% set p_icon = 'bi-person' %}
@@ -31,17 +29,16 @@
                         <span class="user-icon-badge user-icon-badge-lg"><i class="bi {{ p_icon }}"></i></span>
                         {% endif %}
                     </div>
-                    <script>console.log('[PROFIL_PHOTO_DEBUG] photo_src={{ photo_src }}')</script>
                     <div class="mt-2">
                         <h4 class="mb-1">{{ current_user.prenom }} {{ current_user.nom }}</h4>
                         <p class="text-tertiary small mb-0">{{ current_user.poste or 'Membre' }}</p>
                     </div>
                 </div>
 
-                {% if current_user.role == 'admin' %}
+                {% if current_user.role in ['admin','manager','membre'] %}
                 <div class="card-premium mb-3" style="background: var(--bg-card-hover);">
                     <div class="card-body-premium">
-                        <h6 class="mb-2" style="color: var(--orange-primary);"><i class="bi bi-image me-1"></i>Uploader une nouvelle photo de profil <span class="badge badge-orange">Admin seulement</span></h6>
+                        <h6 class="mb-2" style="color: var(--orange-primary);"><i class="bi bi-image me-1"></i>Photo de profil</h6>
                         <form method="POST" enctype="multipart/form-data" id="photoUploadForm">
                             <div class="d-flex align-items-center gap-3">
                                 <label for="photoInput" class="btn-premium btn-premium-secondary mb-0" style="cursor: pointer;">

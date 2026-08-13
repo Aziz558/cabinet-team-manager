@@ -48,6 +48,10 @@
         </div>
         <div class="task-card-footer">
             <div class="task-assignee">
+                {% set t_photo = t.assigne.photo_display_src() if t.assigne else None %}
+                {% if t_photo %}
+                <span class="user-icon-badge"><img src="{{ t_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                {% else %}
                 {% set t_icon = 'bi-person' %}
                 {% if t.assigne.role == 'admin' %}
                   {% set t_icon = 'bi-person-badge' %}
@@ -55,6 +59,7 @@
                   {% set t_icon = 'bi-person-lines-fill' %}
                 {% endif %}
                 <span class="user-icon-badge"><i class="bi {{ t_icon }}"></i></span>
+                {% endif %}
                 <span>{{ t.assigne.prenom }}</span>
             </div>
             <div class="task-actions">
