@@ -1165,7 +1165,6 @@ def profil():
             # Regular profile update (name, phone, poste, password)
             current_user.nom = request.form.get('nom', current_user.nom).strip()
             current_user.prenom = request.form.get('prenom', current_user.prenom).strip()
-            current_user.telephone = (request.form.get('telephone', current_user.telephone) or '').strip()[:20]
             current_user.poste = request.form.get('poste', current_user.poste).strip()
             # Change password if provided
             new_password = request.form.get('new_password', '').strip()
