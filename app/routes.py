@@ -8,7 +8,7 @@ import io
 import smtplib
 import email
 from app import app, db
-from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe, PhotoUtilisateur, SuggestionTache
+from app.models import User, Dossier, Tache, Notification, CommentaireTache, Performance, AppSetting, Equipe, SuggestionTache
 import os
 from flask import send_from_directory
 from app.integrations import inbound_mail

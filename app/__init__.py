@@ -74,7 +74,7 @@ except Exception as e:
         pass
 
 from app import routes  # noqa: F401
-from app.models import User, AppSetting, SuggestionTache, Equipe, PhotoUtilisateur  # noqa: F401
+from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
 with app.app_context():
     try:
