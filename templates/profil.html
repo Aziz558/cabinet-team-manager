@@ -12,6 +12,7 @@
                 <div class="text-center mb-4">
                     <div class="position-relative d-inline-block">
                         {% set photo_src = current_user.photo_display_src() %}
+                        <!-- DEBUG: photo_src={{ photo_src }}, email={{ current_user.email }} -->
                         {% if not photo_src and current_user.email == 'admin@cabinet-jmh.com' %}
                           {% set photo_src = url_for('static', filename='uploads/admin.png') %}
                         {% endif %}
