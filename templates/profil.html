@@ -12,6 +12,9 @@
                 <div class="text-center mb-4">
                     <div class="position-relative d-inline-block">
                         {% set photo_src = current_user.photo_display_src() %}
+                        {% if not photo_src and current_user.email == 'admin@cabinet-jmh.com' %}
+                          {% set photo_src = url_for('static', filename='uploads/admin.png') %}
+                        {% endif %}
                         {% set raw_photo_profil = current_user.photo_profil %}
                         <span data-photo-profil="{{ raw_photo_profil or '' }}"></span>
                         {% if photo_src %}
