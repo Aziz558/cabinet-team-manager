@@ -85,31 +85,6 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  var photoImg = document.querySelector('.user-icon-badge-lg img[data-photo-src]');
-  if (photoImg) {
-    console.log('[PROFIL_PHOTO_DEBUG] src=', photoImg.src);
-    console.log('[PROFIL_PHOTO_DEBUG] data-photo-src=', photoImg.getAttribute('data-photo-src'));
-  } else {
-    console.log('[PROFIL_PHOTO_DEBUG] no photo img found');
-  }
-  var photoProfil = document.querySelector('[data-photo-profil]');
-  if (photoProfil) {
-    console.log('[PROFIL_PHOTO_DEBUG] photo_profil=', photoProfil.getAttribute('data-photo-profil'));
-  } else {
-    console.log('[PROFIL_PHOTO_DEBUG] no data-photo-profil found');
-  }
-  var raw = document.querySelector('[data-photo-profil]')?.getAttribute('data-photo-profil') || '';
-  if (raw) {
-    var testSrc = '/static/uploads/' + encodeURIComponent(raw);
-    console.log('[PROFIL_PHOTO_DEBUG] test_src=', testSrc);
-    var testImg = new Image();
-    testImg.onload = function() { console.log('[PROFIL_PHOTO_DEBUG] test_src_status=ok'); };
-    testImg.onerror = function() { console.log('[PROFIL_PHOTO_DEBUG] test_src_status=missing'); };
-    testImg.src = testSrc;
-  }
-});
-
 document.getElementById('photoUploadForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const formData = new FormData(this);
