@@ -412,9 +412,16 @@ def dashboard():
             if d.date_limite_declaration:
                 delta = (d.date_limite_declaration - today).days
                 # Vérifier s'il y a une tâche TVA terminée pour ce dossier
+                # On cherche les tâches liées à la TVA : titre contenant TVA, CA3, CA12
                 tva_terminee = Tache.query.filter(
                     Tache.dossier_id == d.id,
-                    Tache.titre.like('%TVA%'),
+                    db.or_(
+                        Tache.titre.like('%TVA%'),
+                        Tache.titre.like('%CA3%'),
+                        Tache.titre.like('%ca3%'),
+                        Tache.titre.like('%CA12%'),
+                        Tache.titre.like('%ca12%')
+                    ),
                     Tache.statut == 'terminee'
                 ).first() is not None
 
@@ -1394,16 +1401,30 @@ def _build_suggestions():
     dossiers = Dossier.query.all()
     for d in dossiers:
         if d.date_limite_declaration and str(d.id) not in dismissed_dossiers:
-            delta = (d.date_limite_declaration - today).days
-            if 0 <= delta <= 14 and d.collaborateur_id:
-                suggestions.append({
-                    'titre': f"Déclaration {d.regime_tva or 'fiscale'} - {d.numero_dossier}",
-                    'dossier_id': d.id,
-                    'assigne_a': d.collaborateur_id,
-                    'priorite': 'haute' if delta <= 3 else 'moyenne',
-                    'date_echeance': d.date_limite_declaration,
-                    'source': 'deadline'
-                })
+            # Vérifier s'il y a déjà une tâche TVA terminée pour ce dossier
+            tva_terminee = Tache.query.filter(
+                Tache.dossier_id == d.id,
+                db.or_(
+                    Tache.titre.like('%TVA%'),
+                    Tache.titre.like('%CA3%'),
+                    Tache.titre.like('%ca3%'),
+                    Tache.titre.like('%CA12%'),
+                    Tache.titre.like('%ca12%')
+                ),
+                Tache.statut == 'terminee'
+            ).first() is not None
+
+            if not tva_terminee:
+                delta = (d.date_limite_declaration - today).days
+                if 0 <= delta <= 14 and d.collaborateur_id:
+                    suggestions.append({
+                        'titre': f"Déclaration {d.regime_tva or 'fiscale'} - {d.numero_dossier}",
+                        'dossier_id': d.id,
+                        'assigne_a': d.collaborateur_id,
+                        'priorite': 'haute' if delta <= 3 else 'moyenne',
+                        'date_echeance': d.date_limite_declaration,
+                        'source': 'deadline'
+                    })
 
     # Suggestions IA à partir des messages Teams
     try:
