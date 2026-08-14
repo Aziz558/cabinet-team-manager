@@ -101,4 +101,77 @@
 </div>
 
 <!-- Le modal de création reste identique -->
+<div class="modal fade" id="modalTache" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('taches') }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-plus-lg me-2" style="color:var(--orange-primary)"></i>Nouvelle tâche</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">��✕</button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="mb-3">
+                        <label class="form-label-premium">Titre</label>
+                        <input type="text" name="titre" class="input-premium" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Description</label>
+                        <textarea name="description" class="input-premium" rows="4"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Dossier</label>
+                            <select name="dossier_id" class="select-premium">
+                                <option value="">Aucun dossier</option>
+                                {% for d in dossiers %}
+                                <option value="{{ d.id }}">{{ d.numero_dossier }} - {{ d.intitule }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Assigné à</label>
+                            <select name="assigne_a" class="select-premium">
+                                <option value="">Non assigné</option>
+                                {% for m in membres %}
+                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Priorité</label>
+                            <select name="priorite" class="select-premium">
+                                <option value="basse">Basse</option>
+                                <option value="moyenne" selected>Moyenne</option>
+                                <option value="haute">Haute</option>
+                                <option value="urgente">Urgente</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Statut</label>
+                            <select name="statut" class="select-premium">
+                                <option value="a_faire" selected>À faire</option>
+                                <option value="en_cours">En cours</option>
+                                <option value="terminee">Terminée</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Date d'échéance</label>
+                        <input type="date" name="date_echeance" class="input-premium">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Date de début</label>
+                        <input type="date" name="date_debut" class="input-premium">
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">Créer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

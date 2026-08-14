@@ -135,7 +135,7 @@
 
 {% if current_user.role == 'manager' %}
 <!-- Modal Nouveau dossier -->
-<div class="modal fade" id="modalDossier" tabindex="-1">
+<div class="modal fade" id="modalDossier" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('dossiers') }}">
@@ -202,7 +202,7 @@
 </div>
 
 <!-- Modal Import CSV -->
-<div class="modal fade" id="modalImport" tabindex="-1">
+<div class="modal fade" id="modalImport" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('importer_dossiers') }}" enctype="multipart/form-data">
