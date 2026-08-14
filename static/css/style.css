@@ -1614,6 +1614,25 @@ p {
     position: relative;
     z-index: 10001 !important;
 }
+/* Specific modals - ensure they are above particles and other overlays */
+#modalTache,
+#modalDossier,
+#modalAjouter {
+    z-index: 10050 !important;
+    pointer-events: auto !important;
+}
+#modalTache .modal-dialog,
+#modalDossier .modal-dialog,
+#modalAjouter .modal-dialog {
+    z-index: 10051 !important;
+    pointer-events: auto !important;
+}
+#modalTache .modal-content-premium,
+#modalDossier .modal-content-premium,
+#modalAjouter .modal-content-premium {
+    z-index: 10052 !important;
+    pointer-events: auto !important;
+}
 .modal-backdrop {
     z-index: 9998 !important;
 }
