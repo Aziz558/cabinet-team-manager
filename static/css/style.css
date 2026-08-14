@@ -1617,6 +1617,18 @@ p {
 .modal-backdrop {
     z-index: 9998 !important;
 }
+#modalTache {
+    z-index: 10050 !important;
+    pointer-events: auto !important;
+}
+#modalTache .modal-dialog {
+    z-index: 10051 !important;
+    pointer-events: auto !important;
+}
+#modalTache .modal-content-premium {
+    z-index: 10052 !important;
+    pointer-events: auto !important;
+}
 .modal-premium {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
