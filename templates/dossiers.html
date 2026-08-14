@@ -103,7 +103,7 @@
                                                                                     {% if tva_done %}
                                                                                     <span class="text-success fw-medium" title="Déclaration TVA terminée"><i class="bi bi-check-circle-fill"></i> Fait</span>
                                                                                     {% else %}
-                                                                                    <span class="text-danger fw-medium" title="Déclaration TVA en cours"><i class="bi bi-x-circle-fill"></i> En cours</span>
+                                                                                    <span class="text-danger fw-medium" title="Déclaration TVA en cours"><i class="bi bi-x-circle-fill"></i> En cours ({{ tva_taches|length }} tâche(s))</span>
                                                                                     {% endif %}
                                                                                     <!-- DEBUG: TVA tasks count: {{ tva_taches|length }} -->
                                                                                 {% elif restant < 0 %}
