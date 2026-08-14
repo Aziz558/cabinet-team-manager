@@ -88,15 +88,14 @@
                         <td>
                                                                             {% if d.date_limite_declaration %}
                                                                                 {% set restant = (d.date_limite_declaration - date.today()).days %}
-                                                                                {% set tva_tasks = [] %}
-                                                                                {% for t in d.taches %}
-                                                                                    {% if ('tva' in t.titre|lower or 'ca3' in t.titre|lower or 'ca12' in t.titre|lower) %}
-                                                                                        {% set _ = tva_tasks.append(t) %}
-                                                                                    {% endif %}
-                                                                                {% endfor %}
-                                                                                {% if tva_tasks %}
+                                                                                {% set tva_taches = d.taches.filter(Tache.titre.like('%TVA%')).all() +
+                                                                                                    d.taches.filter(Tache.titre.like('%CA3%')).all() +
+                                                                                                    d.taches.filter(Tache.titre.like('%ca3%')).all() +
+                                                                                                    d.taches.filter(Tache.titre.like('%CA12%')).all() +
+                                                                                                    d.taches.filter(Tache.titre.like('%ca12%')).all() %}
+                                                                                {% if tva_taches %}
                                                                                     {% set tva_terminee = false %}
-                                                                                    {% for t in tva_tasks %}
+                                                                                    {% for t in tva_taches %}
                                                                                         {% if t.statut == 'terminee' %}
                                                                                             {% set tva_terminee = true %}
                                                                                         {% endif %}
