@@ -88,13 +88,12 @@
                         <td>
                                                     {% if d.date_limite_declaration %}
                                                         {% set restant = (d.date_limite_declaration - date.today()).days %}
-                                                        {% set tva_tache = d.taches.filter(db.or_(
-                                                            Tache.titre.like('%TVA%'),
-                                                            Tache.titre.like('%CA3%'),
-                                                            Tache.titre.like('%ca3%'),
-                                                            Tache.titre.like('%CA12%'),
-                                                            Tache.titre.like('%ca12%')
-                                                        )).first() %}
+                                                        {% set tva_tache = None %}
+                                                        {% for t in d.taches %}
+                                                            {% if ('TVA' in t.titre) or ('CA3' in t.titre) or ('ca3' in t.titre) or ('CA12' in t.titre) or ('ca12' in t.titre) %}
+                                                                {% set tva_tache = t %}
+                                                            {% endif %}
+                                                        {% endfor %}
                                                         {% if tva_tache and tva_tache.statut == 'terminee' %}
                                                         <span class="text-success fw-medium" title="Déclaration TVA terminée"><i class="bi bi-check-circle-fill"></i> Fait</span>
                                                         {% elif tva_tache %}
