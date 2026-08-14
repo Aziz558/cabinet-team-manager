@@ -1603,6 +1603,20 @@ p {
 }
 
 /* Premium modals */
+.modal {
+    z-index: 9999 !important;
+}
+.modal-dialog {
+    position: relative;
+    z-index: 10000 !important;
+}
+.modal-content-premium {
+    position: relative;
+    z-index: 10001 !important;
+}
+.modal-backdrop {
+    z-index: 9998 !important;
+}
 .modal-premium {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
