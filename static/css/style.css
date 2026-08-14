@@ -2733,3 +2733,30 @@ p {
     color: var(--orange-primary);
     border: 1px solid rgba(255, 140, 0, 0.35);
 }
+
+/* Fix for dropdowns in modals */
+.modal-body-premium {
+    overflow: visible !important;
+}
+
+.modal .MenuListPopup,
+.modal .dropdown-menu,
+.modal [role="listbox"],
+.modal [role="option"] {
+    z-index: 10060 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+    max-height: none !important;
+}
+
+/* Ensure decorative overlays don't block dropdowns */
+.modal-content-premium::before,
+.modal-content-premium::after,
+.modal-body-premium::before,
+.modal-body-premium::after,
+.modal::before,
+.modal::after {
+    pointer-events: none !important;
+}
