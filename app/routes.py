@@ -870,7 +870,7 @@ def tva_taches():
 @app.route('/tva-planifier', methods=['POST'])
 @login_required
 def tva_planifier():
-    if current_user.role != 'admin':
+    if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dossiers'))
     dossier_id = request.form.get('dossier_id', type=int)
