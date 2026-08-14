@@ -104,10 +104,10 @@
 <div class="modal fade" id="modalTache" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content-premium">
-            <form method="POST" action="{{ url_for('taches') }}">
+            <form method="POST" action="{{ url_for('taches') }}" id="formNouvelleTache">
                 <div class="modal-header-premium">
                     <h5 class="mb-0"><i class="bi bi-plus-lg me-2" style="color:var(--orange-primary)"></i>Nouvelle tâche</h5>
-                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">��✕</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
                 </div>
                 <div class="modal-body-premium">
                     <div class="mb-3">
@@ -121,20 +121,14 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Dossier</label>
-                            <select name="dossier_id" class="select-premium">
-                                <option value="">Aucun dossier</option>
-                                {% for d in dossiers %}
-                                <option value="{{ d.id }}">{{ d.numero_dossier }} - {{ d.intitule }}</option>
-                                {% endfor %}
+                            <select name="dossier_id" class="select-premium" id="modalDossierSelect">
+                                <option value="">Chargement...</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Assigné à</label>
-                            <select name="assigne_a" class="select-premium">
-                                <option value="">Non assigné</option>
-                                {% for m in membres %}
-                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
-                                {% endfor %}
+                            <select name="assigne_a" class="select-premium" id="modalMembreSelect">
+                                <option value="">Chargement...</option>
                             </select>
                         </div>
                     </div>
@@ -174,4 +168,54 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Populate dropdowns when modal opens
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('modalTache');
+    if (!modal) return;
+    
+    modal.addEventListener('show.bs.modal', function() {
+        var dossierSelect = document.getElementById('modalDossierSelect');
+        var membreSelect = document.getElementById('modalMembreSelect');
+        
+        // Avoid re-fetching if already populated (unless we want fresh data every time)
+        if (dossierSelect.options.length > 1 && membreSelect.options.length > 1) {
+            return;
+        }
+        
+        fetch('/api/dossiers-membres')
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (!data.ok) {
+                    console.error('Failed to load dropdown data:', data.message);
+                    return;
+                }
+                
+                // Populate dossiers
+                dossierSelect.innerHTML = '<option value="">Aucun dossier</option>';
+                data.dossiers.forEach(function(d) {
+                    var opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = d.label;
+                    dossierSelect.appendChild(opt);
+                });
+                
+                // Populate membres
+                membreSelect.innerHTML = '<option value="">Non assigné</option>';
+                data.membres.forEach(function(m) {
+                    var opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = m.label;
+                    membreSelect.appendChild(opt);
+                });
+            })
+            .catch(function(err) {
+                console.error('Error loading modal dropdowns:', err);
+            });
+    });
+});
+</script>
 {% endblock %}

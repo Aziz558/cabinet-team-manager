@@ -2225,6 +2225,26 @@ def api_dossiers():
         app.logger.error(f"Erreur api dossiers: {e}")
         return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
 
+@app.route('/api/dossiers-membres')
+@login_required
+def api_dossiers_membres():
+    """Retourne les dossiers et membres actifs pour le modal création tâche (admin/manager)."""
+    try:
+        if current_user.role not in ('admin', 'manager'):
+            return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+        
+        dossiers = Dossier.query.order_by(Dossier.numero_dossier).all()
+        membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
+        
+        return jsonify({
+            'ok': True,
+            'dossiers': [{'id': d.id, 'label': f'{d.numero_dossier} - {d.intitule}'} for d in dossiers],
+            'membres': [{'id': m.id, 'label': f'{m.prenom} {m.nom}'} for m in membres],
+        })
+    except Exception as e:
+        app.logger.error(f"Erreur api dossiers-membres: {e}")
+        return jsonify({'ok': False, 'message': f'Erreur: {e}'}), 500
+
 @app.route('/api/users')
 @login_required
 def api_users():
