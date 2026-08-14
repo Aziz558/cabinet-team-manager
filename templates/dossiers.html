@@ -88,20 +88,24 @@
                         <td>
                                                                             {% if d.date_limite_declaration %}
                                                                                 {% set restant = (d.date_limite_declaration - date.today()).days %}
-                                                                                {% set tva_terminee = false %}
-                                                                                {% set tva_exists = false %}
+                                                                                {% set tva_tasks = [] %}
                                                                                 {% for t in d.taches %}
                                                                                     {% if ('tva' in t.titre|lower or 'ca3' in t.titre|lower or 'ca12' in t.titre|lower) %}
-                                                                                        {% set tva_exists = true %}
+                                                                                        {% set _ = tva_tasks.append(t) %}
+                                                                                    {% endif %}
+                                                                                {% endfor %}
+                                                                                {% if tva_tasks %}
+                                                                                    {% set tva_terminee = false %}
+                                                                                    {% for t in tva_tasks %}
                                                                                         {% if t.statut == 'terminee' %}
                                                                                             {% set tva_terminee = true %}
                                                                                         {% endif %}
+                                                                                    {% endfor %}
+                                                                                    {% if tva_terminee %}
+                                                                                    <span class="text-success fw-medium" title="Déclaration TVA terminée"><i class="bi bi-check-circle-fill"></i> Fait</span>
+                                                                                    {% else %}
+                                                                                    <span class="text-danger fw-medium" title="Déclaration TVA en cours"><i class="bi bi-x-circle-fill"></i> En cours</span>
                                                                                     {% endif %}
-                                                                                {% endfor %}
-                                                                                {% if tva_terminee %}
-                                                                                <span class="text-success fw-medium" title="Déclaration TVA terminée"><i class="bi bi-check-circle-fill"></i> Fait</span>
-                                                                                {% elif tva_exists %}
-                                                                                <span class="text-danger fw-medium" title="Déclaration TVA en cours"><i class="bi bi-x-circle-fill"></i> En cours</span>
                                                                                 {% elif restant < 0 %}
                                                                                 <span class="text-danger fw-medium"><i class="bi bi-exclamation-triangle"></i> +{{ restant }} j</span>
                                                                                 {% elif restant == 0 %}
