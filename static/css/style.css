@@ -1617,36 +1617,45 @@ p {
 /* Specific modals - ensure they are above particles and other overlays */
 #modalTache,
 #modalDossier,
-#modalAjouter {
+#modalAjouter,
+#modalEquipe,
+#modalImport,
+#modalMailEquipe,
+#modalSetting,
+#modalSetting,
+#priseEnChargeModal,
+#validateModal {
     z-index: 10050 !important;
     pointer-events: auto !important;
 }
 #modalTache .modal-dialog,
 #modalDossier .modal-dialog,
-#modalAjouter .modal-dialog {
+#modalAjouter .modal-dialog,
+#modalEquipe .modal-dialog,
+#modalImport .modal-dialog,
+#modalMailEquipe .modal-dialog,
+#modalSetting .modal-dialog,
+#modalSetting .modal-dialog,
+#priseEnChargeModal .modal-dialog,
+#validateModal .modal-dialog {
     z-index: 10051 !important;
     pointer-events: auto !important;
 }
 #modalTache .modal-content-premium,
 #modalDossier .modal-content-premium,
-#modalAjouter .modal-content-premium {
+#modalAjouter .modal-content-premium,
+#modalEquipe .modal-content-premium,
+#modalImport .modal-content-premium,
+#modalMailEquipe .modal-content-premium,
+#modalSetting .modal-content-premium,
+#modalSetting .modal-content-premium,
+#priseEnChargeModal .modal-content-premium,
+#validateModal .modal-content-premium {
     z-index: 10052 !important;
     pointer-events: auto !important;
 }
 .modal-backdrop {
     z-index: 9998 !important;
-}
-#modalTache {
-    z-index: 10050 !important;
-    pointer-events: auto !important;
-}
-#modalTache .modal-dialog {
-    z-index: 10051 !important;
-    pointer-events: auto !important;
-}
-#modalTache .modal-content-premium {
-    z-index: 10052 !important;
-    pointer-events: auto !important;
 }
 .modal-premium {
     background: var(--bg-card);
