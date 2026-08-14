@@ -1,3 +1,43 @@
+from datetime import date, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def prev_working_day(d: date, offset_days=3) -> date:
+    """Return a working day approximately `offset_days` business days before d."""
+    result = d - timedelta(days=offset_days)
+    # If landing on weekend, move backwards to Friday
+    while result.weekday() >= 5:  # 5=Saturday, 6=Sunday
+        result -= timedelta(days=1)
+    return result
+
+
+def next_working_day(d: date) -> date:
+    """If d is weekend, return following Monday."""
+    if d.weekday() >= 5:  # Saturday or Sunday
+        d += timedelta(days=(7 - d.weekday()))
+    return d
+
+
+def get_ca3_deadlines_mensuelle(year: int):
+    """CA3 mensuelle: 15th of each month."""
+    deadlines = []
+    for month in range(1, 13):
+        d = date(year, month, 15)
+        deadlines.append(next_working_day(d))
+    return deadlines
+
+
+def get_ca3_deadlines_trimestrielle(year: int):
+    """CA3 trimestrielle deadlines: Jan 15, Apr 15, Jul 15, Oct 15."""
+    deadlines = []
+    for month in [1, 4, 7, 10]:
+        d = date(year, month, 15)
+        deadlines.append(next_working_day(d))
+    return deadlines
+
+
 def planifier_taches_tva(dossier, frequence: str = 'trimestrielle'):
     """Planifie les tâches TVA pour un dossier.
 
@@ -12,10 +52,6 @@ def planifier_taches_tva(dossier, frequence: str = 'trimestrielle'):
     from app.models import Tache, Notification, CommentaireTache
     from flask_login import current_user
     from app import db
-    from datetime import date, timedelta
-    import logging
-
-    logger = logging.getLogger(__name__)
 
     regime = dossier.regime_tva
     if regime is None or regime == 'exonere':
@@ -95,37 +131,3 @@ def planifier_taches_tva(dossier, frequence: str = 'trimestrielle'):
 
     db.session.commit()
     logger.info(f"TVA tasks planned for dossier {dossier.numero_dossier}: {len(deadlines)} deadlines × 2 tasks")
-
-
-def prev_working_day(d: date, offset_days=3) -> date:
-    """Return a working day approximately `offset_days` business days before d."""
-    result = d - timedelta(days=offset_days)
-    # If landing on weekend, move backwards to Friday
-    while result.weekday() >= 5:  # 5=Saturday, 6=Sunday
-        result -= timedelta(days=1)
-    return result
-
-
-def next_working_day(d: date) -> date:
-    """If d is weekend, return following Monday."""
-    if d.weekday() >= 5:  # Saturday or Sunday
-        d += timedelta(days=(7 - d.weekday()))
-    return d
-
-
-def get_ca3_deadlines_mensuelle(year: int):
-    """CA3 mensuelle: 15th of each month."""
-    deadlines = []
-    for month in range(1, 13):
-        d = date(year, month, 15)
-        deadlines.append(next_working_day(d))
-    return deadlines
-
-
-def get_ca3_deadlines_trimestrielle(year: int):
-    """CA3 trimestrielle deadlines: Jan 15, Apr 15, Jul 15, Oct 15."""
-    deadlines = []
-    for month in [1, 4, 7, 10]:
-        d = date(year, month, 15)
-        deadlines.append(next_working_day(d))
-    return deadlines
