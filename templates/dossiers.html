@@ -95,11 +95,11 @@
                                                                                                     d.taches.filter(Tache.titre.like('%ca12%')).all() %}
                                                                                 {% if tva_taches %}
                                                                                     {% set tva_done = false %}
-                                                                                    {% for t in tva_taches %}
-                                                                                        {% if t.statut == 'terminee' or t.date_completion %}
-                                                                                            {% set tva_done = true %}
-                                                                                        {% endif %}
-                                                                                    {% endfor %}
+                                                                                                                                                {% for t in tva_taches %}
+                                                                                                                                                    {% if t.statut == 'terminee' %}
+                                                                                                                                                        {% set tva_done = true %}
+                                                                                                                                                    {% endif %}
+                                                                                                                                                {% endfor %}
                                                                                     {% if tva_done %}
                                                                                     <span class="text-success fw-medium" title="Déclaration TVA terminée"><i class="bi bi-check-circle-fill"></i> Fait</span>
                                                                                     {% else %}
