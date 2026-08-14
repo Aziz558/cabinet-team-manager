@@ -86,19 +86,30 @@
                         <td class="text-tertiary small">{{ d.frequence_tva or '-' }}</td>
                         <td>{{ d.date_limite_declaration.strftime('%d/%m/%Y') if d.date_limite_declaration else '-' }}</td>
                         <td>
-                            {% if d.date_limite_declaration %}
-                                {% set restant = (d.date_limite_declaration - date.today()).days %}
-                                {% if restant < 0 %}
-                                <span class="text-danger fw-medium"><i class="bi bi-exclamation-triangle"></i> +{{ restant }} j</span>
-                                {% elif restant == 0 %}
-                                <span class="text-warning fw-medium">Aujourd'hui</span>
-                                {% else %}
-                                <span class="text-success fw-medium">{{ restant }} j</span>
-                                {% endif %}
-                            {% else %}
-                            <span class="text-tertiary">-</span>
-                            {% endif %}
-                        </td>
+                                                    {% if d.date_limite_declaration %}
+                                                        {% set restant = (d.date_limite_declaration - date.today()).days %}
+                                                        {% set tva_tache = d.taches.filter(db.or_(
+                                                            Tache.titre.like('%TVA%'),
+                                                            Tache.titre.like('%CA3%'),
+                                                            Tache.titre.like('%ca3%'),
+                                                            Tache.titre.like('%CA12%'),
+                                                            Tache.titre.like('%ca12%')
+                                                        )).first() %}
+                                                        {% if tva_tache and tva_tache.statut == 'terminee' %}
+                                                        <span class="text-success fw-medium" title="Déclaration TVA terminée"><i class="bi bi-check-circle-fill"></i> Fait</span>
+                                                        {% elif tva_tache %}
+                                                        <span class="text-danger fw-medium" title="Déclaration TVA en cours"><i class="bi bi-x-circle-fill"></i> En cours</span>
+                                                        {% elif restant < 0 %}
+                                                        <span class="text-danger fw-medium"><i class="bi bi-exclamation-triangle"></i> +{{ restant }} j</span>
+                                                        {% elif restant == 0 %}
+                                                        <span class="text-warning fw-medium">Aujourd'hui</span>
+                                                        {% else %}
+                                                        <span class="text-success fw-medium">{{ restant }} j</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                    <span class="text-tertiary">-</span>
+                                                    {% endif %}
+                                                </td>
                         <td>
                             {% set tva_taches = d.taches.filter(Tache.titre.like('%TVA%')).all() %}
                             {% if tva_taches %}
