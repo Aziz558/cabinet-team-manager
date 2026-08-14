@@ -411,10 +411,18 @@ def dashboard():
         for d in dossiers:
             if d.date_limite_declaration:
                 delta = (d.date_limite_declaration - today).days
-                if delta < 0:
-                    alertes.append({'type': 'danger', 'msg': f"Dossier {d.numero_dossier} en retard de {abs(delta)} jours"})
-                elif delta <= 7:
-                    alertes.append({'type': 'warning', 'msg': f"Dossier {d.numero_dossier} : deadline dans {delta} jours"})
+                # Vérifier s'il y a une tâche TVA terminée pour ce dossier
+                tva_terminee = Tache.query.filter(
+                    Tache.dossier_id == d.id,
+                    Tache.titre.like('%TVA%'),
+                    Tache.statut == 'terminee'
+                ).first() is not None
+
+                if not tva_terminee:
+                    if delta < 0:
+                        alertes.append({'type': 'danger', 'msg': f"Dossier {d.numero_dossier} en retard de {abs(delta)} jours"})
+                    elif delta <= 7:
+                        alertes.append({'type': 'warning', 'msg': f"Dossier {d.numero_dossier} : deadline dans {delta} jours"})
 
         # Suggestions de tâches automatiques basées sur deadlines
         suggestions = _build_suggestions()
