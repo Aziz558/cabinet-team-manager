@@ -1,13 +1,13 @@
 def planifier_taches_tva(dossier, frequence: str = 'trimestrielle'):
     """Planifie les tâches TVA pour un dossier.
 
-    For each deadline, creates:
-    - "Prépa TVA" task 3 working days before (priority: moyenne)
-    - "Dépot TVA" task on deadline day (priority: haute)
+    Pour chaque échéance, crée:
+    - Tâche "Prépa TVA" 3 jours ouvrés avant l'échéance (priorité: moyenne)
+    - Tâche "Dépot TVA" le jour de l'échéance (priorité: haute)
 
     Args:
-        dossier: A Dossier model instance with regime_tva and date_limite_declaration
-        frequence: 'mensuelle' or 'trimestrielle'
+        dossier: Une instance du modèle Dossier avec regime_tva et date_limite_declaration
+        frequence: 'mensuelle' ou 'trimestrielle'
     """
     from app.models import Tache, Notification, CommentaireTache
     from flask_login import current_user
