@@ -110,12 +110,17 @@
                                                     {% endif %}
                                                 </td>
                         <td>
-                            {% set tva_taches = d.taches.filter(Tache.titre.like('%TVA%')).all() %}
-                            {% if tva_taches %}
-                            <span class="badge badge-tertiary">{{ tva_taches|length }} tâche(s)</span>
-                            {% else %}
-                            <span class="text-tertiary small">Aucune</span>
-                            {% endif %}
+                            {% set tva_taches = [] %}
+                                                        {% for t in d.taches %}
+                                                            {% if ('TVA' in t.titre) or ('CA3' in t.titre) or ('ca3' in t.titre) or ('CA12' in t.titre) or ('ca12' in t.titre) %}
+                                                                {% set _ = tva_taches.append(t) %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        {% if tva_taches %}
+                                                        <span class="badge badge-tertiary">{{ tva_taches|length }} tâche(s)</span>
+                                                        {% else %}
+                                                        <span class="text-tertiary small">Aucune</span>
+                                                        {% endif %}
                         </td>
                         <td>
                             {% set taches_restantes = d.taches.filter(Tache.statut != 'terminee').count() %}
