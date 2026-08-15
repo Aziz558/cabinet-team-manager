@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
-from app import app, db
-from app.models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
+from . import app, db
+from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
 from sqlalchemy import or_
 import os
 from datetime import date, datetime
@@ -9,13 +9,13 @@ from datetime import date, datetime
 @app.route('/')
 def index():
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dossiers'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dossiers'))
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
@@ -27,7 +27,7 @@ def login():
             login_user(user, remember=True)
             next_page = request.args.get('next')
             flash(f'Bienvenue, {user.prenom} !', 'success')
-            return redirect(next_page or url_for('dashboard'))
+            return redirect(next_page or url_for('dossiers'))
         else:
             flash('Email ou mot de passe incorrect.', 'danger')
     return render_template('login.html')
@@ -38,6 +38,17 @@ def logout():
     logout_user()
     flash('Déconnexion réussie.', 'info')
     return redirect(url_for('login'))
+
+@app.route('/team-select')
+def team_select():
+    equipes = Equipe.query.order_by(Equipe.nom).all()
+    return render_template('team_select.html', equipes=equipes)
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    # Redirect to dossiers as the main page after login
+    return redirect(url_for('dossiers'))
 
 @app.route('/dossiers')
 @login_required
@@ -142,9 +153,9 @@ def planifier_taches_tva():
     """Endpoint pour déclencher la planification des tâches TVA pour tous les dossiers."""
     if current_user.role not in ('admin', 'manager'):
         flash('Accès refusé.', 'danger')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dossiers'))
     try:
-        from app.tva_scheduler import planifier_taches_tva
+        from .tva_scheduler import planifier_taches_tva
         planifier_taches_tva(current_user)
         flash('Planification des tâches TVA terminée avec succès.', 'success')
     except Exception as e:
