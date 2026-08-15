@@ -324,6 +324,30 @@ def voir_taches_dossier(dossier_id):
 def profil():
     return render_template('profil.html')
 
+@app.route('/reset-admin', methods=['GET', 'POST'])
+def reset_admin():
+    if request.method == 'POST':
+        reset_key = request.form.get('reset_key')
+        new_password = request.form.get('new_password')
+        from flask import flash, redirect, url_for
+        # The key from memory: cabinet-jmh-reset-2024
+        if reset_key == 'cabinet-jmh-reset-2024':
+            # Update admin password
+            from app.models import User
+            admin = User.query.filter_by(email='admin@cabinet-jmh.com').first()
+            if admin:
+                from werkzeug.security import generate_password_hash
+                from app import db
+                admin.password_hash = generate_password_hash(new_password)
+                db.session.commit()
+                flash('Mot de passe admin réinitialisé avec succès.', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Compte admin introuvable.', 'danger')
+        else:
+            flash('Clé de réinitialisation invalide.', 'danger')
+    return render_template('reset_admin.html')
+
 @app.route('/admin_debug')
 @login_required
 def admin_debug():
