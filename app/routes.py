@@ -873,21 +873,19 @@ def fiscal():
         }
         dossier_data.append(item)
         
-        # TVA tasks (all)
-        tva_tasks = [t for t in tax_tasks if 'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper()]
+        # TVA tasks (only TVA, CA3, CA12)
+        tva_tasks = [t for t in tasks if 'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper()]
         if tva_tasks:
             tva_dossiers.append({**item, 'tax_tasks': tva_tasks})
         
         # CA3 tasks
-        ca3_tasks = [t for t in tax_tasks if 'CA3' in t.titre.upper() or ('TVA' in t.titre.upper() and 'CA3' not in t.titre.upper() and 'CA12' not in t.titre.upper())]
-        # Show CA3 if dossier has regime_tva == 'ca3' or has CA3 tasks
         if d.regime_tva == 'ca3' or any('CA3' in t.titre.upper() for t in tasks):
-            ca3_filtered = [t for t in tasks if 'TVA' in t.titre.upper() or 'CA3' in t.titre.upper()]
+            ca3_filtered = [t for t in tasks if ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper()) and 'CA12' not in t.titre.upper()]
             ca3_dossiers.append({**item, 'tax_tasks': ca3_filtered})
         
         # CA12 tasks
         if d.regime_tva == 'ca12' or any('CA12' in t.titre.upper() for t in tasks):
-            ca12_filtered = [t for t in tasks if 'CA12' in t.titre.upper() or ('TVA' in t.titre.upper() and 'CA3' not in t.titre.upper())]
+            ca12_filtered = [t for t in tasks if 'CA12' in t.titre.upper()]
             ca12_dossiers.append({**item, 'tax_tasks': ca12_filtered})
         
         # IS tasks
