@@ -833,11 +833,28 @@ def reset_admin():
             flash('Cl\u00e9 de r\u00e9initialisation invalide.', 'danger')
     return render_template('reset_admin.html')
 
+@app.route('/api/set_photo', methods=['POST'])
+@login_required
+def api_set_photo():
+    """API admin pour assigner une photo à un utilisateur par email."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
+    email = request.form.get('email') or (request.get_json() or {}).get('email')
+    photo = request.form.get('photo') or (request.get_json() or {}).get('photo')
+    if not email or not photo:
+        return jsonify({'ok': False, 'message': 'email et photo requis'}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'ok': False, 'message': 'Utilisateur introuvable'}), 404
+    user.photo_profil = photo
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'Photo {photo} assignée à {email}'})
+
 @app.route('/admin_debug')
 @login_required
 def admin_debug():
     if current_user.role != 'admin':
-        flash('Acc\u00e8s r\u00e9serv\u00e9 aux administrateurs.', 'danger')
+        flash('Accès réservé aux administrateurs.', 'danger')
         return redirect(url_for('dossiers'))
     return render_template('admin_debug.html')
 
