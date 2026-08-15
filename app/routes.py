@@ -329,6 +329,16 @@ def notifications_page():
     unread_count = sum(1 for n in notifications if not n.lu)
     return render_template('notifications.html', notifications=notifications, unread_count=unread_count)
 
+@app.route('/notifications/non_lues')
+@login_required
+def notifications_non_lues():
+    """API JSON pour les notifications non lues."""
+    notifications = current_user.notifications.filter_by(lu=False).order_by(Notification.date_envoi.desc()).all() if hasattr(current_user, 'notifications') else []
+    return jsonify({
+        'count': len(notifications),
+        'notifications': [{'id': n.id, 'message': n.message, 'date': n.date_envoi.strftime('%d/%m/%Y %H:%M') if n.date_envoi else None} for n in notifications[:5]]
+    })
+
 @app.route('/set-team/<int:equipe_id>')
 @login_required
 def set_team(equipe_id):

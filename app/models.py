@@ -220,3 +220,31 @@ class SuggestionTache(db.Model):
 
     def __repr__(self):
         return f'<SuggestionTache {self.id}>'
+
+    # Aliases compatibilité avec les routes qui attendent 'Suggestion'
+    @property
+    def titre(self):
+        return self.titre_suggere
+    
+    @property
+    def description(self):
+        return self.description_suggeree
+    
+    @property
+    def priorite(self):
+        return self.priorite_suggeree
+    
+    @property
+    def source(self):
+        return 'email'
+    
+    @property
+    def assigne_a(self):
+        return self.cree_par
+    
+    @property
+    def date_echeance(self):
+        return None  # Pas de date d'échéance directe sur SuggestionTache
+
+# Alias pour compatibilité avec les routes (suggestions_page, api_suggestions, etc.)
+Suggestion = SuggestionTache
