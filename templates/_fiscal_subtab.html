@@ -1,0 +1,98 @@
+<div class="card-premium animate-fade-in-up">
+    <div class="card-body-premium p-0">
+        {% if dossier_data and dossier_data|length > 0 %}
+        <div class="table-responsive">
+            <table class="table-premium" id="tableFiscal">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>INTITULÉ</th>
+                        <th>COLLABORATEUR</th>
+                        <th>ÉQUIPE</th>
+                        <th>RÉGIME FISCAL</th>
+                        <th>TÂCHE</th>
+                        <th>ÉCHÉANCE</th>
+                        <th>JOURS RESTANTS</th>
+                        <th>STATUT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in dossier_data %}
+                    {% set d = item.dossier %}
+                    {% set tasks = item.tax_tasks or [] %}
+                    {% if tasks|length == 0 %}
+                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '')).lower() }}">
+                        <td><strong>{{ d.numero_dossier }}</strong></td>
+                        <td>{{ d.intitule }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="user-icon-badge"><i class="bi bi-person"></i></span>
+                                <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
+                            </div>
+                        </td>
+                        <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
+                        <td>
+                            {% if item.regime_fiscale == 'IS' %}<span class="badge badge-info">IS</span>
+                            {% elif item.regime_fiscale == 'IRPP' %}<span class="badge badge-warning">IRPP</span>
+                            {% else %}<span class="badge badge-tertiary">-</span>{% endif %}
+                        </td>
+                        <td class="text-tertiary" colspan="4">Aucune tâche pour cet impôt</td>
+                    </tr>
+                    {% else %}
+                        {% for t in tasks %}
+                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '') + ' ' + (t.titre if t.titre else '')).lower() }}">
+                        {% if loop.first %}
+                        <td rowspan="{{ tasks|length }}"><strong>{{ d.numero_dossier }}</strong></td>
+                        <td rowspan="{{ tasks|length }}">{{ d.intitule }}</td>
+                        <td rowspan="{{ tasks|length }}">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="user-icon-badge"><i class="bi bi-person"></i></span>
+                                <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
+                            </div>
+                        </td>
+                        <td rowspan="{{ tasks|length }}">{{ d.equipe.nom if d.equipe else '-' }}</td>
+                        <td rowspan="{{ tasks|length }}">
+                            {% if item.regime_fiscale == 'IS' %}<span class="badge badge-info">IS</span>
+                            {% elif item.regime_fiscale == 'IRPP' %}<span class="badge badge-warning">IRPP</span>
+                            {% else %}<span class="badge badge-tertiary">-</span>{% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            <span style="font-size:0.85rem;">{{ t.titre }}</span>
+                        </td>
+                        <td>{{ t.date_echeance.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            {% set jours = (t.date_echeance - date.today()).days %}
+                            {% if jours < 0 %}
+                            <span class="text-danger fw-medium"><i class="bi bi-exclamation-triangle"></i> +{{ -jours }} j</span>
+                            {% elif jours == 0 %}
+                            <span class="text-warning fw-medium">Aujourd'hui</span>
+                            {% else %}
+                            <span class="text-success fw-medium">{{ jours }} j</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.statut == 'terminee' or t.statut == 'terminée' %}
+                            <span class="statut-indicator"><span class="dot dot-termine"></span> Terminé</span>
+                            {% elif t.statut == 'en_cours' %}
+                            <span class="statut-indicator"><span class="dot dot-en-cours"></span> En cours</span>
+                            {% else %}
+                            <span class="statut-indicator"><span class="dot dot-a-faire"></span> À faire</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                        {% endfor %}
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state p-4 text-center">
+            <i class="bi bi-inbox" style="font-size:2rem;color:var(--text-tertiary);"></i>
+            <h5 class="mt-2">Aucun dossier concerné</h5>
+            <p class="text-tertiary">Aucun dossier n'est soumis à cet impôt.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>

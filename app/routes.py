@@ -835,6 +835,12 @@ def fiscal():
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
 
     dossier_data = []
+    tva_dossiers = []
+    ca3_dossiers = []
+    ca12_dossiers = []
+    is_dossiers = []
+    cfe_dossiers = []
+    
     for d in all_dossiers:
         tasks = Tache.query.filter(Tache.dossier_id == d.id).all()
         tax_tasks = [t for t in tasks if (
@@ -844,7 +850,7 @@ def fiscal():
         next_deadline = min([t.date_echeance for t in pending_tasks]) if pending_tasks else None
         if any(t.statut == 'a_faire' for t in tax_tasks):
             status = 'a_faire'
-            status_label = '\u00c0 faire'
+            status_label = 'À faire'
             status_class = 'text-danger'
         elif any(t.statut == 'en_cours' for t in tax_tasks):
             status = 'en_cours'
@@ -852,9 +858,10 @@ def fiscal():
             status_class = 'text-warning'
         else:
             status = 'terminee'
-            status_label = 'Termin\u00e9'
+            status_label = 'Terminé'
             status_class = 'text-success'
-        dossier_data.append({
+        
+        item = {
             'dossier': d,
             'regime_fiscale': d.regime_fiscale,
             'has_cfe': d.has_cfe,
@@ -863,8 +870,40 @@ def fiscal():
             'status_label': status_label,
             'status_class': status_class,
             'tax_tasks': tax_tasks
-        })
-    return render_template('fiscal.html', dossier_data=dossier_data, current_equipe=current_equipe,
+        }
+        dossier_data.append(item)
+        
+        # TVA tasks (all)
+        tva_tasks = [t for t in tax_tasks if 'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper()]
+        if tva_tasks:
+            tva_dossiers.append({**item, 'tax_tasks': tva_tasks})
+        
+        # CA3 tasks
+        ca3_tasks = [t for t in tax_tasks if 'CA3' in t.titre.upper() or ('TVA' in t.titre.upper() and 'CA3' not in t.titre.upper() and 'CA12' not in t.titre.upper())]
+        # Show CA3 if dossier has regime_tva == 'ca3' or has CA3 tasks
+        if d.regime_tva == 'ca3' or any('CA3' in t.titre.upper() for t in tasks):
+            ca3_filtered = [t for t in tasks if 'TVA' in t.titre.upper() or 'CA3' in t.titre.upper()]
+            ca3_dossiers.append({**item, 'tax_tasks': ca3_filtered})
+        
+        # CA12 tasks
+        if d.regime_tva == 'ca12' or any('CA12' in t.titre.upper() for t in tasks):
+            ca12_filtered = [t for t in tasks if 'CA12' in t.titre.upper() or ('TVA' in t.titre.upper() and 'CA3' not in t.titre.upper())]
+            ca12_dossiers.append({**item, 'tax_tasks': ca12_filtered})
+        
+        # IS tasks
+        if d.regime_fiscale == 'IS' or any('IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper() for t in tasks):
+            is_filtered = [t for t in tasks if 'IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper()]
+            is_dossiers.append({**item, 'tax_tasks': is_filtered})
+        
+        # CFE tasks
+        if d.has_cfe or any('CFE' in t.titre.upper() for t in tasks):
+            cfe_filtered = [t for t in tasks if 'CFE' in t.titre.upper()]
+            cfe_dossiers.append({**item, 'tax_tasks': cfe_filtered})
+    
+    return render_template('fiscal.html', dossier_data=dossier_data, 
+        tva_dossiers=tva_dossiers, ca3_dossiers=ca3_dossiers, ca12_dossiers=ca12_dossiers,
+        is_dossiers=is_dossiers, cfe_dossiers=cfe_dossiers,
+        current_equipe=current_equipe,
         all_equipes_for_switch=all_equipes_for_switch, Tache=Tache, db=db)
 
 

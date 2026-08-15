@@ -1,129 +1,113 @@
 {% extends "base.html" %}
 {% block title %}Tableau de bord fiscal{% endblock %}
 {% block content %}
-{% if current_user.role in ('admin', 'manager') %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
+
+<style>
+.tab-fiscal { display: flex; gap: 0; border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; }
+.tab-fiscal button { background: none; border: none; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 500; color: var(--text-tertiary); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+.tab-fiscal button:hover { color: var(--orange-primary); }
+.tab-fiscal button.active { color: var(--orange-primary); border-bottom-color: var(--orange-primary); }
+.tab-fiscal button .badge-impot { display: inline-block; background: var(--bg-card); padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.7rem; margin-left: 6px; color: var(--text-secondary); border: 1px solid var(--border-color); }
+.tab-fiscal button.active .badge-impot { background: rgba(255, 140, 0, 0.15); border-color: var(--orange-primary); color: var(--orange-primary); }
+
+.impot-content { display: none; }
+.impot-content.active { display: block; }
+
+.statut-indicator { display: inline-flex; align-items: center; gap: 5px; }
+.statut-indicator .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot-a-faire { background: var(--danger); }
+.dot-en-cours { background: var(--warning); }
+.dot-termine { background: var(--success); }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 animate-fade-in-up">
     <h2 class="fw-semibold"><i class="bi bi-calc me-2" style="color:var(--orange-primary)"></i>Tableau de bord fiscal</h2>
 </div>
-{% else %}
-<h2 class="fw-semibold animate-fade-in-up"><i class="bi bi-calc me-2" style="color:var(--orange-primary)"></i>Tableau de bord fiscal</h2>
-{% endif %}
 
-<div class="card-premium mb-4 animate-fade-in-up">
+<div class="card-premium mb-3 animate-fade-in-up">
     <div class="card-body-premium">
-        <div class="mb-3">
-            <input type="text" id="rechercheFiscal" class="input-premium" placeholder="Rechercher par n°, intitulé, collaborateur, équipe...">
+        <div class="position-relative">
+            <span class="position-absolute top-50 start-0 translate-middle-y ms-2" style="color: var(--text-tertiary);"><i class="bi bi-search"></i></span>
+            <input type="text" id="rechercheFiscal" class="input-premium ps-5" placeholder="Rechercher par n°, intitulé, collaborateur, équipe...">
         </div>
-        {% if dossier_data %}
-        <div class="table-responsive">
-            <table class="table-premium" id="tableFiscal">
-                <thead>
-                    <tr>
-                        <th>N°</th>
-                        <th>INTITULÉ</th>
-                        <th>COLLABORATEUR</th>
-                        <th>ÉQUIPE</th>
-                        <th>RÉGIME FISCAL</th>
-                        <th>CFE</th>
-                        <th>PROCHAINE ÉCHÉANCE</th>
-                        <th>STATUT</th>
-                        <th>ACTIONS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in dossier_data %}
-                    {% set d = item.dossier %}
-                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '')).lower() }}">
-                        <td><strong>{{ d.numero_dossier }}</strong></td>
-                        <td>{{ d.intitule }}</td>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                {% set d_icon = 'bi-person' %}
-                                {% if d.collaborateur and d.collaborateur.role == 'admin' %}
-                                  {% set d_icon = 'bi-person-badge' %}
-                                {% elif d.collaborateur and d.collaborateur.role == 'manager' %}
-                                  {% set d_icon = 'bi-person-lines-fill' %}
-                                {% endif %}
-                                <span class="user-icon-badge"><i class="bi {{ d_icon }}"></i></span>
-                                <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
-                            </div>
-                        </td>
-                        <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
-                        <td>
-                            {% if item.regime_fiscale == 'IS' %}
-                                <span class="badge badge-info">IS</span>
-                            {% elif item.regime_fiscale == 'IRPP' %}
-                                <span class="badge badge-warning">IRPP</span>
-                            {% else %}
-                                <span class="badge badge-tertiary">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if item.has_cfe %}
-                                <span class="badge badge-success">Oui</span>
-                            {% else %}
-                                <span class="badge badge-secondary">Non</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if item.next_deadline %}
-                                {{ item.next_deadline.strftime('%d/%m/%Y') }}
-                            {% else %}
-                                <span class="text-tertiary">-</span>
-                            {% endif %}
-                        </td>
-                        <td class="{{ item.status_class }}">{{ item.status_label }}</td>
-                        <td>
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-three-dots"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
-                                    {% if item.tax_tasks|length > 0 %}
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><small class="text-muted d-block">Tâches fiscales :</small></li>
-                                    {% for t in item.tax_tasks %}
-                                    <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('taches') }}#tache{{ t.id }}" style="font-size:0.85rem;">
-                                        <i class="bi bi-circle me-1 text-{{ 'success' if t.statut == 'terminee' else 'warning' if t.statut == 'en_cours' else 'danger' }}"></i>
-                                        <span>{{ t.titre|truncate(30) }} ({{ t.date_echeance.strftime('%d/%m/%Y') }})</span>
-                                    </a></li>
-                                    {% endfor %}
-                                    {% endif %}
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="{{ url_for('supprimer_dossier', dossier_id=d.id) }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce dossier ? Cette action est irréversible.');"><i class="bi bi-trash me-2"></i>Supprimer</a></li>
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="alert alert-info">Aucun dossier trouvé.</div>
-        {% endif %}
     </div>
 </div>
+
+<!-- Onglets -->
+<div class="tab-fiscal animate-fade-in-up" id="fiscalTabs">
+    <button class="active" data-tab="tva" onclick="switchTab('tva')">
+        <i class="bi bi-receipt"></i> TVA
+        <span class="badge-impot">{{ tva_dossiers|length }} dossier(s)</span>
+    </button>
+    <button data-tab="ca3" onclick="switchTab('ca3')">
+        <i class="bi bi-receipt-cutoff"></i> CA3
+        <span class="badge-impot">{{ ca3_dossiers|length }}</span>
+    </button>
+    <button data-tab="ca12" onclick="switchTab('ca12')">
+        <i class="bi bi-receipt"></i> CA12
+        <span class="badge-impot">{{ ca12_dossiers|length }}</span>
+    </button>
+    <button data-tab="is" onclick="switchTab('is')">
+        <i class="bi bi-building"></i> IS
+        <span class="badge-impot">{{ is_dossiers|length }}</span>
+    </button>
+    <button data-tab="cfe" onclick="switchTab('cfe')">
+        <i class="bi bi-shop"></i> CFE
+        <span class="badge-impot">{{ cfe_dossiers|length }}</span>
+    </button>
+</div>
+
+<!-- Contenu TVA (tous) -->
+<div id="tab-tva" class="impot-content active">
+    {% include '_fiscal_subtab.html' with context %}
+</div>
+
+<!-- Contenu CA3 -->
+<div id="tab-ca3" class="impot-content">
+    {% set dossier_data = ca3_dossiers %}
+    {% include '_fiscal_subtab.html' with context %}
+</div>
+
+<!-- Contenu CA12 -->
+<div id="tab-ca12" class="impot-content">
+    {% set dossier_data = ca12_dossiers %}
+    {% include '_fiscal_subtab.html' with context %}
+</div>
+
+<!-- Contenu IS -->
+<div id="tab-is" class="impot-content">
+    {% set dossier_data = is_dossiers %}
+    {% include '_fiscal_subtab.html' with context %}
+</div>
+
+<!-- Contenu CFE -->
+<div id="tab-cfe" class="impot-content">
+    {% set dossier_data = cfe_dossiers %}
+    {% include '_fiscal_subtab.html' with context %}
+</div>
+
 {% endblock %}
+
 {% block scripts %}
 {{ super() }}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const rechercheInput = document.getElementById('rechercheFiscal');
-        if (!rechercheInput) return;
-        const tableRows = document.querySelectorAll('#tableFiscal tbody tr');
-        rechercheInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            tableRows.forEach(row => {
-                const mots = row.getAttribute('data-mots');
-                if (mots.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-fiscal button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.impot-content').forEach(c => c.classList.remove('active'));
+    document.querySelector(`.tab-fiscal button[data-tab="${tabId}"]`).classList.add('active');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const rechercheInput = document.getElementById('rechercheFiscal');
+    if (!rechercheInput) return;
+    rechercheInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        document.querySelectorAll('.impot-content.active table tbody tr').forEach(row => {
+            const mots = row.getAttribute('data-mots') || '';
+            row.style.display = mots.includes(searchTerm) ? '' : 'none';
         });
     });
+});
 </script>
 {% endblock %}
