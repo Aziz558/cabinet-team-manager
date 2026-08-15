@@ -834,6 +834,17 @@ def fiscal():
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
 
+    def _add_counts(item):
+        """Ajoute les compteurs nb_a_faire, nb_terminee, a_retard à un item."""
+        tasks = item.get('tax_tasks', [])
+        nb_a_faire = sum(1 for t in tasks if t.statut == 'a_faire')
+        nb_terminee = sum(1 for t in tasks if t.statut in ('terminee', 'terminée'))
+        a_retard = sum(1 for t in tasks if t.statut not in ('terminee', 'terminée') and t.date_echeance and t.date_echeance < date.today())
+        item['nb_a_faire'] = nb_a_faire
+        item['nb_terminee'] = nb_terminee
+        item['a_retard'] = a_retard
+        return item
+    
     dossier_data = []
     tva_dossiers = []
     ca3_dossiers = []
@@ -872,6 +883,8 @@ def fiscal():
             'tax_tasks': tax_tasks
         }
         dossier_data.append(item)
+        
+        _add_counts(item)
         
         # TVA tasks (only TVA, CA3, CA12)
         tva_tasks = [t for t in tasks if 'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper()]

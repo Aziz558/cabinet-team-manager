@@ -5,14 +5,13 @@
             <table class="table-premium" id="tableFiscal">
                 <thead>
                     <tr>
-                        <th>N°</th>
-                        <th>INTITULÉ</th>
+                        <th style="width:32px"></th>
+                        <th>N° / INTITULÉ</th>
                         <th>COLLABORATEUR</th>
                         <th>ÉQUIPE</th>
-                        <th>RÉGIME FISCAL</th>
-                        <th>TÂCHE</th>
-                        <th>ÉCHÉANCE</th>
-                        <th>JOURS RESTANTS</th>
+                        <th>RÉGIME</th>
+                        <th>TÂCHES</th>
+                        <th>PROCHAINE ÉCHÉANCE</th>
                         <th>STATUT</th>
                     </tr>
                 </thead>
@@ -20,10 +19,16 @@
                     {% for item in dossier_data %}
                     {% set d = item.dossier %}
                     {% set tasks = item.tax_tasks or [] %}
-                    {% if tasks|length == 0 %}
-                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '')).lower() }}">
-                        <td><strong>{{ d.numero_dossier }}</strong></td>
-                        <td>{{ d.intitule }}</td>
+                    {% set nb_a_faire = item.nb_a_faire or 0 %}
+                    {% set nb_terminee = item.nb_terminee or 0 %}
+                    {% set a_retard = item.a_retard or 0 %}
+                    {% set next_dl = item.next_deadline %}
+                    
+                    <tr class="fiscal-dossier-row" style="cursor:pointer;" onclick="toggleTasks({{ d.id }})" data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '')).lower() }}">
+                        <td class="text-center">
+                            <i class="bi bi-chevron-right fiscal-chevron" id="chevron-{{ d.id }}" style="transition:transform 0.2s;color:var(--text-tertiary);"></i>
+                        </td>
+                        <td><strong>{{ d.numero_dossier }}</strong><br><small class="text-tertiary">{{ d.intitule }}</small></td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="user-icon-badge"><i class="bi bi-person"></i></span>
@@ -35,54 +40,80 @@
                             {% if item.regime_fiscale == 'IS' %}<span class="badge badge-info">IS</span>
                             {% elif item.regime_fiscale == 'IRPP' %}<span class="badge badge-warning">IRPP</span>
                             {% else %}<span class="badge badge-tertiary">-</span>{% endif %}
+                            {% if item.has_cfe %}<span class="badge badge-success ms-1">CFE</span>{% endif %}
                         </td>
-                        <td class="text-tertiary" colspan="4">Aucune tâche pour cet impôt</td>
+                        <td>
+                            <span class="fw-medium">{{ tasks|length }}</span>
+                            <span class="text-tertiary small">
+                                ({{ nb_a_faire }} à faire{% if a_retard > 0 %}, <span class="text-danger">{{ a_retard }} en retard</span>{% endif %})
+                            </span>
+                        </td>
+                        <td>
+                            {% if next_dl %}
+                                <span class="fw-medium">{{ next_dl.strftime('%d/%m') }}</span>
+                                {% set j = (next_dl - date.today()).days %}
+                                {% if j < 0 %}
+                                <span class="badge badge-danger ms-1">+{{ -j }}j</span>
+                                {% elif j <= 7 %}
+                                <span class="badge badge-warning ms-1">{{ j }}j</span>
+                                {% else %}
+                                <span class="badge badge-secondary ms-1">{{ j }}j</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-tertiary">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if a_retard > 0 %}
+                            <span class="statut-indicator"><span class="dot dot-a-faire"></span> {{ a_retard }} en retard</span>
+                            {% elif nb_a_faire > 0 %}
+                            <span class="statut-indicator"><span class="dot dot-a-faire"></span> {{ nb_a_faire }} à faire</span>
+                            {% elif nb_terminee == tasks|length and tasks|length > 0 %}
+                            <span class="statut-indicator"><span class="dot dot-termine"></span> Terminé</span>
+                            {% else %}
+                            <span class="statut-indicator"><span class="dot dot-en-cours"></span> En cours</span>
+                            {% endif %}
+                        </td>
                     </tr>
-                    {% else %}
-                        {% for t in tasks %}
-                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '') + ' ' + (t.titre if t.titre else '')).lower() }}">
-                        {% if loop.first %}
-                        <td rowspan="{{ tasks|length }}"><strong>{{ d.numero_dossier }}</strong></td>
-                        <td rowspan="{{ tasks|length }}">{{ d.intitule }}</td>
-                        <td rowspan="{{ tasks|length }}">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="user-icon-badge"><i class="bi bi-person"></i></span>
-                                <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
+                    <!-- Ligne des tâches détaillées (cachée par défaut) -->
+                    <tr class="fiscal-tasks-row" id="tasks-{{ d.id }}" style="display:none;">
+                        <td colspan="8" style="padding:0;background:var(--bg-tertiary);">
+                            <div class="p-3" style="border-top:1px solid var(--border-color);">
+                                {% if tasks|length == 0 %}
+                                <span class="text-tertiary small">Aucune tâche pour cet impôt.</span>
+                                {% else %}
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;">
+                                    {% set now = date.today() %}
+                                    {% for t in tasks | sort(attribute='date_echeance') %}
+                                    {% set j = (t.date_echeance - now).days %}
+                                    <div class="fiscal-task-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:10px 12px;{% if j < 0 %}border-left:3px solid var(--danger);{% elif j <= 7 %}border-left:3px solid var(--warning);{% else %}border-left:3px solid var(--success);{% endif %}">
+                                        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">
+                                            <span style="font-size:0.82rem;font-weight:500;line-height:1.3;flex:1;">{{ t.titre }}</span>
+                                            <span style="white-space:nowrap;font-size:0.75rem;">
+                                                {% if t.statut == 'terminee' or t.statut == 'terminée' %}
+                                                <span class="badge badge-success">Fait</span>
+                                                {% elif t.statut == 'en_cours' %}
+                                                <span class="badge badge-warning">En cours</span>
+                                                {% else %}
+                                                <span class="badge badge-danger">À faire</span>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                                            <span style="font-size:0.78rem;color:var(--text-tertiary);">
+                                                <i class="bi bi-calendar3"></i> {{ t.date_echeance.strftime('%d/%m/%Y') }}
+                                            </span>
+                                            <span style="font-size:0.78rem;font-weight:600;{% if j < 0 %}color:var(--danger);{% elif j == 0 %}color:var(--warning);{% else %}color:var(--text-secondary);{% endif %}">
+                                                {% if j < 0 %}+{{ -j }}j{% elif j == 0 %}Aujourd'hui{% else %}{{ j }}j{% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
                         </td>
-                        <td rowspan="{{ tasks|length }}">{{ d.equipe.nom if d.equipe else '-' }}</td>
-                        <td rowspan="{{ tasks|length }}">
-                            {% if item.regime_fiscale == 'IS' %}<span class="badge badge-info">IS</span>
-                            {% elif item.regime_fiscale == 'IRPP' %}<span class="badge badge-warning">IRPP</span>
-                            {% else %}<span class="badge badge-tertiary">-</span>{% endif %}
-                        </td>
-                        {% endif %}
-                        <td>
-                            <span style="font-size:0.85rem;">{{ t.titre }}</span>
-                        </td>
-                        <td>{{ t.date_echeance.strftime('%d/%m/%Y') }}</td>
-                        <td>
-                            {% set jours = (t.date_echeance - date.today()).days %}
-                            {% if jours < 0 %}
-                            <span class="text-danger fw-medium"><i class="bi bi-exclamation-triangle"></i> +{{ -jours }} j</span>
-                            {% elif jours == 0 %}
-                            <span class="text-warning fw-medium">Aujourd'hui</span>
-                            {% else %}
-                            <span class="text-success fw-medium">{{ jours }} j</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if t.statut == 'terminee' or t.statut == 'terminée' %}
-                            <span class="statut-indicator"><span class="dot dot-termine"></span> Terminé</span>
-                            {% elif t.statut == 'en_cours' %}
-                            <span class="statut-indicator"><span class="dot dot-en-cours"></span> En cours</span>
-                            {% else %}
-                            <span class="statut-indicator"><span class="dot dot-a-faire"></span> À faire</span>
-                            {% endif %}
-                        </td>
                     </tr>
-                        {% endfor %}
-                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -96,3 +127,14 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+function toggleTasks(dossierId) {
+    var row = document.getElementById('tasks-' + dossierId);
+    var chevron = document.getElementById('chevron-' + dossierId);
+    if (!row) return;
+    var visible = row.style.display !== 'none';
+    row.style.display = visible ? 'none' : 'table-row';
+    if (chevron) chevron.style.transform = visible ? 'rotate(0deg)' : 'rotate(90deg)';
+}
+</script>
