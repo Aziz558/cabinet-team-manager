@@ -59,31 +59,37 @@
 
 <!-- Contenu TVA (tous) -->
 <div id="tab-tva" class="impot-content active">
-    {% include '_fiscal_subtab.html' with context %}
+    {% with dossier_data=tva_dossiers %}
+    {% include '_fiscal_subtab.html' %}
+    {% endwith %}
 </div>
 
 <!-- Contenu CA3 -->
 <div id="tab-ca3" class="impot-content">
-    {% set dossier_data = ca3_dossiers %}
-    {% include '_fiscal_subtab.html' with context %}
+    {% with dossier_data=ca3_dossiers %}
+    {% include '_fiscal_subtab.html' %}
+    {% endwith %}
 </div>
 
 <!-- Contenu CA12 -->
 <div id="tab-ca12" class="impot-content">
-    {% set dossier_data = ca12_dossiers %}
-    {% include '_fiscal_subtab.html' with context %}
+    {% with dossier_data=ca12_dossiers %}
+    {% include '_fiscal_subtab.html' %}
+    {% endwith %}
 </div>
 
 <!-- Contenu IS -->
 <div id="tab-is" class="impot-content">
-    {% set dossier_data = is_dossiers %}
-    {% include '_fiscal_subtab.html' with context %}
+    {% with dossier_data=is_dossiers %}
+    {% include '_fiscal_subtab.html' %}
+    {% endwith %}
 </div>
 
 <!-- Contenu CFE -->
 <div id="tab-cfe" class="impot-content">
-    {% set dossier_data = cfe_dossiers %}
-    {% include '_fiscal_subtab.html' with context %}
+    {% with dossier_data=cfe_dossiers %}
+    {% include '_fiscal_subtab.html' %}
+    {% endwith %}
 </div>
 
 {% endblock %}

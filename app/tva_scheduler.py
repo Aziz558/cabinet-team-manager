@@ -100,10 +100,16 @@ def _planifier_tva_for_dossier(dossier):
 
     collaborateur_id = dossier.collaborateur_id
 
+    # 3 months horizon from today
+    horizon_3m = date.today() + timedelta(days=95)  # ~3 mois
+
     for deadline in deadlines:
         # Skip past deadlines (keep last 2 months for reference)
         today = date.today()
         if deadline < today - timedelta(days=60):
+            continue
+        # Skip deadlines beyond 3 months horizon
+        if deadline > horizon_3m:
             continue
 
         # Task 1: Prépa TVA (3 working days before deadline)
@@ -156,6 +162,8 @@ def _planifier_is_for_dossier(dossier):
 
     collaborateur_id = dossier.collaborateur_id
 
+    horizon_3m = date.today() + timedelta(days=95)
+
     for year in years:
         # IS acomptes dates: 15/03, 15/06, 15/09, 15/12
         months = [3, 6, 9, 12]
@@ -165,6 +173,9 @@ def _planifier_is_for_dossier(dossier):
             # Skip past deadlines (keep last 2 months for reference)
             today = date.today()
             if deadline < today - timedelta(days=60):
+                continue
+            # Skip deadlines beyond 3 months horizon
+            if deadline > horizon_3m:
                 continue
 
             tache_is = Tache(
@@ -201,11 +212,15 @@ def _planifier_cfe_for_dossier(dossier):
 
     collaborateur_id = dossier.collaborateur_id
 
+    horizon_3m = date.today() + timedelta(days=95)
+
     for year in years:
         d = date(year, 12, 15)
         deadline = next_working_day(d)
         today = date.today()
         if deadline < today - timedelta(days=60):
+            continue
+        if deadline > horizon_3m:
             continue
 
         tache_cfe = Tache(

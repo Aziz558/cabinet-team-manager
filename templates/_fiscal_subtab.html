@@ -18,7 +18,8 @@
                 <tbody>
                     {% for item in dossier_data %}
                     {% set d = item.dossier %}
-                    {% set tasks = item.tax_tasks or [] %}
+                    {% set tasks = item.tax_tasks_visible or item.tax_tasks or [] %}
+                    {% set now = date.today() %}
                     {% set nb_a_faire = item.nb_a_faire or 0 %}
                     {% set nb_terminee = item.nb_terminee or 0 %}
                     {% set a_retard = item.a_retard or 0 %}

@@ -835,11 +835,18 @@ def fiscal():
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
 
     def _add_counts(item):
-        """Ajoute les compteurs nb_a_faire, nb_terminee, a_retard à un item."""
+        """Ajoute les compteurs nb_a_faire, nb_terminee, a_retard et tax_tasks_visible à un item."""
         tasks = item.get('tax_tasks', [])
-        nb_a_faire = sum(1 for t in tasks if t.statut == 'a_faire')
-        nb_terminee = sum(1 for t in tasks if t.statut in ('terminee', 'terminée'))
-        a_retard = sum(1 for t in tasks if t.statut not in ('terminee', 'terminée') and t.date_echeance and t.date_echeance < date.today())
+        now = date.today()
+        horizon_3m = now + timedelta(days=95)
+        
+        # Visible tasks: only within 3 months horizon + past/terminated
+        visible = [t for t in tasks if t.date_echeance and (t.date_echeance <= horizon_3m or t.statut in ('terminee', 'terminée'))]
+        item['tax_tasks_visible'] = visible
+        
+        nb_a_faire = sum(1 for t in visible if t.statut == 'a_faire')
+        nb_terminee = sum(1 for t in visible if t.statut in ('terminee', 'terminée'))
+        a_retard = sum(1 for t in visible if t.statut not in ('terminee', 'terminée') and t.date_echeance and t.date_echeance < now)
         item['nb_a_faire'] = nb_a_faire
         item['nb_terminee'] = nb_terminee
         item['a_retard'] = a_retard
@@ -915,7 +922,8 @@ def fiscal():
         tva_dossiers=tva_dossiers, ca3_dossiers=ca3_dossiers, ca12_dossiers=ca12_dossiers,
         is_dossiers=is_dossiers, cfe_dossiers=cfe_dossiers,
         current_equipe=current_equipe,
-        all_equipes_for_switch=all_equipes_for_switch, Tache=Tache, db=db)
+        all_equipes_for_switch=all_equipes_for_switch, Tache=Tache, db=db,
+        horizon_3m=date.today() + timedelta(days=95))
 
 
 @app.route('/ajouter_dossier', methods=['POST'])
