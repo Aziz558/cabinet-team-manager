@@ -12,6 +12,11 @@
         <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalDossier">
             <i class="bi bi-folder-plus me-2"></i>Nouveau dossier
         </button>
+        <form method="POST" action="{{ url_for('planifier_tous_impots') }}" class="d-inline">
+            <button type="submit" class="btn-premium btn-premium-secondary btn-press" onclick="return confirm('Planifier les impôts (TVA, IS, CFE) pour TOUS les dossiers existants ?')">
+                <i class="bi bi-lightning me-1"></i>Planifier impôts
+            </button>
+        </form>
     </div>
 </div>
 {% elif current_user.role == 'membre' %}

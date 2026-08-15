@@ -50,24 +50,31 @@ def _cleanup_existing_tasks(dossier_id, keywords):
         or_(*conditions)
     ).all()
     tache_ids = [t.id for t in existing_taches]
+    if not tache_ids:
+        return
     # Clean up related records
     try:
-        Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete()
-        CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete()
+        Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
     except Exception:
-        pass  # Ignore errors during cleanup
+        pass
+    try:
+        CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+    except Exception:
+        pass
     # Delete the tasks
     Tache.query.filter(
         Tache.dossier_id == dossier_id,
         or_(*conditions)
     ).delete(synchronize_session=False)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 def _planifier_tva_for_dossier(dossier):
-    """Planifie les tâches TVA pour un dossier donné."""
+    """Planifie les tâches TVA pour un dossier donné - version sans current_user."""
     from app.models import Tache
     from app import db
-    from flask_login import current_user
 
     regime = dossier.regime_tva
     # Si aucun regime n'est défini, on crée quand même des tâches (CA3 par défaut)
@@ -84,9 +91,8 @@ def _planifier_tva_for_dossier(dossier):
     import re
     freq = (dossier.frequence_tva or '').lower().strip()
     if freq.startswith('mens') or freq == '':
-        # Mensuelle par défaut (si frequence vide, on prend mensuel comme base)
         deadlines = get_ca3_deadlines_mensuelle(year)
-    else:  # trimestrielle (default)
+    else:
         deadlines = get_ca3_deadlines_trimestrielle(year)
 
     # Remove existing TVA tasks for this dossier to avoid duplicates
@@ -106,7 +112,7 @@ def _planifier_tva_for_dossier(dossier):
             titre=f'Prépa TVA {regime.upper()} — {dossier.numero_dossier}',
             description=f'Préparer la déclaration TVA {regime.upper()} pour le dossier {dossier.numero_dossier}.',
             assigne_a=collaborateur_id,
-            cree_par=current_user.id if current_user.is_authenticated else None,
+            cree_par=None,  # Pas de current_user ici
             dossier_id=dossier.id,
             priorite='moyenne',
             date_echeance=prepa_date,
@@ -126,14 +132,17 @@ def _planifier_tva_for_dossier(dossier):
         )
         db.session.add(tache_depot)
 
-    db.session.commit()
-    logger.info(f'TVA tasks planned for dossier {dossier.numero_dossier}: {len(deadlines)} deadlines × 2 tasks')
+    try:
+        db.session.commit()
+        logger.info(f'TVA tasks planned for dossier {dossier.numero_dossier}: {len(deadlines)} deadlines × 2 tasks')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'TVA planning error for dossier {dossier.numero_dossier}: {e}')
 
 def _planifier_is_for_dossier(dossier):
     """Planifie les tâches d'acompte IS pour un dossier donné (si régime IS)."""
     from app.models import Tache
     from app import db
-    from flask_login import current_user
 
     if dossier.regime_fiscale != 'IS':
         return
@@ -152,18 +161,17 @@ def _planifier_is_for_dossier(dossier):
         months = [3, 6, 9, 12]
         for month in months:
             d = date(year, month, 15)
-            deadline = next_working_day(d)  # adjust if weekend
+            deadline = next_working_day(d)
             # Skip past deadlines (keep last 2 months for reference)
             today = date.today()
             if deadline < today - timedelta(days=60):
                 continue
 
-            # Create a single task for the acompte (could split into prep/depot but not required)
             tache_is = Tache(
                 titre=f'Accompte IS Q{(month-1)//3 + 1} {year} — {dossier.numero_dossier}',
                 description=f"Verser l'acompte d'impôt sur les sociétés pour le trimestre {(month-1)//3 + 1} de l'année {year} pour le dossier {dossier.numero_dossier}.",
                 assigne_a=collaborateur_id,
-                cree_par=current_user.id if current_user.is_authenticated else None,
+                cree_par=None,
                 dossier_id=dossier.id,
                 priorite='moyenne',
                 date_echeance=deadline,
@@ -171,32 +179,31 @@ def _planifier_is_for_dossier(dossier):
             )
             db.session.add(tache_is)
 
-    db.session.commit()
-    logger.info(f'IS acompte tasks planned for dossier {dossier.numero_dossier} for years {years}')
+    try:
+        db.session.commit()
+        logger.info(f'IS acompte tasks planned for dossier {dossier.numero_dossier} for years {years}')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'IS planning error for dossier {dossier.numero_dossier}: {e}')
 
 def _planifier_cfe_for_dossier(dossier):
     """Planifie les tâches de CFE pour un dossier donné (si soumis à CFE)."""
     from app.models import Tache
     from app import db
-    from flask_login import current_user
 
     if not dossier.has_cfe:
         return
 
-    # Determine year(s) to generate: current year and next year
     base_year = dossier.date_limite_declaration.year if dossier.date_limite_declaration else date.today().year
     years = [base_year, base_year + 1]
 
-    # Remove existing CFE tasks for this dossier to avoid duplicates
     _cleanup_existing_tasks(dossier.id, ['CFE'])
 
     collaborateur_id = dossier.collaborateur_id
 
     for year in years:
-        # CFE deadline: 15/12 of each year
         d = date(year, 12, 15)
-        deadline = next_working_day(d)  # adjust if weekend
-        # Skip past deadlines (keep last 2 months for reference)
+        deadline = next_working_day(d)
         today = date.today()
         if deadline < today - timedelta(days=60):
             continue
@@ -205,7 +212,7 @@ def _planifier_cfe_for_dossier(dossier):
             titre=f'CFE {year} — {dossier.numero_dossier}',
             description=f"Déclarer et payer la Cotisation Foncière des Entreprises pour l'année {year} pour le dossier {dossier.numero_dossier}.",
             assigne_a=collaborateur_id,
-            cree_par=current_user.id if current_user.is_authenticated else None,
+            cree_par=None,
             dossier_id=dossier.id,
             priorite='moyenne',
             date_echeance=deadline,
@@ -213,11 +220,34 @@ def _planifier_cfe_for_dossier(dossier):
         )
         db.session.add(tache_cfe)
 
-    db.session.commit()
-    logger.info(f'CFE tasks planned for dossier {dossier.numero_dossier} for years {years}')
+    try:
+        db.session.commit()
+        logger.info(f'CFE tasks planned for dossier {dossier.numero_dossier} for years {years}')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'CFE planning error for dossier {dossier.numero_dossier}: {e}')
 
 def planifier_impots_dossier(dossier):
     """Point d'entrée unique pour planifier tous les impôts (TVA, IS, CFE) d'un dossier."""
-    _planifier_tva_for_dossier(dossier)
-    _planifier_is_for_dossier(dossier)
-    _planifier_cfe_for_dossier(dossier)
+    try:
+        _planifier_tva_for_dossier(dossier)
+    except Exception as e:
+        logger.error(f"Error planning TVA for dossier {dossier.id}: {e}")
+    try:
+        _planifier_is_for_dossier(dossier)
+    except Exception as e:
+        logger.error(f"Error planning IS for dossier {dossier.id}: {e}")
+    try:
+        _planifier_cfe_for_dossier(dossier)
+    except Exception as e:
+        logger.error(f"Error planning CFE for dossier {dossier.id}: {e}")
+
+def planifier_tous_les_dossiers():
+    """Planifie les impôts pour TOUS les dossiers existants."""
+    from app import db
+    from app.models import Dossier
+    dossiers = Dossier.query.all()
+    logger.info(f"Planning taxes for {len(dossiers)} dossiers...")
+    for d in dossiers:
+        planifier_impots_dossier(d)
+    logger.info("Tax planning complete for all dossiers.")

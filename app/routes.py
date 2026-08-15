@@ -236,6 +236,22 @@ def tva_taches():
         taches_a_faire=taches_a_faire, taches_en_cours=taches_en_cours,
         taches_terminees=taches_terminees)
 
+@app.route('/planifier_tous_impots', methods=['POST'])
+@login_required
+def planifier_tous_impots():
+    """Endpoint pour planifier les impôts de TOUS les dossiers."""
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    try:
+        from .tva_scheduler import planifier_tous_les_dossiers
+        planifier_tous_les_dossiers()
+        flash('Planification des impôts pour tous les dossiers terminée avec succès.', 'success')
+    except Exception as e:
+        app.logger.error(f"Erreur planification tous impôts: {e}")
+        flash('Erreur lors de la planification.', 'danger')
+    return redirect(url_for('dossiers'))
+
 @app.route('/tva-planifier', methods=['POST'])
 @login_required
 def planifier_taches_tva():
