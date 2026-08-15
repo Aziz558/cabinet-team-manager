@@ -40,15 +40,15 @@
                 <thead>
                     <tr>
                         <th>N°</th>
-                        <th>Intitulé</th>
-                        <th>Collaborateur</th>
-                        <th>Équipe</th>
-                        <th>Régime TVA</th>
-                        <th>Fréquence</th>
-                        <th>Date limite</th>
-                        <th>Délai restant</th>
-                        <th>Tâches TVA planifiées</th>
-                        <th>Tâches restantes</th>
+                        <th>INTITULÉ</th>
+                        <th>COLLABORATEUR</th>
+                        <th>ÉQUIPE</th>
+                        <th>RÉGIME TVA</th>
+                        <th>FRÉQUENCE</th>
+                        <th>DATE LIMITE</th>
+                        <th>DÉLAI RESTANT</th>
+                        <th>TÂCHES TVA PLANIFIÉES</th>
+                        <th>TÂCHES RESTANTES</th>
                         {% if show_actions %}<th class="text-end">Actions</th>{% endif %}
                     </tr>
                 </thead>
@@ -123,15 +123,16 @@
                             {{ tva_taches_count }}
                         </td>
                         <td>
-                            {% set taches_restantes_count = d.taches.filter(Tache.statut != 'terminee').filter(Tache.statut != 'terminée').filter(
-                                db.or_(
-                                    Tache.titre.like('%TVA%'),
-                                    Tache.titre.like('%CA3%'),
-                                    Tache.titre.like('%ca3%'),
-                                    Tache.titre.like('%CA12%'),
-                                    Tache.titre.like('%ca12%')
-                                )
-                            ).count() %}
+                            {% set taches_restantes_count = 0 %}
+                            {% for t in d.taches.filter(Tache.titre.like('%TVA%')).all() +
+                                           d.taches.filter(Tache.titre.like('%CA3%')).all() +
+                                           d.taches.filter(Tache.titre.like('%ca3%')).all() +
+                                           d.taches.filter(Tache.titre.like('%CA12%')).all() +
+                                           d.taches.filter(Tache.titre.like('%ca12%')).all() %}
+                                {% if t.statut|strip != 'terminee' and t.statut|strip != 'terminée' %}
+                                    {% set taches_restantes_count = taches_restantes_count + 1 %}
+                                {% endif %}
+                            {% endfor %}
                             {{ taches_restantes_count }}
                         </td>
                         {% if show_actions %}
