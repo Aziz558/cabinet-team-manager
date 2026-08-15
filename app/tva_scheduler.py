@@ -70,7 +70,10 @@ def _planifier_tva_for_dossier(dossier):
     from flask_login import current_user
 
     regime = dossier.regime_tva
-    if regime is None or regime == 'exonere':
+    # Si aucun regime n'est défini, on crée quand même des tâches (CA3 par défaut)
+    if regime is None or regime == '':
+        regime = 'ca3'
+    if regime == 'exonere':
         return
 
     # Get year from date_limite_declaration or current year
