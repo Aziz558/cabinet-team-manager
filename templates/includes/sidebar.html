@@ -32,6 +32,10 @@
             <span>Tâches</span>
         </a>
         <a href="{{ url_for('tva_taches') }}" class="sidebar-nav-item {% if request.endpoint == 'tva_taches' %}active{% endif %}">
+        <a href="{{ url_for('fiscal') }}" class="sidebar-nav-item {% if request.endpoint == 'fiscal' %}active{% endif %}">
+            <i class="bi bi-calc"></i>
+            <span>Tableau fiscal</span>
+        </a>
             <i class="bi bi-receipt-certificate"></i>
             <span>Tâches TVA</span>
         </a>

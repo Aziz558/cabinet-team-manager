@@ -442,6 +442,86 @@ def admin_debug():
     return render_template('admin_debug.html')
 
 
+
+
+@app.route('/fiscal')
+@login_required
+def fiscal():
+    """Tableau de bord fiscal dédié"""
+    # Initialize variables for template (same as dossiers)
+    current_equipe = None
+    all_equipes_for_switch = []
+    membres = []
+    if current_user.role == 'admin':
+        from flask import session
+        equipe_id = session.get('current_equipe_id')
+        if equipe_id:
+            equipe = Equipe.query.get(equipe_id)
+            current_equipe = equipe
+            all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
+            team_user_ids = [m.id for m in equipe.membres.all()] if equipe else []
+            membres = User.query.filter(User.id.in_(team_user_ids), User.actif==True).all()
+            all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_user_ids)).all()
+        else:
+            current_equipe = None
+            all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
+            membres = User.query.filter_by(actif=True).all()
+            all_dossiers = Dossier.query.all()
+    elif current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        all_equipes_for_switch = mes_equipes
+        current_equipe = None
+        team_member_ids = [current_user.id]
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
+        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+    else:
+        mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []
+        all_equipes_for_switch = mes_equipes
+        current_equipe = None
+        team_member_ids = [current_user.id]
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+        all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
+    # For each dossier, compute fiscal info
+    dossier_data = []
+    for d in all_dossiers:
+        tasks = Tache.query.filter(Tache.dossier_id == d.id).all()
+        # Filter tasks related to tax: TVA, IS, CFE
+        tax_tasks = [t for t in tasks if 
+                     ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper() or
+                      'IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper() or 'CFE' in t.titre.upper())]
+        # Determine next deadline among non-completed tax tasks
+        pending_tasks = [t for t in tax_tasks if t.statut != 'terminee']
+        next_deadline = min([t.date_echeance for t in pending_tasks]) if pending_tasks else None
+        # Determine status
+        if any(t.statut == 'a_faire' for t in tax_tasks):
+            status = 'a_faire'
+            status_label = 'À faire'
+            status_class = 'text-danger'
+        elif any(t.statut == 'en_cours' for t in tax_tasks):
+            status = 'en_cours'
+            status_label = 'En cours'
+            status_class = 'text-warning'
+        else:
+            status = 'terminee'
+            status_label = 'Terminé'
+            status_class = 'text-success'
+        dossier_data.append({
+            'dossier': d,
+            'regime_fiscale': d.regime_fiscale,
+            'has_cfe': d.has_cfe,
+            'next_deadline': next_deadline,
+            'status': status,
+            'status_label': status_label,
+            'status_class': status_class,
+            'tax_tasks': tax_tasks
+        })
+    return render_template('fiscal.html', dossier_data=dossier_data, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, Tache=Tache, db=db)
+
+
 # Error handlers
 def not_found(error):
     return render_template('error.html', code=404, message="Page non trouvée."), 404

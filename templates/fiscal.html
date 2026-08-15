@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord fiscal{% endblock %}
+{% block content %}
+{% if current_user.role in ('admin', 'manager') %}
+<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
+    <h2 class="fw-semibold"><i class="bi bi-calc me-2" style="color:var(--orange-primary)"></i>Tableau de bord fiscal</h2>
+</div>
+{% else %}
+<h2 class="fw-semibold animate-fade-in-up"><i class="bi bi-calc me-2" style="color:var(--orange-primary)"></i>Tableau de bord fiscal</h2>
+{% endif %}
+
+<div class="card-premium mb-4 animate-fade-in-up">
+    <div class="card-body-premium">
+        <div class="mb-3">
+            <input type="text" id="rechercheFiscal" class="input-premium" placeholder="Rechercher par n°, intitulé, collaborateur, équipe...">
+        </div>
+        {% if dossier_data %}
+        <div class="table-responsive">
+            <table class="table-premium" id="tableFiscal">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>INTITULÉ</th>
+                        <th>COLLABORATEUR</th>
+                        <th>ÉQUIPE</th>
+                        <th>RÉGIME FISCAL</th>
+                        <th>CFE</th>
+                        <th>PROCHAINE ÉCHÉANCE</th>
+                        <th>STATUT</th>
+                        <th>ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in dossier_data %}
+                    {% set d = item.dossier %}
+                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '')).lower() }}">
+                        <td><strong>{{ d.numero_dossier }}</strong></td>
+                        <td>{{ d.intitule }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                {% set d_icon = 'bi-person' %}
+                                {% if d.collaborateur and d.collaborateur.role == 'admin' %}
+                                  {% set d_icon = 'bi-person-badge' %}
+                                {% elif d.collaborateur and d.collaborateur.role == 'manager' %}
+                                  {% set d_icon = 'bi-person-lines-fill' %}
+                                {% endif %}
+                                <span class="user-icon-badge"><i class="bi {{ d_icon }}"></i></span>
+                                <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
+                            </div>
+                        </td>
+                        <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
+                        <td>
+                            {% if item.regime_fiscale == 'IS' %}
+                                <span class="badge badge-info">IS</span>
+                            {% elif item.regime_fiscale == 'IRPP' %}
+                                <span class="badge badge-warning">IRPP</span>
+                            {% else %}
+                                <span class="badge badge-tertiary">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.has_cfe %}
+                                <span class="badge badge-success">Oui</span>
+                            {% else %}
+                                <span class="badge badge-secondary">Non</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.next_deadline %}
+                                {{ item.next_deadline.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                <span class="text-tertiary">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="{{ item.status_class }}">{{ item.status_label }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
+                                    {% if item.tax_tasks|length > 0 %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><small class="text-muted d-block">Tâches fiscales :</small></li>
+                                    {% for t in item.tax_tasks %}
+                                    <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('taches') }}#tache{{ t.id }}" style="font-size:0.85rem;">
+                                        <i class="bi bi-circle me-1 text-{{ 'success' if t.statut == 'terminee' else 'warning' if t.statut == 'en_cours' else 'danger' }}"></i>
+                                        <span>{{ t.titre|truncate(30) }} ({{ t.date_echeance.strftime('%d/%m/%Y') }})</span>
+                                    </a></li>
+                                    {% endfor %}
+                                    {% endif %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="{{ url_for('supprimer_dossier', dossier_id=d.id) }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce dossier ? Cette action est irréversible.');"><i class="bi bi-trash me-2"></i>Supprimer</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">Aucun dossier trouvé.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const rechercheInput = document.getElementById('rechercheFiscal');
+        if (!rechercheInput) return;
+        const tableRows = document.querySelectorAll('#tableFiscal tbody tr');
+        rechercheInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            tableRows.forEach(row => {
+                const mots = row.getAttribute('data-mots');
+                if (mots.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
