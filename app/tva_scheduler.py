@@ -78,7 +78,10 @@ def _planifier_tva_for_dossier(dossier):
             if dossier.date_limite_declaration else date.today().year)
 
     # Get deadlines based on regime and frequency
-    if dossier.frequence_tva == 'mensuelle':
+    import re
+    freq = (dossier.frequence_tva or '').lower().strip()
+    if freq.startswith('mens') or freq == '':
+        # Mensuelle par défaut (si frequence vide, on prend mensuel comme base)
         deadlines = get_ca3_deadlines_mensuelle(year)
     else:  # trimestrielle (default)
         deadlines = get_ca3_deadlines_trimestrielle(year)

@@ -321,6 +321,15 @@ def configurer_email_equipe():
     flash('Fonctionnalité de configuration d\'email d\'équipe non encore implémentée.', 'info')
     return redirect(url_for('dossiers'))
 
+@app.route('/membres')
+@login_required
+def membres():
+    """Page de gestion des membres."""
+    from app.models import User, Equipe
+    members = User.query.filter_by(actif=True).order_by(User.nom).all()
+    all_equipes = Equipe.query.order_by(Equipe.nom).all()
+    return render_template('membres.html', members=members, all_equipes=all_equipes, title="Membres")
+
 @app.route('/liste_membres')
 @login_required
 def liste_membres():
@@ -356,7 +365,19 @@ def settings():
 @app.route('/suggestions')
 @login_required
 def suggestions_page():
-    return redirect(url_for('suggestions'))
+    """Page de suggestions."""
+    from app.models import Suggestion
+    if current_user.role == 'admin':
+        suggestions = Suggestion.query.order_by(Suggestion.date_creation.desc()).all()
+    elif current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        team_member_ids = [current_user.id]
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        suggestions = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids)).order_by(Suggestion.date_creation.desc()).all()
+    else:
+        suggestions = Suggestion.query.filter_by(assigne_a=current_user.id).order_by(Suggestion.date_creation.desc()).all()
+    return render_template('suggestions.html', suggestions=suggestions)
 
 @app.route('/supprimer_dossier/<int:dossier_id>')
 @login_required
