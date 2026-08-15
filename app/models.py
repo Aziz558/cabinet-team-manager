@@ -92,7 +92,7 @@ class Tache(db.Model):
     description = db.Column(db.Text)
     dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=True)
     assigne_a = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    cree_par = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    cree_par = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     priorite = db.Column(db.String(20), default='moyenne')  # haute | moyenne | basse
     statut = db.Column(db.String(30), default='a_faire')  # a_faire | en_cours | terminee
     date_echeance = db.Column(db.Date, nullable=False)

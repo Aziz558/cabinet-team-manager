@@ -98,7 +98,7 @@ def dashboard():
         suggestions = []
         try:
             from app.models import Suggestion
-            suggestions = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids))\
+            suggestions = Suggestion.query.filter(Suggestion.cree_par.in_(team_member_ids))\
                 .order_by(Suggestion.date_creation.desc()).limit(10).all()
         except Exception:
             suggestions = []
@@ -497,9 +497,9 @@ def suggestions_page():
         team_member_ids = [current_user.id]
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
-        suggestions_list = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids)).order_by(Suggestion.date_creation.desc()).all()
+        suggestions_list = Suggestion.query.filter(Suggestion.cree_par.in_(team_member_ids)).order_by(Suggestion.date_creation.desc()).all()
     else:
-        suggestions_list = Suggestion.query.filter_by(assigne_a=current_user.id).order_by(Suggestion.date_creation.desc()).all()
+        suggestions_list = Suggestion.query.filter_by(cree_par=current_user.id).order_by(Suggestion.date_creation.desc()).all()
     
     # Pass users and dossiers for the modal form
     all_users = User.query.filter_by(actif=True).order_by(User.nom).all()
@@ -522,9 +522,9 @@ def api_suggestions():
             team_member_ids = [current_user.id]
             for eq in mes_equipes:
                 team_member_ids.extend([m.id for m in eq.membres.all()])
-            query = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids))
+            query = Suggestion.query.filter(Suggestion.cree_par.in_(team_member_ids))
         else:
-            query = Suggestion.query.filter_by(assigne_a=current_user.id)
+            query = Suggestion.query.filter_by(cree_par=current_user.id)
         
         if status_filter in ('en_attente', 'validee', 'rejetee'):
             query = query.filter_by(statut=status_filter)
@@ -567,9 +567,9 @@ def api_suggestions_refresh():
             team_member_ids = [current_user.id]
             for eq in mes_equipes:
                 team_member_ids.extend([m.id for m in eq.membres.all()])
-            items = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids)).order_by(Suggestion.date_creation.desc()).limit(20).all()
+            items = Suggestion.query.filter(Suggestion.cree_par.in_(team_member_ids)).order_by(Suggestion.date_creation.desc()).limit(20).all()
         else:
-            items = Suggestion.query.filter_by(assigne_a=current_user.id).order_by(Suggestion.date_creation.desc()).limit(20).all()
+            items = Suggestion.query.filter_by(cree_par=current_user.id).order_by(Suggestion.date_creation.desc()).limit(20).all()
         return jsonify({'ok': True, 'suggestions': [{'id': s.id, 'titre': s.titre} for s in items]})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
