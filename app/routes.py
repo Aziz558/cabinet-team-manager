@@ -180,7 +180,16 @@ def planifier_taches_tva():
         flash('Erreur lors de la planification des tâches TVA.', 'danger')
     return redirect(url_for('dossiers'))
 
-# Error handlers
+@app.route('/notifications')
+@login_required
+def notifications_page():
+    notifications = current_user.notifications.order_by(Notification.date_envoi.desc()).all() if hasattr(current_user, 'notifications') else []
+    unread_count = sum(1 for n in notifications if not n.lu)
+    return render_template(
+        'notifications.html',
+        notifications=notifications,
+        unread_count=unread_count,
+    )
 @app.errorhandler(404)
 def not_found(error):
     return render_template('error.html', code=404, message="Page non trouvée."), 404
