@@ -768,8 +768,41 @@ def terminer_tache(tache_id):
 @app.route('/upload_photo', methods=['POST'])
 @login_required
 def upload_photo():
-    flash('Fonctionnalit\u00e9 d\'upload de photo non encore impl\u00e9ment\u00e9e.', 'info')
-    return redirect(url_for('profil'))
+    """Upload photo de profil."""
+    import os
+    from werkzeug.utils import secure_filename
+    
+    if 'photo' not in request.files:
+        return jsonify({'ok': False, 'message': 'Aucun fichier sélectionné.'}), 400
+    
+    file = request.files['photo']
+    if file.filename == '':
+        return jsonify({'ok': False, 'message': 'Aucun fichier sélectionné.'}), 400
+    
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({'ok': False, 'message': 'Format non autorisé. Utilisez PNG, JPG, JPEG ou GIF.'}), 400
+    
+    # Lire le fichier et vérifier taille (max 5MB)
+    file.seek(0, os.SEEK_END)
+    size = file.tell()
+    if size > 5 * 1024 * 1024:
+        return jsonify({'ok': False, 'message': 'Fichier trop volumineux. Maximum 5MB.'}), 400
+    file.seek(0)
+    
+    # Nom unique pour éviter les collisions
+    filename = f"user_{current_user.id}_{secure_filename(file.filename)}"
+    upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+    file.save(filepath)
+    
+    # Mettre à jour la base de données
+    current_user.photo_profil = filename
+    db.session.commit()
+    
+    return jsonify({'ok': True, 'message': 'Photo de profil mise à jour avec succès.'})
 
 @app.route('/voir_taches_dossier/<int:dossier_id>')
 @login_required

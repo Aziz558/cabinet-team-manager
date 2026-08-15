@@ -100,7 +100,7 @@ document.getElementById('photoUploadForm')?.addEventListener('submit', async fun
     btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Envoi...';
 
     try {
-        const response = await fetch('/profil', {
+        const response = await fetch('/upload_photo', {
             method: 'POST',
             body: formData,
             credentials: 'same-origin',
