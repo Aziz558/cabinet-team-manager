@@ -93,6 +93,21 @@ with app.app_context():
     except Exception as e:
         app.logger.warning(f"Migration error (equipes mailbox): {e}")
 
+    # Ensure dossiers table has regime_fiscale and has_cfe columns
+    try:
+        inspector = db.inspect(db.engine)
+        if 'dossiers' in inspector.get_table_names():
+            dossiers_cols = [c['name'] for c in inspector.get_columns('dossiers')]
+            with db.engine.begin() as conn:
+                if 'regime_fiscale' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN regime_fiscale VARCHAR(10)"))
+                    app.logger.info("Added regime_fiscale column to dossiers")
+                if 'has_cfe' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN has_cfe BOOLEAN DEFAULT FALSE"))
+                    app.logger.info("Added has_cfe column to dossiers")
+    except Exception as e:
+        app.logger.warning(f"Migration error (dossiers columns): {e}")
+
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
