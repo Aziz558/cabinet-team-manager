@@ -108,6 +108,27 @@ with app.app_context():
     except Exception as e:
         app.logger.warning(f"Migration error (dossiers columns): {e}")
 
+    # Ensure taches table has cree_par as nullable
+    try:
+        inspector = db.inspect(db.engine)
+        if 'taches' in inspector.get_table_names():
+            taches_cols = [c['name'] for c in inspector.get_columns('taches')]
+            taches_meta = {c['name']: c for c in inspector.get_columns('taches')}
+            # Check if cree_par column exists and is NOT NULL
+            if 'cree_par' in taches_cols:
+                col_info = taches_meta['cree_par']
+                # PostgreSQL column is nullable by default; check if constraint exists
+                # We try to alter column to drop NOT NULL if it exists
+                try:
+                    with db.engine.begin() as conn:
+                        # PostgreSQL syntax
+                        conn.execute(db.text("ALTER TABLE taches ALTER COLUMN cree_par DROP NOT NULL"))
+                        app.logger.info("Made cree_par nullable in taches table")
+                except Exception as alter_err:
+                    app.logger.warning(f"Could not alter cree_par (may already be nullable): {alter_err}")
+    except Exception as e:
+        app.logger.warning(f"Migration error (taches column): {e}")
+
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
