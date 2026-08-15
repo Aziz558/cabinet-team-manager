@@ -159,7 +159,7 @@
         </div>
     </div>
 </div>
-{% endblock %}
+
 <!-- Modal Création de Dossier -->
 <div class="modal fade" id="modalDossier" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
@@ -185,12 +185,18 @@
                             <label class="form-label-premium">Collaborateur responsable *</label>
                             <select name="collaborateur_id" class="select-premium" id="dossierCollaborateurSelect" required>
                                 <option value="">-- Sélectionner un collaborateur --</option>
+                                {% for m in membres %}
+                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Équipe *</label>
                             <select name="equipe_id" class="select-premium" id="dossierEquipeSelect" required>
                                 <option value="">-- Sélectionner une équipe --</option>
+                                {% for e in equipes %}
+                                <option value="{{ e.id }}">{{ e.nom }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                     </div>
@@ -236,6 +242,7 @@
         </div>
     </div>
 </div>
+{% endblock %}
 {% block scripts %}
 {{ super() }}
 <script>
