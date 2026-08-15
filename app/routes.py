@@ -47,8 +47,32 @@ def team_select():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Redirect to dossiers as the main page after login
-    return redirect(url_for('dossiers'))
+    if current_user.role == 'manager':
+        # TODO: Implement real dashboard data for manager
+        kpi = {
+            'membres_actifs': 0,
+            'dossiers_en_cours': 0,
+            'taches_retard': 0,
+            'taches_haute_priorite': 0,
+            'taux_completion': 0,
+            'total_taches': 0
+        }
+        alertes = []
+        suggestions = []
+        membres = []
+        taches_jour = []
+        taches_semaine = []
+        return render_template('dashboard_manager.html', kpi=kpi, alertes=alertes, suggestions=suggestions, membres=membres, taches_jour=taches_jour, taches_semaine=taches_semaine)
+    else:
+        # TODO: Implement real dashboard data for collaborateur
+        kpi = {
+            'taches_aujourdhui': 0,
+            'taux_completion': 0,
+            'total_taches': 0
+        }
+        taches_jour = []
+        taches_semaine = []
+        return render_template('dashboard_collaborateur.html', kpi=kpi, taches_jour=taches_jour, taches_semaine=taches_semaine)
 
 @app.route('/dossiers')
 @login_required
