@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% block title %}Dossiers{% endblock %}
 {% block content %}
-{% if current_user.role == 'manager' %}
+{% if current_user.role in ('admin', 'manager') %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
     <h2 class="fw-semibold"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Dossiers</h2>
     <div class="d-flex gap-2">
