@@ -196,12 +196,15 @@ def planifier_taches_tva():
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dossiers'))
     try:
-        from .tva_scheduler import planifier_taches_tva
-        planifier_taches_tva(current_user)
-        flash('Planification des tâches TVA terminée avec succès.', 'success')
+        from .tva_scheduler import planifier_impots_dossier
+        from app.models import Dossier
+        dossiers = Dossier.query.all()
+        for dossier in dossiers:
+            planifier_impots_dossier(dossier)
+        flash('Planification des impôts (TVA, IS, CFE) terminée avec succès.', 'success')
     except Exception as e:
-        app.logger.error(f"Erreur lors de la planification des tâches TVA: {e}")
-        flash('Erreur lors de la planification des tâches TVA.', 'danger')
+        app.logger.error(f"Erreur lors de la planification des impôts: {e}")
+        flash('Erreur lors de la planification des impôts.', 'danger')
     return redirect(url_for('dossiers'))
 
 

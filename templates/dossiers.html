@@ -160,6 +160,82 @@
     </div>
 </div>
 {% endblock %}
+<!-- Modal Création de Dossier -->
+<div class="modal fade" id="modalDossier" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('ajouter_dossier') }}" id="formNouveauDossier">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-folder-plus me-2" style="color:var(--orange-primary)"></i>Nouveau dossier</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Numéro de dossier *</label>
+                            <input type="text" name="numero_dossier" class="input-premium" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Intitulé *</label>
+                            <input type="text" name="intitule" class="input-premium" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Collaborateur responsable *</label>
+                            <select name="collaborateur_id" class="select-premium" id="dossierCollaborateurSelect" required>
+                                <option value="">-- Sélectionner un collaborateur --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Équipe *</label>
+                            <select name="equipe_id" class="select-premium" id="dossierEquipeSelect" required>
+                                <option value="">-- Sélectionner une équipe --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Régime TVA</label>
+                            <select name="regime_tva" class="select-premium">
+                                <option value="">-- Aucun --</option>
+                                <option value="ca3">CA3 (mensuel)</option>
+                                <option value="ca12">CA12 (trimestriel)</option>
+                                <option value="exonere">Exonéré</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Fréquence de déclaration</label>
+                            <input type="text" name="frequence_tva" class="input-premium" placeholder="ex: Mensuel, Trimestriel">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Date limite de déclaration</label>
+                            <input type="date" name="date_limite_declaration" class="input-premium">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Régime fiscal</label>
+                            <select name="regime_fiscale" class="select-premium" required>
+                                <option value="">-- Choisir un régime --</option>
+                                <option value="IS">IS (Impôt sur les Sociétés)</option>
+                                <option value="IRPP">IRPP (Impôt sur le Revenu des Personnes Physiques)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" name="has_cfe" id="hasCFECheckbox">
+                        <label class="form-check-label" for="hasCFECheckbox">Soumis à la CFE</label>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">Créer le dossier</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% block scripts %}
 {{ super() }}
 <script>
