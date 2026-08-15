@@ -1,3 +1,5 @@
+from flask_login import login_required, current_user
+
 @login_required
 def dossiers():
     """Affiche la liste des dossiers selon le rôle de l'utilisateur."""
