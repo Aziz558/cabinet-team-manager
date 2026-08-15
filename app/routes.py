@@ -22,7 +22,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             if not user.actif:
-                flash('Votre compte est désactivé. Contactez le manager.', 'danger')
+                flash('Votre compte est d\u00e9sactiv\u00e9. Contactez le manager.', 'danger')
                 return redirect(url_for('login'))
             login_user(user, remember=True)
             next_page = request.args.get('next')
@@ -36,7 +36,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('Déconnexion réussie.', 'info')
+    flash('D\u00e9connexion r\u00e9ussie.', 'info')
     return redirect(url_for('login'))
 
 @app.route('/team-select')
@@ -48,42 +48,124 @@ def team_select():
 @login_required
 def dashboard():
     if current_user.role == 'manager':
-        # TODO: Implement real dashboard data for manager
+        # Compute real KPIs for manager
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        team_member_ids = [current_user.id]
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        team_member_ids = list(set(team_member_ids))
+
+        membres_actifs = User.query.filter(User.id.in_(team_member_ids), User.actif==True).count()
+        all_dossiers_ids = [d.id for d in Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()]
+        dossiers_en_cours = len(all_dossiers_ids)
+        
+        taches_retard = 0
+        taches_haute_priorite = 0
+        total_taches = 0
+        if all_dossiers_ids:
+            taches_query = Tache.query.filter(Tache.dossier_id.in_(all_dossiers_ids))
+            total_taches = taches_query.count()
+            taches_retard = taches_query.filter(Tache.date_echeance < date.today(), Tache.statut != 'terminee').count()
+            taches_haute_priorite = taches_query.filter_by(priorite='haute', statut='a_faire').count()
+        
+        taux_completion = 0
+        if total_taches > 0:
+            terminees = Tache.query.filter(Tache.dossier_id.in_(all_dossiers_ids), Tache.statut == 'terminee').count()
+            taux_completion = int(terminees / total_taches * 100)
+
         kpi = {
-            'membres_actifs': 0,
-            'dossiers_en_cours': 0,
-            'taches_retard': 0,
-            'taches_haute_priorite': 0,
-            'taux_completion': 0,
-            'total_taches': 0
+            'membres_actifs': membres_actifs,
+            'dossiers_en_cours': dossiers_en_cours,
+            'taches_retard': taches_retard,
+            'taches_haute_priorite': taches_haute_priorite,
+            'taux_completion': taux_completion,
+            'total_taches': total_taches
         }
+
+        # Alertes : tâches en retard
         alertes = []
+        if all_dossiers_ids:
+            taches_en_retard = Tache.query.filter(
+                Tache.dossier_id.in_(all_dossiers_ids),
+                Tache.date_echeance < date.today(),
+                Tache.statut != 'terminee'
+            ).order_by(Tache.date_echeance.asc()).limit(5).all()
+            for t in taches_en_retard:
+                d = Dossier.query.get(t.dossier_id)
+                alertes.append({'tache': t, 'dossier': d})
+
+        # Suggestions
         suggestions = []
-        membres = []
-        taches_jour = []
-        taches_semaine = []
-        return render_template('dashboard_manager.html', kpi=kpi, alertes=alertes, suggestions=suggestions, membres=membres, taches_jour=taches_jour, taches_semaine=taches_semaine)
+        try:
+            from app.models import Suggestion
+            suggestions = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids))\
+                .order_by(Suggestion.date_creation.desc()).limit(10).all()
+        except Exception:
+            suggestions = []
+
+        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).order_by(User.nom).all()
+        
+        taches_jour = Tache.query.filter(
+            Tache.assigne_a.in_(team_member_ids),
+            Tache.date_echeance == date.today()
+        ).order_by(Tache.priorite.desc()).all()
+        
+        from datetime import timedelta
+        week_end = date.today() + timedelta(days=7)
+        taches_semaine = Tache.query.filter(
+            Tache.assigne_a.in_(team_member_ids),
+            Tache.date_echeance.between(date.today(), week_end)
+        ).order_by(Tache.date_echeance.asc()).all()
+
+        return render_template('dashboard_manager.html', kpi=kpi, alertes=alertes,
+            suggestions=suggestions, membres=membres, taches_jour=taches_jour,
+            taches_semaine=taches_semaine)
     else:
-        # TODO: Implement real dashboard data for collaborateur
+        # Dashboard collaborateur
+        team_member_ids = [current_user.id]
+        mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        team_member_ids = list(set(team_member_ids))
+        
+        total_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).count()
+        taches_auj = Tache.query.filter(
+            Tache.assigne_a.in_(team_member_ids),
+            Tache.date_echeance == date.today()
+        ).count()
+        terminees = Tache.query.filter(
+            Tache.assigne_a.in_(team_member_ids),
+            Tache.statut == 'terminee'
+        ).count()
+        taux_completion = int(terminees / total_taches * 100) if total_taches > 0 else 0
+
+        from datetime import timedelta
+        week_end = date.today() + timedelta(days=7)
+        taches_jour = Tache.query.filter(
+            Tache.assigne_a == current_user.id,
+            Tache.date_echeance == date.today()
+        ).order_by(Tache.priorite.desc()).all()
+        taches_semaine = Tache.query.filter(
+            Tache.assigne_a.in_(team_member_ids),
+            Tache.date_echeance.between(date.today(), week_end)
+        ).order_by(Tache.date_echeance.asc()).all()
+
         kpi = {
-            'taches_aujourdhui': 0,
-            'taux_completion': 0,
-            'total_taches': 0
+            'taches_aujourdhui': taches_auj,
+            'taux_completion': taux_completion,
+            'total_taches': total_taches
         }
-        taches_jour = []
-        taches_semaine = []
-        return render_template('dashboard_collaborateur.html', kpi=kpi, taches_jour=taches_jour, taches_semaine=taches_semaine)
+        return render_template('dashboard_collaborateur.html', kpi=kpi,
+            taches_jour=taches_jour, taches_semaine=taches_semaine)
 
 @app.route('/dossiers')
 @login_required
 def dossiers():
-    """Affiche la liste des dossiers selon le rôle de l'utilisateur."""
-    # Initialize variables for template
+    """Affiche la liste des dossiers selon le r\u00f4le de l'utilisateur."""
     current_equipe = None
     all_equipes_for_switch = []
-    
+
     if current_user.role == 'admin':
-        from flask import session
         equipe_id = session.get('current_equipe_id')
         if equipe_id:
             equipe = Equipe.query.get(equipe_id)
@@ -93,16 +175,13 @@ def dossiers():
             membres = User.query.filter(User.id.in_(team_user_ids), User.actif==True).all()
             all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_user_ids)).all()
         else:
-            # No current equipe selected, show all
             current_equipe = None
             all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
             membres = User.query.filter_by(actif=True).all()
             all_dossiers = Dossier.query.all()
     elif current_user.role == 'manager':
-        # Manager can see and switch between their managed teams
         mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
         all_equipes_for_switch = mes_equipes
-        # For now, current_equipe is None (could be first team if desired)
         current_equipe = None
         team_member_ids = [current_user.id]
         for eq in mes_equipes:
@@ -110,22 +189,22 @@ def dossiers():
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
     else:
-        # Regular member: can see teams they're part of
-        # Get teams where user is a member
         mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []
         all_equipes_for_switch = mes_equipes
-        current_equipe = None  # Could be first team if desired
+        current_equipe = None
         team_member_ids = [current_user.id]
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
-    return render_template('dossiers.html', dossiers=all_dossiers, membres=membres, equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
+    return render_template('dossiers.html', dossiers=all_dossiers, membres=membres,
+        equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
+        current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
 
 @app.route('/tva-taches')
 @login_required
 def tva_taches():
-    """Affiche la liste des tâches TVA avec filtrage par statut."""
+    """Affiche la liste des t\u00e2ches TVA avec filtrage par statut."""
     statut_filter = request.args.get('statut', 'all')
     query = Tache.query.filter(
         db.or_(
@@ -139,61 +218,30 @@ def tva_taches():
     if statut_filter != 'all':
         query = query.filter_by(statut=statut_filter)
     tva_taches = query.order_by(Tache.date_echeance.asc(), Tache.titre.asc()).all()
-    total_taches = Tache.query.filter(
-        db.or_(
-            Tache.titre.like('%TVA%'),
-            Tache.titre.like('%CA3%'),
-            Tache.titre.like('%ca3%'),
-            Tache.titre.like('%CA12%'),
-            Tache.titre.like('%ca12%')
-        )
-    ).count()
-    taches_a_faire = Tache.query.filter(
-        db.or_(
-            Tache.titre.like('%TVA%'),
-            Tache.titre.like('%CA3%'),
-            Tache.titre.like('%ca3%'),
-            Tache.titre.like('%CA12%'),
-            Tache.titre.like('%ca12%')
-        ),
-        Tache.statut == 'a_faire'
-    ).count()
-    taches_en_cours = Tache.query.filter(
-        db.or_(
-            Tache.titre.like('%TVA%'),
-            Tache.titre.like('%CA3%'),
-            Tache.titre.like('%ca3%'),
-            Tache.titre.like('%CA12%'),
-            Tache.titre.like('%ca12%')
-        ),
-        Tache.statut == 'en_cours'
-    ).count()
-    taches_terminees = Tache.query.filter(
-        db.or_(
-            Tache.titre.like('%TVA%'),
-            Tache.titre.like('%CA3%'),
-            Tache.titre.like('%ca3%'),
-            Tache.titre.like('%CA12%'),
-            Tache.titre.like('%ca12%')
-        ),
-        Tache.statut == 'terminee'
-    ).count()
-    return render_template(
-        'tva_taches.html',
-        tva_taches=tva_taches,
-        statut_filter=statut_filter,
-        total_taches=total_taches,
-        taches_a_faire=taches_a_faire,
-        taches_en_cours=taches_en_cours,
-        taches_terminees=taches_terminees,
+
+    base_filter = db.or_(
+        Tache.titre.like('%TVA%'),
+        Tache.titre.like('%CA3%'),
+        Tache.titre.like('%ca3%'),
+        Tache.titre.like('%CA12%'),
+        Tache.titre.like('%ca12%')
     )
+    total_taches = Tache.query.filter(base_filter).count()
+    taches_a_faire = Tache.query.filter(base_filter, Tache.statut == 'a_faire').count()
+    taches_en_cours = Tache.query.filter(base_filter, Tache.statut == 'en_cours').count()
+    taches_terminees = Tache.query.filter(base_filter, Tache.statut == 'terminee').count()
+
+    return render_template('tva_taches.html', tva_taches=tva_taches,
+        statut_filter=statut_filter, total_taches=total_taches,
+        taches_a_faire=taches_a_faire, taches_en_cours=taches_en_cours,
+        taches_terminees=taches_terminees)
 
 @app.route('/tva-planifier', methods=['POST'])
 @login_required
 def planifier_taches_tva():
-    """Endpoint pour déclencher la planification des tâches TVA pour tous les dossiers."""
+    """Endpoint pour d\u00e9clencher la planification des t\u00e2ches TVA pour tous les dossiers."""
     if current_user.role not in ('admin', 'manager'):
-        flash('Accès refusé.', 'danger')
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
         return redirect(url_for('dossiers'))
     try:
         from .tva_scheduler import planifier_impots_dossier
@@ -201,24 +249,21 @@ def planifier_taches_tva():
         dossiers = Dossier.query.all()
         for dossier in dossiers:
             planifier_impots_dossier(dossier)
-        flash('Planification des impôts (TVA, IS, CFE) terminée avec succès.', 'success')
+        flash('Planification des imp\u00f4ts (TVA, IS, CFE) termin\u00e9e avec succ\u00e8s.', 'success')
     except Exception as e:
-        app.logger.error(f"Erreur lors de la planification des impôts: {e}")
-        flash('Erreur lors de la planification des impôts.', 'danger')
+        app.logger.error(f"Erreur lors de la planification des imp\u00f4ts: {e}")
+        flash('Erreur lors de la planification des imp\u00f4ts.', 'danger')
     return redirect(url_for('dossiers'))
-
 
 @app.route('/taches')
 @login_required
 def taches():
-    """Affiche la liste des tâches selon le rôle de l'utilisateur."""
-    # Initialize variables for template (same as dossiers)
+    """Affiche la liste des t\u00e2ches selon le r\u00f4le de l'utilisateur."""
     current_equipe = None
     all_equipes_for_switch = []
     membres = []
 
     if current_user.role == 'admin':
-        from flask import session
         equipe_id = session.get('current_equipe_id')
         if equipe_id:
             equipe = Equipe.query.get(equipe_id)
@@ -226,19 +271,15 @@ def taches():
             all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
             team_user_ids = [m.id for m in equipe.membres.all()] if equipe else []
             membres = User.query.filter(User.id.in_(team_user_ids), User.actif==True).all()
-            # For tasks, we want tasks assigned to members of the selected equipe
             all_taches = Tache.query.filter(Tache.assigne_a.in_(team_user_ids)).all() if team_user_ids else []
         else:
-            # No current equipe selected, show all tasks
             current_equipe = None
             all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
             membres = User.query.filter_by(actif=True).all()
             all_taches = Tache.query.all()
     elif current_user.role == 'manager':
-        # Manager can see and switch between their managed teams
         mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
         all_equipes_for_switch = mes_equipes
-        # For now, current_equipe is None (could be first team if desired)
         current_equipe = None
         team_member_ids = [current_user.id]
         for eq in mes_equipes:
@@ -246,22 +287,22 @@ def taches():
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
         all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
     else:
-        # Regular member: can see tasks assigned to them or their equipes?
-        # Get teams where user is a member
         mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []
         all_equipes_for_switch = mes_equipes
-        current_equipe = None  # Could be first team if desired
+        current_equipe = None
         team_member_ids = [current_user.id]
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
         all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
-    return render_template('taches.html', taches=all_taches, membres=membres, equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
+    return render_template('taches.html', taches=all_taches, membres=membres,
+        equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
+        current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
 
 @app.route('/equipes')
 @login_required
 def equipes():
-    """Affiche la liste des équipes."""
+    """Affiche la liste des \u00e9quipes."""
     equipes = Equipe.query.order_by(Equipe.nom).all()
     return render_template('equipes.html', equipes=equipes)
 
@@ -270,102 +311,156 @@ def equipes():
 def notifications_page():
     notifications = current_user.notifications.order_by(Notification.date_envoi.desc()).all() if hasattr(current_user, 'notifications') else []
     unread_count = sum(1 for n in notifications if not n.lu)
-    return render_template(
-        'notifications.html',
-        notifications=notifications,
-        unread_count=unread_count,
-    )
+    return render_template('notifications.html', notifications=notifications, unread_count=unread_count)
 
 @app.route('/set-team/<int:equipe_id>')
 @login_required
 def set_team(equipe_id):
     equipe = Equipe.query.get_or_404(equipe_id)
     session['current_equipe_id'] = equipe.id
-    flash(f'Équipe sélectionnée : {equipe.nom}', 'success')
+    flash(f'\u00c9quipe s\u00e9lectionn\u00e9e : {equipe.nom}', 'success')
     return redirect(url_for('dossiers'))
 
-
-# --- Routes de secours pour endpoints manquants (éviter les BuildError) ---
-@app.route('/ajouter_membre')
-@login_required
-def ajouter_membre():
-    flash('Fonctionnalité d\'ajout de membre non encore implémentée.', 'info')
-    return redirect(url_for('dossiers'))
-
-@app.route('/api/suggestions')
-@login_required
-def api_suggestions():
-    return jsonify({'error': 'Not implemented'}), 501
-
-@app.route('/assigner_equipe', methods=['POST'])
-@login_required
-def assigner_equipe():
-    flash('Fonctionnalité d\'assignment d\'équipe non encore implémentée.', 'info')
-    return redirect(url_for('dossiers'))
-
-@app.route('/assigner_equipe_manager', methods=['POST'])
-@login_required
-def assigner_equipe_manager():
-    flash('Fonctionnalité d\'assignment de manager non encore implémentée.', 'info')
-    return redirect(url_for('dossiers'))
-
-@app.route('/changer_manager_equipe', methods=['POST'])
-@login_required
-def changer_manager_equipe():
-    flash('Fonctionnalité de changement de manager non encore implémentée.', 'info')
-    return redirect(url_for('dossiers'))
-
-@app.route('/configurer_email_equipe', methods=['GET', 'POST'])
-@login_required
-def configurer_email_equipe():
-    flash('Fonctionnalité de configuration d\'email d\'équipe non encore implémentée.', 'info')
-    return redirect(url_for('dossiers'))
-
+# ==========================
+# Routes membres
+# ==========================
 @app.route('/membres')
 @login_required
 def membres():
-    """Page de gestion des membres."""
+    """Page de gestion des membres - corrig\u00e9e avec toutes les variables attendues par le template."""
     from app.models import User, Equipe
-    members = User.query.filter_by(actif=True).order_by(User.nom).all()
-    all_equipes = Equipe.query.order_by(Equipe.nom).all()
-    return render_template('membres.html', members=members, all_equipes=all_equipes, title="Membres")
+    membres_list = User.query.filter_by(actif=True).order_by(User.nom).all()
+    toutes_equipes = Equipe.query.order_by(Equipe.nom).all()
+    mes_equipes = []
+    if current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+    return render_template('membres.html', membres=membres_list, toutes_equipes=toutes_equipes, mes_equipes=mes_equipes, title="Membres")
 
 @app.route('/liste_membres')
 @login_required
 def liste_membres():
     return redirect(url_for('membres'))
 
-@app.route('/mes_dossiers')
+@app.route('/fiche_membre/<int:user_id>')
 @login_required
-def mes_dossiers():
-    return redirect(url_for('dossiers'))
+def fiche_membre(user_id):
+    """Page de fiche d\u00e9taill\u00e9e d'un membre."""
+    user = User.query.get_or_404(user_id)
+    from datetime import date
+    taches_en_cours = Tache.query.filter_by(assigne_a=user.id).filter(Tache.statut != 'terminee').count()
+    dossiers_assignes = Dossier.query.filter_by(collaborateur_id=user.id).count()
+    return render_template('fiche_membre.html', membre=user, taches_en_cours=taches_en_cours, dossiers_assignes=dossiers_assignes)
 
-@app.route('/mes_taches')
+@app.route('/ajouter_membre', methods=['POST'])
 @login_required
-def mes_taches():
-    return redirect(url_for('taches'))
+def ajouter_membre():
+    """Ajoute un nouveau membre avec tous les champs du formulaire."""
+    if current_user.role not in ('admin', 'manager'):
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('membres'))
+    try:
+        prenom = request.form.get('prenom', '').strip()
+        nom = request.form.get('nom', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        mot_de_passe = request.form.get('mot_de_passe', '').strip()
+        role = request.form.get('role', 'membre')
+        poste = request.form.get('poste', '').strip()
+        telephone = request.form.get('telephone', '').strip()
 
-@app.route('/modifier_dossier/<int:dossier_id>')
+        if not prenom or not nom or not email or not mot_de_passe:
+            flash('Veuillez remplir tous les champs obligatoires.', 'danger')
+            return redirect(url_for('membres'))
+
+        if User.query.filter_by(email=email).first():
+            flash('Cet email est d\u00e9j\u00e0 utilis\u00e9.', 'danger')
+            return redirect(url_for('membres'))
+
+        from werkzeug.security import generate_password_hash
+        user = User(
+            prenom=prenom,
+            nom=nom,
+            email=email,
+            password_hash=generate_password_hash(mot_de_passe),
+            role=role,
+            poste=poste if poste else None,
+            telephone=telephone if telephone else None,
+            actif=True
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash(f'Membre {prenom} {nom} ajout\u00e9 avec succ\u00e8s.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur ajout membre: {e}")
+        flash('Erreur lors de l\'ajout du membre.', 'danger')
+    return redirect(url_for('membres'))
+
+@app.route('/assigner_equipe', methods=['POST'])
 @login_required
-def modifier_dossier(dossier_id):
-    flash('Fonctionnalité de modification de dossier non encore implémentée.', 'info')
-    return redirect(url_for('dossiers'))
+def assigner_equipe():
+    """Assigner un membre \u00e0 une \u00e9quipe (admin seulement)."""
+    if current_user.role != 'admin':
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('membres'))
+    user_id = request.form.get('user_id')
+    equipe_id = request.form.get('equipe_id')
+    if user_id:
+        user = User.query.get(int(user_id))
+        if user and equipe_id:
+            user.equipe_id = int(equipe_id)
+            db.session.commit()
+            flash(f'\u00c9quipe mise \u00e0 jour pour {user.prenom} {user.nom}.', 'success')
+        elif user:
+            user.equipe_id = None
+            db.session.commit()
+            flash(f'\u00c9quipe retir\u00e9e pour {user.prenom} {user.nom}.', 'info')
+    return redirect(url_for('membres'))
 
-@app.route('/prendre_en_charge/<int:tache_id>')
+@app.route('/assigner_equipe_manager', methods=['POST'])
 @login_required
-def prendre_en_charge(tache_id):
-    flash('Fonctionnalité de prise en charge non encore implémentée.', 'info')
-    return redirect(url_for('taches'))
+def assigner_equipe_manager():
+    """Assigner un membre \u00e0 une \u00e9quipe (manager seulement)."""
+    if current_user.role != 'manager':
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('membres'))
+    user_id = request.form.get('user_id')
+    equipe_id = request.form.get('equipe_id')
+    if user_id:
+        user = User.query.get(int(user_id))
+        if user and equipe_id:
+            user.equipe_id = int(equipe_id)
+            db.session.commit()
+            flash(f'\u00c9quipe mise \u00e0 jour pour {user.prenom} {user.nom}.', 'success')
+    return redirect(url_for('membres'))
 
-@app.route('/settings')
+@app.route('/supprimer_membre/<int:user_id>')
 @login_required
-def settings():
-    return redirect(url_for('profil'))
+def supprimer_membre(user_id):
+    """Supprime un membre de fa\u00e7on d\u00e9finitive."""
+    if current_user.role not in ('admin', 'manager'):
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('membres'))
+    user = User.query.get_or_404(user_id)
+    if user.role == 'admin' and current_user.role != 'admin':
+        flash('Seul un admin peut supprimer un autre admin.', 'danger')
+        return redirect(url_for('membres'))
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        flash(f'Membre {user.prenom} {user.nom} supprim\u00e9.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur suppression membre: {e}")
+        flash('Erreur lors de la suppression.', 'danger')
+    return redirect(url_for('membres'))
 
+# ==========================
+# Suggestions
+# ==========================
 @app.route('/suggestions')
 @login_required
 def suggestions_page():
-    """Page de suggestions."""
+    """Page de suggestions - version corrig\u00e9e."""
     from app.models import Suggestion
     if current_user.role == 'admin':
         suggestions = Suggestion.query.order_by(Suggestion.date_creation.desc()).all()
@@ -379,28 +474,93 @@ def suggestions_page():
         suggestions = Suggestion.query.filter_by(assigne_a=current_user.id).order_by(Suggestion.date_creation.desc()).all()
     return render_template('suggestions.html', suggestions=suggestions)
 
+@app.route('/api/suggestions', methods=['GET'])
+@login_required
+def api_suggestions():
+    """API pour r\u00e9cup\u00e9rer les suggestions au format JSON."""
+    try:
+        from app.models import Suggestion
+        if current_user.role == 'admin':
+            items = Suggestion.query.order_by(Suggestion.date_creation.desc()).limit(20).all()
+        elif current_user.role == 'manager':
+            mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+            team_member_ids = [current_user.id]
+            for eq in mes_equipes:
+                team_member_ids.extend([m.id for m in eq.membres.all()])
+            items = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids)).order_by(Suggestion.date_creation.desc()).limit(20).all()
+        else:
+            items = Suggestion.query.filter_by(assigne_a=current_user.id).order_by(Suggestion.date_creation.desc()).limit(20).all()
+        return jsonify({'suggestions': [{'id': s.id, 'titre': s.titre, 'priorite': s.priorite, 'date_echeance': s.date_echeance.strftime('%d/%m/%Y') if s.date_echeance else None} for s in items]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/suggestions/refresh', methods=['POST'])
+@login_required
+def api_suggestions_refresh():
+    """Endpoint pour rafra\u00eechir les suggestions."""
+    try:
+        from app.models import Suggestion
+        # Retourne simplement les suggestions existantes (pas de g\u00e9n\u00e9ration automatique ici)
+        if current_user.role == 'admin':
+            items = Suggestion.query.order_by(Suggestion.date_creation.desc()).limit(20).all()
+        elif current_user.role == 'manager':
+            mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+            team_member_ids = [current_user.id]
+            for eq in mes_equipes:
+                team_member_ids.extend([m.id for m in eq.membres.all()])
+            items = Suggestion.query.filter(Suggestion.assigne_a.in_(team_member_ids)).order_by(Suggestion.date_creation.desc()).limit(20).all()
+        else:
+            items = Suggestion.query.filter_by(assigne_a=current_user.id).order_by(Suggestion.date_creation.desc()).limit(20).all()
+        return jsonify({'suggestions': [{'id': s.id, 'titre': s.titre} for s in items]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==========================
+# Routes s\u00e9curit\u00e9 (stubs fonctionnels)
+# ==========================
+@app.route('/mes_dossiers')
+@login_required
+def mes_dossiers():
+    return redirect(url_for('dossiers'))
+
+@app.route('/mes_taches')
+@login_required
+def mes_taches():
+    return redirect(url_for('taches'))
+
+@app.route('/modifier_dossier/<int:dossier_id>')
+@login_required
+def modifier_dossier(dossier_id):
+    flash('Fonctionnalit\u00e9 de modification de dossier non encore impl\u00e9ment\u00e9e.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/prendre_en_charge/<int:tache_id>')
+@login_required
+def prendre_en_charge(tache_id):
+    flash('Fonctionnalit\u00e9 de prise en charge non encore impl\u00e9ment\u00e9e.', 'info')
+    return redirect(url_for('taches'))
+
+@app.route('/settings')
+@login_required
+def settings():
+    return redirect(url_for('profil'))
+
 @app.route('/supprimer_dossier/<int:dossier_id>')
 @login_required
 def supprimer_dossier(dossier_id):
-    flash('Fonctionnalité de suppression de dossier non encore implémentée.', 'info')
+    flash('Fonctionnalit\u00e9 de suppression de dossier non encore impl\u00e9ment\u00e9e.', 'info')
     return redirect(url_for('dossiers'))
 
 @app.route('/supprimer_equipe/<int:equipe_id>')
 @login_required
 def supprimer_equipe(equipe_id):
-    flash('Fonctionnalité de suppression d\'équipe non encore implémentée.', 'info')
+    flash('Fonctionnalit\u00e9 de suppression d\'\u00e9quipe non encore impl\u00e9ment\u00e9e.', 'info')
     return redirect(url_for('equipes'))
-
-@app.route('/supprimer_membre/<int:user_id>')
-@login_required
-def supprimer_membre(user_id):
-    flash('Fonctionnalité de suppression de membre non encore implémentée.', 'info')
-    return redirect(url_for('membres'))
 
 @app.route('/supprimer_tache/<int:tache_id>')
 @login_required
 def supprimer_tache(tache_id):
-    flash('Fonctionnalité de suppression de tâche non encore implémentée.', 'info')
+    flash('Fonctionnalit\u00e9 de suppression de t\u00e2che non encore impl\u00e9ment\u00e9e.', 'info')
     return redirect(url_for('taches'))
 
 @app.route('/taches/aujourdhui')
@@ -411,13 +571,13 @@ def taches_aujourdhui():
 @app.route('/terminer_tache/<int:tache_id>')
 @login_required
 def terminer_tache(tache_id):
-    flash('Fonctionnalité de terminaison de tâche non encore implémentée.', 'info')
+    flash('Fonctionnalit\u00e9 de terminaison de t\u00e2che non encore impl\u00e9ment\u00e9e.', 'info')
     return redirect(url_for('taches'))
 
 @app.route('/upload_photo', methods=['POST'])
 @login_required
 def upload_photo():
-    flash('Fonctionnalité d\'upload de photo non encore implémentée.', 'info')
+    flash('Fonctionnalit\u00e9 d\'upload de photo non encore impl\u00e9ment\u00e9e.', 'info')
     return redirect(url_for('profil'))
 
 @app.route('/voir_taches_dossier/<int:dossier_id>')
@@ -435,46 +595,40 @@ def reset_admin():
     if request.method == 'POST':
         reset_key = request.form.get('reset_key')
         new_password = request.form.get('new_password')
-        from flask import flash, redirect, url_for
-        # The key from memory: cabinet-jmh-reset-2024
         if reset_key == 'cabinet-jmh-reset-2024':
-            # Update admin password
-            from app.models import User
             admin = User.query.filter_by(email='admin@cabinet-jmh.com').first()
             if admin:
                 from werkzeug.security import generate_password_hash
-                from app import db
                 admin.password_hash = generate_password_hash(new_password)
                 db.session.commit()
-                flash('Mot de passe admin réinitialisé avec succès.', 'success')
+                flash('Mot de passe admin r\u00e9initialis\u00e9 avec succ\u00e8s.', 'success')
                 return redirect(url_for('login'))
             else:
                 flash('Compte admin introuvable.', 'danger')
         else:
-            flash('Clé de réinitialisation invalide.', 'danger')
+            flash('Cl\u00e9 de r\u00e9initialisation invalide.', 'danger')
     return render_template('reset_admin.html')
 
 @app.route('/admin_debug')
 @login_required
 def admin_debug():
     if current_user.role != 'admin':
-        flash('Accès réservé aux administrateurs.', 'danger')
+        flash('Acc\u00e8s r\u00e9serv\u00e9 aux administrateurs.', 'danger')
         return redirect(url_for('dossiers'))
     return render_template('admin_debug.html')
 
-
-
-
+# ==========================
+# Tableau de bord fiscal
+# ==========================
 @app.route('/fiscal')
 @login_required
 def fiscal():
-    """Tableau de bord fiscal dédié"""
-    # Initialize variables for template (same as dossiers)
+    """Tableau de bord fiscal d\u00e9di\u00e9"""
     current_equipe = None
     all_equipes_for_switch = []
     membres = []
+
     if current_user.role == 'admin':
-        from flask import session
         equipe_id = session.get('current_equipe_id')
         if equipe_id:
             equipe = Equipe.query.get(equipe_id)
@@ -506,21 +660,18 @@ def fiscal():
             team_member_ids.extend([m.id for m in eq.membres.all()])
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
-    # For each dossier, compute fiscal info
+
     dossier_data = []
     for d in all_dossiers:
         tasks = Tache.query.filter(Tache.dossier_id == d.id).all()
-        # Filter tasks related to tax: TVA, IS, CFE
         tax_tasks = [t for t in tasks if (
                      'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper() or
                       'IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper() or 'CFE' in t.titre.upper())]
-        # Determine next deadline among non-completed tax tasks
         pending_tasks = [t for t in tax_tasks if t.statut != 'terminee']
         next_deadline = min([t.date_echeance for t in pending_tasks]) if pending_tasks else None
-        # Determine status
         if any(t.statut == 'a_faire' for t in tax_tasks):
             status = 'a_faire'
-            status_label = 'À faire'
+            status_label = '\u00c0 faire'
             status_class = 'text-danger'
         elif any(t.statut == 'en_cours' for t in tax_tasks):
             status = 'en_cours'
@@ -528,7 +679,7 @@ def fiscal():
             status_class = 'text-warning'
         else:
             status = 'terminee'
-            status_label = 'Terminé'
+            status_label = 'Termin\u00e9'
             status_class = 'text-success'
         dossier_data.append({
             'dossier': d,
@@ -540,14 +691,15 @@ def fiscal():
             'status_class': status_class,
             'tax_tasks': tax_tasks
         })
-    return render_template('fiscal.html', dossier_data=dossier_data, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, Tache=Tache, db=db)
+    return render_template('fiscal.html', dossier_data=dossier_data, current_equipe=current_equipe,
+        all_equipes_for_switch=all_equipes_for_switch, Tache=Tache, db=db)
 
 
 @app.route('/ajouter_dossier', methods=['POST'])
 @login_required
 def ajouter_dossier():
     if current_user.role not in ('admin', 'manager'):
-        flash('Accès refusé.', 'danger')
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
         return redirect(url_for('dossiers'))
     try:
         numero_dossier = request.form.get('numero_dossier', '').strip()
@@ -564,7 +716,6 @@ def ajouter_dossier():
             flash('Veuillez remplir tous les champs obligatoires.', 'danger')
             return redirect(url_for('dossiers'))
 
-        # Convert date if provided
         date_limite = None
         if date_limite_declaration:
             try:
@@ -586,22 +737,49 @@ def ajouter_dossier():
         )
         db.session.add(nouveau_dossier)
         db.session.flush()
+
+        # Planifier les imp\u00f4ts pour ce dossier
         from .tva_scheduler import planifier_impots_dossier
         planifier_impots_dossier(nouveau_dossier)
+
         db.session.commit()
-        flash('Dossier créé avec succès et les tâches fiscales ont été générées.', 'success')
+        flash('Dossier cr\u00e9\u00e9 avec succ\u00e8s et les t\u00e2ches fiscales ont \u00e9t\u00e9 g\u00e9n\u00e9r\u00e9es.', 'success')
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Erreur lors de la création du dossier: {e}")
-        flash('Erreur lors de la création du dossier.', 'danger')
+        app.logger.error(f"Erreur lors de la cr\u00e9ation du dossier: {e}")
+        flash('Erreur lors de la cr\u00e9ation du dossier.', 'danger')
     return redirect(url_for('dossiers'))
 
-    # Error handlers
+# ==========================
+# Routes \u00e9quipes fonctionnelles
+# ==========================
+@app.route('/changer_manager_equipe', methods=['POST'])
+@login_required
+def changer_manager_equipe():
+    if current_user.role != 'admin':
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('equipes'))
+    equipe_id = request.form.get('equipe_id')
+    manager_id = request.form.get('manager_id')
+    if equipe_id and manager_id:
+        equipe = Equipe.query.get(int(equipe_id))
+        if equipe:
+            equipe.manager_id = int(manager_id)
+            db.session.commit()
+            flash(f'Manager de l\'\u00e9quipe {equipe.nom} mis \u00e0 jour.', 'success')
+    return redirect(url_for('equipes'))
 
+@app.route('/configurer_email_equipe', methods=['GET', 'POST'])
+@login_required
+def configurer_email_equipe():
+    flash('Fonctionnalit\u00e9 de configuration d\'email d\'\u00e9quipe non encore impl\u00e9ment\u00e9e.', 'info')
+    return redirect(url_for('equipes'))
 
+# ==========================
 # Error handlers
+# ==========================
 def not_found(error):
-    return render_template('error.html', code=404, message="Page non trouvée."), 404
+    return render_template('error.html', code=404, message="Page non trouv\u00e9e."), 404
 
 @app.errorhandler(500)
 def internal_error(error):
@@ -610,4 +788,4 @@ def internal_error(error):
         db.session.rollback()
     except Exception:
         pass
-    return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos équipes ont été notifiées."), 500
+    return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos \u00e9quipes ont \u00e9t\u00e9 notifi\u00e9es."), 500
