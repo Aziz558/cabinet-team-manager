@@ -197,6 +197,13 @@ def dossiers():
             team_member_ids.extend([m.id for m in eq.membres.all()])
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+    
+    # Pre-calculate TVA task data for each dossier to avoid Jinja template errors
+    for d in all_dossiers:
+        d._tva_taches = [t for t in d.taches if t.titre and ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper())]
+        d._tva_taches_count = len(d._tva_taches)
+        d._tva_taches_restantes = sum(1 for t in d._tva_taches if t.statut not in ('terminee', 'terminée'))
+    
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)

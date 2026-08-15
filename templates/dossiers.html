@@ -91,15 +91,10 @@
                         <td>
                             {% if d.date_limite_declaration %}
                             {% set restant = (d.date_limite_declaration - date.today()).days %}
-                            {% set tva_taches = d.taches.filter(Tache.titre.like('%TVA%')).all() +
-                                                                            d.taches.filter(Tache.titre.like('%CA3%')).all() +
-                                                                            d.taches.filter(Tache.titre.like('%ca3%')).all() +
-                                                                            d.taches.filter(Tache.titre.like('%CA12%')).all() +
-                                                                            d.taches.filter(Tache.titre.like('%ca12%')).all() %}
-                            {% if tva_taches %}
+                            {% if d._tva_taches %}
                                 {% set tva_done = false %}
-                                {% for t in tva_taches %}
-                                    {% if t.statut|strip == 'terminee' or t.statut|strip == 'terminée' %}
+                                {% for t in d._tva_taches %}
+                                    {% if t.statut == 'terminee' or t.statut == 'terminée' %}
                                         {% set tva_done = true %}
                                     {% endif %}
                                 {% endfor %}
@@ -120,24 +115,11 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% set tva_taches_count = d.taches.filter(Tache.titre.like('%TVA%')).count() +
-                                                      d.taches.filter(Tache.titre.like('%CA3%')).count() +
-                                                      d.taches.filter(Tache.titre.like('%ca3%')).count() +
-                                                      d.taches.filter(Tache.titre.like('%CA12%')).count() +
-                                                      d.taches.filter(Tache.titre.like('%ca12%')).count() %}
+                            {% set tva_taches_count = d._tva_taches_count if d._tva_taches_count is defined else 0 %}
                             {{ tva_taches_count }}
                         </td>
                         <td>
-                            {% set taches_restantes_count = 0 %}
-                            {% for t in d.taches.filter(Tache.titre.like('%TVA%')).all() +
-                                           d.taches.filter(Tache.titre.like('%CA3%')).all() +
-                                           d.taches.filter(Tache.titre.like('%ca3%')).all() +
-                                           d.taches.filter(Tache.titre.like('%CA12%')).all() +
-                                           d.taches.filter(Tache.titre.like('%ca12%')).all() %}
-                                {% if t.statut|strip != 'terminee' and t.statut|strip != 'terminée' %}
-                                    {% set taches_restantes_count = taches_restantes_count + 1 %}
-                                {% endif %}
-                            {% endfor %}
+                            {% set taches_restantes_count = d._tva_taches_restantes if d._tva_taches_restantes is defined else 0 %}
                             {{ taches_restantes_count }}
                         </td>
                         {% if show_actions %}
