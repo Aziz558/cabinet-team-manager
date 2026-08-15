@@ -199,7 +199,136 @@ def set_team(equipe_id):
     flash(f'Équipe sélectionnée : {equipe.nom}', 'success')
     return redirect(url_for('dossiers'))
 
-@app.errorhandler(404)
+
+# --- Routes de secours pour endpoints manquants (éviter les BuildError) ---
+@app.route('/ajouter_membre')
+@login_required
+def ajouter_membre():
+    flash('Fonctionnalité d\'ajout de membre non encore implémentée.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/api/suggestions')
+@login_required
+def api_suggestions():
+    return jsonify({'error': 'Not implemented'}), 501
+
+@app.route('/assigner_equipe', methods=['POST'])
+@login_required
+def assigner_equipe():
+    flash('Fonctionnalité d\'assignment d\'équipe non encore implémentée.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/assigner_equipe_manager', methods=['POST'])
+@login_required
+def assigner_equipe_manager():
+    flash('Fonctionnalité d\'assignment de manager non encore implémentée.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/changer_manager_equipe', methods=['POST'])
+@login_required
+def changer_manager_equipe():
+    flash('Fonctionnalité de changement de manager non encore implémentée.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/configurer_email_equipe', methods=['GET', 'POST'])
+@login_required
+def configurer_email_equipe():
+    flash('Fonctionnalité de configuration d\'email d\'équipe non encore implémentée.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/liste_membres')
+@login_required
+def liste_membres():
+    return redirect(url_for('membres'))
+
+@app.route('/mes_dossiers')
+@login_required
+def mes_dossiers():
+    return redirect(url_for('dossiers'))
+
+@app.route('/mes_taches')
+@login_required
+def mes_taches():
+    return redirect(url_for('taches'))
+
+@app.route('/modifier_dossier/<int:dossier_id>')
+@login_required
+def modifier_dossier(dossier_id):
+    flash('Fonctionnalité de modification de dossier non encore implémentée.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/prendre_en_charge/<int:tache_id>')
+@login_required
+def prendre_en_charge(tache_id):
+    flash('Fonctionnalité de prise en charge non encore implémentée.', 'info')
+    return redirect(url_for('taches'))
+
+@app.route('/settings')
+@login_required
+def settings():
+    return redirect(url_for('profil'))
+
+@app.route('/suggestions')
+@login_required
+def suggestions_page():
+    return redirect(url_for('suggestions'))
+
+@app.route('/supprimer_dossier/<int:dossier_id>')
+@login_required
+def supprimer_dossier(dossier_id):
+    flash('Fonctionnalité de suppression de dossier non encore implémentée.', 'info')
+    return redirect(url_for('dossiers'))
+
+@app.route('/supprimer_equipe/<int:equipe_id>')
+@login_required
+def supprimer_equipe(equipe_id):
+    flash('Fonctionnalité de suppression d\'équipe non encore implémentée.', 'info')
+    return redirect(url_for('equipes'))
+
+@app.route('/supprimer_membre/<int:user_id>')
+@login_required
+def supprimer_membre(user_id):
+    flash('Fonctionnalité de suppression de membre non encore implémentée.', 'info')
+    return redirect(url_for('membres'))
+
+@app.route('/supprimer_tache/<int:tache_id>')
+@login_required
+def supprimer_tache(tache_id):
+    flash('Fonctionnalité de suppression de tâche non encore implémentée.', 'info')
+    return redirect(url_for('taches'))
+
+@app.route('/taches/aujourdhui')
+@login_required
+def taches_aujourdhui():
+    return redirect(url_for('taches'))
+
+@app.route('/terminer_tache/<int:tache_id>')
+@login_required
+def terminer_tache(tache_id):
+    flash('Fonctionnalité de terminaison de tâche non encore implémentée.', 'info')
+    return redirect(url_for('taches'))
+
+@app.route('/upload_photo', methods=['POST'])
+@login_required
+def upload_photo():
+    flash('Fonctionnalité d\'upload de photo non encore implémentée.', 'info')
+    return redirect(url_for('profil'))
+
+@app.route('/voir_taches_dossier/<int:dossier_id>')
+@login_required
+def voir_taches_dossier(dossier_id):
+    return redirect(url_for('taches'))
+
+@app.route('/admin_debug')
+@login_required
+def admin_debug():
+    if current_user.role != 'admin':
+        flash('Accès réservé aux administrateurs.', 'danger')
+        return redirect(url_for('dossiers'))
+    return render_template('admin_debug.html')
+
+
+# Error handlers
 def not_found(error):
     return render_template('error.html', code=404, message="Page non trouvée."), 404
 
