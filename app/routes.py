@@ -190,6 +190,15 @@ def notifications_page():
         notifications=notifications,
         unread_count=unread_count,
     )
+
+@app.route('/set-team/<int:equipe_id>')
+@login_required
+def set_team(equipe_id):
+    equipe = Equipe.query.get_or_404(equipe_id)
+    session['current_equipe_id'] = equipe.id
+    flash(f'Équipe sélectionnée : {equipe.nom}', 'success')
+    return redirect(url_for('dossiers'))
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('error.html', code=404, message="Page non trouvée."), 404
