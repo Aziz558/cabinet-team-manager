@@ -70,22 +70,51 @@
 <!-- Alertes -->
 {% if alertes %}
 <div class="card-premium mb-4 animate-fade-in-up stagger-2">
-    <div class="card-header-premium">
-        <h5 class="mb-0"><i class="bi bi-bell me-2" style="color: var(--warning);"></i>Alertes</h5>
+    <div class="card-header-premium d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2" style="color: var(--danger);"></i>Alertes — Tâches en retard</h5>
     </div>
     <div class="card-body-premium">
         {% for a in alertes %}
-        <div class="alert-premium alert-{{ 'warning' if a.type == 'warning' else 'info' if a.type == 'info' else 'success' }}-premium">
+        <div class="d-flex justify-content-between align-items-center p-3 rounded mb-2" style="background: rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.2);">
             <div class="d-flex align-items-center gap-2">
-                <i class="bi {{ 'bi-exclamation-triangle' if a.type == 'warning' else 'bi-info-circle' if a.type == 'info' else 'bi-check-circle' }}"></i>
-                <span>{{ a.msg }}</span>
+                <i class="bi bi-exclamation-circle text-danger"></i>
+                <div>
+                    <strong>{{ a.tache.titre }}</strong>
+                    <br><small class="text-tertiary">Échéance : {{ a.tache.date_echeance.strftime('%d/%m/%Y') }} | Dossier : {{ a.dossier.numero_dossier if a.dossier else '-' }}</small>
+                </div>
             </div>
-            <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="this.parentElement.remove()">✕</button>
+            <span class="badge badge-danger">+{{ (date.today() - a.tache.date_echeance).days }}j</span>
         </div>
         {% endfor %}
     </div>
 </div>
 {% endif %}
+
+<!-- Notifications récentes -->
+<div class="card-premium mb-4 animate-fade-in-up stagger-3">
+    <div class="card-header-premium d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-bell me-2" style="color: var(--orange-primary);"></i>Notifications récentes</h5>
+        <a href="{{ url_for('notifications_page') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">Voir tout</a>
+    </div>
+    <div class="card-body-premium">
+        {% if notifications_non_lues %}
+            {% for n in notifications_non_lues %}
+            <div class="d-flex align-items-start gap-2 p-2 rounded mb-1" style="background: rgba(255,140,0,0.05);">
+                <i class="bi bi-info-circle" style="color:var(--orange-primary);margin-top:2px;"></i>
+                <div class="flex-grow-1">
+                    <small>{{ n.message }}</small>
+                    <br><small class="text-tertiary" style="font-size:0.7rem;">{{ n.date_envoi.strftime('%d/%m/%Y %H:%M') if n.date_envoi else '' }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="text-center py-3">
+            <i class="bi bi-check2-all" style="font-size:1.5rem;color:var(--text-tertiary);"></i>
+            <p class="text-tertiary small mt-1">Tout est à jour, aucune notification non lue.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
 
 <!-- Suggestions -->
 {% if suggestions %}

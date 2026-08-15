@@ -4,7 +4,7 @@ from . import app, db
 from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
 from sqlalchemy import or_
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 @app.route('/')
 def index():
@@ -47,6 +47,12 @@ def team_select():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    from datetime import timedelta
+    
+    # Horizon 3 mois pour les tâches
+    horizon_3m = date.today() + timedelta(days=95)
+    week_end = date.today() + timedelta(days=7)
+    
     if current_user.role == 'manager':
         # Compute real KPIs for manager
         mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
@@ -63,14 +69,21 @@ def dashboard():
         taches_haute_priorite = 0
         total_taches = 0
         if all_dossiers_ids:
-            taches_query = Tache.query.filter(Tache.dossier_id.in_(all_dossiers_ids))
+            taches_query = Tache.query.filter(
+                Tache.dossier_id.in_(all_dossiers_ids),
+                Tache.date_echeance <= horizon_3m
+            )
             total_taches = taches_query.count()
             taches_retard = taches_query.filter(Tache.date_echeance < date.today(), Tache.statut != 'terminee').count()
             taches_haute_priorite = taches_query.filter_by(priorite='haute', statut='a_faire').count()
         
         taux_completion = 0
         if total_taches > 0:
-            terminees = Tache.query.filter(Tache.dossier_id.in_(all_dossiers_ids), Tache.statut == 'terminee').count()
+            terminees = Tache.query.filter(
+                Tache.dossier_id.in_(all_dossiers_ids),
+                Tache.date_echeance <= horizon_3m,
+                Tache.statut == 'terminee'
+            ).count()
             taux_completion = int(terminees / total_taches * 100)
 
         kpi = {
@@ -82,12 +95,12 @@ def dashboard():
             'total_taches': total_taches
         }
 
-        # Alertes : tâches en retard
+        # Alertes : tâches en retard dans les 3 mois
         alertes = []
         if all_dossiers_ids:
             taches_en_retard = Tache.query.filter(
                 Tache.dossier_id.in_(all_dossiers_ids),
-                Tache.date_echeance < date.today(),
+                Tache.date_echeance.between(date.today() - timedelta(days=60), date.today()),
                 Tache.statut != 'terminee'
             ).order_by(Tache.date_echeance.asc()).limit(5).all()
             for t in taches_en_retard:
@@ -110,16 +123,22 @@ def dashboard():
             Tache.date_echeance == date.today()
         ).order_by(Tache.priorite.desc()).all()
         
-        from datetime import timedelta
-        week_end = date.today() + timedelta(days=7)
         taches_semaine = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),
             Tache.date_echeance.between(date.today(), week_end)
         ).order_by(Tache.date_echeance.asc()).all()
 
+        # Notifications non lues
+        notifications_non_lues = []
+        try:
+            notifications_non_lues = current_user.notifications.filter_by(lu=False).order_by(Notification.date_envoi.desc()).limit(5).all() if hasattr(current_user, 'notifications') else []
+        except Exception:
+            notifications_non_lues = []
+
         return render_template('dashboard_manager.html', kpi=kpi, alertes=alertes,
             suggestions=suggestions, membres=membres, taches_jour=taches_jour,
-            taches_semaine=taches_semaine)
+            taches_semaine=taches_semaine, notifications_non_lues=notifications_non_lues,
+            horizon_3m=horizon_3m)
     else:
         # Dashboard collaborateur
         team_member_ids = [current_user.id]
@@ -128,19 +147,18 @@ def dashboard():
             team_member_ids.extend([m.id for m in eq.membres.all()])
         team_member_ids = list(set(team_member_ids))
         
-        total_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).count()
+        total_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids), Tache.date_echeance <= horizon_3m).count()
         taches_auj = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),
             Tache.date_echeance == date.today()
         ).count()
         terminees = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),
+            Tache.date_echeance <= horizon_3m,
             Tache.statut == 'terminee'
         ).count()
         taux_completion = int(terminees / total_taches * 100) if total_taches > 0 else 0
 
-        from datetime import timedelta
-        week_end = date.today() + timedelta(days=7)
         taches_jour = Tache.query.filter(
             Tache.assigne_a == current_user.id,
             Tache.date_echeance == date.today()
