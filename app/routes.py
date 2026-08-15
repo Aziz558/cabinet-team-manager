@@ -231,6 +231,13 @@ def taches():
         all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
     return render_template('taches.html', taches=all_taches, membres=membres, equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
 
+@app.route('/equipes')
+@login_required
+def equipes():
+    """Affiche la liste des équipes."""
+    equipes = Equipe.query.order_by(Equipe.nom).all()
+    return render_template('equipes.html', equipes=equipes)
+
 @app.route('/notifications')
 @login_required
 def notifications_page():
