@@ -490,8 +490,8 @@ def fiscal():
     for d in all_dossiers:
         tasks = Tache.query.filter(Tache.dossier_id == d.id).all()
         # Filter tasks related to tax: TVA, IS, CFE
-        tax_tasks = [t for t in tasks if 
-                     ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper() or
+        tax_tasks = [t for t in tasks if (
+                     'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper() or
                       'IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper() or 'CFE' in t.titre.upper())]
         # Determine next deadline among non-completed tax tasks
         pending_tasks = [t for t in tax_tasks if t.statut != 'terminee']
@@ -520,6 +520,62 @@ def fiscal():
             'tax_tasks': tax_tasks
         })
     return render_template('fiscal.html', dossier_data=dossier_data, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, Tache=Tache, db=db)
+
+
+@app.route('/ajouter_dossier', methods=['POST'])
+@login_required
+def ajouter_dossier():
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    try:
+        numero_dossier = request.form.get('numero_dossier', '').strip()
+        intitule = request.form.get('intitule', '').strip()
+        collaborateur_id = request.form.get('collaborateur_id')
+        equipe_id = request.form.get('equipe_id')
+        regime_tva = request.form.get('regime_tva')
+        frequence_tva = request.form.get('frequence_tva')
+        date_limite_declaration = request.form.get('date_limite_declaration')
+        regime_fiscale = request.form.get('regime_fiscale')
+        has_cfe = ('has_cfe' in request.form)
+
+        if not numero_dossier or not intitule or not collaborateur_id or not equipe_id:
+            flash('Veuillez remplir tous les champs obligatoires.', 'danger')
+            return redirect(url_for('dossiers'))
+
+        # Convert date if provided
+        date_limite = None
+        if date_limite_declaration:
+            try:
+                date_limite = datetime.strptime(date_limite_declaration, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Format de date invalide.', 'danger')
+                return redirect(url_for('dossiers'))
+
+        nouveau_dossier = Dossier(
+            numero_dossier=numero_dossier,
+            intitule=intitule,
+            collaborateur_id=int(collaborateur_id),
+            equipe_id=int(equipe_id),
+            regime_tva=regime_tva if regime_tva else None,
+            frequence_tva=frequence_tva if frequence_tva else None,
+            date_limite_declaration=date_limite,
+            regime_fiscale=regime_fiscale if regime_fiscale else None,
+            has_cfe=has_cfe
+        )
+        db.session.add(nouveau_dossier)
+        db.session.flush()
+        from .tva_scheduler import planifier_impots_dossier
+        planifier_impots_dossier(nouveau_dossier)
+        db.session.commit()
+        flash('Dossier créé avec succès et les tâches fiscales ont été générées.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur lors de la création du dossier: {e}")
+        flash('Erreur lors de la création du dossier.', 'danger')
+    return redirect(url_for('dossiers'))
+
+    # Error handlers
 
 
 # Error handlers
