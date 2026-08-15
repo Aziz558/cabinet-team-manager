@@ -319,6 +319,11 @@ def upload_photo():
 def voir_taches_dossier(dossier_id):
     return redirect(url_for('taches'))
 
+@app.route('/profil')
+@login_required
+def profil():
+    return render_template('profil.html')
+
 @app.route('/admin_debug')
 @login_required
 def admin_debug():
