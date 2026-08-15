@@ -180,6 +180,57 @@ def planifier_taches_tva():
         flash('Erreur lors de la planification des tâches TVA.', 'danger')
     return redirect(url_for('dossiers'))
 
+
+@app.route('/taches')
+@login_required
+def taches():
+    """Affiche la liste des tâches selon le rôle de l'utilisateur."""
+    # Initialize variables for template (same as dossiers)
+    current_equipe = None
+    all_equipes_for_switch = []
+    membres = []
+
+    if current_user.role == 'admin':
+        from flask import session
+        equipe_id = session.get('current_equipe_id')
+        if equipe_id:
+            equipe = Equipe.query.get(equipe_id)
+            current_equipe = equipe
+            all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
+            team_user_ids = [m.id for m in equipe.membres.all()] if equipe else []
+            membres = User.query.filter(User.id.in_(team_user_ids), User.actif==True).all()
+            # For tasks, we want tasks assigned to members of the selected equipe
+            all_taches = Tache.query.filter(Tache.assigne_a.in_(team_user_ids)).all() if team_user_ids else []
+        else:
+            # No current equipe selected, show all tasks
+            current_equipe = None
+            all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
+            membres = User.query.filter_by(actif=True).all()
+            all_taches = Tache.query.all()
+    elif current_user.role == 'manager':
+        # Manager can see and switch between their managed teams
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        all_equipes_for_switch = mes_equipes
+        # For now, current_equipe is None (could be first team if desired)
+        current_equipe = None
+        team_member_ids = [current_user.id]
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+        all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
+    else:
+        # Regular member: can see tasks assigned to them or their equipes?
+        # Get teams where user is a member
+        mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []
+        all_equipes_for_switch = mes_equipes
+        current_equipe = None  # Could be first team if desired
+        team_member_ids = [current_user.id]
+        for eq in mes_equipes:
+            team_member_ids.extend([m.id for m in eq.membres.all()])
+        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+        all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
+    return render_template('taches.html', taches=all_taches, membres=membres, equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache, current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
+
 @app.route('/notifications')
 @login_required
 def notifications_page():
