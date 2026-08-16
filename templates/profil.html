@@ -41,13 +41,16 @@
                     <div class="card-body-premium">
                         <h6 class="mb-2" style="color: var(--orange-primary);"><i class="bi bi-image me-1"></i>Photo de profil</h6>
                         <form method="POST" enctype="multipart/form-data" id="photoUploadForm">
-                            <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-3 mb-2">
                                 <label for="photoInput" class="btn-premium btn-premium-secondary mb-0" style="cursor: pointer;">
                                     <i class="bi bi-upload me-1"></i>Choisir une image
                                 </label>
                                 <input type="file" id="photoInput" name="photo" accept="image/png,image/jpeg,image/gif" style="display: none;">
                                 <span class="text-tertiary small" id="fileNameDisplay">Aucun fichier</span>
                             </div>
+                            <button type="submit" class="btn-premium btn-premium-primary btn-sm w-100">
+                                <i class="bi bi-cloud-upload me-1"></i>Enregistrer la photo
+                            </button>
                         </form>
                         <p class="text-tertiary small mt-2 mb-0">Formats : PNG, JPG, JPEG, GIF (max 5MB)</p>
                     </div>
@@ -86,6 +89,18 @@
 
 {% block scripts %}
 <script>
+// Auto-submit photo when file is selected
+document.getElementById('photoInput')?.addEventListener('change', function() {
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    if (this.files?.[0]) {
+        fileNameDisplay.textContent = this.files[0].name;
+        // Auto-submit after 500ms delay to let UI update
+        setTimeout(() => document.getElementById('photoUploadForm')?.requestSubmit(), 500);
+    } else {
+        fileNameDisplay.textContent = 'Aucun fichier';
+    }
+});
+
 document.getElementById('photoUploadForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const formData = new FormData(this);
@@ -95,8 +110,9 @@ document.getElementById('photoUploadForm')?.addEventListener('submit', async fun
         return;
     }
 
-    const btn = this.querySelector('label[for="photoInput"]');
+    const btn = this.querySelector('button[type="submit"]');
     const originalHtml = btn.innerHTML;
+    btn.disabled = true;
     btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Envoi...';
 
     try {
@@ -108,7 +124,7 @@ document.getElementById('photoUploadForm')?.addEventListener('submit', async fun
         const data = await response.json();
         if (data.ok) {
             window.showToast(data.message || 'Photo de profil mise à jour.', 'success');
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => location.reload(), 1500);
         } else {
             window.showToast('Erreur : ' + (data.message || 'Upload échoué'), 'danger');
         }
@@ -116,15 +132,8 @@ document.getElementById('photoUploadForm')?.addEventListener('submit', async fun
         window.showToast('Erreur lors du téléchargement: ' + error.message, 'danger');
         console.error('Photo upload error:', error);
     } finally {
+        btn.disabled = false;
         btn.innerHTML = originalHtml;
-    }
-});
-
-document.getElementById('photoInput')?.addEventListener('change', function() {
-    const fileName = this.files?.[0]?.name || 'Aucun fichier';
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
-    if (fileNameDisplay) {
-        fileNameDisplay.textContent = fileName;
     }
 });
 </script>
