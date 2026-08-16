@@ -772,7 +772,7 @@ def modifier_dossier(dossier_id):
     flash('Fonctionnalit\u00e9 de modification de dossier non encore impl\u00e9ment\u00e9e.', 'info')
     return redirect(url_for('dossiers'))
 
-@app.route('/prendre_en_charge/<int:tache_id>')
+@app.route('/prendre_en_charge/<int:tache_id>', methods=['POST'])
 @login_required
 def prendre_en_charge(tache_id):
     """Prendre en charge une tâche (membre ou assigné)."""
@@ -1052,7 +1052,7 @@ def supprimer_equipe(equipe_id):
     flash('Fonctionnalit\u00e9 de suppression d\'\u00e9quipe non encore impl\u00e9ment\u00e9e.', 'info')
     return redirect(url_for('equipes'))
 
-@app.route('/supprimer_tache/<int:tache_id>')
+@app.route('/supprimer_tache/<int:tache_id>', methods=['POST'])
 @login_required
 def supprimer_tache(tache_id):
     """Supprimer une tâche."""
@@ -1083,7 +1083,7 @@ def supprimer_tache(tache_id):
 def taches_aujourdhui():
     return redirect(url_for('taches'))
 
-@app.route('/terminer_tache/<int:tache_id>')
+@app.route('/terminer_tache/<int:tache_id>', methods=['POST'])
 @login_required
 def terminer_tache(tache_id):
     """Marquer une tâche comme terminée."""
