@@ -774,12 +774,11 @@ def supprimer_dossier(dossier_id):
         return redirect(url_for('dossiers'))
     
     try:
-        # Supprimer les notifications liées aux tâches du dossier
+        # Supprimer les notifications et commentaires liés aux tâches du dossier
         tache_ids = [t.id for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
         if tache_ids:
             Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
             CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
-            SuggestionTache.query.filter(SuggestionTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
         # Supprimer les suggestions liées au dossier
         SuggestionTache.query.filter_by(dossier_id=dossier.id).delete()
         # Supprimer les tâches associées
@@ -817,7 +816,6 @@ def supprimer_dossiers():
                 if tache_ids:
                     Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
                     CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
-                    SuggestionTache.query.filter(SuggestionTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
                 # Supprimer aussi les suggestions liées au dossier
                 SuggestionTache.query.filter_by(dossier_id=dossier.id).delete()
                 Tache.query.filter_by(dossier_id=dossier.id).delete()
