@@ -870,6 +870,22 @@ def reset_admin():
             flash('Cl\u00e9 de r\u00e9initialisation invalide.', 'danger')
     return render_template('reset_admin.html')
 
+@app.route('/admin/set_hamza_photo')
+@login_required
+def admin_set_hamza_photo():
+    """Assigner la photo hamza_photo.png au compte Hamza."""
+    if current_user.role != 'admin':
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('membres'))
+    user = User.query.filter_by(email='hamza.boujejjjmaa@cabinet-jmh.com').first()
+    if not user:
+        flash('Compte Hamza introuvable.', 'danger')
+        return redirect(url_for('membres'))
+    user.photo_profil = 'hamza_photo.png'
+    db.session.commit()
+    flash(f'Photo hamza_photo.png assignée à {user.prenom} {user.nom}', 'success')
+    return redirect(url_for('fiche_membre', user_id=user.id))
+
 @app.route('/api/set_photo', methods=['POST'])
 @login_required
 def api_set_photo():
