@@ -86,10 +86,10 @@
                         </td>
                         <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
                         <td>
-                            {% if d.regime_tva == 'ca3' %}
-                            <span class="badge badge-info">CA3</span>
-                            {% elif d.regime_tva == 'ca12' %}
-                            <span class="badge badge-warning">CA12</span>
+                            {% if d.regime_tva == 'mensuel' %}
+                            <span class="badge badge-info">Mensuel</span>
+                            {% elif d.regime_tva == 'trimestriel' %}
+                            <span class="badge badge-warning">Trimestriel</span>
                             {% elif d.regime_tva == 'exonere' %}
                             <span class="badge badge-success">Exonéré</span>
                             {% else %}
@@ -237,14 +237,16 @@
                             <label class="form-label-premium">Régime TVA</label>
                             <select name="regime_tva" class="select-premium">
                                 <option value="">-- Aucun --</option>
-                                <option value="ca3">CA3 (mensuel)</option>
-                                <option value="ca12">CA12 (trimestriel)</option>
+                                <option value="mensuel">Mensuel</option>
+                                <option value="trimestriel">Trimestriel</option>
                                 <option value="exonere">Exonéré</option>
                             </select>
+                            <p class="text-tertiary small mt-1">Mensuel = CA3, Trimestriel = CA12</p>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label-premium">Fréquence de déclaration</label>
-                            <input type="text" name="frequence_tva" class="input-premium" placeholder="ex: Mensuel, Trimestriel">
+                            <label class="form-label-premium">Date limite de déclaration</label>
+                            <input type="date" name="date_limite_declaration" class="input-premium">
+                            <p class="text-tertiary small mt-1">Date de référence pour les échéances TVA (jour du mois)</p>
                         </div>
                     </div>
                     <div class="row">
