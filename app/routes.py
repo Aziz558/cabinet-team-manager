@@ -395,12 +395,38 @@ def liste_membres():
 @app.route('/fiche_membre/<int:user_id>')
 @login_required
 def fiche_membre(user_id):
-    """Page de fiche d\u00e9taill\u00e9e d'un membre."""
+    """Page de fiche détaillée d'un membre."""
     user = User.query.get_or_404(user_id)
     from datetime import date
-    taches_en_cours = Tache.query.filter_by(assigne_a=user.id).filter(Tache.statut != 'terminee').count()
-    dossiers_assignes = Dossier.query.filter_by(collaborateur_id=user.id).count()
-    return render_template('fiche_membre.html', membre=user, taches_en_cours=taches_en_cours, dossiers_assignes=dossiers_assignes)
+    from datetime import timedelta
+    
+    # Récupérer les dossiers du collaborateur
+    dossiers_list = Dossier.query.filter_by(collaborateur_id=user.id).all()
+    
+    # Récupérer les tâches assignées
+    taches_list = Tache.query.filter_by(assigne_a=user.id).order_by(Tache.date_echeance.desc()).all()
+    
+    # Calculer les stats
+    dossiers_en_cours = [d for d in dossiers_list if not d.date_cloture]
+    taches_terminees = [t for t in taches_list if t.statut in ('terminee', 'terminée')]
+    taches_en_retard = [t for t in taches_list if t.statut not in ('terminee', 'terminée') and t.date_echeance and t.date_echeance < date.today()]
+    total_taches = len(taches_list)
+    
+    taux_respect = 0
+    if total_taches > 0:
+        taux_respect = int(len(taches_terminees) / total_taches * 100)
+    
+    en_retard = len(taches_en_retard)
+    score = max(0, min(100, taux_respect - en_retard * 5))
+    
+    return render_template('fiche_membre.html',
+        membre=user,
+        dossiers_en_cours=dossiers_en_cours,
+        total_terminees=len(taches_terminees),
+        taches_membre=taches_list[:20],
+        taux_respect=taux_respect,
+        en_retard=en_retard,
+        score=score)
 
 @app.route('/ajouter_membre', methods=['POST'])
 @login_required
@@ -766,11 +792,18 @@ def terminer_tache(tache_id):
     return redirect(url_for('taches'))
 
 @app.route('/upload_photo', methods=['POST'])
+@app.route('/upload_photo/<int:user_id>', methods=['POST'])
 @login_required
-def upload_photo():
+def upload_photo(user_id=None):
     """Upload photo de profil."""
     import os
     from werkzeug.utils import secure_filename
+    
+    target_user = current_user
+    if user_id is not None:
+        if current_user.role not in ('admin', 'manager'):
+            return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+        target_user = User.query.get_or_404(user_id)
     
     if 'photo' not in request.files:
         return jsonify({'ok': False, 'message': 'Aucun fichier sélectionné.'}), 400
@@ -784,25 +817,29 @@ def upload_photo():
     if ext not in ALLOWED_EXTENSIONS:
         return jsonify({'ok': False, 'message': 'Format non autorisé. Utilisez PNG, JPG, JPEG ou GIF.'}), 400
     
-    # Lire le fichier et vérifier taille (max 5MB)
     file.seek(0, os.SEEK_END)
     size = file.tell()
     if size > 5 * 1024 * 1024:
         return jsonify({'ok': False, 'message': 'Fichier trop volumineux. Maximum 5MB.'}), 400
     file.seek(0)
     
-    # Nom unique pour éviter les collisions
-    filename = f"user_{current_user.id}_{secure_filename(file.filename)}"
+    filename = f"user_{target_user.id}_{secure_filename(file.filename)}"
     upload_dir = os.path.join(app.root_path, 'static', 'uploads')
     os.makedirs(upload_dir, exist_ok=True)
     filepath = os.path.join(upload_dir, filename)
     file.save(filepath)
     
-    # Mettre à jour la base de données
-    current_user.photo_profil = filename
+    target_user.photo_profil = filename
     db.session.commit()
     
-    return jsonify({'ok': True, 'message': 'Photo de profil mise à jour avec succès.'})
+    msg = f'Photo de profil mise à jour pour {target_user.prenom} {target_user.nom}.'
+    if request.headers.get('Accept') == 'application/json' or request.is_json:
+        return jsonify({'ok': True, 'message': msg})
+    
+    flash(msg, 'success')
+    if user_id:
+        return redirect(url_for('fiche_membre', user_id=user_id))
+    return redirect(url_for('profil'))
 
 @app.route('/voir_taches_dossier/<int:dossier_id>')
 @login_required

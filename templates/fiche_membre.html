@@ -85,8 +85,8 @@
                         <div class="list-group-item d-flex justify-content-between">
                             <div>
                                 <strong>{{ d.numero_dossier }}</strong> — {{ d.intitule }}
-                                {% if d.date_limite %}
-                                <br><small class="text-tertiary">Limite: {{ d.date_limite.strftime('%d/%m/%Y') }}</small>
+                                {% if d.date_limite_declaration %}
+                                <br><small class="text-tertiary">Limite: {{ d.date_limite_declaration.strftime('%d/%m/%Y') }}</small>
                                 {% endif %}
                             </div>
                             <span class="badge badge-info">En cours</span>
