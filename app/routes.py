@@ -829,6 +829,175 @@ def supprimer_dossiers():
     
     return redirect(url_for('dossiers'))
 
+@app.route('/telecharger_template_csv')
+@login_required
+def telecharger_template_csv():
+    """Télécharger un modèle CSV pour l'import de dossiers."""
+    import csv, io
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        'numero_dossier', 'intitule', 'collaborateur_email', 'equipe_nom',
+        'regime_tva', 'frequence_tva', 'date_limite_declaration',
+        'regime_fiscale', 'has_cfe'
+    ])
+    writer.writerow([
+        'EXEMPLE-001', 'Exemple de dossier', 'collaborateur@cabinet-jmh.com', 'Équipe Cabinet JMH',
+        'ca3', 'mensuelle', '2026-09-15',
+        'IS', 'TRUE'
+    ])
+    writer.writerow([
+        'EXEMPLE-002', 'Deuxième exemple', '', '',
+        'ca12', 'trimestrielle', '',
+        'IRPP', 'FALSE'
+    ])
+    
+    output.seek(0)
+    from flask import Response
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=template_dossiers.csv'}
+    )
+
+@app.route('/importer_csv', methods=['POST'])
+@login_required
+def importer_csv():
+    """Importer des dossiers depuis un fichier CSV."""
+    import csv, io, os
+    
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    
+    if 'csv_file' not in request.files:
+        flash('Aucun fichier sélectionné.', 'warning')
+        return redirect(url_for('dossiers'))
+    
+    file = request.files['csv_file']
+    if file.filename == '':
+        flash('Aucun fichier sélectionné.', 'warning')
+        return redirect(url_for('dossiers'))
+    
+    creer_taches = 'creer_taches' in request.form
+    
+    try:
+        content = file.read().decode('utf-8-sig')
+        dialect = csv.Sniffer().sniff(content[:1024])
+        reader = csv.DictReader(io.StringIO(content), dialect=dialect)
+    except Exception:
+        # Fallback: try with semicolon
+        try:
+            content = file.read().decode('utf-8-sig')
+            reader = csv.DictReader(io.StringIO(content), delimiter=';')
+        except Exception as e:
+            flash(f'Erreur de lecture du CSV: {str(e)}', 'danger')
+            return redirect(url_for('dossiers'))
+    
+    success_count = 0
+    error_count = 0
+    errors = []
+    
+    for row_num, row in enumerate(reader, start=2):
+        try:
+            numero = row.get('numero_dossier', '').strip()
+            intitule = row.get('intitule', '').strip()
+            if not numero or not intitule:
+                error_count += 1
+                errors.append(f'Ligne {row_num}: numéro ou intitulé manquant')
+                continue
+            
+            # Vérifier doublon
+            existing = Dossier.query.filter_by(numero_dossier=numero).first()
+            if existing:
+                error_count += 1
+                errors.append(f'Ligne {row_num}: dossier {numero} existe déjà')
+                continue
+            
+            # Chercher collaborateur par email
+            email = row.get('collaborateur_email', '').strip()
+            collab = None
+            if email:
+                collab = User.query.filter_by(email=email).first()
+                if not collab:
+                    error_count += 1
+                    errors.append(f'Ligne {row_num}: email collaborateur {email} introuvable')
+                    continue
+            
+            # Chercher équipe par nom
+            equipe_nom = row.get('equipe_nom', '').strip()
+            equipe = None
+            if equipe_nom:
+                equipe = Equipe.query.filter_by(nom=equipe_nom).first()
+                if not equipe:
+                    error_count += 1
+                    errors.append(f'Ligne {row_num}: équipe {equipe_nom} introuvable')
+                    continue
+            
+            regime_tva = row.get('regime_tva', '').strip() or None
+            frequence_tva = row.get('frequence_tva', '').strip() or None
+            regime_fiscale = row.get('regime_fiscale', '').strip() or None
+            
+            date_limite_str = row.get('date_limite_declaration', '').strip()
+            date_limite = None
+            if date_limite_str:
+                try:
+                    date_limite = datetime.strptime(date_limite_str, '%Y-%m-%d').date()
+                except ValueError:
+                    try:
+                        date_limite = datetime.strptime(date_limite_str, '%d/%m/%Y').date()
+                    except ValueError:
+                        error_count += 1
+                        errors.append(f'Ligne {row_num}: date limite invalide {date_limite_str}')
+                        continue
+            
+            has_cfe_str = row.get('has_cfe', '').strip().upper()
+            has_cfe = has_cfe_str in ('TRUE', '1', 'OUI', 'YES', 'ON')
+            
+            dossier = Dossier(
+                numero_dossier=numero,
+                intitule=intitule,
+                collaborateur_id=collab.id if collab else None,
+                equipe_id=equipe.id if equipe else None,
+                regime_tva=regime_tva,
+                frequence_tva=frequence_tva,
+                date_limite_declaration=date_limite,
+                regime_fiscale=regime_fiscale,
+                has_cfe=has_cfe
+            )
+            db.session.add(dossier)
+            db.session.flush()
+            
+            # Planifier les impôts si demandé
+            if creer_taches:
+                from app.tva_scheduler import planifier_impots_dossier
+                try:
+                    planifier_impots_dossier(dossier)
+                except Exception as e:
+                    app.logger.warning(f'Erreur planification pour {numero}: {e}')
+            
+            success_count += 1
+        except Exception as e:
+            error_count += 1
+            errors.append(f'Ligne {row_num}: {str(e)}')
+    
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de l\'enregistrement: {str(e)}', 'danger')
+        return redirect(url_for('dossiers'))
+    
+    msg = f'{success_count} dossier(s) importé(s) avec succès.'
+    if error_count > 0:
+        msg += f' {error_count} erreur(s).'
+        for err in errors[:5]:
+            msg += f' {err}'
+    flash(msg, 'success' if success_count > 0 else 'warning')
+    
+    return redirect(url_for('dossiers'))
+
 @app.route('/supprimer_equipe/<int:equipe_id>')
 @login_required
 def supprimer_equipe(equipe_id):

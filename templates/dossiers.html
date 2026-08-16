@@ -9,14 +9,12 @@
         <button class="btn-premium btn-premium-secondary btn-press" data-bs-toggle="modal" data-bs-target="#modalImport">
             <i class="bi bi-upload me-1"></i>Importer CSV
         </button>
+        <a href="{{ url_for('telecharger_template_csv') }}" class="btn-premium btn-premium-outline btn-press">
+            <i class="bi bi-download me-1"></i>Télécharger template
+        </a>
         <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalDossier">
             <i class="bi bi-folder-plus me-2"></i>Nouveau dossier
         </button>
-        <form method="POST" action="{{ url_for('planifier_tous_impots') }}" class="d-inline">
-            <button type="submit" class="btn-premium btn-premium-secondary btn-press" onclick="return confirm('Planifier les impôts (TVA, IS, CFE) pour TOUS les dossiers existants ?')">
-                <i class="bi bi-lightning me-1"></i>Planifier impôts
-            </button>
-        </form>
         <form method="POST" action="{{ url_for('supprimer_dossiers') }}" class="d-inline" id="batchDeleteForm" onsubmit="return batchDeleteConfirm(event)">
             <button type="submit" class="btn-premium btn-premium-outline btn-press" id="btnSupprimerSelection" style="display:none;border-color:rgba(244,67,54,0.5);color:#f44336;">
                 <i class="bi bi-trash me-1"></i>Supprimer sélection
@@ -155,6 +153,41 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Import CSV -->
+<div class="modal fade" id="modalImport" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('importer_csv') }}" enctype="multipart/form-data" id="formImportCSV">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-upload me-2" style="color:var(--orange-primary)"></i>Importer des dossiers (CSV)</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        <div>Utilisez le modèle CSV ci-dessous. Téléchargez d'abord le <a href="{{ url_for('telecharger_template_csv') }}">template CSV</a>, remplissez-le, puis importez-le ici.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Fichier CSV *</label>
+                        <input type="file" name="csv_file" class="input-premium" accept=".csv" required>
+                        <p class="text-tertiary small mt-1">Format : CSV avec séparateur virgule (,) ou point-virgule (;)</p>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" name="creer_taches" id="creerTachesCheckbox" checked>
+                        <label class="form-check-label" for="creerTachesCheckbox">Générer automatiquement les tâches fiscales (TVA, IS, CFE)</label>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">
+                        <i class="bi bi-cloud-upload me-1"></i>Importer
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
