@@ -833,8 +833,8 @@ def upload_photo(user_id=None):
     db.session.commit()
     
     msg = f'Photo de profil mise à jour pour {target_user.prenom} {target_user.nom}.'
-    if request.headers.get('Accept') == 'application/json' or request.is_json:
-        return jsonify({'ok': True, 'message': msg})
+    # Toujours retourner du JSON pour les uploads photo (appelé depuis fetch JS)
+    return jsonify({'ok': True, 'message': msg})
     
     flash(msg, 'success')
     if user_id:

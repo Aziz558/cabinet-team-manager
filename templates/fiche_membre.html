@@ -19,7 +19,7 @@
         {% endif %}
         <div>
             <h2 class="fw-semibold mb-1">{{ membre.prenom }} {{ membre.nom }}</h2>
-            <p class="text-tertiary mb-1">{{ membre.poste or 'Membre de l\'équipe' }}</p>
+            <p class="text-tertiary mb-1">{{ membre.poste or "Membre de l'équipe" }}</p>
             <small class="text-tertiary">{{ membre.email }}{% if membre.telephone %} | {{ membre.telephone }}{% endif %}</small>
         </div>
     </div>
@@ -105,9 +105,9 @@
                 <h5 class="mb-0"><i class="bi bi-person-gear me-2" style="color:var(--orange-primary)"></i>Actions</h5>
             </div>
             <div class="card-body-premium">
-                <form method="POST" action="{{ url_for('upload_photo', user_id=membre.id) }}" enctype="multipart/form-data" class="mb-3">
+                <form method="POST" enctype="multipart/form-data" id="photoUploadFormFiche" class="mb-3">
                     <label class="form-label-premium">Photo de profil</label>
-                    <input type="file" name="photo" class="input-premium mb-2" accept="image/*">
+                    <input type="file" name="photo" class="input-premium mb-2" accept="image/*" id="fichePhotoInput">
                     <button type="submit" class="btn-premium btn-premium-primary w-100">Changer la photo</button>
                 </form>
                 <a href="{{ url_for('taches') }}?collaborateur={{ membre.id }}" class="btn-premium btn-premium-outline btn-premium-info w-100 mb-2">Voir ses tâches</a>
@@ -140,4 +140,43 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.getElementById('photoUploadFormFiche')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const fileInput = document.getElementById('fichePhotoInput');
+    if (!fileInput || fileInput.files.length === 0) {
+        window.showToast('Veuillez sélectionner une image.', 'warning');
+        return;
+    }
+    const btn = this.querySelector('button[type="submit"]');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Envoi...';
+    try {
+        const response = await fetch('/upload_photo/{{ membre.id }}', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+        });
+        const data = await response.json();
+        if (data.ok) {
+            window.showToast(data.message || 'Photo mise à jour.', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            window.showToast('Erreur : ' + (data.message || 'Upload échoué'), 'danger');
+        }
+    } catch (error) {
+        window.showToast('Erreur: ' + error.message, 'danger');
+        console.error(error);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+});
+</script>
 {% endblock %}
