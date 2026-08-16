@@ -1366,8 +1366,8 @@ def ajouter_dossier():
         flash('Dossier cr\u00e9\u00e9 avec succ\u00e8s et les t\u00e2ches fiscales ont \u00e9t\u00e9 g\u00e9n\u00e9r\u00e9es.', 'success')
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Erreur lors de la cr\u00e9ation du dossier: {e}")
-        flash('Erreur lors de la cr\u00e9ation du dossier.', 'danger')
+        app.logger.error(f"Erreur lors de la création du dossier: {e}")
+        flash(f'Erreur lors de la création du dossier: {str(e)}', 'danger')
     return redirect(url_for('dossiers'))
 
 # ==========================

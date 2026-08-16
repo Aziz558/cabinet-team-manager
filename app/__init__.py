@@ -126,6 +126,14 @@ with app.app_context():
                         app.logger.info("Made cree_par nullable in taches table")
                 except Exception as alter_err:
                     app.logger.warning(f"Could not alter cree_par (may already be nullable): {alter_err}")
+            # Also make assigne_a nullable
+            if 'assigne_a' in taches_cols:
+                try:
+                    with db.engine.begin() as conn:
+                        conn.execute(db.text("ALTER TABLE taches ALTER COLUMN assigne_a DROP NOT NULL"))
+                        app.logger.info("Made assigne_a nullable in taches table")
+                except Exception as alter_err:
+                    app.logger.warning(f"Could not alter assigne_a (may already be nullable): {alter_err}")
     except Exception as e:
         app.logger.warning(f"Migration error (taches column): {e}")
 
