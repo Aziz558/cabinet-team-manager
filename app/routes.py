@@ -296,10 +296,31 @@ def planifier_taches_tva():
         flash('Erreur lors de la planification des imp\u00f4ts.', 'danger')
     return redirect(url_for('dossiers'))
 
-@app.route('/taches')
+@app.route('/taches', methods=['GET', 'POST'])
 @login_required
 def taches():
-    """Affiche la liste des t\u00e2ches selon le r\u00f4le de l'utilisateur."""
+    """Affiche la liste des tâches et gère la création."""
+    if request.method == 'POST':
+        titre = request.form.get('titre', '').strip()
+        if not titre:
+            flash('Le titre est obligatoire.', 'warning')
+            return redirect(url_for('taches'))
+        t = Tache(
+            titre=titre,
+            description=request.form.get('description', '').strip(),
+            dossier_id=request.form.get('dossier_id', type=int) or None,
+            assigne_a=request.form.get('assigne_a', type=int) or None,
+            priorite=request.form.get('priorite', 'moyenne'),
+            statut=request.form.get('statut', 'a_faire'),
+            date_echeance=datetime.strptime(request.form['date_echeance'], '%Y-%m-%d').date() if request.form.get('date_echeance') else None,
+            date_debut=datetime.strptime(request.form['date_debut'], '%Y-%m-%d').date() if request.form.get('date_debut') else None,
+            cree_par=current_user.id,
+        )
+        db.session.add(t)
+        db.session.commit()
+        flash('Tâche créée avec succès.', 'success')
+        return redirect(url_for('taches'))
+    
     current_equipe = None
     all_equipes_for_switch = []
     membres = []
@@ -761,6 +782,19 @@ def prendre_en_charge(tache_id):
 @login_required
 def settings():
     return redirect(url_for('profil'))
+
+@app.route('/api/dossiers-membres')
+@login_required
+def api_dossiers_membres():
+    """API pour alimenter les menus déroulants du modal de création de tâche."""
+    dossiers = Dossier.query.order_by(Dossier.numero_dossier).all()
+    membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
+    
+    return jsonify({
+        'ok': True,
+        'dossiers': [{'id': d.id, 'label': f"{d.numero_dossier} — {d.intitule}"} for d in dossiers],
+        'membres': [{'id': m.id, 'label': f"{m.prenom} {m.nom}"} for m in membres]
+    })
 
 @app.route('/supprimer_dossier/<int:dossier_id>')
 @login_required

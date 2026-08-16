@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
     <div>
         <h2 class="fw-semibold mb-1" style="letter-spacing:-0.5px;">Tâches</h2>
-        <p class="text-tertiary small mb-0">{{ taches|length }} tâche(s) • 
+        <p class="text-tertiary small mb-0" id="taskCount">{{ taches|length }} tâche(s) •
             <span style="color:var(--orange-primary);">{{ taches|selectattr('statut','equalto','a_faire')|list|length }}</span> à faire
         </p>
     </div>
@@ -19,10 +19,35 @@
 <h2 class="fw-semibold animate-fade-in-up" style="letter-spacing:-0.5px;">Mes tâches</h2>
 {% endif %}
 
-<!-- Task Board — Card layout style ClickUp -->
-<div class="task-board">
+<!-- Filtres -->
+<div class="card-premium mb-3 animate-fade-in-up">
+    <div class="card-body-premium py-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn active" data-filter="all" onclick="applyFilter('all')">
+                <i class="bi bi-list-ul me-1"></i>Toutes
+            </button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="fiscal" onclick="applyFilter('fiscal')">
+                <i class="bi bi-calculator me-1"></i>Fiscalité
+            </button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="regular" onclick="applyFilter('regular')">
+                <i class="bi bi-check2-square me-1"></i>Générales
+            </button>
+            <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
+            <select class="select-premium select-sm" id="filterStatut" onchange="applyFilter(document.querySelector('.filter-btn.active')?.dataset?.filter || 'all')" style="width:auto;">
+                <option value="all">Tous les statuts</option>
+                <option value="a_faire">À faire</option>
+                <option value="en_cours">En cours</option>
+                <option value="terminee">Terminée</option>
+            </select>
+            <input type="text" class="input-premium input-sm" id="filterSearch" placeholder="Rechercher..." oninput="applyFilter(document.querySelector('.filter-btn.active')?.dataset?.filter || 'all')" style="width:200px;">
+        </div>
+    </div>
+</div>
+
+<!-- Task Board -->
+<div class="task-board" id="taskBoard">
     {% for t in taches %}
-    <div class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}">
+    <div class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}" data-statut="{{ t.statut }}" data-titre="{{ t.titre|lower }} {{ t.description|lower }}">
         <div class="task-card-header">
             <span class="task-priority priority-{{ t.priorite }}">{{ t.priorite|capitalize }}</span>
             <span class="task-status status-{{ t.statut }}">{{ t.statut|replace('_', ' ') }}</span>
@@ -88,7 +113,7 @@
         </div>
     </div>
     {% else %}
-    <div class="task-empty">
+    <div class="task-empty" id="emptyState">
         <i class="bi bi-inbox"></i>
         <p>Aucune tâche pour le moment.</p>
         {% if current_user.role == 'manager' %}
@@ -100,7 +125,7 @@
     {% endfor %}
 </div>
 
-<!-- Le modal de création reste identique -->
+<!-- Modal Création -->
 <div class="modal fade" id="modalTache" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content-premium">
@@ -172,7 +197,61 @@
 
 {% block scripts %}
 <script>
-// Populate dropdowns when modal opens
+// Filter system
+var fiscalKeywords = ['tva', 'is ', 'cfe ', 'acompte', 'dépôt', 'prépa', 'fiscal'];
+
+function applyFilter(filter) {
+    var statut = document.getElementById('filterStatut')?.value || 'all';
+    var search = (document.getElementById('filterSearch')?.value || '').toLowerCase();
+    var cards = document.querySelectorAll('#taskBoard .task-card');
+    var visibleCount = 0;
+    
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+    
+    cards.forEach(function(card) {
+        var show = true;
+        var titre = (card.dataset.titre || '');
+        
+        // Filter by type
+        if (filter === 'fiscal') {
+            show = fiscalKeywords.some(function(kw) { return titre.indexOf(kw) >= 0; });
+        } else if (filter === 'regular') {
+            show = !fiscalKeywords.some(function(kw) { return titre.indexOf(kw) >= 0; });
+        }
+        
+        // Filter by statut
+        if (show && statut !== 'all') {
+            show = card.dataset.statut === statut;
+        }
+        
+        // Filter by search
+        if (show && search) {
+            show = titre.indexOf(search) >= 0;
+        }
+        
+        card.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+    
+    // Update count
+    var countEl = document.getElementById('taskCount');
+    if (countEl) {
+        countEl.innerHTML = visibleCount + ' tâche(s) • <span style="color:var(--orange-primary);">' + 
+            document.querySelectorAll('.task-card:not([style*="display: none"]) .status-a_faire').length + 
+            '</span> à faire';
+    }
+    
+    // Show empty state
+    var empty = document.getElementById('emptyState');
+    if (empty) {
+        empty.style.display = visibleCount === 0 ? '' : 'none';
+    }
+}
+
+// Populate dropdowns
 document.addEventListener('DOMContentLoaded', function() {
     var modal = document.getElementById('modalTache');
     if (!modal) return;
@@ -181,20 +260,20 @@ document.addEventListener('DOMContentLoaded', function() {
         var dossierSelect = document.getElementById('modalDossierSelect');
         var membreSelect = document.getElementById('modalMembreSelect');
         
-        // Avoid re-fetching if already populated (unless we want fresh data every time)
         if (dossierSelect.options.length > 1 && membreSelect.options.length > 1) {
             return;
         }
+        
+        dossierSelect.innerHTML = '<option value="">Chargement...</option>';
+        membreSelect.innerHTML = '<option value="">Chargement...</option>';
         
         fetch('/api/dossiers-membres')
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (!data.ok) {
-                    console.error('Failed to load dropdown data:', data.message);
+                    console.error('Failed:', data.message);
                     return;
                 }
-                
-                // Populate dossiers
                 dossierSelect.innerHTML = '<option value="">Aucun dossier</option>';
                 data.dossiers.forEach(function(d) {
                     var opt = document.createElement('option');
@@ -202,8 +281,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     opt.textContent = d.label;
                     dossierSelect.appendChild(opt);
                 });
-                
-                // Populate membres
                 membreSelect.innerHTML = '<option value="">Non assigné</option>';
                 data.membres.forEach(function(m) {
                     var opt = document.createElement('option');
@@ -213,7 +290,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             })
             .catch(function(err) {
-                console.error('Error loading modal dropdowns:', err);
+                console.error('Error:', err);
+                dossierSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+                membreSelect.innerHTML = '<option value="">Erreur de chargement</option>';
             });
     });
 });
