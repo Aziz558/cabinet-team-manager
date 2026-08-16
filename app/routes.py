@@ -775,7 +775,21 @@ def modifier_dossier(dossier_id):
 @app.route('/prendre_en_charge/<int:tache_id>')
 @login_required
 def prendre_en_charge(tache_id):
-    flash('Fonctionnalit\u00e9 de prise en charge non encore impl\u00e9ment\u00e9e.', 'info')
+    """Prendre en charge une tâche (membre ou assigné)."""
+    tache = Tache.query.get_or_404(tache_id)
+    
+    # Vérifier les droits
+    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
+        flash('Vous ne pouvez pas prendre en charge cette tâche.', 'danger')
+        return redirect(url_for('taches'))
+    if tache.statut != 'a_faire':
+        flash('Cette tâche n\'est pas en attente de prise en charge.', 'warning')
+        return redirect(url_for('taches'))
+    
+    tache.statut = 'en_cours'
+    tache.date_prise_en_charge = datetime.utcnow()
+    db.session.commit()
+    flash('Tâche prise en charge.', 'success')
     return redirect(url_for('taches'))
 
 @app.route('/settings')
@@ -1041,7 +1055,27 @@ def supprimer_equipe(equipe_id):
 @app.route('/supprimer_tache/<int:tache_id>')
 @login_required
 def supprimer_tache(tache_id):
-    flash('Fonctionnalit\u00e9 de suppression de t\u00e2che non encore impl\u00e9ment\u00e9e.', 'info')
+    """Supprimer une tâche."""
+    tache = Tache.query.get_or_404(tache_id)
+    
+    # Vérifier les droits
+    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
+        flash('Vous ne pouvez pas supprimer cette tâche.', 'danger')
+        return redirect(url_for('taches'))
+    
+    try:
+        # Supprimer les notifications liées
+        Notification.query.filter_by(tache_id=tache.id).delete()
+        # Supprimer les commentaires
+        CommentaireTache.query.filter_by(tache_id=tache.id).delete()
+        # Supprimer la tâche
+        db.session.delete(tache)
+        db.session.commit()
+        flash('Tâche supprimée.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression: {str(e)}', 'danger')
+    
     return redirect(url_for('taches'))
 
 @app.route('/taches/aujourdhui')
@@ -1052,7 +1086,23 @@ def taches_aujourdhui():
 @app.route('/terminer_tache/<int:tache_id>')
 @login_required
 def terminer_tache(tache_id):
-    flash('Fonctionnalit\u00e9 de terminaison de t\u00e2che non encore impl\u00e9ment\u00e9e.', 'info')
+    """Marquer une tâche comme terminée."""
+    tache = Tache.query.get_or_404(tache_id)
+    
+    # Vérifier les droits
+    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
+        flash('Vous ne pouvez pas terminer cette tâche.', 'danger')
+        return redirect(url_for('taches'))
+    if tache.statut not in ('en_cours', 'a_faire'):
+        flash('Cette tâche est déjà terminée.', 'warning')
+        return redirect(url_for('taches'))
+    
+    tache.statut = 'terminee'
+    tache.date_completion = datetime.utcnow()
+    if not tache.date_prise_en_charge:
+        tache.date_prise_en_charge = datetime.utcnow()
+    db.session.commit()
+    flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('taches'))
 
 @app.route('/upload_photo', methods=['POST'])
