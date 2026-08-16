@@ -824,7 +824,7 @@ def upload_photo(user_id=None):
     file.seek(0)
     
     filename = f"user_{target_user.id}_{secure_filename(file.filename)}"
-    upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+    upload_dir = os.path.join(app.static_folder, 'uploads')
     os.makedirs(upload_dir, exist_ok=True)
     filepath = os.path.join(upload_dir, filename)
     file.save(filepath)

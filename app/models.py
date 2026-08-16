@@ -50,16 +50,29 @@ class User(UserMixin, db.Model):
         return Tache.query.filter_by(assigne_a=self.id, statut='a_faire').count()
 
     def photo_display_src(self):
-        """Retourne l'URL de la photo de profil ou None."""
+        """Retourne l'URL de la photo de profil ou un avatar généré."""
         try:
-            from flask import current_app
             # Photo spécifique pour admin
             if self.email == 'admin@cabinet-jmh.com':
                 return '/static/uploads/admin.png'
+            # Photo uploadée
             if self.photo_profil:
-                return '/static/uploads/' + self.photo_profil
+                import os
+                from flask import current_app
+                photo_path = os.path.join(current_app.static_folder, 'uploads', self.photo_profil)
+                if os.path.exists(photo_path):
+                    return '/static/uploads/' + self.photo_profil
         except Exception:
             pass
+        
+        # Fallback : générer un avatar avec les initiales via ui-avatars.com
+        try:
+            name = f"{self.prenom or ''} {self.nom or ''}".strip()
+            encoded = name.replace(' ', '+')
+            return f"https://ui-avatars.com/api/?name={encoded}&background=FF8C00&color=fff&size=128&font-size=0.5&bold=true"
+        except Exception:
+            pass
+        
         return None
 
     def __repr__(self):
