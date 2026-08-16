@@ -5,27 +5,27 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-4 animate-fade-in-up stagger-1">
     <div class="d-flex align-items-center gap-3">
-        {% set f_photo = user.photo_display_src() %}
+        {% set f_photo = membre.photo_display_src() %}
         {% if f_photo %}
         <span class="user-icon-badge user-icon-badge-lg"><img src="{{ f_photo }}" alt="photo" class="sidebar-user-img" style="width:48px;height:48px;"></span>
         {% else %}
         {% set f_icon = 'bi-person' %}
-        {% if user.role == 'admin' %}
+        {% if membre.role == 'admin' %}
           {% set f_icon = 'bi-person-badge' %}
-        {% elif user.role == 'manager' %}
+        {% elif membre.role == 'manager' %}
           {% set f_icon = 'bi-person-lines-fill' %}
         {% endif %}
         <span class="user-icon-badge user-icon-badge-lg"><i class="bi {{ f_icon }}"></i></span>
         {% endif %}
         <div>
-            <h2 class="fw-semibold mb-1">{{ user.prenom }} {{ user.nom }}</h2>
-            <p class="text-tertiary mb-1">{{ user.poste or 'Membre de l\'équipe' }}</p>
-            <small class="text-tertiary">{{ user.email }}{% if user.telephone %} | {{ user.telephone }}{% endif %}</small>
+            <h2 class="fw-semibold mb-1">{{ membre.prenom }} {{ membre.nom }}</h2>
+            <p class="text-tertiary mb-1">{{ membre.poste or 'Membre de l\'équipe' }}</p>
+            <small class="text-tertiary">{{ membre.email }}{% if membre.telephone %} | {{ membre.telephone }}{% endif %}</small>
         </div>
     </div>
     <div class="d-flex align-items-center gap-3">
-        <span class="badge {{ 'badge-success' if user.actif else 'badge-danger' }} fs-6">
-            {{ 'Actif' if user.actif else 'Désactivé' }}
+        <span class="badge {{ 'badge-success' if membre.actif else 'badge-danger' }} fs-6">
+            {{ 'Actif' if membre.actif else 'Désactivé' }}
         </span>
         <a href="{{ url_for('liste_membres') }}" class="btn-premium btn-premium-outline btn-premium-secondary"><i class="bi bi-arrow-left"></i> Retour</a>
     </div>
@@ -105,14 +105,14 @@
                 <h5 class="mb-0"><i class="bi bi-person-gear me-2" style="color:var(--orange-primary)"></i>Actions</h5>
             </div>
             <div class="card-body-premium">
-                <form method="POST" action="{{ url_for('upload_photo', user_id=user.id) }}" enctype="multipart/form-data" class="mb-3">
+                <form method="POST" action="{{ url_for('upload_photo', user_id=membre.id) }}" enctype="multipart/form-data" class="mb-3">
                     <label class="form-label-premium">Photo de profil</label>
                     <input type="file" name="photo" class="input-premium mb-2" accept="image/*">
                     <button type="submit" class="btn-premium btn-premium-primary w-100">Changer la photo</button>
                 </form>
-                <a href="{{ url_for('taches') }}?collaborateur={{ user.id }}" class="btn-premium btn-premium-outline btn-premium-info w-100 mb-2">Voir ses tâches</a>
-                {% if current_user.role == 'manager' and user.id != current_user.id %}
-                <form method="POST" action="{{ url_for('supprimer_membre', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Supprimer définitivement {{ user.prenom }} {{ user.nom }} ?');">
+                <a href="{{ url_for('taches') }}?collaborateur={{ membre.id }}" class="btn-premium btn-premium-outline btn-premium-info w-100 mb-2">Voir ses tâches</a>
+                {% if current_user.role == 'manager' and membre.id != current_user.id %}
+                <form method="POST" action="{{ url_for('supprimer_membre', user_id=membre.id) }}" class="d-inline" onsubmit="return confirm('Supprimer définitivement {{ membre.prenom }} {{ membre.nom }} ?');">
                     <button type="submit" class="btn-premium btn-premium-outline btn-premium-danger w-100">
                         <i class="bi bi-trash me-1"></i>Supprimer le membre
                     </button>
