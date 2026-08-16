@@ -317,6 +317,18 @@ def taches():
         )
         db.session.add(t)
         db.session.commit()
+        
+        # Notification email
+        fiscal_keywords = ['tva', 'is ', 'cfe ', 'acompte', 'dépôt', 'préparation', 'déclaration', 'prépa']
+        is_fiscal = any(kw in titre.lower() for kw in fiscal_keywords)
+        
+        if t.assigne_a and not is_fiscal:
+            try:
+                from app.integrations.brevo import send_task_assigned_email_brevo
+                send_task_assigned_email_brevo(t, t.assigne_a)
+            except Exception as e:
+                app.logger.warning(f"Send email failed: {e}")
+        
         flash('Tâche créée avec succès.', 'success')
         return redirect(url_for('taches'))
     
@@ -788,6 +800,15 @@ def prendre_en_charge(tache_id):
     tache.statut = 'en_cours'
     tache.date_prise_en_charge = datetime.utcnow()
     db.session.commit()
+    
+    # Notifier le créateur
+    try:
+        from app.integrations.brevo import send_task_taken_email_brevo
+        collab_nom = f"{current_user.prenom} {current_user.nom}"
+        send_task_taken_email_brevo(tache, collab_nom)
+    except Exception as e:
+        app.logger.warning(f"Send email failed: {e}")
+    
     flash('Tâche prise en charge.', 'success')
     return redirect(url_for('taches'))
 
@@ -1080,7 +1101,33 @@ def supprimer_tache(tache_id):
 @app.route('/taches/aujourdhui')
 @login_required
 def taches_aujourdhui():
-    return redirect(url_for('taches'))
+    """Tâches dont l'échéance est aujourd'hui."""
+    today_taches = Tache.query.filter(Tache.date_echeance == date.today()).all()
+    return render_template('taches.html', taches=today_taches)
+
+@app.route('/api/envoyer_notifications_echeances')
+@login_required
+def envoyer_notifications_echeances():
+    """Envoyer les notifications par email pour les tâches fiscales échéant aujourd'hui."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
+    
+    from app.integrations.brevo import send_task_assigned_email_brevo
+    fiscal_keywords = ['tva', 'is ', 'cfe ', 'acompte', 'dépôt', 'préparation', 'déclaration', 'prépa']
+    
+    tasks = Tache.query.filter(Tache.date_echeance == date.today()).all()
+    sent = 0
+    for t in tasks:
+        titre = (t.titre or '').lower()
+        is_fiscal = any(kw in titre for kw in fiscal_keywords)
+        if is_fiscal and t.assigne_a and t.statut != 'terminee':
+            try:
+                send_task_assigned_email_brevo(t, t.assigne_a)
+                sent += 1
+            except Exception as e:
+                app.logger.warning(f"Send due notification failed: {e}")
+    
+    return jsonify({'ok': True, 'message': f'{sent} notification(s) envoyée(s).'})
 
 @app.route('/terminer_tache/<int:tache_id>', methods=['POST'])
 @login_required
@@ -1101,6 +1148,15 @@ def terminer_tache(tache_id):
     if not tache.date_prise_en_charge:
         tache.date_prise_en_charge = datetime.utcnow()
     db.session.commit()
+    
+    # Notifier le créateur
+    try:
+        from app.integrations.brevo import send_task_completed_email_brevo
+        collab_nom = f"{current_user.prenom} {current_user.nom}"
+        send_task_completed_email_brevo(tache, collab_nom)
+    except Exception as e:
+        app.logger.warning(f"Send email failed: {e}")
+    
     flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('taches'))
 
