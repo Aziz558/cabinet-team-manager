@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
+from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache
 from sqlalchemy import or_
 import os
 from datetime import date, datetime, timedelta
@@ -774,6 +774,14 @@ def supprimer_dossier(dossier_id):
         return redirect(url_for('dossiers'))
     
     try:
+        # Supprimer les notifications liées aux tâches du dossier
+        tache_ids = [t.id for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
+        if tache_ids:
+            Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+            CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+            SuggestionTache.query.filter(SuggestionTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+        # Supprimer les suggestions liées au dossier
+        SuggestionTache.query.filter_by(dossier_id=dossier.id).delete()
         # Supprimer les tâches associées
         Tache.query.filter_by(dossier_id=dossier.id).delete()
         # Supprimer le dossier
@@ -805,6 +813,13 @@ def supprimer_dossiers():
         for did in dossier_ids:
             dossier = Dossier.query.get(did)
             if dossier:
+                tache_ids = [t.id for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
+                if tache_ids:
+                    Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+                    CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+                    SuggestionTache.query.filter(SuggestionTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+                # Supprimer aussi les suggestions liées au dossier
+                SuggestionTache.query.filter_by(dossier_id=dossier.id).delete()
                 Tache.query.filter_by(dossier_id=dossier.id).delete()
                 db.session.delete(dossier)
                 count += 1
