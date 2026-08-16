@@ -246,13 +246,18 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        {% set member_icon2 = 'bi-person' %}
-                                        {% if m.role == 'admin' %}
-                                          {% set member_icon2 = 'bi-person-badge' %}
-                                        {% elif m.role == 'manager' %}
-                                          {% set member_icon2 = 'bi-person-lines-fill' %}
+                                        {% set m_photo = m.photo_display_src() %}
+                                        {% if m_photo %}
+                                        <span class="user-icon-badge"><img src="{{ m_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                                        {% else %}
+                                        {% set member_icon2 = "bi-person" %}
+                                        {% if m.role == "admin" %}
+                                          {% set member_icon2 = "bi-person-badge" %}
+                                        {% elif m.role == "manager" %}
+                                          {% set member_icon2 = "bi-person-lines-fill" %}
                                         {% endif %}
                                         <span class="user-icon-badge"><i class="bi {{ member_icon2 }}"></i></span>
+                                        {% endif %}
                                         <strong>{{ m.prenom }} {{ m.nom }}</strong>
                                     </div>
                                 </td>

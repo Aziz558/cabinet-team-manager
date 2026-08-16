@@ -64,13 +64,18 @@
                         <td>{{ d.intitule }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                {% set d_icon = 'bi-person' %}
-                                {% if d.collaborateur and d.collaborateur.role == 'admin' %}
-                                  {% set d_icon = 'bi-person-badge' %}
-                                {% elif d.collaborateur and d.collaborateur.role == 'manager' %}
-                                  {% set d_icon = 'bi-person-lines-fill' %}
+                                {% set d_photo = d.collaborateur.photo_display_src() if d.collaborateur else None %}
+                                {% if d_photo %}
+                                <span class="user-icon-badge"><img src="{{ d_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                                {% else %}
+                                {% set d_icon = "bi-person" %}
+                                {% if d.collaborateur and d.collaborateur.role == "admin" %}
+                                  {% set d_icon = "bi-person-badge" %}
+                                {% elif d.collaborateur and d.collaborateur.role == "manager" %}
+                                  {% set d_icon = "bi-person-lines-fill" %}
                                 {% endif %}
                                 <span class="user-icon-badge"><i class="bi {{ d_icon }}"></i></span>
+                                {% endif %}
                                 <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
                             </div>
                         </td>
