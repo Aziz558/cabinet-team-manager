@@ -765,7 +765,55 @@ def settings():
 @app.route('/supprimer_dossier/<int:dossier_id>')
 @login_required
 def supprimer_dossier(dossier_id):
-    flash('Fonctionnalit\u00e9 de suppression de dossier non encore impl\u00e9ment\u00e9e.', 'info')
+    """Supprimer un dossier et toutes ses tâches associées."""
+    dossier = Dossier.query.get_or_404(dossier_id)
+    
+    # Vérifier les droits
+    if current_user.role == 'membre' and dossier.collaborateur_id != current_user.id:
+        flash('Vous n\'avez pas les droits pour supprimer ce dossier.', 'danger')
+        return redirect(url_for('dossiers'))
+    
+    try:
+        # Supprimer les tâches associées
+        Tache.query.filter_by(dossier_id=dossier.id).delete()
+        # Supprimer le dossier
+        db.session.delete(dossier)
+        db.session.commit()
+        flash(f'Dossier {dossier.numero_dossier} supprimé avec succès.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression: {str(e)}', 'danger')
+    
+    return redirect(url_for('dossiers'))
+
+@app.route('/supprimer_dossiers', methods=['POST'])
+@login_required
+def supprimer_dossiers():
+    """Supprimer plusieurs dossiers sélectionnés."""
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    
+    dossier_ids_str = request.form.get('dossier_ids', '')
+    if not dossier_ids_str:
+        flash('Aucun dossier sélectionné.', 'warning')
+        return redirect(url_for('dossiers'))
+    
+    try:
+        dossier_ids = [int(x) for x in dossier_ids_str.split(',') if x.strip()]
+        count = 0
+        for did in dossier_ids:
+            dossier = Dossier.query.get(did)
+            if dossier:
+                Tache.query.filter_by(dossier_id=dossier.id).delete()
+                db.session.delete(dossier)
+                count += 1
+        db.session.commit()
+        flash(f'{count} dossier(s) supprimé(s) avec succès.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression: {str(e)}', 'danger')
+    
     return redirect(url_for('dossiers'))
 
 @app.route('/supprimer_equipe/<int:equipe_id>')

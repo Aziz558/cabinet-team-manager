@@ -17,6 +17,11 @@
                 <i class="bi bi-lightning me-1"></i>Planifier impôts
             </button>
         </form>
+        <form method="POST" action="{{ url_for('supprimer_dossiers') }}" class="d-inline" id="batchDeleteForm" onsubmit="return batchDeleteConfirm(event)">
+            <button type="submit" class="btn-premium btn-premium-outline btn-press" id="btnSupprimerSelection" style="display:none;border-color:rgba(244,67,54,0.5);color:#f44336;">
+                <i class="bi bi-trash me-1"></i>Supprimer sélection
+            </button>
+        </form>
     </div>
 </div>
 {% elif current_user.role == 'membre' %}
@@ -257,5 +262,50 @@
             });
         });
     });
+
+    // Batch delete: show/hide button, collect IDs, confirm
+    function updateBatchDeleteButton() {
+        var checked = document.querySelectorAll('#tableDossiers .row-checkbox:checked');
+        var btn = document.getElementById('btnSupprimerSelection');
+        if (btn) {
+            btn.style.display = checked.length > 0 ? 'inline-block' : 'none';
+            if (checked.length > 0) {
+                btn.innerHTML = '<i class="bi bi-trash me-1"></i>Supprimer (' + checked.length + ')';
+            }
+        }
+    }
+    // Listen to checkbox changes
+    document.querySelectorAll('#tableDossiers .row-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', updateBatchDeleteForm);
+    });
+    document.getElementById('selectAllDossiers')?.addEventListener('change', function() {
+        setTimeout(updateBatchDeleteForm, 50);
+    });
+    function updateBatchDeleteForm() {
+        var checked = document.querySelectorAll('#tableDossiers .row-checkbox:checked');
+        var ids = Array.from(checked).map(function(cb) { return cb.value; }).join(',');
+        var form = document.getElementById('batchDeleteForm');
+        if (form) {
+            // Remove old hidden input
+            var oldInput = form.querySelector('input[name="dossier_ids"]');
+            if (oldInput) oldInput.remove();
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'dossier_ids';
+            input.value = ids;
+            form.appendChild(input);
+        }
+        updateBatchDeleteButton();
+    }
+    function batchDeleteConfirm(e) {
+        var checked = document.querySelectorAll('#tableDossiers .row-checkbox:checked');
+        if (checked.length === 0) {
+            e.preventDefault();
+            return false;
+        }
+        return confirm('Supprimer définitivement ' + checked.length + ' dossier(s) sélectionné(s) ? Cette action est irréversible.');
+    }
+    // Init
+    setTimeout(updateBatchDeleteForm, 100);
 </script>
 {% endblock %}
