@@ -271,6 +271,31 @@
         });
     })();
     </script>
+<script>
+// Select All checkboxes functionality
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.select-all-checkbox').forEach(function(selectAll) {
+        selectAll.addEventListener('change', function() {
+            var table = this.closest('table');
+            if (!table) return;
+            var checkboxes = table.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(function(cb) { cb.checked = selectAll.checked; });
+        });
+    });
+    // Update select-all state when individual checkboxes change
+    document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var table = this.closest('table');
+            if (!table) return;
+            var selectAll = table.querySelector('.select-all-checkbox');
+            if (!selectAll) return;
+            var all = table.querySelectorAll('.row-checkbox');
+            var checked = table.querySelectorAll('.row-checkbox:checked');
+            selectAll.checked = all.length > 0 && all.length === checked.length;
+        });
+    });
+});
+</script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

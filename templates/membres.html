@@ -16,6 +16,7 @@
             <table class="table-premium">
                 <thead>
                     <tr>
+                        <th style="width:36px"><input type="checkbox" id="selectAllMembres" class="select-all-checkbox"></th>
                         <th>Photo</th>
                         <th>Nom</th>
                         <th>Email</th>
@@ -34,6 +35,7 @@
                 <tbody>
                     {% for m in membres %}
                     <tr>
+                        <td style="width:36px"><input type="checkbox" class="row-checkbox" value="{{ m.id }}"></td>
                         <td>
                             {% set m_photo = m.photo_display_src() %}
                             {% if m_photo %}

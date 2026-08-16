@@ -44,6 +44,7 @@
             <table class="table-premium" id="tableDossiers">
                 <thead>
                     <tr>
+                        <th style="width:36px"><input type="checkbox" id="selectAllDossiers" class="select-all-checkbox"></th>
                         <th>N°</th>
                         <th>INTITULÉ</th>
                         <th>COLLABORATEUR</th>
@@ -60,6 +61,7 @@
                 <tbody>
                     {% for d in dossiers %}
                     <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}">
+                        <td style="width:36px"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
                         <td><strong>{{ d.numero_dossier }}</strong></td>
                         <td>{{ d.intitule }}</td>
                         <td>
