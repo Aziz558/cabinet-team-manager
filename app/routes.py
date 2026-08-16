@@ -873,17 +873,17 @@ def telecharger_template_csv():
     writer = csv.writer(output)
     writer.writerow([
         'numero_dossier', 'intitule', 'collaborateur_email', 'equipe_nom',
-        'regime_tva', 'frequence_tva', 'date_limite_declaration',
+        'regime_tva', 'date_limite_declaration',
         'regime_fiscale', 'has_cfe'
     ])
     writer.writerow([
         'EXEMPLE-001', 'Exemple de dossier', 'collaborateur@cabinet-jmh.com', 'Équipe Cabinet JMH',
-        'ca3', 'mensuelle', '2026-09-15',
+        'mensuel', '2026-09-15',
         'IS', 'TRUE'
     ])
     writer.writerow([
         'EXEMPLE-002', 'Deuxième exemple', '', '',
-        'ca12', 'trimestrielle', '',
+        'trimestriel', '',
         'IRPP', 'FALSE'
     ])
     

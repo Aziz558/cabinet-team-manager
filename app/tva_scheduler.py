@@ -99,7 +99,8 @@ def _planifier_tva(dossier):
             except ValueError:
                 d = date(year, m, 15)
             deadlines.append(next_working_day(d))
-    else:  # trimestriel
+        regime_label = 'mensuel'
+    elif regime == 'trimestriel':
         deadlines = []
         for m in [1, 4, 7, 10]:
             try:
@@ -107,12 +108,18 @@ def _planifier_tva(dossier):
             except ValueError:
                 d = date(year, m, 15)
             deadlines.append(next_working_day(d))
+        regime_label = 'trimestriel'
+    else:  # annuel (CA12)
+        # 2 acomptes semestriels: juillet et décembre, même jour que la date de référence
+        # 1 déclaration définitive: 15/05/N+1
+        deadlines = []  # We handle this separately
+        regime_label = 'annuel'
     
     _cleanup_existing_tasks(dossier.id, ['TVA', 'Dépôt TVA', 'Préparation TVA'])
     
     horizon = date.today() + timedelta(days=95)
-    regime_label = 'mensuel' if regime == 'mensuel' else 'trimestriel'
     
+    # Handle TVA deadlines for mensuel and trimestriel
     for dl in deadlines:
         if dl < date.today() - timedelta(days=60):
             continue
@@ -122,6 +129,35 @@ def _planifier_tva(dossier):
         depot_title = f"Dépôt TVA {regime_label} — {dossier.numero_dossier}"
         depot_desc = f"Dépôt TVA {regime_label} pour {dossier.intitule} ({dossier.numero_dossier}) — échéance {dl.strftime('%d/%m/%Y')}"
         make_task(depot_title, depot_desc, dl, dossier.id, dossier.collaborateur_id, 'haute')
+    
+    # Handle CA12 annuel: 2 acomptes semestriels + 1 déclaration définitive
+    if regime == 'annuel':
+        # Acompte 1: juillet (même jour que la date de référence)
+        try:
+            acompte1 = next_working_day(date(year, 7, day))
+        except ValueError:
+            acompte1 = next_working_day(date(year, 7, 15))
+        if acompte1 <= horizon and acompte1 >= date.today() - timedelta(days=60):
+            make_task(f"Acompte TVA annuel (juillet) — {dossier.numero_dossier}",
+                     f"Acompte TVA semestriel juillet pour {dossier.intitule} — échéance {acompte1.strftime('%d/%m/%Y')}",
+                     acompte1, dossier.id, dossier.collaborateur_id, 'haute')
+        
+        # Acompte 2: décembre (même jour que la date de référence)
+        try:
+            acompte2 = next_working_day(date(year, 12, day))
+        except ValueError:
+            acompte2 = next_working_day(date(year, 12, 15))
+        if acompte2 <= horizon and acompte2 >= date.today() - timedelta(days=60):
+            make_task(f"Acompte TVA annuel (décembre) — {dossier.numero_dossier}",
+                     f"Acompte TVA semestriel décembre pour {dossier.intitule} — échéance {acompte2.strftime('%d/%m/%Y')}",
+                     acompte2, dossier.id, dossier.collaborateur_id, 'haute')
+        
+        # Déclaration définitive CA12: 15/05/N+1
+        def_dl = next_working_day(date(year + 1, 5, 15))
+        if def_dl <= horizon:
+            make_task(f"Déclaration TVA annuelle {year} — {dossier.numero_dossier}",
+                     f"Déclaration TVA CA12 pour l'exercice {year} de {dossier.intitule} — échéance {def_dl.strftime('%d/%m/%Y')}",
+                     def_dl, dossier.id, dossier.collaborateur_id, 'urgente')
     
     try:
         db.session.commit()
