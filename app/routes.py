@@ -313,7 +313,6 @@ def taches():
             priorite=request.form.get('priorite', 'moyenne'),
             statut=request.form.get('statut', 'a_faire'),
             date_echeance=datetime.strptime(request.form['date_echeance'], '%Y-%m-%d').date() if request.form.get('date_echeance') else None,
-            date_debut=datetime.strptime(request.form['date_debut'], '%Y-%m-%d').date() if request.form.get('date_debut') else None,
             cree_par=current_user.id,
         )
         db.session.add(t)
