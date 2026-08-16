@@ -3,13 +3,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def prev_working_day(d: date, offset_days=3) -> date:
-    """Return a working day approximately `offset_days` business days before d."""
-    result = d - timedelta(days=offset_days)
-    while result.weekday() >= 5:
-        result -= timedelta(days=1)
-    return result
-
 def next_working_day(d: date) -> date:
     """If d is weekend, return following Monday."""
     if d.weekday() >= 5:
@@ -17,18 +10,16 @@ def next_working_day(d: date) -> date:
     return d
 
 def get_ca3_deadlines_mensuelle(year: int, day: int = 15):
-    """CA3 mensuelle: each month on the given day."""
     deadlines = []
     for month in range(1, 13):
         try:
             d = date(year, month, day)
         except ValueError:
-            d = date(year, month, 15)  # fallback if day invalid
+            d = date(year, month, 15)
         deadlines.append(next_working_day(d))
     return deadlines
 
 def get_ca3_deadlines_trimestrielle(year: int, day: int = 15):
-    """CA3 trimestrielle: Jan, Apr, Jul, Oct on the given day."""
     deadlines = []
     for month in [1, 4, 7, 10]:
         try:
@@ -39,7 +30,6 @@ def get_ca3_deadlines_trimestrielle(year: int, day: int = 15):
     return deadlines
 
 def _cleanup_existing_tasks(dossier_id, keywords):
-    """Delete existing tasks whose titre or description contains any of the keywords."""
     from app.models import Tache, Notification, CommentaireTache
     from app import db
     from sqlalchemy import or_
@@ -74,7 +64,6 @@ def _cleanup_existing_tasks(dossier_id, keywords):
         db.session.rollback()
 
 def _planifier_tva_for_dossier(dossier):
-    """Planifie les tâches TVA pour un dossier donné."""
     from app.models import Tache
     from app import db
 
@@ -84,10 +73,9 @@ def _planifier_tva_for_dossier(dossier):
     if regime == 'exonere':
         return
 
-    # Get reference date for day and year
     ref_date = dossier.date_limite_declaration or date.today()
     year = ref_date.year
-    day = ref_date.day  # Use the dossier's day as the deadline day
+    day = ref_date.day
 
     freq = (dossier.frequence_tva or '').lower().strip()
     if freq.startswith('mens') or freq == '':
@@ -109,17 +97,14 @@ def _planifier_tva_for_dossier(dossier):
 
         prepa_title = f"Prépa TVA {regime.upper()} — {dossier.numero_dossier}"
         depot_title = f"Dépôt TVA {regime.upper()} — {dossier.numero_dossier}"
-        notif_day = prev_working_day(deadline)
         
-        # Notification date = notification day
         for title, desc_suffix in [(prepa_title, "Préparation"), (depot_title, "Dépôt")]:
             t = Tache(
                 titre=title,
-                description=f"{desc_suffix} TVA pour le dossier {dossier.intitule} ({dossier.numero_dossier}) — échéance {deadline.strftime('%d/%m/%Y')}",
+                description=f"{desc_suffix} TVA pour {dossier.intitule} ({dossier.numero_dossier}) — échéance {deadline.strftime('%d/%m/%Y')}",
                 statut='a_faire',
                 priorite='haute' if 'Dépôt' in title else 'moyenne',
                 date_echeance=deadline,
-                date_notification=notif_day,
                 dossier_id=dossier.id,
                 assigne_a=collaborateur_id,
                 cree_par=None,
@@ -131,7 +116,6 @@ def _planifier_tva_for_dossier(dossier):
         db.session.rollback()
 
 def _planifier_is_for_dossier(dossier):
-    """Planifie les acomptes IS pour un dossier (si regime_fiscale == 'IS')."""
     from app.models import Tache
     from app import db
 
@@ -156,14 +140,12 @@ def _planifier_is_for_dossier(dossier):
             if deadline > horizon_3m:
                 continue
             title = f"Acompte IS Q{month//3} {y} — {dossier.numero_dossier}"
-            notif_day = prev_working_day(deadline)
             t = Tache(
                 titre=title,
                 description=f"Acompte IS trimestriel Q{month//3} {y} pour {dossier.intitule}",
                 statut='a_faire',
                 priorite='haute',
                 date_echeance=deadline,
-                date_notification=notif_day,
                 dossier_id=dossier.id,
                 assigne_a=collaborateur_id,
                 cree_par=None,
@@ -175,7 +157,6 @@ def _planifier_is_for_dossier(dossier):
         db.session.rollback()
 
 def _planifier_cfe_for_dossier(dossier):
-    """Planifie la CFE annuelle pour un dossier."""
     from app.models import Tache
     from app import db
 
@@ -199,14 +180,12 @@ def _planifier_cfe_for_dossier(dossier):
         if deadline > horizon_3m:
             continue
         title = f"CFE {y} — {dossier.numero_dossier}"
-        notif_day = prev_working_day(deadline)
         t = Tache(
             titre=title,
             description=f"CFE annuelle {y} pour {dossier.intitule}",
             statut='a_faire',
             priorite='haute',
             date_echeance=deadline,
-            date_notification=notif_day,
             dossier_id=dossier.id,
             assigne_a=collaborateur_id,
             cree_par=None,
@@ -218,14 +197,12 @@ def _planifier_cfe_for_dossier(dossier):
         db.session.rollback()
 
 def planifier_impots_dossier(dossier):
-    """Planifie tous les impôts pour un dossier : TVA, IS, CFE."""
     _cleanup_existing_tasks(dossier.id, ['TVA', 'IS', 'CFE', 'Acompte', 'Prépa', 'Dépôt'])
     _planifier_tva_for_dossier(dossier)
     _planifier_is_for_dossier(dossier)
     _planifier_cfe_for_dossier(dossier)
 
 def planifier_tous_les_dossiers():
-    """Planifie les impôts pour tous les dossiers."""
     from app.models import Dossier
     from app import db
     
