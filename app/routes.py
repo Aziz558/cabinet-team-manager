@@ -870,20 +870,24 @@ def reset_admin():
             flash('Cl\u00e9 de r\u00e9initialisation invalide.', 'danger')
     return render_template('reset_admin.html')
 
-@app.route('/admin/set_hamza_photo')
+@app.route('/admin/assign_photo/<email>')
 @login_required
-def admin_set_hamza_photo():
-    """Assigner la photo hamza_photo.png au compte Hamza."""
+def admin_assign_photo(email):
+    """Assigner une photo à un utilisateur par email (depuis static/uploads/)."""
     if current_user.role != 'admin':
         flash('Accès refusé.', 'danger')
         return redirect(url_for('membres'))
-    user = User.query.filter_by(email='hamza.boujejjjmaa@cabinet-jmh.com').first()
-    if not user:
-        flash('Compte Hamza introuvable.', 'danger')
+    photo = request.args.get('photo', '')
+    if not photo:
+        flash('Paramètre photo manquant. Utilisez ?photo=nom_fichier.png', 'warning')
         return redirect(url_for('membres'))
-    user.photo_profil = 'hamza_photo.png'
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash(f'Utilisateur {email} introuvable.', 'danger')
+        return redirect(url_for('membres'))
+    user.photo_profil = photo
     db.session.commit()
-    flash(f'Photo hamza_photo.png assignée à {user.prenom} {user.nom}', 'success')
+    flash(f'Photo {photo} assignée à {user.prenom} {user.nom}', 'success')
     return redirect(url_for('fiche_membre', user_id=user.id))
 
 @app.route('/api/set_photo', methods=['POST'])

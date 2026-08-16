@@ -50,11 +50,14 @@ class User(UserMixin, db.Model):
         return Tache.query.filter_by(assigne_a=self.id, statut='a_faire').count()
 
     def photo_display_src(self):
+        """Retourne l'URL de la photo de profil ou None."""
         try:
+            from flask import current_app
+            # Photo spécifique pour admin
             if self.email == 'admin@cabinet-jmh.com':
-                return url_for('static', filename='uploads/admin.png')
+                return '/static/uploads/admin.png'
             if self.photo_profil:
-                return url_for('static', filename='uploads/' + self.photo_profil)
+                return '/static/uploads/' + self.photo_profil
         except Exception:
             pass
         return None
