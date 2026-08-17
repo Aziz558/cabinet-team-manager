@@ -229,3 +229,38 @@ def handle_all_exceptions(e):
     except Exception:
         pass
     return render_template('error.html', code=500, message=f"Erreur interne: {type(e).__name__}"), 500
+
+# APScheduler for daily notifications
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from datetime import date as dt_date
+    
+    def envoyer_notifications_quotidiennes():
+        """Envoyer les notifications pour les tâches fiscales arrivant à échéance aujourd'hui."""
+        with app.app_context():
+            try:
+                from app.models import Tache
+                from app.integrations.brevo import send_task_assigned_email_brevo
+                fiscal_keywords = ['tva', 'is ', 'cfe ', 'acompte', 'dépôt', 'préparation', 'déclaration', 'prépa']
+                tasks = Tache.query.filter(Tache.date_echeance == dt_date.today()).all()
+                sent = 0
+                for t in tasks:
+                    titre = (t.titre or '').lower()
+                    is_fiscal = any(kw in titre for kw in fiscal_keywords)
+                    if is_fiscal and t.assigne_a and t.statut != 'terminee':
+                        try:
+                            send_task_assigned_email_brevo(t, t.assigne_a)
+                            sent += 1
+                        except Exception as e:
+                            app.logger.warning(f"Send due notification failed: {e}")
+                if sent:
+                    app.logger.info(f"Sent {sent} daily due notifications")
+            except Exception as e:
+                app.logger.error(f"Daily notification error: {e}")
+    
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
+    scheduler.start()
+    app.logger.info("APScheduler started: daily notifications at 08:00")
+except Exception as e:
+    app.logger.warning(f"APScheduler not available: {e}")
