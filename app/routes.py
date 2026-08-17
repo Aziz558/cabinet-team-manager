@@ -318,16 +318,29 @@ def taches():
         db.session.add(t)
         db.session.commit()
         
-        # Notification email
+        # Notification email + in-app
         fiscal_keywords = ['tva', 'is ', 'cfe ', 'acompte', 'dépôt', 'préparation', 'déclaration', 'prépa']
         is_fiscal = any(kw in titre.lower() for kw in fiscal_keywords)
         
-        if t.assigne_a and not is_fiscal:
-            try:
-                from app.integrations.brevo import send_task_assigned_email_brevo
-                send_task_assigned_email_brevo(t, t.assigne_a)
-            except Exception as e:
-                app.logger.warning(f"Send email failed: {e}")
+        if t.assigne_a:
+            # Vérifier si c'est une tâche de deadline antérieure → auto-terminée
+            if is_fiscal and t.date_echeance and t.date_echeance < date.today():
+                t.statut = 'terminee'
+                t.date_completion = datetime.utcnow()
+                db.session.commit()
+            # Créer notification in-app
+            notif_msg = f"Nouvelle tâche assignée : {t.titre}"
+            notif = Notification(user_id=t.assigne_a, tache_id=t.id, message=notif_msg, type_notification='assignation')
+            db.session.add(notif)
+            db.session.commit()
+            
+            # Email seulement si NON fiscale
+            if not is_fiscal:
+                try:
+                    from app.integrations.brevo import send_task_assigned_email_brevo
+                    send_task_assigned_email_brevo(t, t.assigne_a)
+                except Exception as e:
+                    app.logger.warning(f"Send email failed: {e}")
         
         flash('Tâche créée avec succès.', 'success')
         return redirect(url_for('taches'))
@@ -1192,23 +1205,28 @@ def upload_photo(user_id=None):
         return jsonify({'ok': False, 'message': 'Fichier trop volumineux. Maximum 5MB.'}), 400
     file.seek(0)
     
-    filename = f"user_{target_user.id}_{secure_filename(file.filename)}"
-    upload_dir = os.path.join(app.static_folder, 'uploads')
-    os.makedirs(upload_dir, exist_ok=True)
-    filepath = os.path.join(upload_dir, filename)
-    file.save(filepath)
-    
-    target_user.photo_profil = filename
+    # Sauvegarder dans la base de données (permanent)
+    target_user.photo_data = file.read()
+    target_user.photo_mimetype = f"image/{ext}"
+    target_user.photo_profil = None  # plus besoin du fichier disque
     db.session.commit()
     
     msg = f'Photo de profil mise à jour pour {target_user.prenom} {target_user.nom}.'
-    # Toujours retourner du JSON pour les uploads photo (appelé depuis fetch JS)
     return jsonify({'ok': True, 'message': msg})
     
     flash(msg, 'success')
     if user_id:
         return redirect(url_for('fiche_membre', user_id=user_id))
     return redirect(url_for('profil'))
+
+@app.route('/user_photo/<int:user_id>')
+def user_photo(user_id):
+    """Servir la photo de profil depuis la base de données."""
+    user = User.query.get_or_404(user_id)
+    if not user.photo_data:
+        return redirect(url_for('static', filename='img/default-avatar.png'))
+    from flask import Response
+    return Response(user.photo_data, mimetype=user.photo_mimetype or 'image/png')
 
 @app.route('/voir_taches_dossier/<int:dossier_id>')
 @login_required

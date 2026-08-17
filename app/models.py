@@ -54,11 +54,12 @@ class User(UserMixin, db.Model):
     def photo_display_src(self):
         """Retourne l'URL de la photo de profil ou un avatar généré."""
         try:
-            # Photo spécifique pour admin
-            if self.email == 'admin@cabinet-jmh.com':
-                return '/static/uploads/admin.png'
-            # Photo uploadée
-            if self.photo_profil:
+            # Photo stockée en DB (permanente)
+            if self.photo_data:
+                from flask import url_for
+                return url_for('user_photo', user_id=self.id)
+            # Photo uploadée via fichier (legacy)
+            if self.photo_profil and self.photo_profil != 'default.png':
                 import os
                 from flask import current_app
                 photo_path = os.path.join(current_app.static_folder, 'uploads', self.photo_profil)
@@ -67,7 +68,7 @@ class User(UserMixin, db.Model):
         except Exception:
             pass
         
-        # Fallback : générer un avatar avec les initiales via ui-avatars.com
+        # Fallback : avatar généré avec les initiales
         try:
             name = f"{self.prenom or ''} {self.nom or ''}".strip()
             encoded = name.replace(' ', '+')
