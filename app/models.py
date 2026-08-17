@@ -12,6 +12,8 @@ class User(UserMixin, db.Model):
     nom = db.Column(db.String(80), nullable=False)
     prenom = db.Column(db.String(80), nullable=False)
     photo_profil = db.Column(db.String(200), default='default.png')
+    photo_data = db.Column(db.LargeBinary, nullable=True)
+    photo_mimetype = db.Column(db.String(50), nullable=True)
     role = db.Column(db.String(20), nullable=False, default='membre')  # admin | manager | membre
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
     poste = db.Column(db.String(120))  # e.g., "Comptable", "Auditeur"
@@ -116,8 +118,18 @@ class Tache(db.Model):
     date_prise_en_charge = db.Column(db.DateTime)
     date_completion = db.Column(db.DateTime)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.statut:
+            self.statut = 'a_faire'
+
     notifications = db.relationship('Notification', backref='tache', lazy='dynamic')
-    commentaires = db.relationship('CommentaireTache', backref='tache', lazy='dynamic', order_by='desc(CommentaireTache.date_creation)')
+    commentaires = db.relationship('CommentaireTache', backref='tache', lazy='dynamic', order_by='CommentaireTache.date_creation')
+    
+    # Champs pour tâches récurrentes
+    frequence_repetition = db.Column(db.String(20), nullable=True)  # daily | weekly | monthly | yearly
+    fin_repetition = db.Column(db.Date, nullable=True)  # date de fin de répétition
+    template_id = db.Column(db.Integer, db.ForeignKey('taches.id'), nullable=True)  # ID de la tâche modèle
 
     def est_en_retard(self):
         if self.statut == 'terminee':
