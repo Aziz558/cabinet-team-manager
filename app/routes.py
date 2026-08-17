@@ -1228,6 +1228,117 @@ def user_photo(user_id):
     from flask import Response
     return Response(user.photo_data, mimetype=user.photo_mimetype or 'image/png')
 
+# ==========================
+# API Notifications
+# ==========================
+@app.route('/api/notifications')
+@login_required
+def api_notifications():
+    """Liste des notifications de l'utilisateur connecté."""
+    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.date_envoi.desc()).limit(50).all()
+    return jsonify({
+        'ok': True,
+        'notifications': [{
+            'id': n.id,
+            'type': n.type_notification or 'info',
+            'message': n.message,
+            'lu': n.lu,
+            'date': n.date_envoi.strftime('%d/%m/%Y %H:%M') if n.date_envoi else '',
+            'tache_id': n.tache_id,
+        } for n in notifs]
+    })
+
+@app.route('/api/notifications/mark-all-read', methods=['POST'])
+@login_required
+def api_notifications_mark_all_read():
+    """Marquer toutes les notifications comme lues."""
+    Notification.query.filter_by(user_id=current_user.id, lu=False).update({'lu': True})
+    db.session.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/notifications/<int:notif_id>/read', methods=['POST'])
+@login_required
+def api_notification_read(notif_id):
+    """Marquer une notification comme lue."""
+    notif = Notification.query.get_or_404(notif_id)
+    if notif.user_id != current_user.id:
+        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
+    notif.lu = True
+    db.session.commit()
+    return jsonify({'ok': True})
+
+# ==========================
+# API Commentaires sur les tâches
+# ==========================
+@app.route('/api/commentaires/<int:tache_id>', methods=['GET', 'POST'])
+@login_required
+def api_commentaires(tache_id):
+    """Lister et ajouter des commentaires sur une tâche."""
+    tache = Tache.query.get_or_404(tache_id)
+    
+    if request.method == 'GET':
+        comments = CommentaireTache.query.filter_by(tache_id=tache.id).order_by(CommentaireTache.date_creation).all()
+        return jsonify({
+            'ok': True,
+            'commentaires': [{
+                'id': c.id,
+                'user_id': c.user_id,
+                'user_nom': f"{c.user.prenom} {c.user.nom}",
+                'message': c.message,
+                'date': c.date_creation.strftime('%d/%m/%Y %H:%M') if c.date_creation else '',
+            } for c in comments]
+        })
+    
+    # POST: ajouter un commentaire
+    data = request.get_json() or {}
+    message = data.get('message', '').strip()
+    if not message:
+        return jsonify({'ok': False, 'message': 'Message requis'}), 400
+    
+    comment = CommentaireTache(
+        tache_id=tache.id,
+        user_id=current_user.id,
+        message=message,
+    )
+    db.session.add(comment)
+    
+    # Créer notification pour l'assigné de la tâche
+    if tache.assigne_a and tache.assigne_a != current_user.id:
+        notif = Notification(
+            user_id=tache.assigne_a,
+            tache_id=tache.id,
+            message=f"Nouveau commentaire sur \"{tache.titre}\" par {current_user.prenom} {current_user.nom}",
+            type_notification='systeme'
+        )
+        db.session.add(notif)
+    # Notifier aussi le créateur si différent
+    if tache.cree_par and tache.cree_par != current_user.id and tache.cree_par != tache.assigne_a:
+        notif2 = Notification(
+            user_id=tache.cree_par,
+            tache_id=tache.id,
+            message=f"Nouveau commentaire sur \"{tache.titre}\" par {current_user.prenom} {current_user.nom}",
+            type_notification='systeme'
+        )
+        db.session.add(notif2)
+    
+    db.session.commit()
+    
+    return jsonify({'ok': True, 'commentaire': {
+        'id': comment.id,
+        'user_id': comment.user_id,
+        'user_nom': f"{current_user.prenom} {current_user.nom}",
+        'message': comment.message,
+        'date': comment.date_creation.strftime('%d/%m/%Y %H:%M') if comment.date_creation else '',
+    }})
+
+@app.route('/vue_tache/<int:tache_id>')
+@login_required
+def vue_tache(tache_id):
+    """Vue détaillée d'une tâche avec commentaires."""
+    tache = Tache.query.get_or_404(tache_id)
+    commentaires = CommentaireTache.query.filter_by(tache_id=tache.id).order_by(CommentaireTache.date_creation).all()
+    return render_template('vue_tache.html', tache=tache, commentaires=commentaires)
+
 @app.route('/voir_taches_dossier/<int:dossier_id>')
 @login_required
 def voir_taches_dossier(dossier_id):

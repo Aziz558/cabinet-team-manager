@@ -1,199 +1,123 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notifications — Cabinet JMH</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-</head>
-<body>
-    <div class="container-fluid mt-4">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h2 class="text-gradient-animated"><i class="bi bi-bell me-2"></i>Notifications</h2>
-                <p class="text-tertiary">Toutes vos notifications liées aux tâches et au système.</p>
-            </div>
-        </div>
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
+    <h2 class="fw-semibold"><i class="bi bi-bell me-2" style="color:var(--orange-primary)"></i>Notifications</h2>
+</div>
 
-        <!-- Stats cards -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card-premium">
-                    <div class="card-body-premium text-center">
-                        <h3 class="mb-0" id="totalCount">0</h3>
-                        <p class="text-tertiary small mb-0">Total</p>
-                    </div>
-                </div>
+<!-- Stats -->
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card-premium text-center animate-fade-in-up stagger-1">
+            <div class="card-body-premium">
+                <h3 class="mb-0" id="totalCount" style="color:var(--text-primary);">0</h3>
+                <p class="text-tertiary small mb-0">Total</p>
             </div>
-            <div class="col-md-4">
-                <div class="card-premium">
-                    <div class="card-body-premium text-center">
-                        <h3 class="mb-0 text-danger" id="unreadCount">0</h3>
-                        <p class="text-tertiary small mb-0">Non lues</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card-premium">
-                    <div class="card-body-premium text-center">
-                        <h3 class="mb-0 text-success" id="readCount">0</h3>
-                        <p class="text-tertiary small mb-0">Lues</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filter tabs -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="d-flex gap-2">
-                    <button class="btn-premium btn-premium-primary btn-sm filter-btn active" data-filter="all">Toutes</button>
-                    <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="assignation">Assignations</button>
-                    <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="prise_en_charge">Prises en charge</button>
-                    <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="completion">Terminées</button>
-                    <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="systeme">Système</button>
-                    <button class="btn-premium btn-premium-outline btn-premium-danger btn-sm ms-auto" id="markAllReadBtn">
-                        <i class="bi bi-check-all me-1"></i>Marquer tout comme lu
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notifications list -->
-        <div id="notificationsList">
-            <div class="text-center py-5">
-                <div class="spinner spinner-sm"></div>
-                <p class="text-tertiary mt-2">Chargement...</p>
-            </div>
-        </div>
-
-        <!-- Empty state -->
-        <div id="emptyState" style="display:none;" class="text-center py-5">
-            <i class="bi bi-bell-slash" style="font-size:48px;color:var(--text-tertiary);"></i>
-            <p class="text-tertiary mt-3">Aucune notification pour le moment.</p>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card-premium text-center animate-fade-in-up stagger-2">
+            <div class="card-body-premium">
+                <h3 class="mb-0 text-danger" id="unreadCount">0</h3>
+                <p class="text-tertiary small mb-0">Non lues</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-premium text-center animate-fade-in-up stagger-3">
+            <div class="card-body-premium">
+                <h3 class="mb-0 text-success" id="readCount">0</h3>
+                <p class="text-tertiary small mb-0">Lues</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 d-flex align-items-center">
+        <button class="btn-premium btn-premium-primary w-100 btn-press" id="markAllReadBtn">
+            <i class="bi bi-check-all me-1"></i>Marquer tout comme lu
+        </button>
+    </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-    let allNotifs = [];
-    let currentFilter = 'all';
+<!-- Filtres -->
+<div class="card-premium mb-3 animate-fade-in-up">
+    <div class="card-body-premium py-2">
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn active" data-filter="all">Toutes</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="assignation">Assignations</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="prise_en_charge">Prises en charge</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="completion">Terminées</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="systeme">Commentaires</button>
+        </div>
+    </div>
+</div>
 
-    // Fetch notifications
-    fetch('/api/notifications')
-        .then(r => r.json())
-        .then(data => {
-            if (data.notifications) {
-                allNotifs = data.notifications;
-                updateCounts();
-                renderNotifications();
-            }
-        });
+<!-- Liste -->
+<div id="notificationsList">
+    <div class="text-center py-5">
+        <div class="spinner-border spinner-sm" style="color:var(--orange-primary);"></div>
+        <p class="text-tertiary mt-2">Chargement...</p>
+    </div>
+</div>
 
-    function updateCounts() {
-        const total = allNotifs.length;
-        const unread = allNotifs.filter(n => !n.lu).length;
-        document.getElementById('totalCount').textContent = total;
-        document.getElementById('unreadCount').textContent = unread;
-        document.getElementById('readCount').textContent = total - unread;
-    }
+<div id="emptyState" style="display:none;" class="text-center py-5">
+    <i class="bi bi-bell-slash" style="font-size:48px;color:var(--text-tertiary);"></i>
+    <p class="text-tertiary mt-3">Aucune notification.</p>
+</div>
+{% endblock %}
 
-    function getIcon(type) {
-        const icons = {
-            'assignation': 'bi-envelope-paper',
-            'prise_en_charge': 'bi-gear-wide-connected',
-            'completion': 'bi-check-circle',
-            'systeme': 'bi-gear',
-        };
-        return icons[type] || 'bi-bell';
-    }
+{% block scripts %}
+{{ super() }}
+<script>
+let allNotifs = [];
+let currentFilter = 'all';
 
-    function getTypeBadge(type) {
-        const classes = {
-            'assignation': 'badge-primary',
-            'prise_en_charge': 'badge-success',
-            'completion': 'badge-info',
-            'systeme': 'badge-secondary',
-        };
-        return classes[type] || 'badge-secondary';
-    }
+fetch('/api/notifications').then(r => r.json()).then(data => {
+    if (data.notifications) { allNotifs = data.notifications; updateCounts(); renderNotifs(); }
+});
 
-    function renderNotifications() {
-        const list = document.getElementById('notificationsList');
-        const empty = document.getElementById('emptyState');
+function updateCounts() {
+    document.getElementById('totalCount').textContent = allNotifs.length;
+    document.getElementById('unreadCount').textContent = allNotifs.filter(n => !n.lu).length;
+    document.getElementById('readCount').textContent = allNotifs.filter(n => n.lu).length;
+}
 
-        let filtered = currentFilter === 'all'
-            ? allNotifs
-            : allNotifs.filter(n => n.type === currentFilter);
+function getIcon(t) { return {assignation:'bi-envelope-paper',prise_en_charge:'bi-gear-wide',completion:'bi-check-circle',systeme:'bi-chat-dots'}[t]||'bi-bell'; }
+function getBadge(t) { return {assignation:'badge-primary',prise_en_charge:'badge-success',completion:'badge-info',systeme:'badge-secondary'}[t]||'badge-secondary'; }
 
-        if (filtered.length === 0) {
-            list.style.display = 'none';
-            empty.style.display = 'block';
-            return;
-        }
-
-        list.style.display = 'block';
-        empty.style.display = 'none';
-
-        list.innerHTML = filtered.map(n => `
-            <div class="card-premium mb-2 notif-item" data-type="${n.type}">
-                <div class="card-body-premium d-flex align-items-start gap-3">
-                    <div class="flex-shrink-0">
-                        <i class="bi ${getIcon(n.type)}" style="font-size:24px;color:${n.lu ? 'var(--text-tertiary)' : 'var(--orange-primary)'};"></i>
+function renderNotifs() {
+    const list = document.getElementById('notificationsList');
+    const empty = document.getElementById('emptyState');
+    let filtered = currentFilter === 'all' ? allNotifs : allNotifs.filter(n => n.type === currentFilter);
+    if (filtered.length === 0) { list.style.display = 'none'; empty.style.display = 'block'; return; }
+    list.style.display = 'block'; empty.style.display = 'none';
+    list.innerHTML = filtered.map(n => `
+        <div class="card-premium mb-2 notif-item ${n.lu?'':'border-start border-3 border-warning'}" data-id="${n.id}" onclick="${n.lu?'':'fetch(\'/api/notifications/'+n.id+'/read\',{method:\'POST\'}).then(()=>{location.reload()})'}">
+            <div class="card-body-premium d-flex align-items-start gap-3 py-2">
+                <div class="flex-shrink-0"><i class="bi ${getIcon(n.type)}" style="font-size:20px;color:${n.lu?'var(--text-tertiary)':'var(--orange-primary)'};"></i></div>
+                <div class="flex-grow-1 min-w-0">
+                    <div class="d-flex justify-content-between gap-2">
+                        <div><span class="badge ${getBadge(n.type)} me-2">${n.type.replace('_',' ')}</span><span class="${n.lu?'':'fw-bold'}">${n.message}</span></div>
+                        <small class="text-tertiary flex-shrink-0">${n.date}</small>
                     </div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <span class="badge ${getTypeBadge(n.type)} me-2">${n.type.replace('_', ' ')}</span>
-                                <span class="${n.lu ? '' : 'fw-bold'}" style="color:var(--text-primary);">${n.message}</span>
-                            </div>
-                            <small class="text-tertiary">${n.date}</small>
-                        </div>
-                    </div>
-                    ${!n.lu ? '<div class="flex-shrink-0"><i class="bi bi-circle-fill" style="color:var(--orange-primary);font-size:8px;"></i></div>' : ''}
+                    ${n.tache_id ? `<a href="/vue_tache/${n.tache_id}" class="small text-tertiary mt-1 d-inline-block">Voir la tâche →</a>` : ''}
                 </div>
             </div>
-        `).join('');
-    }
+        </div>
+    `).join('');
+}
 
-    // Filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.filter-btn').forEach(b => {
-                b.classList.remove('active');
-                b.classList.remove('btn-premium-primary');
-                b.classList.add('btn-premium-secondary');
-            });
-            this.classList.add('active');
-            this.classList.add('btn-premium-primary');
-            this.classList.remove('btn-premium-secondary');
-            currentFilter = this.dataset.filter;
-            renderNotifications();
-        });
-    });
+document.querySelectorAll('.filter-btn').forEach(b => b.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(x => { x.classList.remove('active'); x.classList.remove('btn-premium-primary'); x.classList.add('btn-premium-secondary'); });
+    this.classList.add('active','btn-premium-primary'); this.classList.remove('btn-premium-secondary');
+    currentFilter = this.dataset.filter; renderNotifs();
+}));
 
-    // Mark all as read
-    document.getElementById('markAllReadBtn').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<span class="spinner spinner-sm me-1"></span>En cours...';
-        fetch('/api/notifications/mark-all-read', { method: 'POST' })
-            .then(r => r.json())
-            .then(res => {
-                if (res.ok) {
-                    allNotifs.forEach(n => n.lu = true);
-                    updateCounts();
-                    renderNotifications();
-                    this.innerHTML = '<i class="bi bi-check-lg me-1"></i>Tout est lu !';
-                    setTimeout(() => {
-                        this.innerHTML = '<i class="bi bi-check-all me-1"></i>Marquer tout comme lu';
-                        this.disabled = false;
-                    }, 2000);
-                }
-            });
+document.getElementById('markAllReadBtn').addEventListener('click', function() {
+    this.disabled = true; this.innerHTML = '<span class="spinner-border spinner-sm me-1"></span>...';
+    fetch('/api/notifications/mark-all-read', {method:'POST'}).then(r=>r.json()).then(res=>{
+        if(res.ok){ allNotifs.forEach(n=>n.lu=true); updateCounts(); renderNotifs(); }
+        this.innerHTML='<i class="bi bi-check-all me-1"></i>Tout marqué comme lu'; setTimeout(()=>{this.innerHTML='<i class="bi bi-check-all me-1"></i>Marquer tout comme lu';this.disabled=false;},2000);
     });
-    </script>
-</body>
-</html>
+});
+</script>
+{% endblock %}
