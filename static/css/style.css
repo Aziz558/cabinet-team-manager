@@ -2807,3 +2807,10 @@ p {
 .modal::after {
     pointer-events: none !important;
 }
+
+/* Force light theme on body when data-theme is set */
+[data-theme="light"] body,
+[data-theme="light"] .app-topbar,
+[data-theme="light"] .sidebar {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
