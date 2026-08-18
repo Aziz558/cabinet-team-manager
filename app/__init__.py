@@ -142,12 +142,14 @@ with app.app_context():
         inspector = db.inspect(db.engine)
         if 'taches' in inspector.get_table_names():
             taches_cols = [c['name'] for c in inspector.get_columns('taches')]
-            for col in ['frequence_repetition', 'template_id']:
+            for col in ['frequence_repetition', 'fin_repetition', 'template_id']:
                 if col not in taches_cols:
                     try:
                         with db.engine.begin() as conn:
                             if col == 'template_id':
                                 conn.execute(db.text(f"ALTER TABLE taches ADD COLUMN {col} INTEGER REFERENCES taches(id)"))
+                            elif col == 'fin_repetition':
+                                conn.execute(db.text(f"ALTER TABLE taches ADD COLUMN {col} DATE"))
                             else:
                                 conn.execute(db.text(f"ALTER TABLE taches ADD COLUMN {col} VARCHAR(20)"))
                             app.logger.info(f"Added column {col} to taches")
