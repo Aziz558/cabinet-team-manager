@@ -53,7 +53,7 @@
             <span class="task-status status-{{ t.statut }}">{{ t.statut|replace('_', ' ') }}</span>
         </div>
         <div class="task-card-body">
-            <h3 class="task-title">{{ t.titre }}</h3>
+            <h3 class="task-title"><a href="{{ url_for('vue_tache', tache_id=t.id) }}" style="color:inherit;text-decoration:none;">{{ t.titre }}</a></h3>
             {% if t.description %}
             <p class="task-desc">{{ t.description[:120] }}{% if t.description|length > 120 %}...{% endif %}</p>
             {% endif %}
@@ -179,6 +179,17 @@
                     <div class="mb-3">
                         <label class="form-label-premium">Date d'échéance</label>
                         <input type="date" name="date_echeance" class="input-premium">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Répéter</label>
+                        <select name="frequence_repetition" class="select-premium">
+                            <option value="">Ne pas répéter</option>
+                            <option value="daily">Tous les jours</option>
+                            <option value="weekly">Toutes les semaines</option>
+                            <option value="monthly">Tous les mois</option>
+                            <option value="yearly">Tous les ans</option>
+                        </select>
+                        <p class="text-tertiary small mt-1">La tâche sera recréée automatiquement à la fréquence choisie</p>
                     </div>
                 </div>
                 <div class="modal-footer-premium">

@@ -314,6 +314,7 @@ def taches():
             statut=request.form.get('statut', 'a_faire'),
             date_echeance=datetime.strptime(request.form['date_echeance'], '%Y-%m-%d').date() if request.form.get('date_echeance') else None,
             cree_par=current_user.id,
+            frequence_repetition=request.form.get('frequence_repetition') or None,
         )
         db.session.add(t)
         db.session.commit()

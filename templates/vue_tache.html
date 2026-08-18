@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ tache.titre }}{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card-premium mb-4 animate-fade-in-up">
+            <div class="card-body-premium">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h3 class="fw-semibold mb-1">{{ tache.titre }}</h3>
+                        <p class="text-tertiary small mb-0">
+                            {% if tache.dossier %}<i class="bi bi-folder me-1"></i>{{ tache.dossier.numero_dossier }} • {% endif %}
+                            <i class="bi bi-person me-1"></i>{{ tache.assigne.prenom }} {{ tache.assigne.nom }}
+                            {% if tache.date_echeance %} • <i class="bi bi-calendar3 me-1"></i>{{ tache.date_echeance.strftime('%d/%m/%Y') }}{% endif %}
+                        </p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <span class="task-priority priority-{{ tache.priorite }}">{{ tache.priorite|capitalize }}</span>
+                        <span class="task-status status-{{ tache.statut }}">{{ tache.statut|replace('_',' ') }}</span>
+                    </div>
+                </div>
+                {% if tache.description %}
+                <div class="p-3 rounded mb-3" style="background:var(--bg-card-hover);">
+                    <p class="mb-0" style="white-space:pre-wrap;">{{ tache.description }}</p>
+                </div>
+                {% endif %}
+                <a href="{{ url_for('taches') }}" class="btn-premium btn-premium-outline btn-sm">&larr; Retour</a>
+            </div>
+        </div>
+
+        <div class="card-premium animate-fade-in-up">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-chat-dots me-2" style="color:var(--orange-primary)"></i>Commentaires ({{ commentaires|length }})</h5>
+            </div>
+            <div class="card-body-premium">
+                <div id="commentsList" class="mb-3">
+                    {% if commentaires %}
+                    {% for c in commentaires %}
+                    <div class="d-flex gap-2 mb-3">
+                        <span class="user-icon-badge flex-shrink-0">
+                            {% set c_photo = c.user.photo_display_src() %}
+                            {% if c_photo %}
+                            <img src="{{ c_photo }}" alt="" class="sidebar-user-img" style="width:28px;height:28px;">
+                            {% else %}
+                            <i class="bi bi-person"></i>
+                            {% endif %}
+                        </span>
+                        <div class="flex-grow-1">
+                            <div class="p-2 rounded" style="background:var(--bg-card-hover);">
+                                <strong style="font-size:0.85rem;">{{ c.user.prenom }} {{ c.user.nom }}</strong>
+                                <small class="text-tertiary ms-2">{{ c.date_creation.strftime('%d/%m/%Y %H:%M') }}</small>
+                                <p class="mb-0 mt-1" style="white-space:pre-wrap;">{{ c.message }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-tertiary">Aucun commentaire.</p>
+                    {% endif %}
+                </div>
+                <form id="commentForm" class="d-flex gap-2">
+                    <input type="text" id="commentInput" class="input-premium flex-grow-1" placeholder="Écrire un commentaire..." required>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press">Envoyer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+document.getElementById('commentForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const input = document.getElementById('commentInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    const btn = this.querySelector('button');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-sm me-1"></span>...';
+    try {
+        const r = await fetch('/api/commentaires/{{ tache.id }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: msg}),
+            credentials: 'same-origin',
+        });
+        const d = await r.json();
+        if (d.ok) {
+            location.reload();
+        } else {
+            window.showToast('Erreur: ' + (d.message || 'Inconnue'), 'danger');
+        }
+    } catch(e) {
+        window.showToast('Erreur: ' + e.message, 'danger');
+    } finally {
+        btn.disabled = false; btn.innerHTML = 'Envoyer';
+    }
+});
+</script>
+{% endblock %}

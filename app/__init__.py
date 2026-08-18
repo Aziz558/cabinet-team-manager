@@ -137,6 +137,35 @@ with app.app_context():
     except Exception as e:
         app.logger.warning(f"Migration error (taches column): {e}")
 
+    # Ensure taches table has new columns (frequence_repetition, template_id, photo_data, photo_mimetype)
+    try:
+        inspector = db.inspect(db.engine)
+        if 'taches' in inspector.get_table_names():
+            taches_cols = [c['name'] for c in inspector.get_columns('taches')]
+            for col in ['frequence_repetition', 'template_id']:
+                if col not in taches_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            if col == 'template_id':
+                                conn.execute(db.text(f"ALTER TABLE taches ADD COLUMN {col} INTEGER REFERENCES taches(id)"))
+                            else:
+                                conn.execute(db.text(f"ALTER TABLE taches ADD COLUMN {col} VARCHAR(20)"))
+                            app.logger.info(f"Added column {col} to taches")
+                    except Exception as e2:
+                        app.logger.warning(f"Could not add {col}: {e2}")
+        if 'users' in inspector.get_table_names():
+            users_cols = [c['name'] for c in inspector.get_columns('users')]
+            for col in ['photo_data', 'photo_mimetype']:
+                if col not in users_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(db.text(f"ALTER TABLE users ADD COLUMN {col} BYTEA" if col == 'photo_data' else f"ALTER TABLE users ADD COLUMN {col} VARCHAR(50)"))
+                            app.logger.info(f"Added column {col} to users")
+                    except Exception as e2:
+                        app.logger.warning(f"Could not add {col}: {e2}")
+    except Exception as e:
+        app.logger.warning(f"Migration error (new columns): {e}")
+
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
@@ -257,9 +286,89 @@ try:
                     app.logger.info(f"Sent {sent} daily due notifications")
             except Exception as e:
                 app.logger.error(f"Daily notification error: {e}")
+        
+        # Générer les tâches récurrentes
+        generer_taches_recurrentes()
+    
+    def generer_taches_recurrentes():
+        """Créer les prochaines occurrences des tâches récurrentes terminées ou dépassées."""
+        with app.app_context():
+            try:
+                from app.models import Tache
+                from app import db
+                from datetime import timedelta
+                
+                today = dt_date.today()
+                # Chercher les tâches récurrentes terminées ou dont l'échéance est passée
+                recurring_taches = Tache.query.filter(
+                    Tache.frequence_repetition.isnot(None),
+                    Tache.frequence_repetition != '',
+                ).all()
+                
+                for t in recurring_taches:
+                    # Déterminer si on doit créer la prochaine occurrence
+                    should_create = False
+                    if t.statut == 'terminee' and t.date_completion:
+                        should_create = True
+                    elif t.date_echeance and t.date_echeance < today:
+                        should_create = True
+                    
+                    if not should_create:
+                        continue
+                    
+                    # Calculer la prochaine date d'échéance
+                    next_date = None
+                    if t.frequence_repetition == 'daily':
+                        next_date = (t.date_echeance or today) + timedelta(days=1)
+                    elif t.frequence_repetition == 'weekly':
+                        next_date = (t.date_echeance or today) + timedelta(weeks=1)
+                    elif t.frequence_repetition == 'monthly':
+                        m = (t.date_echeance or today).month + 1
+                        y = (t.date_echeance or today).year
+                        if m > 12: m = 1; y += 1
+                        try:
+                            next_date = dt_date(y, m, (t.date_echeance or today).day)
+                        except ValueError:
+                            next_date = dt_date(y, m, min((t.date_echeance or today).day, 28))
+                    elif t.frequence_repetition == 'yearly':
+                        try:
+                            next_date = dt_date((t.date_echeance or today).year + 1, (t.date_echeance or today).month, (t.date_echeance or today).day)
+                        except ValueError:
+                            next_date = dt_date((t.date_echeance or today).year + 1, (t.date_echeance or today).month, 28)
+                    
+                    if next_date and next_date <= today + timedelta(days=7):  # seulement si dans la semaine à venir
+                        # Créer la nouvelle occurrence
+                        new_t = Tache(
+                            titre=t.titre,
+                            description=t.description,
+                            dossier_id=t.dossier_id,
+                            assigne_a=t.assigne_a,
+                            priorite=t.priorite,
+                            statut='a_faire',
+                            date_echeance=next_date,
+                            cree_par=t.cree_par,
+                            frequence_repetition=t.frequence_repetition,
+                            template_id=t.template_id or t.id,
+                        )
+                        db.session.add(new_t)
+                        # Notifier
+                        if new_t.assigne_a:
+                            notif = Notification(
+                                user_id=new_t.assigne_a,
+                                tache_id=new_t.id,
+                                message=f"Nouvelle occurrence : {new_t.titre}",
+                                type_notification='assignation'
+                            )
+                            db.session.add(notif)
+                        app.logger.info(f"Créé occurrence récurrente: {new_t.titre} -> {next_date}")
+                
+                db.session.commit()
+            except Exception as e:
+                app.logger.error(f"Recurring tasks error: {e}")
     
     scheduler = BackgroundScheduler()
     scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
+    scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)  # une heure avant les notifications
     scheduler.start()
     app.logger.info("APScheduler started: daily notifications at 08:00")
 except Exception as e:
