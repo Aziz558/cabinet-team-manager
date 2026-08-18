@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,30 +22,34 @@ def make_task(title, description, deadline, dossier_id, collaborateur_id, priori
     from app import db
     
     # Main task (dépôt)
+    is_past = deadline < date.today()
     t = Tache(
         titre=title,
         description=description,
-        statut='a_faire',
+        statut='terminee' if is_past else 'a_faire',
         priorite=priorite,
         date_echeance=deadline,
         dossier_id=dossier_id,
         assigne_a=collaborateur_id,
         cree_par=None,
+        date_completion=datetime.utcnow() if is_past else None,
     )
     db.session.add(t)
     
     # Prépa task 3 working days before
     prepa_day = prev_working_day(deadline, 3)
     prepa_title = f"Préparation {title}"
+    prepa_is_past = prepa_day < date.today()
     prepa = Tache(
         titre=prepa_title,
         description=f"Préparer les documents pour : {description}",
-        statut='a_faire',
+        statut='terminee' if prepa_is_past else 'a_faire',
         priorite='moyenne',
         date_echeance=prepa_day,
         dossier_id=dossier_id,
         assigne_a=collaborateur_id,
         cree_par=None,
+        date_completion=datetime.utcnow() if prepa_is_past else None,
     )
     db.session.add(prepa)
 
@@ -83,8 +87,10 @@ def _planifier_tva(dossier):
     from app import db
     
     regime = (dossier.regime_tva or '').lower().strip()
-    if regime == 'exonere' or not regime:
+    if regime == 'exonere':
         return
+    if not regime:
+        regime = 'mensuel'  # Par défaut si non renseigné
     
     ref_date = dossier.date_limite_declaration or date.today()
     year = ref_date.year

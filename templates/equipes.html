@@ -25,7 +25,18 @@
                 </div>
                 <p class="text-tertiary small">{{ e.description or 'Aucune description.' }}</p>
                 {% if e.manager %}
-                <small class="text-tertiary">Manager : {{ e.manager.prenom }} {{ e.manager.nom }}</small>
+                <div class="d-flex align-items-center gap-2 mt-2 p-2 rounded" style="background:var(--bg-card-hover);">
+                    {% set e_photo = e.manager.photo_display_src() %}
+                    {% if e_photo %}
+                    <span class="user-icon-badge"><img src="{{ e_photo }}" alt="" class="sidebar-user-img" style="width:28px;height:28px;"></span>
+                    {% else %}
+                    <span class="user-icon-badge"><i class="bi bi-person-fill"></i></span>
+                    {% endif %}
+                    <div>
+                        <strong style="font-size:0.85rem;">{{ e.manager.prenom }} {{ e.manager.nom }}</strong>
+                        <br><small class="text-tertiary">Manager</small>
+                    </div>
+                </div>
                 {% endif %}
                 <div class="mt-2 small">
                     {% if e.equipe_email %}
