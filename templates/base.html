@@ -40,8 +40,12 @@
             {% endif %}
         </div>
         <div class="app-topbar-right">
-            {% if current_user.is_authenticated %}
-            <!-- Notification bell -->
+                {% if current_user.is_authenticated %}
+                <!-- Theme toggle -->
+                <button id="themeToggle" style="background:none;border:none;color:var(--text-primary);font-size:18px;cursor:pointer;margin-right:12px;" onclick="toggleTheme()" title="Changer le thème">
+                    <i id="themeIcon" class="bi bi-sun-fill"></i>
+                </button>
+                <!-- Notification bell -->
             <a href="{{ url_for('notifications_page') }}" class="notif-bell-link" style="margin-right:12px;position:relative;text-decoration:none;color:var(--text-primary);font-size:18px;">
                 <i class="bi bi-bell"></i>
                 <span class="notif-badge" id="notifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:8px;padding:0 4px;">0</span>
@@ -271,6 +275,24 @@
         });
     })();
     </script>
+<script>
+// Theme toggle
+(function() {
+    var theme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    var icon = document.getElementById('themeIcon');
+    if (icon) icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+})();
+function toggleTheme() {
+    var html = document.documentElement;
+    var current = html.getAttribute('data-theme') || 'dark';
+    var next = current === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    var icon = document.getElementById('themeIcon');
+    if (icon) icon.className = next === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+}
+</script>
 <script>
 // Select All checkboxes functionality
 document.addEventListener('DOMContentLoaded', function() {
