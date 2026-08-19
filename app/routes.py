@@ -1165,12 +1165,19 @@ def suivi_avancement():
     
     # Collecter les stats par membre
     suivi_data = []
+    dossiers_par_membre = {}
     for m in membres:
         taches = Tache.query.filter_by(assigne_a=m.id).order_by(Tache.date_echeance).all()
         a_faire = [t for t in taches if t.statut == 'a_faire']
         en_cours = [t for t in taches if t.statut == 'en_cours']
         terminees = [t for t in taches if t.statut in ('terminee', 'terminée')]
         en_retard = [t for t in taches if t.est_en_retard()]
+        # Dossiers uniques pour ce membre
+        dossiers_ids = set()
+        for t in taches:
+            if t.dossier_id:
+                dossiers_ids.add(t.dossier_id)
+        dossiers_par_membre[m.id] = Dossier.query.filter(Dossier.id.in_(dossiers_ids)).order_by(Dossier.numero_dossier).all() if dossiers_ids else []
         suivi_data.append({
             'membre': m,
             'total': len(taches),
@@ -1178,12 +1185,13 @@ def suivi_avancement():
             'en_cours': len(en_cours),
             'terminees': len(terminees),
             'en_retard': len(en_retard),
+            'toutes_taches': taches,  # toutes les tâches pour le tableau
             'taches_a_faire': a_faire[:10],
             'taches_en_cours': en_cours[:10],
             'taches_terminees': terminees[:5],
         })
     
-    return render_template('suivi_avancement.html', suivi_data=suivi_data, membres=membres)
+    return render_template('suivi_avancement.html', suivi_data=suivi_data, membres=membres, dossiers_par_membre=dossiers_par_membre)
 
 # Gérer le changement de statut depuis le suivi
 @app.route('/suivi_avancement/changer_statut/<int:tache_id>', methods=['POST'])
@@ -1307,6 +1315,19 @@ def changer_statut_tache(tache_id):
         tache.date_completion = None
     
     db.session.commit()
+    
+    # Notifier le créateur (manager) du changement
+    collab_nom = f"{current_user.prenom} {current_user.nom}"
+    if tache.cree_par and tache.cree_par != current_user.id:
+        notif = Notification(
+            user_id=tache.cree_par,
+            tache_id=tache.id,
+            message=f"{collab_nom} a changé le statut de \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\"",
+            type_notification='systeme'
+        )
+        db.session.add(notif)
+        db.session.commit()
+    
     flash(f'Statut changé à "{nouveau_statut.replace("_", " ")}".', 'success')
     return redirect(url_for('taches'))
 
