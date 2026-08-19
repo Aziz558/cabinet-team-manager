@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Suivi d'avancement{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
+    <h2 class="fw-semibold"><i class="bi bi-graph-up-arrow me-2" style="color:var(--orange-primary)"></i>Suivi d'avancement</h2>
+    {% if current_user.role == 'member' %}
+    <p class="text-tertiary mb-0">Vos tâches</p>
+    {% endif %}
+</div>
+
+{% for item in suivi_data %}
+<div class="card-premium mb-4 animate-fade-in-up">
+    <div class="card-header-premium d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            {% set s_photo = item.membre.photo_display_src() %}
+            {% if s_photo %}
+            <span class="user-icon-badge"><img src="{{ s_photo }}" alt="" class="sidebar-user-img" style="width:32px;height:32px;"></span>
+            {% else %}
+            <span class="user-icon-badge"><i class="bi bi-person"></i></span>
+            {% endif %}
+            <div>
+                <h5 class="mb-0">{{ item.membre.prenom }} {{ item.membre.nom }}</h5>
+                <small class="text-tertiary">{{ item.membre.poste or item.membre.role }}</small>
+            </div>
+        </div>
+        <div class="d-flex gap-3">
+            <span class="badge badge-info">Total {{ item.total }}</span>
+            <span class="badge badge-warning">À faire {{ item.a_faire }}</span>
+            <span class="badge badge-primary">En cours {{ item.en_cours }}</span>
+            <span class="badge badge-success">Fait {{ item.terminees }}</span>
+            {% if item.en_retard > 0 %}<span class="badge badge-danger">Retard {{ item.en_retard }}</span>{% endif %}
+        </div>
+    </div>
+    <div class="card-body-premium">
+        <!-- Barre de progression -->
+        <div class="progress mb-3" style="height:6px;background:var(--border-color);border-radius:3px;">
+            {% set pct = (item.terminees / item.total * 100) if item.total > 0 else 0 %}
+            <div class="progress-bar" style="width:{{ pct }}%;background:var(--orange-gradient);border-radius:3px;"></div>
+        </div>
+
+        <!-- Filtres inline -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn active" onclick="filterMemberTasks(this, 'all', {{ item.membre.id }})">Toutes</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" onclick="filterMemberTasks(this, 'a_faire', {{ item.membre.id }})">À faire</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" onclick="filterMemberTasks(this, 'en_cours', {{ item.membre.id }})">En cours</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" onclick="filterMemberTasks(this, 'terminee', {{ item.membre.id }})">Terminée</button>
+        </div>
+
+        <!-- Liste des tâches -->
+        <div id="tasks-{{ item.membre.id }}">
+            {% set taches = item.taches_a_faire + item.taches_en_cours + item.taches_terminees %}
+            {% if taches %}
+            <div class="table-responsive">
+                <table class="table-premium">
+                    <thead><tr><th>Tâche</th><th>Priorité</th><th>Statut</th><th>Échéance</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for t in taches %}
+                        <tr>
+                            <td><strong>{{ t.titre }}</strong></td>
+                            <td><span class="task-priority priority-{{ t.priorite }}" style="font-size:0.75rem;">{{ t.priorite|capitalize }}</span></td>
+                            <td><span class="task-status status-{{ t.statut }}" style="font-size:0.75rem;">{{ t.statut|replace('_',' ') }}</span></td>
+                            <td>{{ t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '-' }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('suivi_changer_statut', tache_id=t.id) }}" class="d-flex gap-1">
+                                    <select name="statut" class="select-premium select-sm" style="width:auto;font-size:0.75rem;">
+                                        <option value="a_faire" {{ 'selected' if t.statut == 'a_faire' else '' }}>À faire</option>
+                                        <option value="en_cours" {{ 'selected' if t.statut == 'en_cours' else '' }}>En cours</option>
+                                        <option value="terminee" {{ 'selected' if t.statut == 'terminee' else '' }}>Terminée</option>
+                                    </select>
+                                    <button type="submit" class="btn-premium btn-premium-outline btn-sm" style="padding:0.2rem 0.5rem;">✓</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-tertiary">Aucune tâche pour ce membre.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-inbox" style="font-size:48px;color:var(--text-tertiary);"></i>
+    <p class="text-tertiary mt-3">Aucun membre à afficher.</p>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function filterMemberTasks(btn, statut, membreId) {
+    // Update active button state
+    btn.parentElement.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.remove('btn-premium-primary');
+        b.classList.add('btn-premium-secondary');
+    });
+    btn.classList.add('active', 'btn-premium-primary');
+    btn.classList.remove('btn-premium-secondary');
+}
+</script>
+{% endblock %}

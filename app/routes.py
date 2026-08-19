@@ -1093,8 +1093,8 @@ def supprimer_tache(tache_id):
     tache = Tache.query.get_or_404(tache_id)
     
     # Vérifier les droits
-    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
-        flash('Vous ne pouvez pas supprimer cette tâche.', 'danger')
+    if current_user.role == 'membre':
+        flash('Seuls les managers et administrateurs peuvent supprimer des tâches.', 'danger')
         return redirect(url_for('taches'))
     
     try:
@@ -1119,6 +1119,120 @@ def taches_aujourdhui():
     today_taches = Tache.query.filter(Tache.date_echeance == date.today()).all()
     return render_template('taches.html', taches=today_taches)
 
+# ==========================
+# Suivi d'avancement par membre
+# ==========================
+@app.route('/suivi_avancement')
+@login_required
+def suivi_avancement():
+    """Page de suivi d'avancement des tâches par membre."""
+    from app.models import User, Equipe, Tache
+    from datetime import date
+    
+    # Récupérer les membres selon le rôle
+    if current_user.role == 'admin':
+        membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
+    elif current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        team_ids = [current_user.id]
+        for eq in mes_equipes:
+            team_ids.extend([m.id for m in eq.membres.all()])
+        membres = User.query.filter(User.id.in_(team_ids), User.actif==True).order_by(User.prenom).all()
+    else:
+        membres = [current_user]
+    
+    # Collecter les stats par membre
+    suivi_data = []
+    for m in membres:
+        taches = Tache.query.filter_by(assigne_a=m.id).order_by(Tache.date_echeance).all()
+        a_faire = [t for t in taches if t.statut == 'a_faire']
+        en_cours = [t for t in taches if t.statut == 'en_cours']
+        terminees = [t for t in taches if t.statut in ('terminee', 'terminée')]
+        en_retard = [t for t in taches if t.est_en_retard()]
+        suivi_data.append({
+            'membre': m,
+            'total': len(taches),
+            'a_faire': len(a_faire),
+            'en_cours': len(en_cours),
+            'terminees': len(terminees),
+            'en_retard': len(en_retard),
+            'taches_a_faire': a_faire[:10],
+            'taches_en_cours': en_cours[:10],
+            'taches_terminees': terminees[:5],
+        })
+    
+    return render_template('suivi_avancement.html', suivi_data=suivi_data, membres=membres)
+
+# Gérer le changement de statut depuis le suivi
+@app.route('/suivi_avancement/changer_statut/<int:tache_id>', methods=['POST'])
+@login_required
+def suivi_changer_statut(tache_id):
+    tache = Tache.query.get_or_404(tache_id)
+    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('suivi_avancement'))
+    nouveau = request.form.get('statut', '').strip()
+    if nouveau not in ('a_faire', 'en_cours', 'terminee'):
+        flash('Statut invalide.', 'warning')
+        return redirect(url_for('suivi_avancement'))
+    tache.statut = nouveau
+    if nouveau == 'terminee':
+        tache.date_completion = datetime.utcnow()
+    elif nouveau == 'a_faire':
+        tache.date_completion = None
+        tache.date_prise_en_charge = None
+    elif nouveau == 'en_cours' and not tache.date_prise_en_charge:
+        tache.date_prise_en_charge = datetime.utcnow()
+    db.session.commit()
+    flash(f'Statut changé.', 'success')
+    return redirect(url_for('suivi_avancement'))
+
+@app.route('/api/suivi_membre/<int:membre_id>')
+@login_required
+def api_suivi_membre(membre_id):
+    """API pour le suivi avec filtres JSON."""
+    from app.models import Tache
+    
+    if current_user.role == 'membre' and current_user.id != membre_id:
+        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
+    
+    statut = request.args.get('statut', 'all')
+    debut = request.args.get('debut', '')
+    fin = request.args.get('fin', '')
+    
+    query = Tache.query.filter_by(assigne_a=membre_id)
+    
+    if statut != 'all':
+        query = query.filter(Tache.statut == statut)
+    
+    if debut:
+        try:
+            d_debut = datetime.strptime(debut, '%Y-%m-%d').date()
+            query = query.filter(Tache.date_echeance >= d_debut)
+        except ValueError:
+            pass
+    if fin:
+        try:
+            d_fin = datetime.strptime(fin, '%Y-%m-%d').date()
+            query = query.filter(Tache.date_echeance <= d_fin)
+        except ValueError:
+            pass
+    
+    taches = query.order_by(Tache.date_echeance).all()
+    
+    return jsonify({
+        'ok': True,
+        'taches': [{
+            'id': t.id,
+            'titre': t.titre,
+            'statut': t.statut,
+            'priorite': t.priorite,
+            'date_echeance': t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '',
+            'en_retard': t.est_en_retard(),
+            'dossier': t.dossier.numero_dossier if t.dossier else '',
+        } for t in taches]
+    })
+
 @app.route('/api/envoyer_notifications_echeances')
 @login_required
 def envoyer_notifications_echeances():
@@ -1142,6 +1256,37 @@ def envoyer_notifications_echeances():
                 app.logger.warning(f"Send due notification failed: {e}")
     
     return jsonify({'ok': True, 'message': f'{sent} notification(s) envoyée(s).'})
+
+@app.route('/changer_statut_tache/<int:tache_id>', methods=['POST'])
+@login_required
+def changer_statut_tache(tache_id):
+    """Changer librement le statut d'une tâche."""
+    tache = Tache.query.get_or_404(tache_id)
+    
+    # Vérifier que le membre ne change que ses propres tâches
+    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
+        flash('Vous ne pouvez modifier que vos propres tâches.', 'danger')
+        return redirect(url_for('taches'))
+    
+    nouveau_statut = request.form.get('statut', '').strip()
+    if nouveau_statut not in ('a_faire', 'en_cours', 'terminee'):
+        flash('Statut invalide.', 'warning')
+        return redirect(url_for('taches'))
+    
+    tache.statut = nouveau_statut
+    if nouveau_statut == 'terminee':
+        tache.date_completion = datetime.utcnow()
+        if not tache.date_prise_en_charge:
+            tache.date_prise_en_charge = datetime.utcnow()
+    elif nouveau_statut == 'en_cours' and not tache.date_prise_en_charge:
+        tache.date_prise_en_charge = datetime.utcnow()
+    elif nouveau_statut == 'a_faire':
+        tache.date_prise_en_charge = None
+        tache.date_completion = None
+    
+    db.session.commit()
+    flash(f'Statut changé à "{nouveau_statut.replace("_", " ")}".', 'success')
+    return redirect(url_for('taches'))
 
 @app.route('/terminer_tache/<int:tache_id>', methods=['POST'])
 @login_required
