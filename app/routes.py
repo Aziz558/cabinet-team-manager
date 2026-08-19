@@ -1327,6 +1327,18 @@ def changer_statut_tache(tache_id):
         )
         db.session.add(notif)
         db.session.commit()
+        # Email au manager si configuré
+        try:
+            from app.integrations.brevo import send_email_via_brevo_api
+            createur = User.query.get(tache.cree_par)
+            if createur and createur.email:
+                send_email_via_brevo_api(
+                    to_email=createur.email,
+                    subject=f"Changement de statut : {tache.titre}",
+                    body=f"Bonjour {createur.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\".\n\nCabinet JMH"
+                )
+        except Exception as e:
+            app.logger.warning(f"Email statut change failed: {e}")
     
     flash(f'Statut changé à "{nouveau_statut.replace("_", " ")}".', 'success')
     return redirect(url_for('taches'))

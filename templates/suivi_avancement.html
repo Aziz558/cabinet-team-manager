@@ -37,10 +37,10 @@
 
         <!-- Filtres -->
         <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn active" onclick="filterMembre({{ item.membre.id }}, 'statut', 'all')">Toutes</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" onclick="filterMembre({{ item.membre.id }}, 'statut', 'a_faire')">À faire</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" onclick="filterMembre({{ item.membre.id }}, 'statut', 'en_cours')">En cours</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" onclick="filterMembre({{ item.membre.id }}, 'statut', 'terminee')">Terminée</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn active" data-statut="all" onclick="filterMembre({{ item.membre.id }}, 'statut', 'all')">Toutes</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-statut="a_faire" onclick="filterMembre({{ item.membre.id }}, 'statut', 'a_faire')">À faire</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-statut="en_cours" onclick="filterMembre({{ item.membre.id }}, 'statut', 'en_cours')">En cours</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-statut="terminee" onclick="filterMembre({{ item.membre.id }}, 'statut', 'terminee')">Terminée</button>
             <div class="vr mx-1" style="height:20px;border-color:var(--border-color);"></div>
             <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'dossier', this.value)">
                 <option value="all">Tous les dossiers</option>
@@ -96,34 +96,32 @@
 <script>
 function filterMembre(membreId, filterType, value) {
     var table = document.getElementById('membreTable' + membreId);
-    var rows = table ? table.querySelectorAll('.task-row') : [];
+    var card = document.getElementById('membreCard' + membreId);
+    if (!table) return;
+    var rows = table.querySelectorAll('.task-row');
     
     // Update active button for statut filters
     if (filterType === 'statut') {
-        var card = document.getElementById('membreCard' + membreId);
         card.querySelectorAll('.filter-btn').forEach(function(b) {
             b.classList.remove('active', 'btn-premium-primary');
             b.classList.add('btn-premium-secondary');
+            if (b.dataset.statut === value) {
+                b.classList.add('active', 'btn-premium-primary');
+                b.classList.remove('btn-premium-secondary');
+            }
         });
-        var activeBtn = card.querySelector('.filter-btn[onclick*="\'statut\'"][onclick*="\'"+value+"\'"]');
-        if (activeBtn) { activeBtn.classList.add('active', 'btn-premium-primary'); activeBtn.classList.remove('btn-premium-secondary'); }
-        // Store current statut filter
         card.dataset.statutFilter = value;
     }
-    
-    // Store dossier/date filters
     if (filterType === 'dossier') {
-        document.getElementById('membreCard' + membreId).dataset.dossierFilter = value;
+        card.dataset.dossierFilter = value;
     }
     if (filterType === 'date_debut') {
-        document.getElementById('membreCard' + membreId).dataset.dateDebut = value;
+        card.dataset.dateDebut = value;
     }
     if (filterType === 'date_fin') {
-        document.getElementById('membreCard' + membreId).dataset.dateFin = value;
+        card.dataset.dateFin = value;
     }
     
-    // Apply all filters
-    var card = document.getElementById('membreCard' + membreId);
     var statutF = card.dataset.statutFilter || 'all';
     var dossierF = card.dataset.dossierFilter || 'all';
     var dateDebut = card.dataset.dateDebut || '';

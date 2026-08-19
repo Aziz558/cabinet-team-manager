@@ -123,7 +123,7 @@ def _planifier_tva(dossier):
     
     _cleanup_existing_tasks(dossier.id, ['TVA', 'Dépôt TVA', 'Préparation TVA'])
     
-    horizon = date.today() + timedelta(days=95)
+    horizon = date.today() + timedelta(days=30)
     
     # Handle TVA deadlines for mensuel and trimestriel
     for dl in deadlines:
@@ -180,7 +180,7 @@ def _planifier_is(dossier):
     _cleanup_existing_tasks(dossier.id, ['IS', 'Acompte IS', 'Déclaration IS', 'Préparation IS'])
     
     year = date.today().year
-    horizon = date.today() + timedelta(days=95)
+    horizon = date.today() + timedelta(days=30)
     
     # Acomptes provisionnels: 15/03, 15/06, 15/09, 15/12 (N and N+1)
     for y in [year, year + 1]:
@@ -214,7 +214,7 @@ def _planifier_cfe(dossier):
     _cleanup_existing_tasks(dossier.id, ['CFE', 'Préparation CFE'])
     
     year = date.today().year
-    horizon = date.today() + timedelta(days=95)
+    horizon = date.today() + timedelta(days=30)
     
     for y in [year, year + 1]:
         dl = next_working_day(date(y, 12, 15))
