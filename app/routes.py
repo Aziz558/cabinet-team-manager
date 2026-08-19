@@ -384,7 +384,9 @@ def taches():
         all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
     return render_template('taches.html', taches=all_taches, membres=membres,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
-        current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
+        current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
+        dossiers=Dossier.query.order_by(Dossier.numero_dossier).all(),
+        date=date, timedelta=timedelta)
 
 @app.route('/equipes')
 @login_required

@@ -1,15 +1,11 @@
 {% extends "base.html" %}
-
 {% block title %}Tâches{% endblock %}
-
 {% block content %}
 {% if current_user.role == 'manager' %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
     <div>
         <h2 class="fw-semibold mb-1" style="letter-spacing:-0.5px;">Tâches</h2>
-        <p class="text-tertiary small mb-0" id="taskCount">{{ taches|length }} tâche(s) •
-            <span style="color:var(--orange-primary);">{{ taches|selectattr('statut','equalto','a_faire')|list|length }}</span> à faire
-        </p>
+        <p class="text-tertiary small mb-0" id="taskCount">{{ taches|length }} tâche(s)</p>
     </div>
     <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalTache">
         <i class="bi bi-plus-lg me-1"></i>Nouvelle tâche
@@ -23,31 +19,45 @@
 <div class="card-premium mb-3 animate-fade-in-up">
     <div class="card-body-premium py-2">
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn active" data-filter="all" onclick="applyFilter('all')">
-                <i class="bi bi-list-ul me-1"></i>Toutes
-            </button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="fiscal" onclick="applyFilter('fiscal')">
-                <i class="bi bi-calculator me-1"></i>Fiscalité
-            </button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="regular" onclick="applyFilter('regular')">
-                <i class="bi bi-check2-square me-1"></i>Générales
-            </button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="all" onclick="applyFilter('all')">Toutes</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="fiscal" onclick="applyFilter('fiscal')">Fiscalité</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="regular" onclick="applyFilter('regular')">Générales</button>
             <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
-            <select class="select-premium select-sm" id="filterStatut" onchange="applyFilter(document.querySelector('.filter-btn.active')?.dataset?.filter || 'all')" style="width:auto;">
-                <option value="all">Tous les statuts</option>
-                <option value="a_faire">À faire</option>
+            <select class="select-premium select-sm" id="filterStatut" onchange="applyFilter()" style="width:auto;">
+                <option value="all">Tous statuts</option>
+                <option value="a_faire" selected>À faire</option>
                 <option value="en_cours">En cours</option>
                 <option value="terminee">Terminée</option>
             </select>
-            <input type="text" class="input-premium input-sm" id="filterSearch" placeholder="Rechercher..." oninput="applyFilter(document.querySelector('.filter-btn.active')?.dataset?.filter || 'all')" style="width:200px;">
+            <select class="select-premium select-sm" id="filterMembre" onchange="applyFilter()" style="width:auto;">
+                <option value="all">Tous les membres</option>
+                {% for m in membres %}
+                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                {% endfor %}
+            </select>
+            <select class="select-premium select-sm" id="filterDossier" onchange="applyFilter()" style="width:auto;">
+                <option value="all">Tous les dossiers</option>
+                {% for d in dossiers %}
+                <option value="{{ d.id }}">{{ d.numero_dossier }}</option>
+                {% endfor %}
+            </select>
+            <input type="date" class="input-premium select-sm" id="filterDateDebut" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;" placeholder="Du">
+            <input type="date" class="input-premium select-sm" id="filterDateFin" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;" placeholder="Au">
+            <input type="text" class="input-premium input-sm" id="filterSearch" placeholder="Rechercher..." oninput="applyFilter()" style="width:160px;">
         </div>
     </div>
 </div>
 
 <!-- Task Board -->
 <div class="task-board" id="taskBoard">
+    {% set fiscal_keywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'] %}
+    {% set horizon_1m = date.today() + timedelta(days=30) %}
     {% for t in taches %}
-    <div class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}" data-statut="{{ t.statut }}" data-titre="{{ t.titre|lower }} {{ t.description|lower }}">
+    {# Masquer les tâches deadline au-delà de 1 mois #}
+    {% set is_fiscal_display = false %}
+    {% for kw in fiscal_keywords %}{% if kw in (t.titre|lower) %}{% set is_fiscal_display = true %}{% endif %}{% endfor %}
+    {% if not (is_fiscal_display and t.date_echeance and t.date_echeance > horizon_1m) %}
+    <div class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}" data-statut="{{ t.statut }}" data-titre="{{ t.titre|lower }} {{ t.description|lower }}" data-assigne="{{ t.assigne_a }}" data-dossier="{{ t.dossier_id }}" data-echeance="{{ t.date_echeance }}">
         <div class="task-card-header">
             <span class="task-priority priority-{{ t.priorite }}">{{ t.priorite|capitalize }}</span>
             <span class="task-status status-{{ t.statut }}">{{ t.statut|replace('_', ' ') }}</span>
@@ -59,54 +69,38 @@
             {% endif %}
             <div class="task-meta">
                 {% if t.dossier %}
-                <span class="task-meta-item">
-                    <i class="bi bi-folder"></i>{{ t.dossier.numero_dossier }}
-                </span>
+                <span class="task-meta-item"><i class="bi bi-folder"></i>{{ t.dossier.numero_dossier }}</span>
                 {% endif %}
-                <span class="task-meta-item">
-                    <i class="bi bi-calendar3"></i>{{ t.date_echeance.strftime('%d/%m/%Y') }}
-                </span>
-                <span class="task-meta-item">
-                    <i class="bi bi-person"></i>{{ t.assigne.prenom }} {{ t.assigne.nom }}
-                </span>
+                <span class="task-meta-item"><i class="bi bi-calendar3"></i>{{ t.date_echeance.strftime('%d/%m/%Y') }}</span>
+                <span class="task-meta-item"><i class="bi bi-person"></i>{{ t.assigne.prenom }} {{ t.assigne.nom }}</span>
             </div>
         </div>
         <div class="task-card-footer">
-            <!-- 3 icônes de statut -->
             <div class="d-flex gap-1">
                 <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline" title="À faire">
                     <input type="hidden" name="statut" value="a_faire">
-                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-primary' if t.statut == 'a_faire' else 'btn-task-inactive' }}">
-                        <i class="bi bi-circle"></i>
-                    </button>
+                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-primary' if t.statut == 'a_faire' else 'btn-task-inactive' }}"><i class="bi bi-circle"></i></button>
                 </form>
                 <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline" title="En cours">
                     <input type="hidden" name="statut" value="en_cours">
-                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-warning' if t.statut == 'en_cours' else 'btn-task-inactive' }}">
-                        <i class="bi bi-arrow-repeat"></i>
-                    </button>
+                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-warning' if t.statut == 'en_cours' else 'btn-task-inactive' }}"><i class="bi bi-arrow-repeat"></i></button>
                 </form>
                 <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline" title="Terminée">
                     <input type="hidden" name="statut" value="terminee">
-                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-success' if t.statut == 'terminee' else 'btn-task-inactive' }}">
-                        <i class="bi bi-check2"></i>
-                    </button>
+                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-success' if t.statut == 'terminee' else 'btn-task-inactive' }}"><i class="bi bi-check2"></i></button>
                 </form>
             </div>
             <div class="d-flex align-items-center gap-1">
                 {% if current_user.role != 'membre' %}
                 <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
-                    <button type="submit" class="btn-task btn-task-sm btn-task-danger" title="Supprimer">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <button type="submit" class="btn-task btn-task-sm btn-task-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
                 </form>
                 {% endif %}
-                <a href="{{ url_for('vue_tache', tache_id=t.id) }}" class="btn-task btn-task-sm btn-task-inactive" title="Voir">
-                    <i class="bi bi-chat-dots"></i>
-                </a>
+                <a href="{{ url_for('vue_tache', tache_id=t.id) }}" class="btn-task btn-task-sm btn-task-inactive" title="Voir"><i class="bi bi-chat-dots"></i></a>
             </div>
         </div>
     </div>
+    {% endif %}
     {% else %}
     <div class="task-empty" id="emptyState">
         <i class="bi bi-inbox"></i>
@@ -120,8 +114,8 @@
     {% endfor %}
 </div>
 
-<!-- Modal Création -->
-<div class="modal fade" id="modalTache" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+<!-- Modal Nouvelle Tâche -->
+<div class="modal fade" id="modalTache" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog">
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('taches') }}" id="formNouvelleTache">
@@ -156,24 +150,15 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Priorité</label>
                             <select name="priorite" class="select-premium">
-                                <option value="basse">Basse</option>
-                                <option value="moyenne" selected>Moyenne</option>
                                 <option value="haute">Haute</option>
-                                <option value="urgente">Urgente</option>
+                                <option value="moyenne" selected>Moyenne</option>
+                                <option value="basse">Basse</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label-premium">Statut</label>
-                            <select name="statut" class="select-premium">
-                                <option value="a_faire" selected>À faire</option>
-                                <option value="en_cours">En cours</option>
-                                <option value="terminee">Terminée</option>
-                            </select>
+                            <label class="form-label-premium">Date d'échéance</label>
+                            <input type="date" name="date_echeance" class="input-premium">
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label-premium">Date d'échéance</label>
-                        <input type="date" name="date_echeance" class="input-premium">
                     </div>
                     <div class="mb-3">
                         <label class="form-label-premium">Répéter</label>
@@ -184,12 +169,11 @@
                             <option value="monthly">Tous les mois</option>
                             <option value="yearly">Tous les ans</option>
                         </select>
-                        <p class="text-tertiary small mt-1">La tâche sera recréée automatiquement à la fréquence choisie</p>
                     </div>
                 </div>
                 <div class="modal-footer-premium">
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn-premium btn-premium-primary">Créer</button>
+                    <button type="submit" class="btn-premium btn-premium-primary"><i class="bi bi-plus-lg me-1"></i>Créer</button>
                 </div>
             </form>
         </div>
@@ -198,105 +182,63 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
-// Filter system
-var fiscalKeywords = ['tva', 'is ', 'cfe ', 'acompte', 'dépôt', 'prépa', 'fiscal'];
+// Définir le filtre par défaut : À faire
+document.addEventListener('DOMContentLoaded', function() {
+    // Appliquer le filtre statut = a_faire au chargement
+    applyFilter();
+});
 
-function applyFilter(filter) {
+var fiscalKeywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'];
+
+function applyFilter() {
+    var typeFilter = document.querySelector('.filter-btn.active')?.dataset?.filter || 'all';
     var statut = document.getElementById('filterStatut')?.value || 'all';
+    var membre = document.getElementById('filterMembre')?.value || 'all';
+    var dossier = document.getElementById('filterDossier')?.value || 'all';
+    var dateDebut = document.getElementById('filterDateDebut')?.value || '';
+    var dateFin = document.getElementById('filterDateFin')?.value || '';
     var search = (document.getElementById('filterSearch')?.value || '').toLowerCase();
     var cards = document.querySelectorAll('#taskBoard .task-card');
     var visibleCount = 0;
-    
-    // Update active button
-    document.querySelectorAll('.filter-btn').forEach(function(btn) {
-        btn.classList.toggle('active', btn.dataset.filter === filter);
-    });
-    
+
     cards.forEach(function(card) {
         var show = true;
         var titre = (card.dataset.titre || '');
-        
-        // Filter by type
-        if (filter === 'fiscal') {
+
+        if (typeFilter === 'fiscal') {
             show = fiscalKeywords.some(function(kw) { return titre.indexOf(kw) >= 0; });
-        } else if (filter === 'regular') {
+        } else if (typeFilter === 'regular') {
             show = !fiscalKeywords.some(function(kw) { return titre.indexOf(kw) >= 0; });
         }
-        
-        // Filter by statut
+
         if (show && statut !== 'all') {
             show = card.dataset.statut === statut;
         }
-        
-        // Filter by search
+        if (show && membre !== 'all') {
+            show = card.dataset.assigne === membre;
+        }
+        if (show && dossier !== 'all') {
+            show = card.dataset.dossier === dossier;
+        }
+        if (show && dateDebut) {
+            var e = card.dataset.echeance;
+            if (e && e < dateDebut) show = false;
+        }
+        if (show && dateFin) {
+            var e = card.dataset.echeance;
+            if (e && e > dateFin) show = false;
+        }
         if (show && search) {
             show = titre.indexOf(search) >= 0;
         }
-        
+
         card.style.display = show ? '' : 'none';
         if (show) visibleCount++;
     });
-    
-    // Update count
-    var countEl = document.getElementById('taskCount');
-    if (countEl) {
-        countEl.innerHTML = visibleCount + ' tâche(s) • <span style="color:var(--orange-primary);">' + 
-            document.querySelectorAll('.task-card:not([style*="display: none"]) .status-a_faire').length + 
-            '</span> à faire';
-    }
-    
-    // Show empty state
-    var empty = document.getElementById('emptyState');
-    if (empty) {
-        empty.style.display = visibleCount === 0 ? '' : 'none';
-    }
-}
 
-// Populate dropdowns
-document.addEventListener('DOMContentLoaded', function() {
-    var modal = document.getElementById('modalTache');
-    if (!modal) return;
-    
-    modal.addEventListener('show.bs.modal', function() {
-        var dossierSelect = document.getElementById('modalDossierSelect');
-        var membreSelect = document.getElementById('modalMembreSelect');
-        
-        if (dossierSelect.options.length > 1 && membreSelect.options.length > 1) {
-            return;
-        }
-        
-        dossierSelect.innerHTML = '<option value="">Chargement...</option>';
-        membreSelect.innerHTML = '<option value="">Chargement...</option>';
-        
-        fetch('/api/dossiers-membres')
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                if (!data.ok) {
-                    console.error('Failed:', data.message);
-                    return;
-                }
-                dossierSelect.innerHTML = '<option value="">Aucun dossier</option>';
-                data.dossiers.forEach(function(d) {
-                    var opt = document.createElement('option');
-                    opt.value = d.id;
-                    opt.textContent = d.label;
-                    dossierSelect.appendChild(opt);
-                });
-                membreSelect.innerHTML = '<option value="">Non assigné</option>';
-                data.membres.forEach(function(m) {
-                    var opt = document.createElement('option');
-                    opt.value = m.id;
-                    opt.textContent = m.label;
-                    membreSelect.appendChild(opt);
-                });
-            })
-            .catch(function(err) {
-                console.error('Error:', err);
-                dossierSelect.innerHTML = '<option value="">Erreur de chargement</option>';
-                membreSelect.innerHTML = '<option value="">Erreur de chargement</option>';
-            });
-    });
-});
+    document.getElementById('taskCount').textContent = visibleCount + ' tâche(s)';
+}
 </script>
 {% endblock %}
