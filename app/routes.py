@@ -1316,7 +1316,7 @@ def changer_statut_tache(tache_id):
     
     db.session.commit()
     
-    # Notifier le créateur (manager) du changement
+    # Notifier le créateur (manager) du changement + email
     collab_nom = f"{current_user.prenom} {current_user.nom}"
     if tache.cree_par and tache.cree_par != current_user.id:
         notif = Notification(
@@ -1327,16 +1327,20 @@ def changer_statut_tache(tache_id):
         )
         db.session.add(notif)
         db.session.commit()
-        # Email au manager si configuré
+        # Email au manager (Brevo ou SMTP)
         try:
-            from app.integrations.brevo import send_email_via_brevo_api
             createur = User.query.get(tache.cree_par)
             if createur and createur.email:
-                send_email_via_brevo_api(
-                    to_email=createur.email,
-                    subject=f"Changement de statut : {tache.titre}",
-                    body=f"Bonjour {createur.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\".\n\nCabinet JMH"
-                )
+                sujet = f"Changement de statut : {tache.titre}"
+                corps = f"Bonjour {createur.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\".\n\nCabinet JMH"
+                # Essayer Brevo d'abord
+                from app.integrations.brevo import send_email_via_brevo_api, send_email_notification_fallback
+                envoye = send_email_via_brevo_api(to_email=createur.email, subject=sujet, body=corps)
+                if not envoye:
+                    # Fallback SMTP
+                    envoye = send_email_notification_fallback(to_email=createur.email, subject=sujet, body=corps)
+                if envoye:
+                    app.logger.info(f"Email statut change sent to {createur.email}")
         except Exception as e:
             app.logger.warning(f"Email statut change failed: {e}")
     
@@ -1441,6 +1445,33 @@ def user_photo(user_id):
 # ==========================
 # API Notifications
 # ==========================
+@app.route('/notification/test', methods=['POST'])
+@login_required
+def notification_test():
+    """Test d'envoi de notification."""
+    return jsonify({'ok': True})
+
+def get_mail_config():
+    """Retourne la configuration mail depuis les settings ou l'environnement."""
+    from flask import current_app
+    config = {}
+    # Essayer les settings DB d'abord
+    try:
+        from app.models import AppSetting
+        for key in ['MAIL_SERVER', 'MAIL_PORT', 'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_DEFAULT_SENDER']:
+            setting = AppSetting.query.filter_by(cle=key).first()
+            config[key] = setting.valeur.strip() if setting and setting.valeur else ''
+    except Exception:
+        pass
+    # Fallback sur config Flask
+    if not config.get('MAIL_SERVER'):
+        config['MAIL_SERVER'] = current_app.config.get('MAIL_SERVER', '')
+        config['MAIL_PORT'] = current_app.config.get('MAIL_PORT', '587')
+        config['MAIL_USERNAME'] = current_app.config.get('MAIL_USERNAME', '')
+        config['MAIL_PASSWORD'] = current_app.config.get('MAIL_PASSWORD', '')
+        config['MAIL_DEFAULT_SENDER'] = current_app.config.get('MAIL_DEFAULT_SENDER', config.get('MAIL_USERNAME', ''))
+    return config
+
 @app.route('/api/notifications')
 @login_required
 def api_notifications():
