@@ -72,39 +72,38 @@
             </div>
         </div>
         <div class="task-card-footer">
-            <div class="task-assignee">
-                {% set t_photo = t.assigne.photo_display_src() if t.assigne else None %}
-                {% if t_photo %}
-                <span class="user-icon-badge"><img src="{{ t_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
-                {% else %}
-                {% set t_icon = 'bi-person' %}
-                {% if t.assigne.role == 'admin' %}
-                  {% set t_icon = 'bi-person-badge' %}
-                {% elif t.assigne.role == 'manager' %}
-                  {% set t_icon = 'bi-person-lines-fill' %}
-                {% endif %}
-                <span class="user-icon-badge"><i class="bi {{ t_icon }}"></i></span>
-                {% endif %}
-                <span>{{ t.assigne.prenom }}</span>
-            </div>
-            <div class="task-actions">
-                <!-- Statut : menu déroulant libre -->
-                <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline-flex gap-1 align-items-center">
-                    <select name="statut" class="select-premium select-sm" style="width:auto;font-size:0.7rem;padding:0.15rem 0.3rem;" onchange="if(confirm('Changer le statut en \\''+this.options[this.selectedIndex].text+'\\' ?')) this.form.submit();">
-                        <option value="a_faire" {{ 'selected' if t.statut == 'a_faire' else '' }}>À faire</option>
-                        <option value="en_cours" {{ 'selected' if t.statut == 'en_cours' else '' }}>En cours</option>
-                        <option value="terminee" {{ 'selected' if t.statut == 'terminee' else '' }}>Terminée</option>
-                    </select>
-                    <noscript><button type="submit" class="btn-task btn-task-primary" title="Valider"><i class="bi bi-check"></i></button></noscript>
+            <!-- 3 icônes de statut -->
+            <div class="d-flex gap-1">
+                <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline" title="À faire">
+                    <input type="hidden" name="statut" value="a_faire">
+                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-primary' if t.statut == 'a_faire' else 'btn-task-inactive' }}">
+                        <i class="bi bi-circle"></i>
+                    </button>
                 </form>
-                <!-- Supprimer : admin/manager seulement -->
+                <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline" title="En cours">
+                    <input type="hidden" name="statut" value="en_cours">
+                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-warning' if t.statut == 'en_cours' else 'btn-task-inactive' }}">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline" title="Terminée">
+                    <input type="hidden" name="statut" value="terminee">
+                    <button type="submit" class="btn-task btn-task-sm {{ 'btn-task-success' if t.statut == 'terminee' else 'btn-task-inactive' }}">
+                        <i class="bi bi-check2"></i>
+                    </button>
+                </form>
+            </div>
+            <div class="d-flex align-items-center gap-1">
                 {% if current_user.role != 'membre' %}
                 <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
-                    <button type="submit" class="btn-task btn-task-danger" title="Supprimer">
+                    <button type="submit" class="btn-task btn-task-sm btn-task-danger" title="Supprimer">
                         <i class="bi bi-trash"></i>
                     </button>
                 </form>
                 {% endif %}
+                <a href="{{ url_for('vue_tache', tache_id=t.id) }}" class="btn-task btn-task-sm btn-task-inactive" title="Voir">
+                    <i class="bi bi-chat-dots"></i>
+                </a>
             </div>
         </div>
     </div>

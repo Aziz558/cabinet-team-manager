@@ -913,6 +913,11 @@ p {
 .btn-task-primary:hover { background: rgba(66,165,245,0.12); color: #42A5F5; }
 .btn-task-success:hover { background: rgba(102,187,106,0.12); color: #66BB6A; }
 .btn-task-danger:hover { background: rgba(239,83,80,0.12); color: #EF5350; }
+.btn-task-warning { background: transparent; border: none; cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem; line-height: 1; color: var(--text-muted); }
+.btn-task-warning:hover { background: rgba(255,152,0,0.12); color: #FF9800; }
+.btn-task-inactive { background: transparent; border: none; cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem; line-height: 1; color: var(--text-muted); opacity: 0.5; }
+.btn-task-inactive:hover { opacity: 1; background: var(--bg-card-hover); }
+.btn-task-sm { padding: 0.15rem 0.3rem; font-size: 0.75rem; }
 
 .task-empty {
     grid-column: 1 / -1;
