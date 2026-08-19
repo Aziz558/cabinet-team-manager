@@ -88,21 +88,17 @@
                 <span>{{ t.assigne.prenom }}</span>
             </div>
             <div class="task-actions">
-                {% if current_user.role == 'membre' and t.statut == 'a_faire' %}
-                <form method="POST" action="{{ url_for('prendre_en_charge', tache_id=t.id) }}" class="d-inline">
-                    <button type="submit" class="btn-task btn-task-primary" title="Prendre en charge">
-                        <i class="bi bi-check-lg"></i>
-                    </button>
+                <!-- Statut : menu déroulant libre -->
+                <form method="POST" action="{{ url_for('changer_statut_tache', tache_id=t.id) }}" class="d-inline-flex gap-1 align-items-center">
+                    <select name="statut" class="select-premium select-sm" style="width:auto;font-size:0.7rem;padding:0.15rem 0.3rem;" onchange="if(confirm('Changer le statut en \\''+this.options[this.selectedIndex].text+'\\' ?')) this.form.submit();">
+                        <option value="a_faire" {{ 'selected' if t.statut == 'a_faire' else '' }}>À faire</option>
+                        <option value="en_cours" {{ 'selected' if t.statut == 'en_cours' else '' }}>En cours</option>
+                        <option value="terminee" {{ 'selected' if t.statut == 'terminee' else '' }}>Terminée</option>
+                    </select>
+                    <noscript><button type="submit" class="btn-task btn-task-primary" title="Valider"><i class="bi bi-check"></i></button></noscript>
                 </form>
-                {% endif %}
-                {% if t.statut == 'en_cours' and (current_user.role == 'manager' or t.assigne_a == current_user.id) %}
-                <form method="POST" action="{{ url_for('terminer_tache', tache_id=t.id) }}" class="d-inline">
-                    <button type="submit" class="btn-task btn-task-success" title="Terminer">
-                        <i class="bi bi-check2-all"></i>
-                    </button>
-                </form>
-                {% endif %}
-                {% if current_user.role == 'manager' or t.assigne_a == current_user.id %}
+                <!-- Supprimer : admin/manager seulement -->
+                {% if current_user.role != 'membre' %}
                 <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
                     <button type="submit" class="btn-task btn-task-danger" title="Supprimer">
                         <i class="bi bi-trash"></i>
