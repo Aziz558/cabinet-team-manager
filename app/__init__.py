@@ -368,10 +368,21 @@ try:
             except Exception as e:
                 app.logger.error(f"Recurring tasks error: {e}")
     
+    def regenerer_taches_fiscales():
+        """Régénérer les tâches fiscales pour le mois suivant."""
+        with app.app_context():
+            try:
+                from app.tva_scheduler import planifier_tous_les_dossiers
+                count = planifier_tous_les_dossiers()
+                app.logger.info(f"Monthly fiscal refresh: {count} dossiers traités")
+            except Exception as e:
+                app.logger.error(f"Monthly fiscal refresh error: {e}")
+    
     scheduler = BackgroundScheduler()
     scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
-    scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)  # une heure avant les notifications
+    scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)
+    scheduler.add_job(regenerer_taches_fiscales, 'cron', day=1, hour=6, minute=0)  # 1er du mois à 06:00
     scheduler.start()
-    app.logger.info("APScheduler started: daily notifications at 08:00")
+    app.logger.info("APScheduler started: daily at 08:00, monthly fiscal refresh on 1st")
 except Exception as e:
     app.logger.warning(f"APScheduler not available: {e}")

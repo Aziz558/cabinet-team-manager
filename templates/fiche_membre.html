@@ -20,7 +20,17 @@
         <div>
             <h2 class="fw-semibold mb-1">{{ membre.prenom }} {{ membre.nom }}</h2>
             <p class="text-tertiary mb-1">{{ membre.poste or "Membre de l'équipe" }}</p>
-            <small class="text-tertiary">{{ membre.email }}{% if membre.telephone %} | {{ membre.telephone }}{% endif %}</small>
+            <small class="text-tertiary">
+                {% if current_user.role == 'admin' %}
+                <form method="POST" action="{{ url_for('fiche_membre', user_id=membre.id) }}" class="d-inline-flex align-items-center gap-1">
+                    <input type="email" name="email" value="{{ membre.email }}" class="input-premium" style="width:auto;font-size:0.8rem;padding:0.1rem 0.3rem;" required>
+                    <button type="submit" class="btn-premium btn-premium-outline btn-sm" style="padding:0.1rem 0.4rem;font-size:0.7rem;"><i class="bi bi-check"></i></button>
+                </form>
+                {% else %}
+                {{ membre.email }}
+                {% endif %}
+                {% if membre.telephone %} | {{ membre.telephone }}{% endif %}
+            </small>
         </div>
     </div>
     <div class="d-flex align-items-center gap-3">

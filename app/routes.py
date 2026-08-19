@@ -438,13 +438,26 @@ def membres():
 def liste_membres():
     return redirect(url_for('membres'))
 
-@app.route('/fiche_membre/<int:user_id>')
+@app.route('/fiche_membre/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def fiche_membre(user_id):
     """Page de fiche détaillée d'un membre."""
     user = User.query.get_or_404(user_id)
     from datetime import date
     from datetime import timedelta
+    
+    # Admin peut changer l'email
+    if request.method == 'POST' and current_user.role == 'admin':
+        new_email = request.form.get('email', '').strip()
+        if new_email and new_email != user.email:
+            existing = User.query.filter_by(email=new_email).first()
+            if existing and existing.id != user.id:
+                flash('Cet email est déjà utilisé.', 'danger')
+            else:
+                user.email = new_email
+                db.session.commit()
+                flash('Email mis à jour.', 'success')
+        return redirect(url_for('fiche_membre', user_id=user.id))
     
     # Récupérer les dossiers du collaborateur
     dossiers_list = Dossier.query.filter_by(collaborateur_id=user.id).all()
@@ -815,13 +828,22 @@ def prendre_en_charge(tache_id):
     tache.date_prise_en_charge = datetime.utcnow()
     db.session.commit()
     
-    # Notifier le créateur
-    try:
-        from app.integrations.brevo import send_task_taken_email_brevo
-        collab_nom = f"{current_user.prenom} {current_user.nom}"
-        send_task_taken_email_brevo(tache, collab_nom)
-    except Exception as e:
-        app.logger.warning(f"Send email failed: {e}")
+    # Notifier le créateur (manager) + in-app
+    collab_nom = f"{current_user.prenom} {current_user.nom}"
+    if tache.cree_par and tache.cree_par != current_user.id:
+        notif = Notification(
+            user_id=tache.cree_par,
+            tache_id=tache.id,
+            message=f"{collab_nom} a pris en charge : {tache.titre}",
+            type_notification='prise_en_charge'
+        )
+        db.session.add(notif)
+        db.session.commit()
+        try:
+            from app.integrations.brevo import send_task_taken_email_brevo
+            send_task_taken_email_brevo(tache, collab_nom)
+        except Exception as e:
+            app.logger.warning(f"Send email failed: {e}")
     
     flash('Tâche prise en charge.', 'success')
     return redirect(url_for('taches'))
@@ -1308,13 +1330,22 @@ def terminer_tache(tache_id):
         tache.date_prise_en_charge = datetime.utcnow()
     db.session.commit()
     
-    # Notifier le créateur
-    try:
-        from app.integrations.brevo import send_task_completed_email_brevo
-        collab_nom = f"{current_user.prenom} {current_user.nom}"
-        send_task_completed_email_brevo(tache, collab_nom)
-    except Exception as e:
-        app.logger.warning(f"Send email failed: {e}")
+    # Notifier le créateur (manager) + in-app
+    collab_nom = f"{current_user.prenom} {current_user.nom}"
+    if tache.cree_par and tache.cree_par != current_user.id:
+        notif = Notification(
+            user_id=tache.cree_par,
+            tache_id=tache.id,
+            message=f"{collab_nom} a terminé : {tache.titre}",
+            type_notification='completion'
+        )
+        db.session.add(notif)
+        db.session.commit()
+        try:
+            from app.integrations.brevo import send_task_completed_email_brevo
+            send_task_completed_email_brevo(tache, collab_nom)
+        except Exception as e:
+            app.logger.warning(f"Send email failed: {e}")
     
     flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('taches'))
