@@ -1327,22 +1327,17 @@ def changer_statut_tache(tache_id):
         )
         db.session.add(notif)
         db.session.commit()
-        # Email au manager (Brevo ou SMTP)
+        # Email au manager via Brevo (comme l'assignation qui fonctionne)
         try:
             createur = User.query.get(tache.cree_par)
             if createur and createur.email:
+                from app.integrations.brevo import send_email_via_brevo_api
                 sujet = f"Changement de statut : {tache.titre}"
                 corps = f"Bonjour {createur.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\".\n\nCabinet JMH"
-                # Essayer Brevo d'abord
-                from app.integrations.brevo import send_email_via_brevo_api, send_email_notification_fallback
                 envoye = send_email_via_brevo_api(to_email=createur.email, subject=sujet, body=corps)
-                if not envoye:
-                    # Fallback SMTP
-                    envoye = send_email_notification_fallback(to_email=createur.email, subject=sujet, body=corps)
-                if envoye:
-                    app.logger.info(f"Email statut change sent to {createur.email}")
+                app.logger.info(f"Email statut change to {createur.email}: {'OK' if envoye else 'ECHEC'}")
         except Exception as e:
-            app.logger.warning(f"Email statut change failed: {e}")
+            app.logger.warning(f"Email statut change error: {e}")
     
     flash(f'Statut changé à "{nouveau_statut.replace("_", " ")}".', 'success')
     return redirect(url_for('taches'))
