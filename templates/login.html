@@ -11,10 +11,9 @@
     <meta name="theme-color" content="#000000">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'Inter', sans-serif;
-            background: #000000;
+            background: #000;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -22,189 +21,227 @@
             overflow: hidden;
         }
 
-        /* Smooth gradient background */
-        body::before {
-            content: '';
+        /* Premium animated orbs */
+        .orb {
             position: fixed;
-            inset: -50%;
-            background: radial-gradient(ellipse at 30% 20%, rgba(255,140,0,0.06) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 80%, rgba(255,140,0,0.04) 0%, transparent 50%);
-            animation: bgShift 20s ease-in-out infinite alternate;
+            border-radius: 50%;
+            filter: blur(100px);
             pointer-events: none;
+            z-index: 0;
+            opacity: 0.12;
         }
-        @keyframes bgShift {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-5%, 5%) rotate(5deg); }
+        .orb-1 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, #FF8C00, transparent);
+            top: -15%; left: -5%;
+            animation: orbFloat1 30s ease-in-out infinite;
+        }
+        .orb-2 {
+            width: 450px; height: 450px;
+            background: radial-gradient(circle, #FF6B00, transparent);
+            bottom: -20%; right: -10%;
+            animation: orbFloat2 25s ease-in-out infinite reverse;
+        }
+        .orb-3 {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, #FFA726, transparent);
+            top: 45%; left: 55%;
+            animation: orbFloat3 20s ease-in-out infinite;
+        }
+        @keyframes orbFloat1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(80px, -60px) scale(1.05); }
+            66% { transform: translate(-40px, 80px) scale(0.95); }
+        }
+        @keyframes orbFloat2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-70px, 50px) scale(1.05); }
+            66% { transform: translate(50px, -70px) scale(0.95); }
+        }
+        @keyframes orbFloat3 {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.08; }
+            50% { transform: translate(-60px, -40px) scale(1.1); opacity: 0.16; }
         }
 
-        /* Subtle grid */
+        /* Subtle grid overlay */
         .grid-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background-image: 
-                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+                linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
             background-size: 60px 60px;
             pointer-events: none;
-            z-index: 0;
+            z-index: 1;
         }
 
-        /* Login container */
+        /* Login container with entrance animation */
         .login-container {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             width: 100%;
             max-width: 420px;
             padding: 1.5rem;
-            animation: containerIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: slideUp 0.9s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        @keyframes containerIn {
-            from { opacity: 0; transform: translateY(30px) scale(0.97); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.96); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         /* Logo */
-        .login-logo {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
+        .login-logo { text-align: center; margin-bottom: 2rem; }
         .login-logo img {
-            width: 72px;
-            height: 72px;
+            width: 72px; height: 72px;
             border-radius: 18px;
-            background: #0a0a0a;
+            background: rgba(10,10,10,0.8);
             padding: 4px;
             border: 1px solid rgba(255,255,255,0.06);
             margin-bottom: 1rem;
             transition: transform 0.4s ease;
         }
-        .login-logo img:hover {
-            transform: scale(1.03);
-        }
-        .login-logo h1 {
-            font-weight: 700;
-            font-size: 1.5rem;
-            color: #FFFFFF;
-            margin-bottom: 0.25rem;
-            letter-spacing: -0.3px;
-        }
-        .login-logo .tagline {
-            color: #666;
-            font-size: 0.85rem;
-        }
-        .login-logo .tagline span {
-            color: #FF8C00;
-        }
+        .login-logo img:hover { transform: scale(1.04); }
+        .login-logo h1 { font-weight: 700; font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; letter-spacing: -0.3px; }
+        .login-logo .tagline { color: #666; font-size: 0.85rem; }
+        .login-logo .tagline span { color: #FF8C00; }
 
         /* Login card */
         .login-card {
-            background: rgba(10, 10, 10, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.06);
             border-radius: 16px;
             padding: 2rem;
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
         .login-card.fade-out {
             opacity: 0;
-            transform: scale(0.95) translateY(-10px);
+            transform: scale(0.92) translateY(-20px);
         }
 
-        .login-card .form-label {
-            color: #888;
-            font-size: 0.8rem;
-            font-weight: 500;
-            margin-bottom: 0.4rem;
-            display: block;
-        }
-
+        .login-card .form-label { color: #888; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; display: block; }
         .login-card .input-custom {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            color: #FFFFFF;
-            font-size: 0.9rem;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-            transition: all 0.25s ease;
+            width: 100%; padding: 0.8rem 1rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; color: #fff;
+            font-size: 0.9rem; font-family: 'Inter', sans-serif;
+            outline: none; transition: all 0.25s ease;
         }
-        .login-card .input-custom::placeholder {
-            color: #444;
-        }
+        .login-card .input-custom::placeholder { color: #444; }
         .login-card .input-custom:focus {
-            border-color: rgba(255, 140, 0, 0.3);
-            background: rgba(255, 255, 255, 0.05);
-            box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.08);
+            border-color: rgba(255,140,0,0.3);
+            background: rgba(255,255,255,0.05);
+            box-shadow: 0 0 0 3px rgba(255,140,0,0.08);
         }
-
-        .login-card .form-group {
-            margin-bottom: 1.25rem;
-        }
+        .login-card .form-group { margin-bottom: 1.25rem; }
 
         .btn-login {
-            width: 100%;
-            padding: 0.85rem;
-            border: none;
-            border-radius: 10px;
+            width: 100%; padding: 0.85rem;
+            border: none; border-radius: 10px;
             background: linear-gradient(135deg, #FF8C00, #FFA726);
-            color: #000;
-            font-weight: 600;
-            font-size: 0.95rem;
+            color: #000; font-weight: 600; font-size: 0.95rem;
             cursor: pointer;
             transition: all 0.3s ease;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            position: relative; overflow: hidden;
+        }
+        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,140,0,0.3); }
+        .btn-login:active { transform: translateY(0); }
+
+        .login-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 1.25rem 0; }
+        .login-footer { text-align: center; }
+        .login-footer a { color: #666; text-decoration: none; font-size: 0.8rem; transition: color 0.2s ease; }
+        .login-footer a:hover { color: #FF8C00; }
+
+        .alert-custom { padding: 0.6rem 1rem; border-radius: 10px; font-size: 0.8rem; margin-bottom: 1rem; }
+        .alert-danger { background: rgba(239,83,80,0.1); color: #EF5350; border: 1px solid rgba(239,83,80,0.12); }
+        .alert-success { background: rgba(76,175,80,0.1); color: #4CAF50; border: 1px solid rgba(76,175,80,0.12); }
+
+        /* Improved portal effect */
+        .portal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .portal-overlay.active { opacity: 1; }
+        .portal-content {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            z-index: 1001;
+            opacity: 0;
+            transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
+            gap: 1.2rem;
         }
-        .btn-login:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(255, 140, 0, 0.25);
+        .portal-content.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
         }
-        .btn-login:active {
-            transform: translateY(0);
+        .portal-content img {
+            width: 100px; height: 100px;
+            border-radius: 24px;
+            box-shadow: 0 0 60px rgba(255,140,0,0.25);
+            animation: portalPulse 1.5s ease-in-out infinite;
         }
-
-        .login-divider {
-            height: 1px;
-            background: rgba(255, 255, 255, 0.06);
-            margin: 1.25rem 0;
+        @keyframes portalPulse {
+            0%, 100% { box-shadow: 0 0 40px rgba(255,140,0,0.2); }
+            50% { box-shadow: 0 0 80px rgba(255,140,0,0.35); }
         }
-
-        .login-footer {
-            text-align: center;
-        }
-        .login-footer a {
-            color: #666;
-            text-decoration: none;
-            font-size: 0.8rem;
-            transition: color 0.2s ease;
-        }
-        .login-footer a:hover {
+        .portal-content .portal-text {
             color: #FF8C00;
+            font-weight: 600;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            opacity: 0;
+            animation: textFadeIn 0.5s 0.5s forwards;
         }
-
-        .alert-custom {
-            padding: 0.6rem 1rem;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            margin-bottom: 1rem;
+        @keyframes textFadeIn {
+            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(10px); }
         }
-        .alert-danger { background: rgba(239, 83, 80, 0.1); color: #EF5350; border: 1px solid rgba(239, 83, 80, 0.12); }
-        .alert-success { background: rgba(76, 175, 80, 0.1); color: #4CAF50; border: 1px solid rgba(76, 175, 80, 0.12); }
+        .portal-loader {
+            width: 24px; height: 24px;
+            border: 2px solid rgba(255,140,0,0.2);
+            border-top-color: #FF8C00;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-top: 0.5rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 480px) {
             .login-container { padding: 1rem; }
             .login-card { padding: 1.5rem; }
             .login-logo img { width: 60px; height: 60px; }
-            .login-logo h1 { font-size: 1.3rem; }
         }
     </style>
 </head>
 <body>
+    <!-- Animated orbs (improved) -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
     <div class="grid-overlay"></div>
+
+    <!-- Portal effect (improved) -->
+    <div class="portal-overlay" id="portalOverlay"></div>
+    <div class="portal-content" id="portalContent">
+        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
+        <div class="portal-text">Cabinet JMH</div>
+        <div class="portal-loader"></div>
+    </div>
 
     <div class="login-container">
         <div class="login-logo">
@@ -249,10 +286,18 @@
     <script>
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const btn = document.getElementById('loginBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-sm me-1"></span>Connexion...';
-            setTimeout(() => { this.submit(); }, 400);
+            const card = document.getElementById('loginCard');
+            const overlay = document.getElementById('portalOverlay');
+            const content = document.getElementById('portalContent');
+
+            card.classList.add('fade-out');
+
+            setTimeout(() => {
+                overlay.classList.add('active');
+                setTimeout(() => content.classList.add('active'), 200);
+            }, 300);
+
+            setTimeout(() => { this.submit(); }, 1200);
         });
     </script>
 <script>

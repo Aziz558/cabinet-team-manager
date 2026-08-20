@@ -29,6 +29,46 @@
             0% { transform: translate(0, 0); }
             100% { transform: translate(-3%, 3%); }
         }
+        /* Grid overlay */
+        .grid-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        /* Premium orbs for team_select too */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.1;
+        }
+        .orb-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, #FF8C00, transparent);
+            top: -10%; right: -5%;
+            animation: orbFloat1 25s ease-in-out infinite;
+        }
+        .orb-2 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, #FF6B00, transparent);
+            bottom: -10%; left: -5%;
+            animation: orbFloat2 30s ease-in-out infinite reverse;
+        }
+        @keyframes orbFloat1 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-60px, 60px); }
+        }
+        @keyframes orbFloat2 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(50px, -50px); }
+        }
         .container-main {
             position: relative;
             z-index: 1;
@@ -143,6 +183,9 @@
     </style>
 </head>
 <body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="grid-overlay"></div>
     <div class="container-main">
         <div class="header">
             <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH" onerror="this.style.display='none'">
