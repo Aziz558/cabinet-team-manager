@@ -21,7 +21,7 @@
         <div class="app-topbar-left">
             <a class="app-brand" href="{{ url_for('dashboard') }}">
                 <span class="app-brand-icon"><i class="bi bi-briefcase-fill"></i></span>
-                <span class="app-brand-text">Cabinet JMH</span>
+                <span class="app-brand-text">Cabinet JMH <small style="font-size:0.5rem;opacity:0.3;">v3</small></span>
             </a>
             {% if current_user.is_authenticated %}
             {% set photo_src = current_user.photo_display_src() %}
@@ -56,7 +56,7 @@
             </a>
             {% if current_equipe or all_equipes_for_switch %}
             <div class="dropdown">
-                <div class="team-context-icon" style="border-color: {{ current_equipe.couleur if current_equipe else '#FF8C00' }};" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                <div class="team-context-icon" style="border-color: var(--border-color);" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                     <span class="team-icon" style="background: {{ current_equipe.couleur if current_equipe else '#FF8C00' }};color: #fff;">
                         {% if current_equipe %}
                         <i class="bi {{ current_equipe.icon or 'bi-people' }}"></i>
