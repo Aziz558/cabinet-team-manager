@@ -91,6 +91,12 @@ def _planifier_tva(dossier):
         return
     if not regime:
         regime = 'mensuel'  # Par défaut si non renseigné
+    # Compatibilité ascendante : mapper les anciennes valeurs
+    if regime == 'ca3':
+        # CA3 peut être mensuel ou trimestriel. Par défaut mensuel.
+        regime = 'mensuel'
+    elif regime == 'ca12':
+        regime = 'annuel'
     
     ref_date = dossier.date_limite_declaration or date.today()
     year = ref_date.year
