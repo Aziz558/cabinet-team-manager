@@ -1168,7 +1168,8 @@ def suivi_avancement():
         team_ids = [current_user.id]
         for eq in mes_equipes:
             team_ids.extend([m.id for m in eq.membres.all()])
-        membres = User.query.filter(User.id.in_(team_ids), User.actif==True).order_by(User.prenom).all()
+        # Inclure aussi tous les utilisateurs actifs pour voir les tâches assignées
+        membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
     else:
         membres = [current_user]
     

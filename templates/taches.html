@@ -134,7 +134,7 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label-premium">Dossier</label>
+                            <label class="form-label-premium">Dossier <small class="text-tertiary">— <input type="text" id="dossierSearch" class="input-premium input-sm" style="width:auto;font-size:0.7rem;padding:0.1rem 0.3rem;" placeholder="Rechercher..." oninput="filterDossierOptions()"></small></label>
                             <select name="dossier_id" class="select-premium" id="modalDossierSelect">
                                 <option value="">Chargement...</option>
                             </select>
@@ -232,6 +232,18 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDossiers(this.value || null);
     });
 });
+
+// Filtrer les options du select dossier par texte
+function filterDossierOptions() {
+    var search = (document.getElementById('dossierSearch')?.value || '').toLowerCase();
+    var select = document.getElementById('modalDossierSelect');
+    if (!select) return;
+    for (var i = 0; i < select.options.length; i++) {
+        var opt = select.options[i];
+        if (!opt.value) continue; // Toujours montrer l'option vide
+        opt.style.display = opt.text.toLowerCase().indexOf(search) >= 0 ? '' : 'none';
+    }
+}
 
 var fiscalKeywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'];
 
