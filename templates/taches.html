@@ -188,6 +188,49 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Appliquer le filtre statut = a_faire au chargement
     applyFilter();
+    
+    // Charger les membres dans le modal
+    var membreSelect = document.getElementById('modalMembreSelect');
+    var dossierSelect = document.getElementById('modalDossierSelect');
+    
+    function loadDossiers(membreId) {
+        var url = '/api/dossiers-membres';
+        if (membreId) url += '?membre_id=' + membreId;
+        dossierSelect.innerHTML = '<option value="">Chargement...</option>';
+        fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.ok) {
+                dossierSelect.innerHTML = '<option value="">Sélectionner un dossier</option>';
+                data.dossiers.forEach(function(d) {
+                    var opt = document.createElement('option');
+                    opt.value = d.id; opt.textContent = d.label;
+                    dossierSelect.appendChild(opt);
+                });
+            } else {
+                dossierSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+            }
+        }).catch(function() {
+            dossierSelect.innerHTML = '<option value="">Erreur</option>';
+        });
+    }
+    
+    // Charger les membres d'abord
+    fetch('/api/dossiers-membres').then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+            membreSelect.innerHTML = '<option value="">Sélectionner un membre</option>';
+            data.membres.forEach(function(m) {
+                var opt = document.createElement('option');
+                opt.value = m.id; opt.textContent = m.label;
+                membreSelect.appendChild(opt);
+            });
+            // Charger tous les dossiers au début
+            loadDossiers(null);
+        }
+    });
+    
+    // Quand le membre change, recharger les dossiers
+    membreSelect.addEventListener('change', function() {
+        loadDossiers(this.value || null);
+    });
 });
 
 var fiscalKeywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'];

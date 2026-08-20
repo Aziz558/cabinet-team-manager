@@ -858,8 +858,15 @@ def settings():
 @app.route('/api/dossiers-membres')
 @login_required
 def api_dossiers_membres():
-    """API pour alimenter les menus déroulants du modal de création de tâche."""
-    dossiers = Dossier.query.order_by(Dossier.numero_dossier).all()
+    """API pour alimenter les menus déroulants du modal de création de tâche.
+       Si ?membre_id=X est fourni, ne retourne que les dossiers de ce membre."""
+    membre_id = request.args.get('membre_id', type=int)
+    
+    query = Dossier.query.order_by(Dossier.numero_dossier)
+    if membre_id:
+        query = query.filter_by(collaborateur_id=membre_id)
+    dossiers = query.all()
+    
     membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
     
     return jsonify({
@@ -1141,7 +1148,7 @@ def supprimer_tache(tache_id):
 def taches_aujourdhui():
     """Tâches dont l'échéance est aujourd'hui."""
     today_taches = Tache.query.filter(Tache.date_echeance == date.today()).all()
-    return render_template('taches.html', taches=today_taches)
+    return render_template('taches.html', taches=today_taches, date=date, timedelta=timedelta)
 
 # ==========================
 # Suivi d'avancement par membre
