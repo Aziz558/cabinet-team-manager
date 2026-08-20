@@ -1,0 +1,26 @@
+{
+  "name": "Cabinet JMH",
+  "short_name": "Cabinet JMH",
+  "description": "Gestion d'équipe & comptabilité — Cabinet JMH",
+  "start_url": "/login",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#FF8C00",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/img/logo-jmh.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/logo-jmh.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "fr-FR",
+  "dir": "ltr"
+}
