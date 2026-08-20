@@ -23,27 +23,30 @@
             <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="fiscal" onclick="applyFilter('fiscal')">Fiscalité</button>
             <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="regular" onclick="applyFilter('regular')">Générales</button>
             <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
-            <select class="select-premium select-sm" id="filterStatut" onchange="applyFilter()" style="width:auto;">
-                <option value="all">Tous statuts</option>
-                <option value="a_faire" selected>À faire</option>
-                <option value="en_cours">En cours</option>
-                <option value="terminee">Terminée</option>
-            </select>
+            <span class="text-tertiary small">Statut :</span>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle active" data-statut="a_faire" onclick="toggleTaskStatut('a_faire')">À faire</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="en_cours" onclick="toggleTaskStatut('en_cours')">En cours</button>
+            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="terminee" onclick="toggleTaskStatut('terminee')">Terminée</button>
+            <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
+            <span class="text-tertiary small">Membre :</span>
             <select class="select-premium select-sm" id="filterMembre" onchange="applyFilter()" style="width:auto;">
-                <option value="all">Tous les membres</option>
+                <option value="all">Tous</option>
                 {% for m in membres %}
                 <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
                 {% endfor %}
             </select>
+            <span class="text-tertiary small">Dossier :</span>
             <select class="select-premium select-sm" id="filterDossier" onchange="applyFilter()" style="width:auto;">
-                <option value="all">Tous les dossiers</option>
+                <option value="all">Tous</option>
                 {% for d in dossiers %}
                 <option value="{{ d.id }}">{{ d.numero_dossier }}</option>
                 {% endfor %}
             </select>
-            <input type="date" class="input-premium select-sm" id="filterDateDebut" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;" placeholder="Du">
-            <input type="date" class="input-premium select-sm" id="filterDateFin" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;" placeholder="Au">
-            <input type="text" class="input-premium input-sm" id="filterSearch" placeholder="Rechercher..." oninput="applyFilter()" style="width:160px;">
+            <span class="text-tertiary small">Du :</span>
+            <input type="date" class="input-premium select-sm" id="filterDateDebut" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;">
+            <span class="text-tertiary small">Au :</span>
+            <input type="date" class="input-premium select-sm" id="filterDateFin" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;">
+            <input type="text" class="input-premium input-sm" id="filterSearch" placeholder="Rechercher..." oninput="applyFilter()" style="width:140px;">
         </div>
     </div>
 </div>
@@ -246,10 +249,27 @@ function filterDossierOptions() {
 }
 
 var fiscalKeywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'];
+var taskStatutSelected = ['a_faire'];
 
-function applyFilter() {
-    var typeFilter = document.querySelector('.filter-btn.active')?.dataset?.filter || 'all';
-    var statut = document.getElementById('filterStatut')?.value || 'all';
+function toggleTaskStatut(value) {
+    var idx = taskStatutSelected.indexOf(value);
+    if (idx >= 0) { taskStatutSelected.splice(idx, 1); }
+    else { taskStatutSelected.push(value); }
+    document.querySelectorAll('.filter-toggle').forEach(function(b) {
+        var v = b.dataset.statut;
+        if (taskStatutSelected.indexOf(v) >= 0) {
+            b.classList.add('active', 'btn-premium-primary');
+            b.classList.remove('btn-premium-secondary');
+        } else {
+            b.classList.remove('active', 'btn-premium-primary');
+            b.classList.add('btn-premium-secondary');
+        }
+    });
+    applyFilter(document.querySelector('.filter-btn.active')?.dataset?.filter || 'all');
+}
+
+function applyFilter(typeFilter) {
+    if (!typeFilter) typeFilter = document.querySelector('.filter-btn.active')?.dataset?.filter || 'all';
     var membre = document.getElementById('filterMembre')?.value || 'all';
     var dossier = document.getElementById('filterDossier')?.value || 'all';
     var dateDebut = document.getElementById('filterDateDebut')?.value || '';
@@ -257,6 +277,11 @@ function applyFilter() {
     var search = (document.getElementById('filterSearch')?.value || '').toLowerCase();
     var cards = document.querySelectorAll('#taskBoard .task-card');
     var visibleCount = 0;
+
+    // Update active type button
+    document.querySelectorAll('.filter-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.filter === typeFilter);
+    });
 
     cards.forEach(function(card) {
         var show = true;
@@ -268,8 +293,9 @@ function applyFilter() {
             show = !fiscalKeywords.some(function(kw) { return titre.indexOf(kw) >= 0; });
         }
 
-        if (show && statut !== 'all') {
-            show = card.dataset.statut === statut;
+        // Multi-statut filter
+        if (show && taskStatutSelected.length > 0) {
+            show = taskStatutSelected.indexOf(card.dataset.statut) >= 0;
         }
         if (show && membre !== 'all') {
             show = card.dataset.assigne === membre;
@@ -293,7 +319,8 @@ function applyFilter() {
         if (show) visibleCount++;
     });
 
-    document.getElementById('taskCount').textContent = visibleCount + ' tâche(s)';
+    var counter = document.getElementById('taskCount');
+    if (counter) counter.textContent = visibleCount + ' tâche(s)';
 }
 </script>
 {% endblock %}
