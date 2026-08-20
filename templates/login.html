@@ -1,69 +1,271 @@
-{% extends "base.html" %}
-{% block title %}Connexion — Cabinet JMH{% endblock %}
-{% block content %}
-<div class="row justify-content-center min-vh-100 align-items-center">
-    <div class="col-md-5 col-lg-4">
-        <div class="text-center mb-4">
-            <span class="app-brand-icon" style="width:64px;height:64px;font-size:1.5rem;margin:0 auto 1rem;background:var(--bg-card);border:2px solid var(--border-color);">
-                <i class="bi bi-briefcase-fill" style="color:var(--orange-primary);"></i>
-            </span>
-            <h3 class="fw-bold">Cabinet JMH</h3>
-            <p class="text-tertiary">Gestion d'équipe &amp; comptabilité</p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion — Cabinet JMH</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#000000">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Smooth gradient background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -50%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(255,140,0,0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(255,140,0,0.04) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+        @keyframes bgShift {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-5%, 5%) rotate(5deg); }
+        }
+
+        /* Subtle grid */
+        .grid-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Login container */
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 1.5rem;
+            animation: containerIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes containerIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Logo */
+        .login-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-logo img {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            background: #0a0a0a;
+            padding: 4px;
+            border: 1px solid rgba(255,255,255,0.06);
+            margin-bottom: 1rem;
+            transition: transform 0.4s ease;
+        }
+        .login-logo img:hover {
+            transform: scale(1.03);
+        }
+        .login-logo h1 {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #FFFFFF;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.3px;
+        }
+        .login-logo .tagline {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        .login-logo .tagline span {
+            color: #FF8C00;
+        }
+
+        /* Login card */
+        .login-card {
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .login-card.fade-out {
+            opacity: 0;
+            transform: scale(0.95) translateY(-10px);
+        }
+
+        .login-card .form-label {
+            color: #888;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        .login-card .input-custom {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            color: #FFFFFF;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+        .login-card .input-custom::placeholder {
+            color: #444;
+        }
+        .login-card .input-custom:focus {
+            border-color: rgba(255, 140, 0, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.08);
+        }
+
+        .login-card .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #FF8C00, #FFA726);
+            color: #000;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-login:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(255, 140, 0, 0.25);
+        }
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .login-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 1.25rem 0;
+        }
+
+        .login-footer {
+            text-align: center;
+        }
+        .login-footer a {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: color 0.2s ease;
+        }
+        .login-footer a:hover {
+            color: #FF8C00;
+        }
+
+        .alert-custom {
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .alert-danger { background: rgba(239, 83, 80, 0.1); color: #EF5350; border: 1px solid rgba(239, 83, 80, 0.12); }
+        .alert-success { background: rgba(76, 175, 80, 0.1); color: #4CAF50; border: 1px solid rgba(76, 175, 80, 0.12); }
+
+        @media (max-width: 480px) {
+            .login-container { padding: 1rem; }
+            .login-card { padding: 1.5rem; }
+            .login-logo img { width: 60px; height: 60px; }
+            .login-logo h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-overlay"></div>
+
+    <div class="login-container">
+        <div class="login-logo">
+            <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
+            <h1>Cabinet JMH</h1>
+            <p class="tagline">Gestion d'équipe <span>&amp;</span> comptabilité</p>
         </div>
 
-        <div class="card-premium">
-            <div class="card-body-premium">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if 'danger' in category else 'success' }}" style="background:var(--{{ 'danger' if 'danger' in category else 'success' }}-bg);color:var(--{{ 'danger' if 'danger' in category else 'success' }});border:none;border-radius:10px;font-size:0.85rem;padding:0.6rem 1rem;">
-                    {{ message }}
-                </div>
-                {% endfor %}
-                {% endif %}
-                {% endwith %}
+        <div class="login-card" id="loginCard">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert-custom alert-{{ 'danger' if 'danger' in category else 'success' }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
 
-                <form method="POST" id="loginForm" action="{{ url_for('login') }}">
-                    <div class="mb-3">
-                        <label class="form-label-premium">Adresse email</label>
-                        <input type="email" name="email" class="input-premium" required autofocus placeholder="vous@cabinet-jmh.com">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label-premium">Mot de passe</label>
-                        <input type="password" name="password" class="input-premium" required placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="btn-premium btn-premium-primary w-100 btn-press" id="loginBtn">
-                        Se connecter <i class="bi bi-arrow-right ms-1"></i>
-                    </button>
-                </form>
-
-                <hr class="my-3" style="border-color:var(--border-color);">
-
-                <div class="text-center">
-                    <a href="{{ url_for('team_select') }}" class="text-tertiary small" style="text-decoration:none;">
-                        <i class="bi bi-arrow-left me-1"></i>Choisir une équipe
-                    </a>
+            <form method="POST" id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Adresse email</label>
+                    <input type="email" name="email" class="input-custom" required autofocus placeholder="vous@cabinet-jmh.com">
                 </div>
-                <div class="text-center mt-2">
-                    <button id="installPwaBtn" style="display:none;background:transparent;border:1px solid var(--border-color);color:var(--text-primary);padding:0.4rem 1rem;border-radius:8px;font-size:0.8rem;cursor:pointer;">
-                        <i class="bi bi-download me-1"></i>Installer l'application
-                    </button>
+                <div class="form-group">
+                    <label class="form-label">Mot de passe</label>
+                    <input type="password" name="password" class="input-custom" required placeholder="••••••••">
                 </div>
+                <button type="submit" class="btn-login" id="loginBtn">
+                    Se connecter <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </form>
+
+            <div class="login-divider"></div>
+
+            <div class="login-footer">
+                <a href="{{ url_for('team_select') }}"><i class="bi bi-arrow-left me-1"></i>Choisir une équipe</a>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-{{ super() }}
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-sm me-1"></span>Connexion...';
+            setTimeout(() => { this.submit(); }, 400);
+        });
+    </script>
 <script>
-document.getElementById('loginForm')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const btn = document.getElementById('loginBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-sm me-1"></span>Connexion...';
-    setTimeout(() => { this.submit(); }, 400);
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js'); }
+var deferredPrompt;
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault(); deferredPrompt = e;
+    var btn = document.getElementById('installPwaBtn');
+    if (btn) btn.style.display = 'inline-block';
+});
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'installPwaBtn' && deferredPrompt) { deferredPrompt.prompt(); }
 });
 </script>
-{% endblock %}
+</body>
+</html>
