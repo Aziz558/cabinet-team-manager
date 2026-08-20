@@ -2754,7 +2754,7 @@ p {
     border-radius: 50%;
     background: var(--bg-card-hover);
     color: var(--text-primary);
-    border: 1px solid rgba(255, 140, 0, 0.35);
+    border: 1px solid var(--border-color);
 }
 .user-icon-badge,
 .manager-avatar-icon {

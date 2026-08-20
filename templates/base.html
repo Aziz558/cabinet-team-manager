@@ -346,23 +346,41 @@ document.addEventListener('click', function(e) {
 });
 // Sound notification on new notification
 var lastNotifCount = parseInt(localStorage.getItem('notifCount') || '0');
+// Request notification permission
+if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+}
 setInterval(function() {
     fetch('/notifications/non_lues').then(function(r) { return r.json(); }).then(function(data) {
         var count = data.count || 0;
-        if (count > lastNotifCount && count > 0 && localStorage.getItem('soundEnabled') !== 'false') {
-            try {
-                var ctx = new (window.AudioContext || window.webkitAudioContext)();
-                var osc = ctx.createOscillator();
-                var gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.value = 880;
-                osc.type = 'sine';
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + 0.3);
-            } catch(e) {}
+        if (count > lastNotifCount && count > 0) {
+            if (localStorage.getItem('soundEnabled') !== 'false') {
+                try {
+                    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    var osc = ctx.createOscillator();
+                    var gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = 880;
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.3);
+                } catch(e) {}
+            }
+            // Desktop notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    var n = new Notification('Cabinet JMH', {
+                        body: data.last_message || count + ' nouvelle(s) notification(s)',
+                        icon: '/static/img/logo-jmh.png',
+                        tag: 'cabinet-jmh-notif',
+                        silent: true
+                    });
+                    setTimeout(function() { n.close(); }, 5000);
+                } catch(e) {}
+            }
         }
         lastNotifCount = count;
         localStorage.setItem('notifCount', count);
