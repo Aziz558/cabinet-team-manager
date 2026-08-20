@@ -690,8 +690,8 @@ p {
 }
 
 .sidebar-nav-item.active {
-    background: rgba(255, 140, 0, 0.08);
-    color: var(--orange-primary);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
 }
 
 .sidebar-nav-item.active::before {
@@ -701,7 +701,7 @@ p {
     top: 20%;
     height: 60%;
     width: 3px;
-    background: var(--orange-primary);
+    background: var(--text-primary);
     border-radius: 0 3px 3px 0;
 }
 
