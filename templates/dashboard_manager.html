@@ -298,24 +298,26 @@
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Tâches du jour</h5>
             </div>
-            <div class="card-body-premium">
+            <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
                 {% if taches_jour %}
-                    {% for t in taches_jour %}
-                    <div class="task-item d-flex justify-content-between align-items-center p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
-                        <div>
-                            <strong>{{ t.titre }}</strong>
-                            <br><small class="text-tertiary">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
+                    {% for t in taches_jour[:8] %}
+                    <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                        <!-- Statut icon -->
+                        <span class="flex-shrink-0" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;
+                        {% if t.statut == 'a_faire' %}background:rgba(255,152,0,0.15);color:#FF9800;
+                        {% elif t.statut == 'en_cours' %}background:rgba(66,165,245,0.15);color:#42A5F5;
+                        {% else %}background:rgba(102,187,106,0.15);color:#66BB6A;{% endif %}">
+                            {% if t.statut == 'a_faire' %}<i class="bi bi-circle"></i>
+                            {% elif t.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
+                            {% else %}<i class="bi bi-check2"></i>{% endif %}
+                        </span>
+                        <div class="flex-grow-1 min-w-0">
+                            <strong style="font-size:0.85rem;">{{ t.titre }}</strong>
+                            <br><small class="text-tertiary" style="font-size:0.75rem;">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}">
-                                {{ t.priorite }}
-                            </span>
-                            <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
-                                <button type="submit" class="btn-premium btn-premium-secondary btn-press">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </div>
+                        <span class="flex-shrink-0 badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}" style="font-size:0.6rem;">
+                            {{ t.priorite }}
+                        </span>
                     </div>
                     {% endfor %}
                 {% else %}
@@ -333,24 +335,26 @@
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Tâches de la semaine</h5>
             </div>
-            <div class="card-body-premium">
+            <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
                 {% if taches_semaine %}
-                    {% for t in taches_semaine %}
-                    <div class="task-item d-flex justify-content-between align-items-center p-3 rounded" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0.75rem;">
-                        <div>
-                            <strong>{{ t.titre }}</strong>
-                            <br><small class="text-tertiary">{{ t.date_echeance.strftime('%d/%m/%Y') }} - {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
+                    {% for t in taches_semaine[:8] %}
+                    <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                        <!-- Statut icon -->
+                        <span class="flex-shrink-0" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;
+                        {% if t.statut == 'a_faire' %}background:rgba(255,152,0,0.15);color:#FF9800;
+                        {% elif t.statut == 'en_cours' %}background:rgba(66,165,245,0.15);color:#42A5F5;
+                        {% else %}background:rgba(102,187,106,0.15);color:#66BB6A;{% endif %}">
+                            {% if t.statut == 'a_faire' %}<i class="bi bi-circle"></i>
+                            {% elif t.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
+                            {% else %}<i class="bi bi-check2"></i>{% endif %}
+                        </span>
+                        <div class="flex-grow-1 min-w-0">
+                            <strong style="font-size:0.85rem;">{{ t.titre }}</strong>
+                            <br><small class="text-tertiary" style="font-size:0.75rem;">{{ t.date_echeance.strftime('%d/%m') if t.date_echeance else '' }} · {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}">
-                                {{ t.priorite }}
-                            </span>
-                            <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
-                                <button type="submit" class="btn-premium btn-premium-secondary btn-press">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </div>
+                        <span class="flex-shrink-0 badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}" style="font-size:0.6rem;">
+                            {{ t.priorite }}
+                        </span>
                     </div>
                     {% endfor %}
                 {% else %}

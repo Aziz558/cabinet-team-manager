@@ -120,12 +120,14 @@ def dashboard():
         
         taches_jour = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),
-            Tache.date_echeance == date.today()
+            Tache.date_echeance == date.today(),
+            Tache.statut.in_(['a_faire', 'en_cours'])
         ).order_by(Tache.priorite.desc()).all()
         
         taches_semaine = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),
-            Tache.date_echeance.between(date.today(), week_end)
+            Tache.date_echeance.between(date.today(), week_end),
+            Tache.statut.in_(['a_faire', 'en_cours'])
         ).order_by(Tache.date_echeance.asc()).all()
 
         # Notifications non lues
@@ -161,11 +163,13 @@ def dashboard():
 
         taches_jour = Tache.query.filter(
             Tache.assigne_a == current_user.id,
-            Tache.date_echeance == date.today()
+            Tache.date_echeance == date.today(),
+            Tache.statut.in_(['a_faire', 'en_cours'])
         ).order_by(Tache.priorite.desc()).all()
         taches_semaine = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),
-            Tache.date_echeance.between(date.today(), week_end)
+            Tache.date_echeance.between(date.today(), week_end),
+            Tache.statut.in_(['a_faire', 'en_cours'])
         ).order_by(Tache.date_echeance.asc()).all()
 
         kpi = {
