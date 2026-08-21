@@ -837,20 +837,36 @@ def prendre_en_charge(tache_id):
     
     # Notifier le créateur (manager) + in-app
     collab_nom = f"{current_user.prenom} {current_user.nom}"
-    if tache.cree_par and tache.cree_par != current_user.id:
+    cree_par_id = tache.cree_par
+    team_manager = None
+    if not cree_par_id and tache.dossier and tache.dossier.equipe and tache.dossier.equipe.manager:
+        team_manager = tache.dossier.equipe.manager
+        cree_par_id = team_manager.id
+    if cree_par_id and cree_par_id != current_user.id:
         notif = Notification(
-            user_id=tache.cree_par,
+            user_id=cree_par_id,
             tache_id=tache.id,
             message=f"{collab_nom} a pris en charge : {tache.titre}",
             type_notification='prise_en_charge'
         )
         db.session.add(notif)
         db.session.commit()
-        try:
-            from app.integrations.brevo import send_task_taken_email_brevo
-            send_task_taken_email_brevo(tache, collab_nom)
-        except Exception as e:
-            app.logger.warning(f"Send email failed: {e}")
+        # Envoyer email
+        dest_user = User.query.get(cree_par_id)
+        if dest_user and dest_user.email:
+            try:
+                if team_manager:
+                    from app.integrations.brevo import send_email_via_brevo_api
+                    send_email_via_brevo_api(
+                        to_email=dest_user.email,
+                        subject=f"Prise en charge : {tache.titre}",
+                        body=f"Bonjour {dest_user.prenom},\n\n{collab_nom} a pris en charge la tâche \"{tache.titre}\"."
+                    )
+                else:
+                    from app.integrations.brevo import send_task_taken_email_brevo
+                    send_task_taken_email_brevo(tache, collab_nom)
+            except Exception as e:
+                app.logger.warning(f"Send email failed: {e}")
     
     flash('Tâche prise en charge.', 'success')
     return redirect(url_for('taches'))
@@ -1339,26 +1355,31 @@ def changer_statut_tache(tache_id):
     
     # Notifier le créateur (manager) du changement + email
     collab_nom = f"{current_user.prenom} {current_user.nom}"
-    if tache.cree_par and tache.cree_par != current_user.id:
+    cree_par_id = tache.cree_par
+    team_manager = None
+    if not cree_par_id and tache.dossier and tache.dossier.equipe and tache.dossier.equipe.manager:
+        team_manager = tache.dossier.equipe.manager
+        cree_par_id = team_manager.id
+    if cree_par_id and cree_par_id != current_user.id:
         notif = Notification(
-            user_id=tache.cree_par,
+            user_id=cree_par_id,
             tache_id=tache.id,
             message=f"{collab_nom} a changé le statut de \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\"",
             type_notification='systeme'
         )
         db.session.add(notif)
         db.session.commit()
-        # Email au manager via Brevo (comme l'assignation qui fonctionne)
-        try:
-            createur = User.query.get(tache.cree_par)
-            if createur and createur.email:
+        # Email
+        dest_user = User.query.get(cree_par_id)
+        if dest_user and dest_user.email:
+            try:
                 from app.integrations.brevo import send_email_via_brevo_api
                 sujet = f"Changement de statut : {tache.titre}"
-                corps = f"Bonjour {createur.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\".\n\nCabinet JMH"
-                envoye = send_email_via_brevo_api(to_email=createur.email, subject=sujet, body=corps)
-                app.logger.info(f"Email statut change to {createur.email}: {'OK' if envoye else 'ECHEC'}")
-        except Exception as e:
-            app.logger.warning(f"Email statut change error: {e}")
+                corps = f"Bonjour {dest_user.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau_statut.replace('_', ' ')}\".\n\nCabinet JMH"
+                envoye = send_email_via_brevo_api(to_email=dest_user.email, subject=sujet, body=corps)
+                app.logger.info(f"Email statut change to {dest_user.email}: {'OK' if envoye else 'ECHEC'}")
+            except Exception as e:
+                app.logger.warning(f"Email statut change error: {e}")
     
     flash(f'Statut changé à "{nouveau_statut.replace("_", " ")}".', 'success')
     return redirect(url_for('taches'))
@@ -1385,20 +1406,36 @@ def terminer_tache(tache_id):
     
     # Notifier le créateur (manager) + in-app
     collab_nom = f"{current_user.prenom} {current_user.nom}"
-    if tache.cree_par and tache.cree_par != current_user.id:
+    cree_par_id = tache.cree_par
+    team_manager = None
+    if not cree_par_id and tache.dossier and tache.dossier.equipe and tache.dossier.equipe.manager:
+        team_manager = tache.dossier.equipe.manager
+        cree_par_id = team_manager.id
+    if cree_par_id and cree_par_id != current_user.id:
         notif = Notification(
-            user_id=tache.cree_par,
+            user_id=cree_par_id,
             tache_id=tache.id,
             message=f"{collab_nom} a terminé : {tache.titre}",
             type_notification='completion'
         )
         db.session.add(notif)
         db.session.commit()
-        try:
-            from app.integrations.brevo import send_task_completed_email_brevo
-            send_task_completed_email_brevo(tache, collab_nom)
-        except Exception as e:
-            app.logger.warning(f"Send email failed: {e}")
+        # Envoyer email
+        dest_user = User.query.get(cree_par_id)
+        if dest_user and dest_user.email:
+            try:
+                if team_manager:
+                    from app.integrations.brevo import send_email_via_brevo_api
+                    send_email_via_brevo_api(
+                        to_email=dest_user.email,
+                        subject=f"Tâche terminée : {tache.titre}",
+                        body=f"Bonjour {dest_user.prenom},\n\n{collab_nom} a terminé la tâche \"{tache.titre}\"."
+                    )
+                else:
+                    from app.integrations.brevo import send_task_completed_email_brevo
+                    send_task_completed_email_brevo(tache, collab_nom)
+            except Exception as e:
+                app.logger.warning(f"Send email failed: {e}")
     
     flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('taches'))
