@@ -1005,13 +1005,19 @@ def importer_csv():
         dialect = csv.Sniffer().sniff(content[:1024])
         reader = csv.DictReader(io.StringIO(content), dialect=dialect)
     except Exception:
-        # Fallback: try with semicolon
+        # Fallback: try with semicolon delimiter + latin1 encoding
         try:
-            content = file.read().decode('utf-8-sig')
+            file.seek(0)
+            content = file.read().decode('ISO-8859-1')
             reader = csv.DictReader(io.StringIO(content), delimiter=';')
-        except Exception as e:
-            flash(f'Erreur de lecture du CSV: {str(e)}', 'danger')
-            return redirect(url_for('dossiers'))
+        except Exception:
+            try:
+                file.seek(0)
+                content = file.read().decode('utf-8-sig')
+                reader = csv.DictReader(io.StringIO(content), delimiter=';')
+            except Exception as e:
+                flash(f'Erreur de lecture du CSV: {str(e)}. Vérifiez que le fichier est au format CSV avec séparateur point-virgule (;)', 'danger')
+                return redirect(url_for('dossiers'))
     
     success_count = 0
     error_count = 0
