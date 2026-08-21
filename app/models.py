@@ -92,7 +92,7 @@ class Dossier(db.Model):
     date_limite_declaration = db.Column(db.Date)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     date_cloture = db.Column(db.DateTime)
-    frequence_tva = db.Column(db.String(20), default='trimestrielle')  # mensuelle | trimestrielle
+    frequence_tva = db.Column(db.String(20))  # mensuelle | trimestrielle | None
     regime_fiscale = db.Column(db.String(10))  # IS | IRPP
     has_cfe = db.Column(db.Boolean, default=False)
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)

@@ -1075,8 +1075,10 @@ def importer_csv():
                     errors.append(f'Ligne {row_num}: équipe {equipe_nom} introuvable')
                     continue
             
-            regime_tva = row.get('regime_tva', '').strip() or None
-            frequence_tva = row.get('frequence_tva', '').strip() or None
+            regime_tva = (row.get('regime_tva', '').strip() or None)
+            if regime_tva:
+                regime_tva = regime_tva.lower()
+            frequence_tva = (row.get('frequence_tva', '').strip().lower() or None)
             regime_fiscale = row.get('regime_fiscale', '').strip() or None
             
             date_limite_str = row.get('date_limite_declaration', '').strip()
