@@ -6,15 +6,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
     <h2 class="fw-semibold"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Dossiers</h2>
     <div class="d-flex gap-2">
-        <button class="btn-premium btn-premium-secondary btn-press" data-bs-toggle="modal" data-bs-target="#modalImport">
-            <i class="bi bi-upload me-1"></i>Importer CSV
-        </button>
-        <a href="{{ url_for('telecharger_template_csv') }}" class="btn-premium btn-premium-outline btn-press">
-            <i class="bi bi-download me-1"></i>Télécharger template
-        </a>
-        <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalDossier">
-            <i class="bi bi-folder-plus me-2"></i>Nouveau dossier
-        </button>
         <form method="POST" action="{{ url_for('supprimer_dossiers') }}" class="d-inline" id="batchDeleteForm" onsubmit="return batchDeleteConfirm(event)">
             <button type="submit" class="btn-premium btn-premium-outline btn-press" id="btnSupprimerSelection" style="display:none;border-color:rgba(244,67,54,0.5);color:#f44336;">
                 <i class="bi bi-trash me-1"></i>Supprimer sélection
@@ -30,45 +21,76 @@
 {% set show_actions = True %}
 {% endif %}
 
-<div class="card-premium mb-3 animate-fade-in-up">
-    <div class="card-body-premium">
-        <div class="position-relative">
-            <span class="position-absolute top-50 start-0 translate-middle-y ms-2" style="color: var(--text-tertiary);">
-                <i class="bi bi-search"></i>
-            </span>
-            <input type="text" id="rechercheDossier" class="input-premium ps-5" placeholder="Rechercher par n°, intitulé, collaborateur, régime TVA...">
+<!-- Search bar -->
+<div class="card-premium mb-3 animate-fade-in-up border-0" style="background:transparent;">
+    <div class="card-body-premium p-0">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="position-relative flex-grow-1" style="min-width:200px;">
+                <span class="position-absolute top-50 start-0 translate-middle-y ms-3" style="color:var(--text-tertiary);z-index:2;">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" id="rechercheDossier" class="input-premium ps-5 py-3" placeholder="Rechercher un dossier par n°, intitulé, collaborateur...">
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalDossier">
+                    <i class="bi bi-plus-lg me-1"></i>Nouveau dossier
+                </button>
+                <button class="btn-premium btn-premium-secondary btn-press" data-bs-toggle="modal" data-bs-target="#modalImport">
+                    <i class="bi bi-upload me-1"></i>Importer
+                </button>
+                <a href="{{ url_for('telecharger_template_csv') }}" class="btn-premium btn-premium-secondary btn-press">
+                    <i class="bi bi-download me-1"></i>Template
+                </a>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Member filter - horizontal bar -->
-<div class="card-premium mb-3 animate-fade-in-up" style="padding:0;">
-    <div class="card-body-premium p-3">
-        <small class="text-tertiary mb-2 d-block" style="font-size:0.7rem;">COLLABORATEURS :</small>
-        <div class="d-flex flex-wrap gap-2" style="max-height:80px;overflow-y:auto;">
-            <div class="d-flex align-items-center gap-2 px-3 py-2 rounded border" style="cursor:pointer;background:var(--orange-primary);color:#000;" onclick="filterByMember('all')" id="filterAllMembers">
-                <span style="width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:0.6rem;">T</span>
-                <span style="font-size:0.75rem;font-weight:600;">Tous</span>
+<!-- Filtre collaborateurs - avatars design -->
+<div class="card-premium mb-4 animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
+    <div class="card-body-premium px-4 py-3">
+        <div class="d-flex align-items-center gap-1 mb-3">
+            <span class="d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;border-radius:8px;background:var(--orange-primary);color:#000;font-size:0.75rem;">
+                <i class="bi bi-people-fill"></i>
+            </span>
+            <span class="fw-semibold" style="font-size:0.85rem;">Collaborateurs</span>
+            <span class="badge rounded-pill ms-1" style="background:var(--bg-card-hover);color:var(--text-secondary);font-size:0.65rem;font-weight:400;">{{ membres|length }}</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-column align-items-center gap-1 px-3 py-2 rounded-3 member-filter-item" onclick="filterByMember('all')" id="filterAllMembers" style="cursor:pointer;transition:all 0.2s;background:var(--orange-primary);color:#000;min-width:60px;">
+                <span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;">T</span>
+                <span style="font-size:0.65rem;font-weight:600;white-space:nowrap;">Tous</span>
             </div>
             {% for m in membres %}
-            <div class="d-flex align-items-center gap-2 px-3 py-2 rounded border member-filter-item" data-membre-id="{{ m.id }}" onclick="filterByMember('{{ m.id }}')" style="cursor:pointer;transition:all 0.2s;">
+            {% set nb_dossiers = dossiers_par_collab.get(m.id, 0) %}
+            <div class="d-flex flex-column align-items-center gap-1 px-3 py-2 rounded-3 member-filter-item" data-membre-id="{{ m.id }}" onclick="filterByMember('{{ m.id }}')" style="cursor:pointer;transition:all 0.2s;min-width:60px;position:relative;">
                 {% set photo = m.photo_display_src() %}
                 {% if photo %}
-                <img src="{{ photo }}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">
+                <span style="position:relative;width:36px;height:36px;">
+                    <img src="{{ photo }}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                    {% if nb_dossiers > 0 %}
+                    <span class="badge rounded-pill position-absolute" style="top:-4px;right:-4px;background:var(--orange-primary);color:#000;font-size:0.5rem;padding:1px 4px;min-width:16px;">{{ nb_dossiers }}</span>
+                    {% endif %}
+                </span>
                 {% else %}
-                <span style="width:24px;height:24px;border-radius:50%;background:var(--bg-card-hover);display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-secondary);"><i class="bi bi-person-fill"></i></span>
+                <span style="position:relative;width:36px;height:36px;border-radius:50%;background:var(--bg-card-hover);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:var(--text-secondary);">
+                    <i class="bi bi-person-fill"></i>
+                    {% if nb_dossiers > 0 %}
+                    <span class="badge rounded-pill position-absolute" style="top:-4px;right:-4px;background:var(--orange-primary);color:#000;font-size:0.5rem;padding:1px 4px;min-width:16px;">{{ nb_dossiers }}</span>
+                    {% endif %}
+                </span>
                 {% endif %}
-                <span style="font-size:0.75rem;">{{ m.prenom }} {{ m.nom|first }}.</span>
+                <span style="font-size:0.65rem;white-space:nowrap;font-weight:500;">{{ m.prenom }} {{ m.nom|first }}.</span>
             </div>
             {% endfor %}
         </div>
     </div>
 </div>
 
-<div class="card-premium animate-fade-in-up">
+<div class="card-premium animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
     <div class="card-body-premium p-0">
         <div class="table-responsive">
-            <table class="table-premium" id="tableDossiers">
+            <table class="table-premium table-premium-breathe" id="tableDossiers">
                 <thead>
                     <tr>
                         <th style="width:36px"><input type="checkbox" id="selectAllDossiers" class="select-all-checkbox"></th>
@@ -80,8 +102,8 @@
                         <th>FRÉQUENCE</th>
                         <th>DATE LIMITE</th>
                         <th>DÉLAI RESTANT</th>
-                        <th>TÂCHES TVA PLANIFIÉES</th>
-                        <th>TÂCHES RESTANTES</th>
+                        <th>TÂCHES TVA</th>
+                        <th>TÂCHES REST.</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>

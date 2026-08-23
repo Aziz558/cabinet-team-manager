@@ -426,6 +426,22 @@ p {
     border-bottom: none;
 }
 
+/* Table aérée (dossiers) */
+.table-premium-breathe thead th {
+    padding: 1rem 1.25rem;
+    font-size: 0.72rem;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.table-premium-breathe tbody td {
+    padding: 1rem 1.25rem;
+    font-size: 0.875rem;
+}
+
+.table-premium-breathe tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
 /* Premium Select Styles */
 .select-premium {
     width: 100%;

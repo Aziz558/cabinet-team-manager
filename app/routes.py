@@ -228,6 +228,7 @@ def dossiers():
     
     # Construire les données JSON pour le modal d'édition
     dossiers_data = {}
+    dossiers_par_collab = {}
     for d in all_dossiers:
         dossiers_data[d.id] = {
             'numero_dossier': d.numero_dossier,
@@ -240,11 +241,13 @@ def dossiers():
             'regime_fiscale': d.regime_fiscale,
             'has_cfe': d.has_cfe,
         }
+        if d.collaborateur_id:
+            dossiers_par_collab[d.collaborateur_id] = dossiers_par_collab.get(d.collaborateur_id, 0) + 1
 
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
-        show_actions=True, dossiers_data=dossiers_data)
+        show_actions=True, dossiers_data=dossiers_data, dossiers_par_collab=dossiers_par_collab)
 
 @app.route('/tva-taches')
 @login_required
