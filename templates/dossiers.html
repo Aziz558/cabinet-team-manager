@@ -315,8 +315,13 @@
     </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 {{ super() }}
+<div class="d-none alert alert-secondary text-center py-4" id="emptyStateMessage" style="margin:20px 0;">
+    <i class="bi bi-inbox" style="font-size:2rem;opacity:0.3;"></i>
+    <p class="mb-0 text-tertiary mt-2">Aucun dossier trouvé pour ce collaborateur.</p>
+</div>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const rechercheInput = document.getElementById('rechercheDossier');
@@ -392,14 +397,21 @@
         document.getElementById('filterAllMembers').style.background = membreId === 'all' ? 'var(--orange-primary)' : '';
         document.getElementById('filterAllMembers').style.color = membreId === 'all' ? '#000' : '';
         // Filter table rows
+        var filteredCount = 0;
         document.querySelectorAll('#tableDossiers tbody tr').forEach(function(row) {
             var collabId = row.dataset.collabId;
             if (membreId === 'all' || collabId === membreId) {
                 row.style.display = '';
+                filteredCount++;
             } else {
                 row.style.display = 'none';
             }
         });
+        // Show empty message if no results
+        var emptyMsg = document.getElementById('emptyStateMessage');
+        if (emptyMsg) {
+            emptyMsg.style.display = filteredCount === 0 ? 'block' : 'none';
+        }
     }
 </script>
 {% endblock %}

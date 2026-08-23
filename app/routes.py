@@ -814,8 +814,9 @@ def mes_taches():
 @app.route('/modifier_dossier/<int:dossier_id>')
 @login_required
 def modifier_dossier(dossier_id):
-    flash('Fonctionnalit\u00e9 de modification de dossier non encore impl\u00e9ment\u00e9e.', 'info')
-    return redirect(url_for('dossiers'))
+    dossier = Dossier.query.get_or_404(dossier_id)
+    # Rediriger vers la page de modification avec le dossier
+    return redirect(url_for('dossiers') + f'?edit={dossier_id}')
 
 @app.route('/prendre_en_charge/<int:tache_id>', methods=['POST'])
 @login_required
