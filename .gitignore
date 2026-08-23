@@ -1,10 +1,19 @@
+# Fichiers de debug/backup locaux
+*.bak
+*.backup
+*.before
+debug_db.py
+fix_routes.py
+rewrite_routes.py
+test_routes.py
+response.json
+cookies*.txt
+admin.png
+TRIGGER.txt
+
+# Python
 __pycache__/
 *.pyc
-*.pyo
-instance/
-.env
-venv/
 .venv/
-static/uploads/*
-!static/uploads/.gitkeep
-!static/uploads/admin.png
+venv/
+.env
