@@ -58,10 +58,6 @@
                 <i class="bi bi-cash-stack"></i> Régime TVA
                 <span class="filter-badge" id="badgeRegime"></span>
             </button>
-            <button type="button" class="btn-filter-advanced" onclick="toggleFilter('frequence')" id="btnFilterFrequence">
-                <i class="bi bi-arrow-repeat"></i> Fréquence
-                <span class="filter-badge" id="badgeFrequence"></span>
-            </button>
             <button type="button" class="btn-filter-advanced" onclick="toggleFilter('date')" id="btnFilterDate">
                 <i class="bi bi-calendar-event"></i> Date limite
                 <span class="filter-badge" id="badgeDate"></span>
@@ -98,32 +94,23 @@
                 {% endfor %}
             </div>
         </div>
-        <!-- Panneau Régime TVA -->
+        <!-- Panneau Régime TVA unifié -->
         <div class="filter-panel d-none" id="panelRegime">
             <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);">
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('all');" id="btnRegimeAll">Tous</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('mensuel');" id="btnRegimeMensuel">Mensuel</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('trimestriel');" id="btnRegimeTrimestriel">Trimestriel</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('annuel');" id="btnRegimeAnnuel">Annuel (CA12)</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('exonere');" id="btnRegimeExonere">Exonéré</button>
-            </div>
-        </div>
-        <!-- Panneau Fréquence -->
-        <div class="filter-panel d-none" id="panelFrequence">
-            <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);">
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('all');" id="btnFreqAll">Toutes</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('mensuelle');" id="btnFreqMensuelle">Mensuelle</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('trimestrielle');" id="btnFreqTrimestrielle">Trimestrielle</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('annuelle');" id="btnFreqAnnuelle">Annuelle</button>
+                <button type="button" class="btn-filter-option" data-value="all" onclick="setRegimeFilter('all');"><i class="bi bi-check2-all me-1"></i>Tous</button>
+                <button type="button" class="btn-filter-option" data-value="ca3_mensuelle" onclick="setRegimeFilter('ca3_mensuelle');"><i class="bi bi-calendar-month me-1"></i>CA3 Mensuelle</button>
+                <button type="button" class="btn-filter-option" data-value="ca3_trimestrielle" onclick="setRegimeFilter('ca3_trimestrielle');"><i class="bi bi-calendar-range me-1"></i>CA3 Trimestrielle</button>
+                <button type="button" class="btn-filter-option" data-value="ca12_annuel" onclick="setRegimeFilter('ca12_annuel');"><i class="bi bi-calendar2 me-1"></i>CA12 Annuel</button>
+                <button type="button" class="btn-filter-option" data-value="exonere" onclick="setRegimeFilter('exonere');"><i class="bi bi-shield-check me-1"></i>Exonéré</button>
             </div>
         </div>
         <!-- Panneau Date limite -->
         <div class="filter-panel d-none" id="panelDate">
             <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);align-items:center;">
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('all');" id="btnDateAll">Toutes</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('today');" id="btnDateToday">Aujourd'hui</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('month');" id="btnDateMonth">Ce mois</button>
-                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('late');" id="btnDateLate">En retard</button>
+                <button type="button" class="btn-filter-option" data-value="all" onclick="setDateFilter('all');"><i class="bi bi-check2-all me-1"></i>Toutes</button>
+                <button type="button" class="btn-filter-option" data-value="today" onclick="setDateFilter('today');"><i class="bi bi-calendar-day me-1"></i>Aujourd'hui</button>
+                <button type="button" class="btn-filter-option" data-value="month" onclick="setDateFilter('month');"><i class="bi bi-calendar-month me-1"></i>Ce mois</button>
+                <button type="button" class="btn-filter-option" data-value="late" onclick="setDateFilter('late');"><i class="bi bi-exclamation-triangle me-1"></i>En retard</button>
                 <input type="date" class="input-premium" style="width:auto;display:inline-block;padding:0.4rem 0.75rem;font-size:0.8rem;" id="inputDateExact" onchange="setDateFilter('exact', this.value)" placeholder="Date exacte">
             </div>
         </div>
@@ -142,7 +129,6 @@
                         <th>COLLABORATEUR</th>
                         <th>ÉQUIPE</th>
                         <th>RÉGIME TVA</th>
-                        <th>FRÉQUENCE</th>
                         <th>DATE LIMITE</th>
                         <th>DÉLAI RESTANT</th>
                         <th>TÂCHES TVA</th>
@@ -152,7 +138,7 @@
                 </thead>
                 <tbody>
                     {% for d in dossiers %}
-                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime="{{ d._regime_norm }}" data-frequence="{{ d._freq_norm }}" data-date-iso="{{ d._date_iso }}">
+                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime-combo="{{ d._regime_combo }}" data-date-iso="{{ d._date_iso }}">
                         <td style="width:36px"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
                         <td><strong>{{ d.numero_dossier }}</strong></td>
                         <td>{{ d.intitule }}</td>
@@ -175,24 +161,18 @@
                                 </td>
                                 <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
                                 <td>
-                                    {% set r = d.regime_tva|lower if d.regime_tva else '' %}
-                                    {% if r == 'mensuel' or r == 'ca3' %}
-                                    <span class="badge badge-info">Mensuel</span>
-                                    {% elif r == 'trimestriel' %}
-                                    <span class="badge badge-warning">Trimestriel</span>
-                                    {% elif r == 'annuel' or r == 'ca12' %}
-                                    <span class="badge badge-primary">Annuel (CA12)</span>
-                                    {% elif r == 'exonere' %}
-                                    <span class="badge badge-success">Exonéré</span>
+                                    {% set rc = d._regime_combo %}
+                                    {% if rc == 'ca3_mensuelle' %}
+                                    <span class="badge badge-info"><i class="bi bi-calendar-month me-1"></i>CA3 Mensuelle</span>
+                                    {% elif rc == 'ca3_trimestrielle' %}
+                                    <span class="badge badge-warning"><i class="bi bi-calendar-range me-1"></i>CA3 Trimestrielle</span>
+                                    {% elif rc == 'ca12_annuel' %}
+                                    <span class="badge badge-primary"><i class="bi bi-calendar2 me-1"></i>CA12 Annuel</span>
+                                    {% elif rc == 'exonere' %}
+                                    <span class="badge badge-success"><i class="bi bi-shield-check me-1"></i>Exonéré</span>
                                     {% else %}
                                     <span class="badge badge-tertiary">-</span>
                                     {% endif %}
-                                </td>
-                                <td class="text-tertiary small">
-                                    {% set f = d.frequence_tva|lower if d.frequence_tva else '' %}
-                                    {% if f in ('mensuelle', 'mensuel') %}Mensuelle
-                                    {% elif f in ('trimestrielle', 'trimestriel') %}Trimestrielle
-                                    {% else %}-{% endif %}
                                 </td>
                         <td>{{ d.date_limite_declaration.strftime('%d/%m/%Y') if d.date_limite_declaration else '-' }}</td>
                         <td>
@@ -551,7 +531,6 @@
     // ===== FILTRES AVANCÉS =====
     var activeMember = 'all';
     var activeRegime = 'all';
-    var activeFreq = 'all';
     var activeDate = {type: 'all', value: ''};
     var openPanel = null;
 
@@ -563,7 +542,7 @@
             return;
         }
         // Fermer les autres
-        ['collab', 'regime', 'frequence', 'date'].forEach(function(n) {
+        ['collab', 'regime', 'date'].forEach(function(n) {
             document.getElementById('panel' + capitalize(n)).classList.add('d-none');
             document.getElementById('btnFilter' + capitalize(n)).classList.remove('active');
         });
@@ -572,19 +551,6 @@
         openPanel = name;
     }
     function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-    function normRegime(r) {
-        r = (r || '').toLowerCase();
-        if (r === 'ca3') return 'mensuel';
-        if (r === 'ca12') return 'annuel';
-        return r;
-    }
-    function normFreq(f) {
-        f = (f || '').toLowerCase();
-        if (f === 'mensuel') return 'mensuelle';
-        if (f === 'trimestriel') return 'trimestrielle';
-        return f;
-    }
 
     function todayIso() {
         var d = new Date();
@@ -600,8 +566,7 @@
             var show = true;
             if (show && term && !(row.getAttribute('data-mots') || '').includes(term)) show = false;
             if (show && activeMember !== 'all' && row.getAttribute('data-collab-id') !== activeMember) show = false;
-            if (show && activeRegime !== 'all' && normRegime(row.getAttribute('data-regime')) !== activeRegime) show = false;
-            if (show && activeFreq !== 'all' && normFreq(row.getAttribute('data-frequence')) !== activeFreq) show = false;
+            if (show && activeRegime !== 'all' && row.getAttribute('data-regime-combo') !== activeRegime) show = false;
             if (show && activeDate.type !== 'all') {
                 var d = row.getAttribute('data-date-iso') || '';
                 if (!d) { show = false; }
@@ -625,11 +590,16 @@
         }
         setBadge('badgeCollab', activeMember === 'all' ? '' : '1');
         setBadge('badgeRegime', activeRegime === 'all' ? '' : '1');
-        setBadge('badgeFrequence', activeFreq === 'all' ? '' : '1');
         setBadge('badgeDate', activeDate.type === 'all' ? '' : '1');
     }
 
-    // Style des options actives
+    // Style des options actives (basé sur data-value)
+    function styleOptions(panelId, activeValue) {
+        document.querySelectorAll('#' + panelId + ' .btn-filter-option').forEach(function(btn) {
+            var isActive = btn.getAttribute('data-value') === activeValue;
+            btn.classList.toggle('active', isActive);
+        });
+    }
     function styleMemberOptions() {
         document.querySelectorAll('.member-filter-item').forEach(function(item) {
             var id = item.getAttribute('data-membre-id') || 'all';
@@ -642,30 +612,6 @@
             }
         });
     }
-    function styleRegimeOptions() {
-        document.querySelectorAll('#panelRegime .btn-premium').forEach(function(btn) {
-            btn.style.background = btn.id === 'btnRegime' + capitalize(activeRegime) ? 'var(--orange-primary)' : '';
-            btn.style.color = btn.id === 'btnRegime' + capitalize(activeRegime) ? '#000' : '';
-            btn.style.borderColor = btn.id === 'btnRegime' + capitalize(activeRegime) ? 'var(--orange-primary)' : '';
-        });
-    }
-    function styleFreqOptions() {
-        document.querySelectorAll('#panelFrequence .btn-premium').forEach(function(btn) {
-            btn.style.background = btn.id === 'btnFreq' + capitalize(activeFreq) ? 'var(--orange-primary)' : '';
-            btn.style.color = btn.id === 'btnFreq' + capitalize(activeFreq) ? '#000' : '';
-            btn.style.borderColor = btn.id === 'btnFreq' + capitalize(activeFreq) ? 'var(--orange-primary)' : '';
-        });
-    }
-    function styleDateOptions() {
-        document.querySelectorAll('#panelDate .btn-premium').forEach(function(btn) {
-            var t = btn.getAttribute('onclick') || '';
-            var m = t.match(/setDateFilter\('([a-z]+)'/);
-            var k = m ? m[1] : '';
-            btn.style.background = activeDate.type === k ? 'var(--orange-primary)' : '';
-            btn.style.color = activeDate.type === k ? '#000' : '';
-            btn.style.borderColor = activeDate.type === k ? 'var(--orange-primary)' : '';
-        });
-    }
 
     function filterByMember(id) {
         activeMember = id;
@@ -674,23 +620,17 @@
     }
     function setRegimeFilter(v) {
         activeRegime = v;
-        styleRegimeOptions();
-        applyFilters();
-    }
-    function setFreqFilter(v) {
-        activeFreq = v;
-        styleFreqOptions();
+        styleOptions('panelRegime', v);
         applyFilters();
     }
     function setDateFilter(type, val) {
         activeDate = {type: type, value: val || ''};
-        styleDateOptions();
+        styleOptions('panelDate', type);
         applyFilters();
     }
     styleMemberOptions();
-    styleRegimeOptions();
-    styleFreqOptions();
-    styleDateOptions();
+    styleOptions('panelRegime', 'all');
+    styleOptions('panelDate', 'all');
 
         var dossiersData = {{ dossiers_data|tojson }};
     function openEditDossier(dossierId) {

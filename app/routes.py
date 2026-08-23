@@ -228,6 +228,19 @@ def dossiers():
         d._regime_norm = (d.regime_tva or '').lower()
         d._freq_norm = (d.frequence_tva or '').lower()
         d._date_iso = d.date_limite_declaration.strftime('%Y-%m-%d') if d.date_limite_declaration else ''
+        # Combo régime + fréquence pour l'affichage et le filtre unifié
+        _r = d._regime_norm
+        _f = d._freq_norm
+        if _r in ('mensuel', 'ca3') and _f not in ('trimestrielle', 'trimestriel'):
+            d._regime_combo = 'ca3_mensuelle'
+        elif _r == 'trimestriel' or (_r == 'ca3' and _f in ('trimestrielle', 'trimestriel')):
+            d._regime_combo = 'ca3_trimestrielle'
+        elif _r in ('annuel', 'ca12'):
+            d._regime_combo = 'ca12_annuel'
+        elif _r == 'exonere':
+            d._regime_combo = 'exonere'
+        else:
+            d._regime_combo = ''
     
     # Construire les données JSON pour le modal d'édition
     dossiers_data = {}
