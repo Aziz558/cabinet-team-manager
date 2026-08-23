@@ -171,7 +171,7 @@
                                     <i class="bi bi-three-dots"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="{{ url_for('modifier_dossier', dossier_id=d.id) }}"><i class="bi bi-pencil me-2"></i>Modifier</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="openEditDossier({{ d.id }});return false;"><i class="bi bi-pencil me-2"></i>Modifier</a></li>
                                     {% set nb_taches_dossier = d._tva_taches_count if d._tva_taches_count is defined else 0 %}
                                     {% if nb_taches_dossier > 0 %}
                                     <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
@@ -285,8 +285,13 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label-premium">Date limite de déclaration</label>
-                            <input type="date" name="date_limite_declaration" class="input-premium">
+                            <label class="form-label-premium">Fréquence TVA</label>
+                            <select name="frequence_tva" class="select-premium">
+                                <option value="">-- Aucune --</option>
+                                <option value="mensuelle">Mensuelle</option>
+                                <option value="trimestrielle">Trimestrielle</option>
+                                <option value="annuelle">Annuelle</option>
+                            </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Régime fiscal</label>
@@ -305,6 +310,101 @@
                 <div class="modal-footer-premium">
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn-premium btn-premium-primary">Créer le dossier</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifier dossier -->
+<div class="modal fade" id="modalEditDossier" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content-premium">
+            <form method="POST" id="formModifierDossier">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square me-2" style="color:var(--orange-primary)"></i>Modifier le dossier</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Numéro de dossier *</label>
+                            <input type="text" name="numero_dossier" id="editNumeroDossier" class="input-premium" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Intitulé *</label>
+                            <input type="text" name="intitule" id="editIntitule" class="input-premium" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Collaborateur responsable *</label>
+                            <select name="collaborateur_id" id="editCollaborateurId" class="select-premium" required>
+                                <option value="">-- Sélectionner un collaborateur --</option>
+                                {% for m in membres %}
+                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Équipe *</label>
+                            <select name="equipe_id" id="editEquipeId" class="select-premium" required>
+                                <option value="">-- Sélectionner une équipe --</option>
+                                {% for e in equipes %}
+                                <option value="{{ e.id }}">{{ e.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label-premium">Régime TVA</label>
+                            <select name="regime_tva" id="editRegimeTva" class="select-premium">
+                                <option value="">-- Aucun --</option>
+                                <option value="mensuel">Mensuel (CA3 mensuel)</option>
+                                <option value="trimestriel">Trimestriel (CA3 trimestriel)</option>
+                                <option value="annuel">Annuel (CA12)</option>
+                                <option value="exonere">Exonéré</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label-premium">Fréquence TVA</label>
+                            <select name="frequence_tva" id="editFrequenceTva" class="select-premium">
+                                <option value="">-- Aucune --</option>
+                                <option value="mensuelle">Mensuelle</option>
+                                <option value="trimestrielle">Trimestrielle</option>
+                                <option value="annuelle">Annuelle</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label-premium">Date limite de déclaration</label>
+                            <input type="date" name="date_limite_declaration" id="editDateLimite" class="input-premium">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Régime fiscal</label>
+                            <select name="regime_fiscale" id="editRegimeFiscale" class="select-premium" required>
+                                <option value="">-- Choisir un régime --</option>
+                                <option value="IS">IS (Impôt sur les Sociétés)</option>
+                                <option value="IRPP">IRPP (Impôt sur le Revenu des Personnes Physiques)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" name="has_cfe" id="editHasCfe">
+                                <label class="form-check-label" for="editHasCfe">Soumis à la CFE</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning py-2 small mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Si vous modifiez le régime TVA, la fréquence ou la date limite, les tâches deadlines existantes seront supprimées puis régénérées automatiquement.
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">Enregistrer les modifications</button>
                 </div>
             </form>
         </div>
@@ -409,6 +509,27 @@
         if (emptyMsg) {
             emptyMsg.style.display = filteredCount === 0 ? 'block' : 'none';
         }
+    }
+
+    // ===== EDIT DOSSIER MODAL =====
+    var dossiersData = {{ dossiers_data|tojson }};
+    function openEditDossier(dossierId) {
+        var d = dossiersData[dossierId];
+        if (!d) { console.error('Dossier introuvable:', dossierId); return; }
+        document.getElementById('editNumeroDossier').value = d.numero_dossier || '';
+        document.getElementById('editIntitule').value = d.intitule || '';
+        document.getElementById('editCollaborateurId').value = d.collaborateur_id || '';
+        document.getElementById('editEquipeId').value = d.equipe_id || '';
+        document.getElementById('editRegimeTva').value = d.regime_tva || '';
+        document.getElementById('editFrequenceTva').value = d.frequence_tva || '';
+        document.getElementById('editDateLimite').value = d.date_limite_declaration || '';
+        document.getElementById('editRegimeFiscale').value = d.regime_fiscale || '';
+        document.getElementById('editHasCfe').checked = !!d.has_cfe;
+        var form = document.getElementById('formModifierDossier');
+        form.action = '/modifier_dossier/' + dossierId;
+        var modalEl = document.getElementById('modalEditDossier');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
     }
 </script>
 {% endblock %}

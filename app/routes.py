@@ -226,10 +226,25 @@ def dossiers():
         d._tva_taches_count = len(d._tva_taches)
         d._tva_taches_restantes = sum(1 for t in d._tva_taches if t.statut not in ('terminee', 'terminée'))
     
+    # Construire les données JSON pour le modal d'édition
+    dossiers_data = {}
+    for d in all_dossiers:
+        dossiers_data[d.id] = {
+            'numero_dossier': d.numero_dossier,
+            'intitule': d.intitule,
+            'collaborateur_id': d.collaborateur_id,
+            'equipe_id': d.equipe_id,
+            'regime_tva': d.regime_tva,
+            'frequence_tva': d.frequence_tva,
+            'date_limite_declaration': d.date_limite_declaration.strftime('%Y-%m-%d') if d.date_limite_declaration else None,
+            'regime_fiscale': d.regime_fiscale,
+            'has_cfe': d.has_cfe,
+        }
+
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
-        show_actions=True)
+        show_actions=True, dossiers_data=dossiers_data)
 
 @app.route('/tva-taches')
 @login_required
@@ -812,12 +827,69 @@ def mes_dossiers():
 def mes_taches():
     return redirect(url_for('taches'))
 
-@app.route('/modifier_dossier/<int:dossier_id>')
+@app.route('/modifier_dossier/<int:dossier_id>', methods=['POST'])
 @login_required
 def modifier_dossier(dossier_id):
+    """Modifie les caractéristiques d'un dossier et régénère les tâches fiscales associées."""
     dossier = Dossier.query.get_or_404(dossier_id)
-    # Rediriger vers la page de modification avec le dossier
-    return redirect(url_for('dossiers') + f'?edit={dossier_id}')
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    try:
+        numero_dossier = request.form.get('numero_dossier', '').strip()
+        intitule = request.form.get('intitule', '').strip()
+        collaborateur_id = request.form.get('collaborateur_id')
+        equipe_id = request.form.get('equipe_id')
+        regime_tva = request.form.get('regime_tva')
+        frequence_tva = request.form.get('frequence_tva')
+        date_limite_declaration = request.form.get('date_limite_declaration')
+        regime_fiscale = request.form.get('regime_fiscale')
+        has_cfe = ('has_cfe' in request.form)
+
+        if not numero_dossier or not intitule or not collaborateur_id or not equipe_id:
+            flash('Veuillez remplir tous les champs obligatoires.', 'danger')
+            return redirect(url_for('dossiers'))
+
+        date_limite = None
+        if date_limite_declaration:
+            try:
+                date_limite = datetime.strptime(date_limite_declaration, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Format de date invalide.', 'danger')
+                return redirect(url_for('dossiers'))
+
+        # Détecter si les paramètres fiscaux ont changé → régénération nécessaire
+        params_fiscaux_changes = (
+            dossier.regime_tva != (regime_tva or None) or
+            dossier.frequence_tva != (frequence_tva or None) or
+            dossier.date_limite_declaration != date_limite or
+            dossier.regime_fiscale != (regime_fiscale or None) or
+            dossier.has_cfe != has_cfe
+        )
+
+        dossier.numero_dossier = numero_dossier
+        dossier.intitule = intitule
+        dossier.collaborateur_id = int(collaborateur_id)
+        dossier.equipe_id = int(equipe_id)
+        dossier.regime_tva = regime_tva if regime_tva else None
+        dossier.frequence_tva = frequence_tva if frequence_tva else None
+        dossier.date_limite_declaration = date_limite
+        dossier.regime_fiscale = regime_fiscale if regime_fiscale else None
+        dossier.has_cfe = has_cfe
+        db.session.flush()
+
+        # Régénérer les tâches deadlines si les paramètres fiscaux ont changé
+        if params_fiscaux_changes:
+            from .tva_scheduler import planifier_impots_dossier
+            planifier_impots_dossier(dossier)
+
+        db.session.commit()
+        flash('Dossier modifié avec succès. Les tâches fiscales ont été mises à jour.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur lors de la modification du dossier {dossier_id}: {e}")
+        flash(f'Erreur lors de la modification du dossier: {str(e)}', 'danger')
+    return redirect(url_for('dossiers'))
 
 @app.route('/prendre_en_charge/<int:tache_id>', methods=['POST'])
 @login_required
