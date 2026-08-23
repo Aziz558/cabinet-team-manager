@@ -442,6 +442,70 @@ p {
     background: rgba(255, 255, 255, 0.03);
 }
 
+/* Boutons filtres avancés */
+.btn-filter-advanced {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+.btn-filter-advanced:hover {
+    border-color: var(--orange-primary);
+    color: var(--orange-primary);
+    background: rgba(255, 152, 0, 0.05);
+}
+.btn-filter-advanced.active {
+    border-color: var(--orange-primary);
+    color: #000;
+    background: var(--orange-primary);
+}
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    background: var(--orange-primary);
+    color: #000;
+    line-height: 1;
+}
+.filter-panel {
+    animation: fadeInUp 0.2s ease;
+}
+.btn-filter-option {
+    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-primary);
+}
+.btn-filter-option:hover {
+    border-color: var(--orange-primary);
+    color: var(--orange-primary);
+}
+.btn-filter-option.active {
+    border-color: var(--orange-primary);
+    background: var(--orange-primary);
+    color: #000;
+}
+
 /* Premium Select Styles */
 .select-premium {
     width: 100%;
@@ -1682,6 +1746,7 @@ p {
 #modalMailEquipe,
 #modalSetting,
 #modalSetting,
+#modalEditDossier,
 #priseEnChargeModal,
 #validateModal {
     z-index: 10050 !important;
@@ -1695,6 +1760,7 @@ p {
 #modalMailEquipe .modal-dialog,
 #modalSetting .modal-dialog,
 #modalSetting .modal-dialog,
+#modalEditDossier .modal-dialog,
 #priseEnChargeModal .modal-dialog,
 #validateModal .modal-dialog {
     z-index: 10051 !important;
@@ -1708,6 +1774,7 @@ p {
 #modalMailEquipe .modal-content-premium,
 #modalSetting .modal-content-premium,
 #modalSetting .modal-content-premium,
+#modalEditDossier .modal-content-premium,
 #priseEnChargeModal .modal-content-premium,
 #validateModal .modal-content-premium {
     z-index: 10052 !important;

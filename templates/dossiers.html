@@ -46,43 +46,86 @@
     </div>
 </div>
 
-<!-- Filtre collaborateurs - avatars design -->
+<!-- Filtres avancés à icônes dépliables -->
 <div class="card-premium mb-4 animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
     <div class="card-body-premium px-4 py-3">
-        <div class="d-flex align-items-center gap-1 mb-3">
-            <span class="d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;border-radius:8px;background:var(--orange-primary);color:#000;font-size:0.75rem;">
-                <i class="bi bi-people-fill"></i>
-            </span>
-            <span class="fw-semibold" style="font-size:0.85rem;">Collaborateurs</span>
-            <span class="badge rounded-pill ms-1" style="background:var(--bg-card-hover);color:var(--text-secondary);font-size:0.65rem;font-weight:400;">{{ membres|length }}</span>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="button" class="btn-filter-advanced" onclick="toggleFilter('collab')" id="btnFilterCollab">
+                <i class="bi bi-people-fill"></i> Collaborateurs
+                <span class="filter-badge" id="badgeCollab"></span>
+            </button>
+            <button type="button" class="btn-filter-advanced" onclick="toggleFilter('regime')" id="btnFilterRegime">
+                <i class="bi bi-cash-stack"></i> Régime TVA
+                <span class="filter-badge" id="badgeRegime"></span>
+            </button>
+            <button type="button" class="btn-filter-advanced" onclick="toggleFilter('frequence')" id="btnFilterFrequence">
+                <i class="bi bi-arrow-repeat"></i> Fréquence
+                <span class="filter-badge" id="badgeFrequence"></span>
+            </button>
+            <button type="button" class="btn-filter-advanced" onclick="toggleFilter('date')" id="btnFilterDate">
+                <i class="bi bi-calendar-event"></i> Date limite
+                <span class="filter-badge" id="badgeDate"></span>
+            </button>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <div class="d-flex flex-column align-items-center gap-1 px-3 py-2 rounded-3 member-filter-item" onclick="filterByMember('all')" id="filterAllMembers" style="cursor:pointer;transition:all 0.2s;background:var(--orange-primary);color:#000;min-width:60px;">
-                <span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;">T</span>
-                <span style="font-size:0.65rem;font-weight:600;white-space:nowrap;">Tous</span>
-            </div>
-            {% for m in membres %}
-            {% set nb_dossiers = dossiers_par_collab.get(m.id, 0) %}
-            <div class="d-flex flex-column align-items-center gap-1 px-3 py-2 rounded-3 member-filter-item" data-membre-id="{{ m.id }}" onclick="filterByMember('{{ m.id }}')" style="cursor:pointer;transition:all 0.2s;min-width:60px;position:relative;">
-                {% set photo = m.photo_display_src() %}
-                {% if photo %}
-                <span style="position:relative;width:36px;height:36px;">
-                    <img src="{{ photo }}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
-                    {% if nb_dossiers > 0 %}
-                    <span class="badge rounded-pill position-absolute" style="top:-4px;right:-4px;background:var(--orange-primary);color:#000;font-size:0.5rem;padding:1px 4px;min-width:16px;">{{ nb_dossiers }}</span>
+        <!-- Panneau Collaborateurs -->
+        <div class="filter-panel d-none" id="panelCollab">
+            <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);">
+                <div class="d-flex flex-column align-items-center gap-1 px-3 py-2 rounded-3 member-filter-item" onclick="filterByMember('all')" id="filterAllMembers" style="cursor:pointer;transition:all 0.2s;background:var(--orange-primary);color:#000;min-width:60px;">
+                    <span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;">T</span>
+                    <span style="font-size:0.65rem;font-weight:600;white-space:nowrap;">Tous</span>
+                </div>
+                {% for m in membres %}
+                {% set nb_dossiers = dossiers_par_collab.get(m.id, 0) %}
+                <div class="d-flex flex-column align-items-center gap-1 px-3 py-2 rounded-3 member-filter-item" data-membre-id="{{ m.id }}" onclick="filterByMember('{{ m.id }}')" style="cursor:pointer;transition:all 0.2s;min-width:60px;position:relative;">
+                    {% set photo = m.photo_display_src() %}
+                    {% if photo %}
+                    <span style="position:relative;width:36px;height:36px;">
+                        <img src="{{ photo }}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                        {% if nb_dossiers > 0 %}
+                        <span class="badge rounded-pill position-absolute" style="top:-4px;right:-4px;background:var(--orange-primary);color:#000;font-size:0.5rem;padding:1px 4px;min-width:16px;">{{ nb_dossiers }}</span>
+                        {% endif %}
+                    </span>
+                    {% else %}
+                    <span style="position:relative;width:36px;height:36px;border-radius:50%;background:var(--bg-card-hover);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:var(--text-secondary);">
+                        <i class="bi bi-person-fill"></i>
+                        {% if nb_dossiers > 0 %}
+                        <span class="badge rounded-pill position-absolute" style="top:-4px;right:-4px;background:var(--orange-primary);color:#000;font-size:0.5rem;padding:1px 4px;min-width:16px;">{{ nb_dossiers }}</span>
+                        {% endif %}
+                    </span>
                     {% endif %}
-                </span>
-                {% else %}
-                <span style="position:relative;width:36px;height:36px;border-radius:50%;background:var(--bg-card-hover);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:var(--text-secondary);">
-                    <i class="bi bi-person-fill"></i>
-                    {% if nb_dossiers > 0 %}
-                    <span class="badge rounded-pill position-absolute" style="top:-4px;right:-4px;background:var(--orange-primary);color:#000;font-size:0.5rem;padding:1px 4px;min-width:16px;">{{ nb_dossiers }}</span>
-                    {% endif %}
-                </span>
-                {% endif %}
-                <span style="font-size:0.65rem;white-space:nowrap;font-weight:500;">{{ m.prenom }} {{ m.nom|first }}.</span>
+                    <span style="font-size:0.65rem;white-space:nowrap;font-weight:500;">{{ m.prenom }} {{ m.nom|first }}.</span>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+        </div>
+        <!-- Panneau Régime TVA -->
+        <div class="filter-panel d-none" id="panelRegime">
+            <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);">
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('all');" id="btnRegimeAll">Tous</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('mensuel');" id="btnRegimeMensuel">Mensuel</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('trimestriel');" id="btnRegimeTrimestriel">Trimestriel</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('annuel');" id="btnRegimeAnnuel">Annuel (CA12)</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setRegimeFilter('exonere');" id="btnRegimeExonere">Exonéré</button>
+            </div>
+        </div>
+        <!-- Panneau Fréquence -->
+        <div class="filter-panel d-none" id="panelFrequence">
+            <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);">
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('all');" id="btnFreqAll">Toutes</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('mensuelle');" id="btnFreqMensuelle">Mensuelle</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('trimestrielle');" id="btnFreqTrimestrielle">Trimestrielle</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setFreqFilter('annuelle');" id="btnFreqAnnuelle">Annuelle</button>
+            </div>
+        </div>
+        <!-- Panneau Date limite -->
+        <div class="filter-panel d-none" id="panelDate">
+            <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);align-items:center;">
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('all');" id="btnDateAll">Toutes</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('today');" id="btnDateToday">Aujourd'hui</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('month');" id="btnDateMonth">Ce mois</button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="setDateFilter('late');" id="btnDateLate">En retard</button>
+                <input type="date" class="input-premium" style="width:auto;display:inline-block;padding:0.4rem 0.75rem;font-size:0.8rem;" id="inputDateExact" onchange="setDateFilter('exact', this.value)" placeholder="Date exacte">
+            </div>
         </div>
     </div>
 </div>
@@ -109,7 +152,7 @@
                 </thead>
                 <tbody>
                     {% for d in dossiers %}
-                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}">
+                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime="{{ d._regime_norm }}" data-frequence="{{ d._freq_norm }}" data-date-iso="{{ d._date_iso }}">
                         <td style="width:36px"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
                         <td><strong>{{ d.numero_dossier }}</strong></td>
                         <td>{{ d.intitule }}</td>
@@ -505,36 +548,151 @@
     // Init
     setTimeout(updateBatchDeleteForm, 100);
 
-    // Filter by member
-    var activeMemberFilter = 'all';
-    function filterByMember(membreId) {
-        activeMemberFilter = membreId;
-        document.querySelectorAll('.member-filter-item').forEach(function(item) {
-            item.style.background = item.dataset.membreId === membreId ? 'var(--orange-primary)' : 'transparent';
-            item.style.color = item.dataset.membreId === membreId ? '#000' : 'var(--text-primary)';
-        });
-        document.getElementById('filterAllMembers').style.background = membreId === 'all' ? 'var(--orange-primary)' : '';
-        document.getElementById('filterAllMembers').style.color = membreId === 'all' ? '#000' : '';
-        // Filter table rows
-        var filteredCount = 0;
-        document.querySelectorAll('#tableDossiers tbody tr').forEach(function(row) {
-            var collabId = row.dataset.collabId;
-            if (membreId === 'all' || collabId === membreId) {
-                row.style.display = '';
-                filteredCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        // Show empty message if no results
-        var emptyMsg = document.getElementById('emptyStateMessage');
-        if (emptyMsg) {
-            emptyMsg.style.display = filteredCount === 0 ? 'block' : 'none';
+    // ===== FILTRES AVANCÉS =====
+    var activeMember = 'all';
+    var activeRegime = 'all';
+    var activeFreq = 'all';
+    var activeDate = {type: 'all', value: ''};
+    var openPanel = null;
+
+    function toggleFilter(name) {
+        if (openPanel === name) {
+            document.getElementById('panel' + capitalize(name)).classList.add('d-none');
+            document.getElementById('btnFilter' + capitalize(name)).classList.remove('active');
+            openPanel = null;
+            return;
         }
+        // Fermer les autres
+        ['collab', 'regime', 'frequence', 'date'].forEach(function(n) {
+            document.getElementById('panel' + capitalize(n)).classList.add('d-none');
+            document.getElementById('btnFilter' + capitalize(n)).classList.remove('active');
+        });
+        document.getElementById('panel' + capitalize(name)).classList.remove('d-none');
+        document.getElementById('btnFilter' + capitalize(name)).classList.add('active');
+        openPanel = name;
+    }
+    function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    function normRegime(r) {
+        r = (r || '').toLowerCase();
+        if (r === 'ca3') return 'mensuel';
+        if (r === 'ca12') return 'annuel';
+        return r;
+    }
+    function normFreq(f) {
+        f = (f || '').toLowerCase();
+        if (f === 'mensuel') return 'mensuelle';
+        if (f === 'trimestriel') return 'trimestrielle';
+        return f;
     }
 
-    // ===== EDIT DOSSIER MODAL =====
-    var dossiersData = {{ dossiers_data|tojson }};
+    function todayIso() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    function applyFilters() {
+        var rechercheInput = document.getElementById('rechercheDossier');
+        var term = rechercheInput ? rechercheInput.value.toLowerCase().trim() : '';
+        var today = todayIso();
+        var visible = 0;
+        document.querySelectorAll('#tableDossiers tbody tr').forEach(function(row) {
+            var show = true;
+            if (show && term && !(row.getAttribute('data-mots') || '').includes(term)) show = false;
+            if (show && activeMember !== 'all' && row.getAttribute('data-collab-id') !== activeMember) show = false;
+            if (show && activeRegime !== 'all' && normRegime(row.getAttribute('data-regime')) !== activeRegime) show = false;
+            if (show && activeFreq !== 'all' && normFreq(row.getAttribute('data-frequence')) !== activeFreq) show = false;
+            if (show && activeDate.type !== 'all') {
+                var d = row.getAttribute('data-date-iso') || '';
+                if (!d) { show = false; }
+                else if (activeDate.type === 'today' && d !== today) show = false;
+                else if (activeDate.type === 'month' && d.slice(0,7) !== today.slice(0,7)) show = false;
+                else if (activeDate.type === 'late' && d >= today) show = false;
+                else if (activeDate.type === 'exact' && d !== activeDate.value) show = false;
+            }
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        var emptyMsg = document.getElementById('emptyStateMessage');
+        if (emptyMsg) emptyMsg.style.display = visible === 0 ? 'block' : 'none';
+        updateFilterBadges();
+    }
+
+    function updateFilterBadges() {
+        function setBadge(id, txt) {
+            var b = document.getElementById(id);
+            if (b) b.textContent = txt || '';
+        }
+        setBadge('badgeCollab', activeMember === 'all' ? '' : '1');
+        setBadge('badgeRegime', activeRegime === 'all' ? '' : '1');
+        setBadge('badgeFrequence', activeFreq === 'all' ? '' : '1');
+        setBadge('badgeDate', activeDate.type === 'all' ? '' : '1');
+    }
+
+    // Style des options actives
+    function styleMemberOptions() {
+        document.querySelectorAll('.member-filter-item').forEach(function(item) {
+            var id = item.getAttribute('data-membre-id') || 'all';
+            if (id === activeMember) {
+                item.style.background = 'var(--orange-primary)';
+                item.style.color = '#000';
+            } else {
+                item.style.background = 'transparent';
+                item.style.color = '';
+            }
+        });
+    }
+    function styleRegimeOptions() {
+        document.querySelectorAll('#panelRegime .btn-premium').forEach(function(btn) {
+            btn.style.background = btn.id === 'btnRegime' + capitalize(activeRegime) ? 'var(--orange-primary)' : '';
+            btn.style.color = btn.id === 'btnRegime' + capitalize(activeRegime) ? '#000' : '';
+            btn.style.borderColor = btn.id === 'btnRegime' + capitalize(activeRegime) ? 'var(--orange-primary)' : '';
+        });
+    }
+    function styleFreqOptions() {
+        document.querySelectorAll('#panelFrequence .btn-premium').forEach(function(btn) {
+            btn.style.background = btn.id === 'btnFreq' + capitalize(activeFreq) ? 'var(--orange-primary)' : '';
+            btn.style.color = btn.id === 'btnFreq' + capitalize(activeFreq) ? '#000' : '';
+            btn.style.borderColor = btn.id === 'btnFreq' + capitalize(activeFreq) ? 'var(--orange-primary)' : '';
+        });
+    }
+    function styleDateOptions() {
+        document.querySelectorAll('#panelDate .btn-premium').forEach(function(btn) {
+            var t = btn.getAttribute('onclick') || '';
+            var m = t.match(/setDateFilter\('([a-z]+)'/);
+            var k = m ? m[1] : '';
+            btn.style.background = activeDate.type === k ? 'var(--orange-primary)' : '';
+            btn.style.color = activeDate.type === k ? '#000' : '';
+            btn.style.borderColor = activeDate.type === k ? 'var(--orange-primary)' : '';
+        });
+    }
+
+    function filterByMember(id) {
+        activeMember = id;
+        styleMemberOptions();
+        applyFilters();
+    }
+    function setRegimeFilter(v) {
+        activeRegime = v;
+        styleRegimeOptions();
+        applyFilters();
+    }
+    function setFreqFilter(v) {
+        activeFreq = v;
+        styleFreqOptions();
+        applyFilters();
+    }
+    function setDateFilter(type, val) {
+        activeDate = {type: type, value: val || ''};
+        styleDateOptions();
+        applyFilters();
+    }
+    styleMemberOptions();
+    styleRegimeOptions();
+    styleFreqOptions();
+    styleDateOptions();
+
+        var dossiersData = {{ dossiers_data|tojson }};
     function openEditDossier(dossierId) {
         var d = dossiersData[dossierId];
         if (!d) { console.error('Dossier introuvable:', dossierId); return; }

@@ -225,6 +225,9 @@ def dossiers():
         d._tva_taches = [t for t in d.taches if t.titre and ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper())]
         d._tva_taches_count = len(d._tva_taches)
         d._tva_taches_restantes = sum(1 for t in d._tva_taches if t.statut not in ('terminee', 'terminée'))
+        d._regime_norm = (d.regime_tva or '').lower()
+        d._freq_norm = (d.frequence_tva or '').lower()
+        d._date_iso = d.date_limite_declaration.strftime('%Y-%m-%d') if d.date_limite_declaration else ''
     
     # Construire les données JSON pour le modal d'édition
     dossiers_data = {}
