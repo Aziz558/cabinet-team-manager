@@ -1,6 +1,8 @@
 # Fichiers de debug/backup locaux
 *.bak
 *.backup
+*.backup2
+*.final_backup
 *.before
 debug_db.py
 fix_routes.py
@@ -10,6 +12,13 @@ response.json
 cookies*.txt
 admin.png
 TRIGGER.txt
+
+# Base de données locale
+instance/
+*.db
+
+# Uploads locaux (non suivis)
+static/uploads/default.png
 
 # Python
 __pycache__/
