@@ -225,6 +225,51 @@ def dossiers():
         d._tva_taches = [t for t in d.taches if t.titre and ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper())]
         d._tva_taches_count = len(d._tva_taches)
         d._tva_taches_restantes = sum(1 for t in d._tva_taches if t.statut not in ('terminee', 'terminée'))
+        # Calcul du statut délai/retard
+        d._delai_label = '-'
+        d._delai_class = 'text-tertiary'
+        d._delai_icon = ''
+        today = date.today()
+        depot_taches = [t for t in d.taches if t.titre and 'Préparation' not in t.titre and ('Dépôt' in t.titre or 'Déclaration' in t.titre or 'Acompte' in t.titre)]
+        if depot_taches:
+            futurs = [t for t in depot_taches if t.date_echeance and t.date_echeance >= today]
+            passees = [t for t in depot_taches if t.date_echeance and t.date_echeance < today]
+            cible = min(futurs, key=lambda t: t.date_echeance) if futurs else (max(passees, key=lambda t: t.date_echeance) if passees else None)
+            if cible and cible.date_echeance:
+                restant = (cible.date_echeance - today).days
+                done = cible.statut in ('terminee', 'terminée')
+                is_acompte = 'Acompte' in (cible.titre or '')
+                verbe = 'Payé' if is_acompte else 'Déclaré'
+                if done:
+                    d._delai_label = verbe
+                    d._delai_class = 'text-success'
+                    d._delai_icon = 'bi-check-circle-fill'
+                elif restant < 0:
+                    d._delai_label = f'En retard (+{abs(restant)} j)'
+                    d._delai_class = 'text-danger'
+                    d._delai_icon = 'bi-exclamation-triangle-fill'
+                elif restant == 0:
+                    d._delai_label = "Aujourd'hui"
+                    d._delai_class = 'text-warning'
+                    d._delai_icon = 'bi-clock'
+                else:
+                    d._delai_label = f'{restant} j'
+                    d._delai_class = 'text-success'
+                    d._delai_icon = 'bi-clock'
+        elif d.date_limite_declaration:
+            restant = (d.date_limite_declaration - today).days
+            if restant < 0:
+                d._delai_label = f'En retard (+{abs(restant)} j)'
+                d._delai_class = 'text-danger'
+                d._delai_icon = 'bi-exclamation-triangle-fill'
+            elif restant == 0:
+                d._delai_label = "Aujourd'hui"
+                d._delai_class = 'text-warning'
+                d._delai_icon = 'bi-clock'
+            else:
+                d._delai_label = f'{restant} j'
+                d._delai_class = 'text-success'
+                d._delai_icon = 'bi-clock'
         d._regime_norm = (d.regime_tva or '').lower()
         d._freq_norm = (d.frequence_tva or '').lower()
         d._date_iso = d.date_limite_declaration.strftime('%Y-%m-%d') if d.date_limite_declaration else ''
