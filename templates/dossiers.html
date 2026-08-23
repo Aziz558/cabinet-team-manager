@@ -24,10 +24,10 @@
 </div>
 {% elif current_user.role == 'membre' %}
 <h2 class="fw-semibold animate-fade-in-up"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Mes dossiers</h2>
-{% set show_actions = False %}
+{% set show_actions = True %}
 {% else %}
 <h2 class="fw-semibold animate-fade-in-up"><i class="bi bi-folder me-2" style="color:var(--orange-primary)"></i>Mes dossiers</h2>
-{% set show_actions = False %}
+{% set show_actions = True %}
 {% endif %}
 
 <div class="card-premium mb-3 animate-fade-in-up">
@@ -41,37 +41,34 @@
     </div>
 </div>
 
-<div class="row animate-fade-in-up">
-    <!-- Member filter sidebar -->
-    <div class="col-lg-2 mb-3">
-        <div class="card-premium h-100">
-            <div class="card-body-premium p-2">
-                <small class="text-tertiary mb-2 d-block" style="font-size:0.7rem;">COLLABORATEURS</small>
-                <div style="max-height:500px;overflow-y:auto;">
-                    <div class="d-flex align-items-center gap-2 p-1 rounded mb-1" style="cursor:pointer;background:var(--orange-primary);color:#000;" onclick="filterByMember('all')" id="filterAllMembers">
-                        <span style="width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:0.7rem;">T</span>
-                        <span style="font-size:0.75rem;font-weight:600;">Tous</span>
-                    </div>
-                    {% for m in membres %}
-                    <div class="d-flex align-items-center gap-2 p-1 rounded mb-1 member-filter-item" data-membre-id="{{ m.id }}" onclick="filterByMember('{{ m.id }}')" style="cursor:pointer;transition:all 0.2s;">
-                        {% set photo = m.photo_display_src() %}
-                        {% if photo %}
-                        <img src="{{ photo }}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
-                        {% else %}
-                        <span style="width:28px;height:28px;border-radius:50%;background:var(--bg-card-hover);display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:var(--text-secondary);"><i class="bi bi-person-fill"></i></span>
-                        {% endif %}
-                        <span style="font-size:0.75rem;">{{ m.prenom }} {{ m.nom|first }}.</span>
-                    </div>
-                    {% endfor %}
-                </div>
+<!-- Member filter - horizontal bar -->
+<div class="card-premium mb-3 animate-fade-in-up" style="padding:0;">
+    <div class="card-body-premium p-3">
+        <small class="text-tertiary mb-2 d-block" style="font-size:0.7rem;">COLLABORATEURS :</small>
+        <div class="d-flex flex-wrap gap-2" style="max-height:80px;overflow-y:auto;">
+            <div class="d-flex align-items-center gap-2 px-3 py-2 rounded border" style="cursor:pointer;background:var(--orange-primary);color:#000;" onclick="filterByMember('all')" id="filterAllMembers">
+                <span style="width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:0.6rem;">T</span>
+                <span style="font-size:0.75rem;font-weight:600;">Tous</span>
             </div>
+            {% for m in membres %}
+            <div class="d-flex align-items-center gap-2 px-3 py-2 rounded border member-filter-item" data-membre-id="{{ m.id }}" onclick="filterByMember('{{ m.id }}')" style="cursor:pointer;transition:all 0.2s;">
+                {% set photo = m.photo_display_src() %}
+                {% if photo %}
+                <img src="{{ photo }}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">
+                {% else %}
+                <span style="width:24px;height:24px;border-radius:50%;background:var(--bg-card-hover);display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-secondary);"><i class="bi bi-person-fill"></i></span>
+                {% endif %}
+                <span style="font-size:0.75rem;">{{ m.prenom }} {{ m.nom|first }}.</span>
+            </div>
+            {% endfor %}
         </div>
     </div>
-    <div class="col-lg-10">
-        <div class="card-premium">
-            <div class="card-body-premium p-0">
-                <div class="table-responsive">
-                    <table class="table-premium" id="tableDossiers">
+</div>
+
+<div class="card-premium animate-fade-in-up">
+    <div class="card-body-premium p-0">
+        <div class="table-responsive">
+            <table class="table-premium" id="tableDossiers">
                 <thead>
                     <tr>
                         <th style="width:36px"><input type="checkbox" id="selectAllDossiers" class="select-all-checkbox"></th>
@@ -189,8 +186,6 @@
                 </tbody>
             </table>
         </div>
-    </div>
-</div>
     </div>
 </div>
 
@@ -314,6 +309,7 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
