@@ -232,9 +232,22 @@ def dossiers():
         today = date.today()
         depot_taches = [t for t in d.taches if t.titre and 'Préparation' not in t.titre and ('Dépôt' in t.titre or 'Déclaration' in t.titre or 'Acompte' in t.titre)]
         if depot_taches:
-            futurs = [t for t in depot_taches if t.date_echeance and t.date_echeance >= today]
-            passees = [t for t in depot_taches if t.date_echeance and t.date_echeance < today]
-            cible = min(futurs, key=lambda t: t.date_echeance) if futurs else (max(passees, key=lambda t: t.date_echeance) if passees else None)
+            import calendar
+            debut_mois = today.replace(day=1)
+            fin_mois = date(today.year, today.month, calendar.monthrange(today.year, today.month)[1])
+            # 1. La tâche de la période courante (mois en cours) est la référence
+            mois_courant = [t for t in depot_taches if t.date_echeance and debut_mois <= t.date_echeance <= fin_mois]
+            if mois_courant:
+                cible = min(mois_courant, key=lambda t: t.date_echeance)
+            else:
+                # 2. Sinon : prochaine tâche future
+                futurs = [t for t in depot_taches if t.date_echeance and t.date_echeance > today]
+                if futurs:
+                    cible = min(futurs, key=lambda t: t.date_echeance)
+                else:
+                    # 3. Sinon : tâche passée la plus récente
+                    passees = [t for t in depot_taches if t.date_echeance]
+                    cible = max(passees, key=lambda t: t.date_echeance) if passees else None
             if cible and cible.date_echeance:
                 restant = (cible.date_echeance - today).days
                 done = cible.statut in ('terminee', 'terminée')
