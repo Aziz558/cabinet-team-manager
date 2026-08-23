@@ -228,7 +228,8 @@ def dossiers():
     
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
-        current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db)
+        current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
+        show_actions=True)
 
 @app.route('/tva-taches')
 @login_required
