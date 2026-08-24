@@ -180,10 +180,58 @@ def dashboard():
         return render_template('dashboard_collaborateur.html', kpi=kpi,
             taches_jour=taches_jour, taches_semaine=taches_semaine)
 
+def prochaine_echeance_theorique(dossier, today):
+    """Calcule la prochaine échéance TVA théorique pour les tâches pas encore générées."""
+    from .tva_scheduler import next_working_day
+    import calendar
+    r = dossier._regime_norm
+    ref = dossier.date_limite_declaration
+    if not ref or r in ('', 'exonere'):
+        return None
+    jour = ref.day
+    annee = ref.year
+    echeances = []
+    if r in ('mensuel', 'ca3'):
+        for m in range(1, 13):
+            try:
+                echeances.append(next_working_day(date(annee, m, jour)))
+            except ValueError:
+                echeances.append(next_working_day(date(annee, m, 15)))
+    elif r == 'trimestriel':
+        for m in (1, 4, 7, 10):
+            try:
+                echeances.append(next_working_day(date(annee, m, jour)))
+            except ValueError:
+                echeances.append(next_working_day(date(annee, m, 15)))
+    elif r in ('annuel', 'ca12'):
+        echeances.append(next_working_day(date(annee, 7, 15)))
+        try:
+            echeances.append(next_working_day(date(annee, 12, jour)))
+        except ValueError:
+            echeances.append(next_working_day(date(annee, 12, 15)))
+        echeances.append(next_working_day(date(annee + 1, 5, 15)))
+    # Prochaines échéances >= aujourd'hui
+    futurs = [e for e in echeances if e >= today]
+    if not futurs:
+        # Si tout passé, générer l'année suivante pour mensuel/trimestriel
+        if r in ('mensuel', 'ca3'):
+            for m in range(1, 13):
+                try:
+                    futurs.append(next_working_day(date(annee + 1, m, jour)))
+                except ValueError:
+                    futurs.append(next_working_day(date(annee + 1, m, 15)))
+        elif r == 'trimestriel':
+            for m in (1, 4, 7, 10):
+                try:
+                    futurs.append(next_working_day(date(annee + 1, m, jour)))
+                except ValueError:
+                    futurs.append(next_working_day(date(annee + 1, m, 15)))
+    return min(futurs) if futurs else None
+
 @app.route('/dossiers')
 @login_required
 def dossiers():
-    """Affiche la liste des dossiers selon le r\u00f4le de l'utilisateur."""
+    """Affiche la liste des dossiers selon le rôle de l'utilisateur."""
     current_equipe = None
     all_equipes_for_switch = []
 
@@ -240,14 +288,13 @@ def dossiers():
             if mois_courant:
                 cible = min(mois_courant, key=lambda t: t.date_echeance)
             else:
-                # 2. Sinon : prochaine tâche future
+                # 2. Sinon : prochaine tâche future déjà générée
                 futurs = [t for t in depot_taches if t.date_echeance and t.date_echeance > today]
                 if futurs:
                     cible = min(futurs, key=lambda t: t.date_echeance)
                 else:
-                    # 3. Sinon : tâche passée la plus récente
-                    passees = [t for t in depot_taches if t.date_echeance]
-                    cible = max(passees, key=lambda t: t.date_echeance) if passees else None
+                    # 3. Aucune tâche générée (horizon 1 mois) → échéance théorique
+                    cible = None
             if cible and cible.date_echeance:
                 restant = (cible.date_echeance - today).days
                 done = cible.statut in ('terminee', 'terminée')
@@ -267,6 +314,19 @@ def dossiers():
                     d._delai_label = f'{restant} j'
                     d._delai_class = 'text-success'
                     d._delai_icon = 'bi-clock'
+            else:
+                # Échéance théorique : délai vers la prochaine échéance, sans statut Déclaré/En retard
+                theo = prochaine_echeance_theorique(d, today)
+                if theo:
+                    restant = (theo - today).days
+                    if restant == 0:
+                        d._delai_label = "Aujourd'hui"
+                        d._delai_class = 'text-warning'
+                        d._delai_icon = 'bi-clock'
+                    else:
+                        d._delai_label = f'{restant} j'
+                        d._delai_class = 'text-success'
+                        d._delai_icon = 'bi-clock'
         elif d.date_limite_declaration:
             restant = (d.date_limite_declaration - today).days
             if restant < 0:
