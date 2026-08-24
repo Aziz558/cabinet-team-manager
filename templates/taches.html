@@ -23,6 +23,15 @@
             <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="fiscal" onclick="applyFilter('fiscal')">Fiscalité</button>
             <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="regular" onclick="applyFilter('regular')">Générales</button>
             <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
+            <span class="text-tertiary small">Nature :</span>
+            <select class="select-premium select-sm" id="filterNature" onchange="applyFilter()" style="width:auto;">
+                <option value="all">Toutes</option>
+                <option value="tva">TVA</option>
+                <option value="is">IS</option>
+                <option value="cfe">CFE</option>
+                <option value="generale">Générales</option>
+            </select>
+            <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
             <span class="text-tertiary small">Statut :</span>
             <button class="btn-premium btn-premium-secondary btn-sm filter-toggle active" data-statut="a_faire" onclick="toggleTaskStatut('a_faire')">À faire</button>
             <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="en_cours" onclick="toggleTaskStatut('en_cours')">En cours</button>
@@ -36,7 +45,7 @@
                 {% endfor %}
             </select>
             <span class="text-tertiary small">Dossier :</span>
-            <select class="select-premium select-sm" id="filterDossier" onchange="applyFilter()" style="width:auto;">
+            <select class="select-premium select-sm" id="filterDossier" onchange="applyFilter()" style="width:auto;" data-prefiltre="{{ dossier_filtre or '' }}">
                 <option value="all">Tous</option>
                 {% for d in dossiers %}
                 <option value="{{ d.id }}" {% if dossier_filtre == d.id %}selected{% endif %}>{{ d.numero_dossier }} — {{ d.intitule[:25] }}</option>
@@ -47,6 +56,7 @@
             <span class="text-tertiary small">Au :</span>
             <input type="date" class="input-premium select-sm" id="filterDateFin" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;">
             <input type="text" class="input-premium input-sm" id="filterSearch" placeholder="Rechercher..." oninput="applyFilter()" style="width:140px;">
+            <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="resetFilters()" title="Réinitialiser tous les filtres"><i class="bi bi-arrow-counterclockwise me-1"></i>Réinitialiser</button>
         </div>
     </div>
 </div>
@@ -60,7 +70,12 @@
     {% set is_fiscal_display = false %}
     {% for kw in fiscal_keywords %}{% if kw in (t.titre|lower) %}{% set is_fiscal_display = true %}{% endif %}{% endfor %}
     {% if not (is_fiscal_display and t.date_echeance and t.date_echeance > horizon_1m) %}
-    <div class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}" data-statut="{{ t.statut }}" data-titre="{{ t.titre|lower }} {{ t.description|lower }}" data-assigne="{{ t.assigne_a }}" data-dossier="{{ t.dossier_id }}" data-echeance="{{ t.date_echeance }}">
+    {% set titre_low = t.titre|lower %}
+    {% if 'cfe' in titre_low %}{% set nature_tache = 'cfe' %}
+    {% elif ' is ' in titre_low or titre_low.startswith('is ') %}{% set nature_tache = 'is' %}
+    {% elif 'tva' in titre_low or 'ca3' in titre_low or 'ca12' in titre_low or 'dépôt' in titre_low or 'depot' in titre_low or 'déclaration' in titre_low %}{% set nature_tache = 'tva' %}
+    {% else %}{% set nature_tache = 'generale' %}{% endif %}
+    <div class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}" data-statut="{{ t.statut }}" data-titre="{{ t.titre|lower }} {{ t.description|lower }}" data-assigne="{{ t.assigne_a }}" data-dossier="{{ t.dossier_id }}" data-echeance="{{ t.date_echeance }}" data-nature="{{ nature_tache }}">
         <div class="task-card-header">
             <span class="task-priority priority-{{ t.priorite }}">{{ t.priorite|capitalize }}</span>
             <span class="task-status status-{{ t.statut }}">{{ t.statut|replace('_', ' ') }}</span>
@@ -189,7 +204,9 @@
 <script>
 // Définir le filtre par défaut : À faire
 document.addEventListener('DOMContentLoaded', function() {
-    // Appliquer le filtre statut = a_faire au chargement
+    // Restaurer les filtres sauvegardés avant d'appliquer
+    restoreFilters();
+    // Appliquer le filtre
     applyFilter();
     
     // Charger les membres dans le modal
@@ -250,11 +267,51 @@ function filterDossierOptions() {
 
 var fiscalKeywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'];
 var taskStatutSelected = ['a_faire'];
+var FILTERS_KEY = 'tachesFilters';
 
-function toggleTaskStatut(value) {
-    var idx = taskStatutSelected.indexOf(value);
-    if (idx >= 0) { taskStatutSelected.splice(idx, 1); }
-    else { taskStatutSelected.push(value); }
+function saveFilters(typeFilter) {
+    try {
+        var state = {
+            typeFilter: typeFilter || document.querySelector('.filter-btn.active')?.dataset?.filter || 'all',
+            statuts: taskStatutSelected,
+            membre: document.getElementById('filterMembre')?.value || 'all',
+            dossier: document.getElementById('filterDossier')?.value || 'all',
+            nature: document.getElementById('filterNature')?.value || 'all',
+            dateDebut: document.getElementById('filterDateDebut')?.value || '',
+            dateFin: document.getElementById('filterDateFin')?.value || '',
+            search: document.getElementById('filterSearch')?.value || ''
+        };
+        localStorage.setItem(FILTERS_KEY, JSON.stringify(state));
+    } catch(e) {}
+}
+
+function restoreFilters() {
+    try {
+        var saved = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
+        if (!saved) return null;
+        if (saved.statuts && Array.isArray(saved.statuts) && saved.statuts.length > 0) taskStatutSelected = saved.statuts;
+        if (saved.membre) document.getElementById('filterMembre').value = saved.membre;
+        // Le pré-filtre dossier (?dossier=) prime sur le filtre sauvegardé
+        var dossierPrefiltre = document.getElementById('filterDossier').getAttribute('data-prefiltre');
+        if (dossierPrefiltre && dossierPrefiltre !== '') {
+            document.getElementById('filterDossier').value = dossierPrefiltre;
+        } else if (saved.dossier) {
+            document.getElementById('filterDossier').value = saved.dossier;
+        }
+        if (saved.nature) document.getElementById('filterNature').value = saved.nature;
+        if (saved.dateDebut) document.getElementById('filterDateDebut').value = saved.dateDebut;
+        if (saved.dateFin) document.getElementById('filterDateFin').value = saved.dateFin;
+        if (saved.search) document.getElementById('filterSearch').value = saved.search;
+        updateStatutButtons();
+        // Activer le bon bouton type
+        document.querySelectorAll('.filter-btn').forEach(function(b) {
+            b.classList.toggle('active', b.dataset.filter === saved.typeFilter);
+        });
+        return saved;
+    } catch(e) { return null; }
+}
+
+function updateStatutButtons() {
     document.querySelectorAll('.filter-toggle').forEach(function(b) {
         var v = b.dataset.statut;
         if (taskStatutSelected.indexOf(v) >= 0) {
@@ -265,13 +322,38 @@ function toggleTaskStatut(value) {
             b.classList.add('btn-premium-secondary');
         }
     });
+}
+
+function toggleTaskStatut(value) {
+    var idx = taskStatutSelected.indexOf(value);
+    if (idx >= 0) { taskStatutSelected.splice(idx, 1); }
+    else { taskStatutSelected.push(value); }
+    updateStatutButtons();
     applyFilter(document.querySelector('.filter-btn.active')?.dataset?.filter || 'all');
+}
+
+function resetFilters() {
+    taskStatutSelected = ['a_faire'];
+    document.getElementById('filterMembre').value = 'all';
+    document.getElementById('filterDossier').value = 'all';
+    document.getElementById('filterNature').value = 'all';
+    document.getElementById('filterDateDebut').value = '';
+    document.getElementById('filterDateFin').value = '';
+    document.getElementById('filterSearch').value = '';
+    localStorage.removeItem(FILTERS_KEY);
+    updateStatutButtons();
+    document.querySelectorAll('.filter-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.filter === 'all');
+    });
+    applyFilter('all');
+    if (window.showToast) showToast('Filtres réinitialisés', 'info');
 }
 
 function applyFilter(typeFilter) {
     if (!typeFilter) typeFilter = document.querySelector('.filter-btn.active')?.dataset?.filter || 'all';
     var membre = document.getElementById('filterMembre')?.value || 'all';
     var dossier = document.getElementById('filterDossier')?.value || 'all';
+    var nature = document.getElementById('filterNature')?.value || 'all';
     var dateDebut = document.getElementById('filterDateDebut')?.value || '';
     var dateFin = document.getElementById('filterDateFin')?.value || '';
     var search = (document.getElementById('filterSearch')?.value || '').toLowerCase();
@@ -303,6 +385,9 @@ function applyFilter(typeFilter) {
         if (show && dossier !== 'all') {
             show = card.dataset.dossier === dossier;
         }
+        if (show && nature !== 'all') {
+            show = card.dataset.nature === nature;
+        }
         if (show && dateDebut) {
             var e = card.dataset.echeance;
             if (e && e < dateDebut) show = false;
@@ -321,6 +406,7 @@ function applyFilter(typeFilter) {
 
     var counter = document.getElementById('taskCount');
     if (counter) counter.textContent = visibleCount + ' tâche(s)';
+    saveFilters(typeFilter);
 }
 </script>
 {% endblock %}

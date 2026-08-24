@@ -41,6 +41,26 @@
                 <a href="{{ url_for('telecharger_template_csv') }}" class="btn-premium btn-premium-secondary btn-press">
                     <i class="bi bi-download me-1"></i>Template
                 </a>
+                <div class="dropdown">
+                    <button class="btn-premium btn-premium-secondary btn-press dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-layout-three-columns me-1"></i>Colonnes
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end border-0 rounded-3 p-2" style="min-width:220px;max-height:340px;overflow-y:auto;">
+                        <li><span class="dropdown-header text-tertiary small">Afficher / masquer les colonnes</span></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="2" checked> <span>N°</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="3" checked> <span>Intitulé</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="4" checked> <span>Collaborateur</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="5" checked> <span>Équipe</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="6" checked> <span>Régime TVA</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="7" checked> <span>Date limite</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="8" checked> <span>Délai restant</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="9" checked> <span>Tâches TVA</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="10" checked> <span>Tâches restantes</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="11" checked> <span>Actions</span></label></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button type="button" class="dropdown-item rounded-2" onclick="resetDossierColumns()"><i class="bi bi-arrow-counterclockwise me-2"></i>Tout afficher</button></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -646,7 +666,45 @@
     }
     styleMemberOptions();
         styleOptions('panelRegime', 'all');
-        styleOptions('panelDate', 'all');
+                styleOptions('panelDate', 'all');
+
+                // ===== COLONNES MASQUABLES =====
+                var COLS_KEY = 'dossiersCols';
+                function applyDossierCols() {
+                    var cols = JSON.parse(localStorage.getItem(COLS_KEY) || '{}');
+                    // Par défaut toutes visibles
+                    for (var i = 2; i <= 11; i++) {
+                        var visible = cols[i] !== false;
+                        document.querySelectorAll('#tableDossiers thead th:nth-child(' + i + '), #tableDossiers tbody tr td:nth-child(' + i + ')').forEach(function(el) {
+                            el.style.display = visible ? '' : 'none';
+                        });
+                        var cb = document.querySelector('.col-toggle[data-col="' + i + '"]');
+                        if (cb) cb.checked = visible;
+                    }
+                }
+                function toggleDossierCol(n) {
+                    var cols = JSON.parse(localStorage.getItem(COLS_KEY) || '{}');
+                    cols[n] = !cols[n];
+                    // Si toutes les colonnes sont visibles, effacer pour repartir sur défaut
+                    var allVisible = true;
+                    for (var i = 2; i <= 11; i++) { if (cols[i] === false) { allVisible = false; break; } }
+                    if (allVisible) { localStorage.removeItem(COLS_KEY); }
+                    else { localStorage.setItem(COLS_KEY, JSON.stringify(cols)); }
+                    applyDossierCols();
+                }
+                function resetDossierColumns() {
+                    localStorage.removeItem(COLS_KEY);
+                    applyDossierCols();
+                    if (window.showToast) showToast('Colonnes réinitialisées', 'info');
+                }
+                // Event listeners sur les checkboxes
+                document.addEventListener('change', function(e) {
+                    if (e.target && e.target.classList.contains('col-toggle')) {
+                        toggleDossierCol(parseInt(e.target.dataset.col));
+                    }
+                });
+                // Appliquer au chargement
+                applyDossierCols();
 
         function toggleAcomptesCa12() {
             var val = document.getElementById('newRegimeTva')?.value || '';

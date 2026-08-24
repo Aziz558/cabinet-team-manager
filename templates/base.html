@@ -111,6 +111,19 @@
                     <li><a class="dropdown-item rounded-2" href="{{ url_for('profil') }}"><i class="bi bi-person me-2 text-tertiary"></i>Mon profil</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item rounded-2" href="#" id="soundToggleLink" onclick="toggleSound(); return false;"><i class="bi bi-volume-up me-2 text-tertiary"></i>Son activé</a></li>
+                    <li>
+                        <div class="dropdown-item rounded-2 d-flex align-items-center gap-2">
+                            <i class="bi bi-music-note me-2 text-tertiary"></i>
+                            <span class="text-tertiary small">Son :</span>
+                            <select class="form-select form-select-sm" id="notifSoundSelect" onchange="changeNotifSound(this.value)" style="width:auto;font-size:0.75rem;background:var(--bg-card-hover);color:var(--text-primary);border-color:var(--border-color);">
+                                <option value="classic">Classique</option>
+                                <option value="soft">Doux</option>
+                                <option value="digital">Digital</option>
+                                <option value="chime">Carillon</option>
+                                <option value="alarm">Alarme</option>
+                            </select>
+                        </div>
+                    </li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item rounded-2 text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Déconnexion</a></li>
                 </ul>
@@ -352,24 +365,46 @@ var lastNotifCount = parseInt(localStorage.getItem('notifCount') || '0');
 if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
 }
+
+// Sons de notification (Web Audio API)
+var NOTIF_SOUNDS = {
+    'classic': { freq: 880, type: 'sine', bips: [[0, 0.3]] },
+    'soft': { freq: 660, type: 'sine', bips: [[0, 0.25], [0.3, 0.4]] },
+    'digital': { freq: 1000, type: 'square', bips: [[0, 0.12], [0.16, 0.12], [0.32, 0.2]] },
+    'chime': { freq: 523, type: 'triangle', bips: [[0, 0.3], [0.28, 0.35], [0.56, 0.5]] },
+    'alarm': { freq: 440, type: 'sawtooth', bips: [[0, 0.3], [0.35, 0.3], [0.7, 0.45]] }
+};
+function playNotificationSound() {
+    var soundName = localStorage.getItem('notifSound') || 'classic';
+    var s = NOTIF_SOUNDS[soundName] || NOTIF_SOUNDS['classic'];
+    try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        s.bips.forEach(function(bip) {
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = s.freq;
+            osc.type = s.type;
+            var start = ctx.currentTime + bip[0];
+            var dur = bip[1];
+            gain.gain.setValueAtTime(0.25, start);
+            gain.gain.exponentialRampToValueAtTime(0.01, start + dur);
+            osc.start(start);
+            osc.stop(start + dur);
+        });
+    } catch(e) {}
+}
 setInterval(function() {
     fetch('/notifications/non_lues').then(function(r) { return r.json(); }).then(function(data) {
         var count = data.count || 0;
         if (count > lastNotifCount && count > 0) {
             if (localStorage.getItem('soundEnabled') !== 'false') {
-                try {
-                    var ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    var osc = ctx.createOscillator();
-                    var gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.frequency.value = 880;
-                    osc.type = 'sine';
-                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-                    osc.start(ctx.currentTime);
-                    osc.stop(ctx.currentTime + 0.3);
-                } catch(e) {}
+                playNotificationSound();
+            }
+            // Toast in-app (style bienvenue / flash)
+            if (window.showToast) {
+                window.showToast('🔔 ' + (data.last_message || count + ' nouvelle(s) notification(s)'), 'info');
             }
             // Desktop notification
             if ('Notification' in window && Notification.permission === 'granted') {
@@ -407,6 +442,21 @@ function toggleSound() {
         link.innerHTML = localStorage.getItem('soundEnabled') !== 'false'
             ? '<i class="bi bi-volume-up me-2 text-tertiary"></i>Son activé'
             : '<i class="bi bi-volume-mute me-2 text-tertiary"></i>Son désactivé';
+    }
+})();
+
+// Sélecteur de son de notification
+function changeNotifSound(value) {
+    localStorage.setItem('notifSound', value);
+    // Aperçu du son choisi
+    if (localStorage.getItem('soundEnabled') !== 'false') {
+        playNotificationSound();
+    }
+}
+(function() {
+    var sel = document.getElementById('notifSoundSelect');
+    if (sel) {
+        sel.value = localStorage.getItem('notifSound') || 'classic';
     }
 })();
 </script>
