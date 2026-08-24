@@ -55,16 +55,26 @@ def send_email_via_brevo_api(
         return False
 
 
-def _email_layout(header_title, header_emoji, intro_html, rows, cta_url=None, cta_text=None, footer_note=''):
+def _email_layout(header_title, header_emoji, intro_html, rows=None, rows_html_override=None, cta_url=None, cta_text=None, footer_note=''):
     """Layout email unifié au thème Cabinet JMH (noir mat + orange)."""
     rows_html = ''
-    for label, value in rows:
-        rows_html += (
-            f'<tr>'
-            f'<td style="color:#777;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;'
-            f'padding:8px 0;vertical-align:top;white-space:nowrap;">{label}</td>'
-            f'<td style="color:#e8e8e8;font-size:14px;padding:8px 0 8px 16px;vertical-align:top;">{value}</td>'
-            f'</tr>'
+    if rows:
+        for label, value in rows:
+            rows_html += (
+                f'<tr>'
+                f'<td style="color:#777;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;'
+                f'padding:8px 0;vertical-align:top;white-space:nowrap;">{label}</td>'
+                f'<td style="color:#e8e8e8;font-size:14px;padding:8px 0 8px 16px;vertical-align:top;">{value}</td>'
+                f'</tr>'
+            )
+
+    content_table_html = ''
+    if rows_html_override:
+        content_table_html = rows_html_override
+    elif rows_html:
+        content_table_html = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border:1px solid #2a2a2a;'
+            f'border-radius:12px;padding:16px 20px;margin-top:16px;">{rows_html}</table>'
         )
 
     cta_html = ''
@@ -100,9 +110,7 @@ def _email_layout(header_title, header_emoji, intro_html, rows, cta_url=None, ct
                 <tr>
                     <td style="padding:16px 32px 8px 32px;">
                         {intro_html}
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:16px 20px;margin-top:16px;">
-                            {rows_html}
-                        </table>
+                        {content_table_html}
                         {cta_html}
                         {footer_note_html}
                     </td>
@@ -224,6 +232,55 @@ def send_task_completed_email_brevo(tache, collab_nom) -> bool:
         to_email=creeur.email,
         subject=subject,
         body=f"Bonjour {creeur.prenom}, {collab_nom} a terminé la tâche : {tache.titre}. Consultez sur {APP_URL}/taches",
+        html_content=template,
+    )
+
+
+def send_daily_digest_email(user, tasks, date_str=''):
+    """Envoie UN email récapitulatif des tâches arrivant à échéance à un destinataire."""
+    if not user or not user.email or not tasks:
+        return False
+
+    subject = f"📋 {len(tasks)} tâche(s) à échéance aujourd'hui — Cabinet JMH"
+
+    rows = ''
+    for t in tasks[:15]:
+        dossier_nom = f"{t.dossier.numero_dossier}" if t.dossier else '—'
+        statut_label = {'a_faire': 'À faire', 'en_cours': 'En cours', 'terminee': 'Terminée'}.get(t.statut, t.statut)
+        rows += (
+            f'<tr style="border-bottom:1px solid #262626;">'
+            f'<td style="padding:10px 0;color:#e8e8e8;font-size:13px;">{t.titre}</td>'
+            f'<td style="padding:10px 0 10px 12px;color:#FF8C00;font-size:12px;white-space:nowrap;">{dossier_nom}</td>'
+            f'<td style="padding:10px 0 10px 12px;color:#9a9a9a;font-size:12px;white-space:nowrap;">{statut_label}</td>'
+            f'</tr>'
+        )
+    if len(tasks) > 15:
+        rows += f'<tr><td colspan="3" style="padding:10px 0;color:#777;font-size:12px;">… et {len(tasks) - 15} autre(s) tâche(s)</td></tr>'
+
+    template = _email_layout(
+        header_title="Rappel des échéances du jour",
+        header_emoji="⏰",
+        intro_html=(
+            f'<p style="color:#e0e0e0;font-size:15px;margin:0 0 4px 0;">Bonjour <strong style="color:#FF8C00;">{user.prenom} {user.nom}</strong>,</p>'
+            f'<p style="color:#9a9a9a;font-size:13px;margin:0;">Voici les <strong style="color:#fff;">{len(tasks)} tâche(s)</strong> à échéance {date_str} :</p>'
+        ),
+        rows_html_override=(
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:8px 20px;margin-top:16px;">'
+            f'<tr><td style="color:#777;font-size:10px;text-transform:uppercase;padding:8px 0;border-bottom:1px solid #2a2a2a;">Tâche</td>'
+            f'<td style="color:#777;font-size:10px;text-transform:uppercase;padding:8px 0 8px 12px;border-bottom:1px solid #2a2a2a;">Dossier</td>'
+            f'<td style="color:#777;font-size:10px;text-transform:uppercase;padding:8px 0 8px 12px;border-bottom:1px solid #2a2a2a;">Statut</td></tr>'
+            f'{rows}'
+            f'</table>'
+        ),
+        cta_url=f'{APP_URL}/taches',
+        cta_text='Voir mes tâches',
+        footer_note="Pensez à mettre à jour le statut de vos tâches une fois traitées.",
+    )
+
+    return send_email_via_brevo_api(
+        to_email=user.email,
+        subject=subject,
+        body=f"Bonjour {user.prenom}, vous avez {len(tasks)} tâche(s) à échéance aujourd'hui. Consultez sur {APP_URL}/taches",
         html_content=template,
     )
 

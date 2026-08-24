@@ -273,25 +273,41 @@ try:
     from datetime import date as dt_date
     
     def envoyer_notifications_quotidiennes():
-        """Envoyer les notifications pour les tâches fiscales arrivant à échéance aujourd'hui."""
+        """Envoyer UN email récapitulatif par destinataire pour les tâches arrivant à échéance aujourd'hui."""
         with app.app_context():
             try:
-                from app.models import Tache
-                from app.integrations.brevo import send_task_assigned_email_brevo
-                fiscal_keywords = ['tva', 'is ', 'cfe ', 'acompte', 'dépôt', 'préparation', 'déclaration', 'prépa']
-                tasks = Tache.query.filter(Tache.date_echeance == dt_date.today()).all()
-                sent = 0
+                from app.models import Tache, User
+                from app.integrations.brevo import send_daily_digest_email
+                tasks = Tache.query.filter(
+                    Tache.date_echeance == dt_date.today(),
+                    Tache.statut != 'terminee'
+                ).all()
+                if not tasks:
+                    return
+                # Regrouper par destinataire : assigné + manager de l'équipe du dossier
+                destinataires = {}  # user_id -> liste de tâches
                 for t in tasks:
-                    titre = (t.titre or '').lower()
-                    is_fiscal = any(kw in titre for kw in fiscal_keywords)
-                    if is_fiscal and t.assigne_a and t.statut != 'terminee':
-                        try:
-                            send_task_assigned_email_brevo(t, t.assigne_a)
+                    targets = []
+                    if t.assigne_a:
+                        targets.append(t.assigne_a)
+                    if t.dossier and t.dossier.equipe and t.dossier.equipe.manager_id:
+                        targets.append(t.dossier.equipe.manager_id)
+                    for uid in set(targets):
+                        if uid:
+                            destinataires.setdefault(uid, []).append(t)
+                sent = 0
+                date_str = dt_date.today().strftime('%d/%m/%Y')
+                for uid, user_tasks in destinataires.items():
+                    user = User.query.get(uid)
+                    if not user or not user.email:
+                        continue
+                    try:
+                        if send_daily_digest_email(user, user_tasks, date_str):
                             sent += 1
-                        except Exception as e:
-                            app.logger.warning(f"Send due notification failed: {e}")
+                    except Exception as e:
+                        app.logger.warning(f"Send digest failed for {uid}: {e}")
                 if sent:
-                    app.logger.info(f"Sent {sent} daily due notifications")
+                    app.logger.info(f"Sent {sent} daily digest email(s)")
             except Exception as e:
                 app.logger.error(f"Daily notification error: {e}")
         
@@ -344,8 +360,16 @@ try:
                         except ValueError:
                             next_date = dt_date((t.date_echeance or today).year + 1, (t.date_echeance or today).month, 28)
                     
-                    if next_date and next_date <= today + timedelta(days=7):  # seulement si dans la semaine à venir
-                        # Créer la nouvelle occurrence
+                    if next_date and (not t.fin_repetition or next_date <= t.fin_repetition):
+                        # Garde-fou : ne pas recréer une occurrence déjà existante avec la même date
+                        template_ref = t.template_id or t.id
+                        exists = Tache.query.filter(
+                            Tache.template_id == template_ref,
+                            Tache.date_echeance == next_date
+                        ).first()
+                        if exists:
+                            continue
+                        # Créer la nouvelle occurrence (sans limite de 7 jours : on crée la prochaine occurrence)
                         new_t = Tache(
                             titre=t.titre,
                             description=t.description,
@@ -356,6 +380,7 @@ try:
                             date_echeance=next_date,
                             cree_par=t.cree_par,
                             frequence_repetition=t.frequence_repetition,
+                            fin_repetition=t.fin_repetition,
                             template_id=t.template_id or t.id,
                         )
                         db.session.add(new_t)

@@ -532,7 +532,59 @@ def taches():
             cree_par=current_user.id,
             frequence_repetition=request.form.get('frequence_repetition') or None,
         )
+        # Date de fin de répétition
+        fin_repetition_val = request.form.get('fin_repetition')
+        if fin_repetition_val:
+            try:
+                t.fin_repetition = datetime.strptime(fin_repetition_val, '%Y-%m-%d').date()
+            except ValueError:
+                pass
         db.session.add(t)
+        db.session.flush()  # pour obtenir t.id avant de pré-générer les occurrences
+        
+        # Pré-générer les occurrences récurrentes (jusqu'à +3 mois ou fin_repetition)
+        if t.frequence_repetition and t.date_echeance:
+            max_date = t.fin_repetition or (date.today() + timedelta(days=90))
+            next_date = t.date_echeance
+            for _ in range(36):  # sécurité : max 36 occurrences
+                if t.frequence_repetition == 'daily':
+                    next_date += timedelta(days=1)
+                elif t.frequence_repetition == 'weekly':
+                    next_date += timedelta(weeks=1)
+                elif t.frequence_repetition == 'monthly':
+                    m = next_date.month + 1
+                    y = next_date.year
+                    if m > 12: m = 1; y += 1
+                    try:
+                        next_date = date(y, m, t.date_echeance.day)
+                    except ValueError:
+                        next_date = date(y, m, min(t.date_echeance.day, 28))
+                elif t.frequence_repetition == 'yearly':
+                    try:
+                        next_date = date(next_date.year + 1, next_date.month, next_date.day)
+                    except ValueError:
+                        next_date = date(next_date.year + 1, next_date.month, 28)
+                else:
+                    break
+                if next_date > max_date:
+                    break
+                new_t = Tache(
+                    titre=t.titre, description=t.description,
+                    dossier_id=t.dossier_id, assigne_a=t.assigne_a,
+                    priorite=t.priorite, statut='a_faire',
+                    date_echeance=next_date, cree_par=t.cree_par,
+                    frequence_repetition=t.frequence_repetition,
+                    fin_repetition=t.fin_repetition,
+                    template_id=t.id,
+                )
+                db.session.add(new_t)
+                # Notifier l'assigné
+                if new_t.assigne_a:
+                    from app.models import Notification
+                    notif = Notification(user_id=new_t.assigne_a, tache_id=new_t.id,
+                        message=f"Nouvelle occurrence : {new_t.titre}", type_notification='assignation')
+                    db.session.add(notif)
+            db.session.commit()
         db.session.commit()
         
         # Notification email + in-app

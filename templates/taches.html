@@ -180,13 +180,18 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label-premium">Répéter</label>
-                        <select name="frequence_repetition" class="select-premium">
+                        <select name="frequence_repetition" class="select-premium" id="newFrequenceRepetition" onchange="toggleFinRepetition()">
                             <option value="">Ne pas répéter</option>
                             <option value="daily">Tous les jours</option>
                             <option value="weekly">Toutes les semaines</option>
                             <option value="monthly">Tous les mois</option>
                             <option value="yearly">Tous les ans</option>
                         </select>
+                    </div>
+                    <div class="mb-3 d-none" id="finRepetitionRow">
+                        <label class="form-label-premium">Cesser la répétition le <small class="text-tertiary">(optionnel — vide = répétition illimitée)</small></label>
+                        <input type="date" name="fin_repetition" class="input-premium">
+                        <p class="text-tertiary small mt-1">La répétition s'arrêtera à cette date (ex : dans 3 mois)</p>
                     </div>
                 </div>
                 <div class="modal-footer-premium">
@@ -254,6 +259,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Filtrer les options du select dossier par texte
+function toggleFinRepetition() {
+    var val = document.getElementById('newFrequenceRepetition')?.value || '';
+    var row = document.getElementById('finRepetitionRow');
+    if (row) row.classList.toggle('d-none', val === '');
+}
 function filterDossierOptions() {
     var search = (document.getElementById('dossierSearch')?.value || '').toLowerCase();
     var select = document.getElementById('modalDossierSelect');
