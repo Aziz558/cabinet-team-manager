@@ -580,8 +580,8 @@ def taches():
                 db.session.add(new_t)
                 # Notifier l'assigné
                 if new_t.assigne_a:
-                    from app.models import Notification
-                    notif = Notification(user_id=new_t.assigne_a, tache_id=new_t.id,
+                    from app.models import Notification as NotifCls
+                    notif = NotifCls(user_id=new_t.assigne_a, tache_id=new_t.id,
                         message=f"Nouvelle occurrence : {new_t.titre}", type_notification='assignation')
                     db.session.add(notif)
             db.session.commit()
