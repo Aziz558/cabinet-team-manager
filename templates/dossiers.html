@@ -307,7 +307,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Régime TVA</label>
-                            <select name="regime_tva" class="select-premium">
+                            <select name="regime_tva" class="select-premium" id="newRegimeTva" onchange="toggleAcomptesCa12()">
                                 <option value="">-- Aucun --</option>
                                 <option value="mensuel">Mensuel (CA3 mensuel)</option>
                                 <option value="trimestriel">Trimestriel (CA3 trimestriel)</option>
@@ -322,7 +322,7 @@
                             <p class="text-tertiary small mt-1">Date de référence pour les échéances TVA (jour du mois)</p>
                         </div>
                     </div>
-                    <div class="row" id="acomptesCa12Row">
+                    <div class="row d-none" id="acomptesCa12Row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Acompte CA12 — Juillet <small class="text-tertiary">(optionnel)</small></label>
                             <input type="date" name="date_acompte_1" class="input-premium">
@@ -410,7 +410,7 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label-premium">Régime TVA</label>
-                            <select name="regime_tva" id="editRegimeTva" class="select-premium">
+                            <select name="regime_tva" id="editRegimeTva" class="select-premium" onchange="toggleEditAcomptesCa12()">
                                 <option value="">-- Aucun --</option>
                                 <option value="mensuel">Mensuel (CA3 mensuel)</option>
                                 <option value="trimestriel">Trimestriel (CA3 trimestriel)</option>
@@ -432,16 +432,16 @@
                             <input type="date" name="date_limite_declaration" id="editDateLimite" class="input-premium">
                         </div>
                     </div>
-                    <div class="row" id="editAcomptesCa12Row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label-premium">Acompte CA12 — Juillet <small class="text-tertiary">(optionnel)</small></label>
-                            <input type="date" name="date_acompte_1" id="editDateAcompte1" class="input-premium">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label-premium">Acompte CA12 — Décembre <small class="text-tertiary">(optionnel)</small></label>
-                            <input type="date" name="date_acompte_2" id="editDateAcompte2" class="input-premium">
-                        </div>
-                    </div>
+                    <div class="row d-none" id="editAcomptesCa12Row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label-premium">Acompte CA12 — Juillet <small class="text-tertiary">(optionnel)</small></label>
+                                                <input type="date" name="date_acompte_1" id="editDateAcompte1" class="input-premium">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label-premium">Acompte CA12 — Décembre <small class="text-tertiary">(optionnel)</small></label>
+                                                <input type="date" name="date_acompte_2" id="editDateAcompte2" class="input-premium">
+                                            </div>
+                                        </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Régime fiscal</label>
@@ -645,8 +645,19 @@
         applyFilters();
     }
     styleMemberOptions();
-    styleOptions('panelRegime', 'all');
-    styleOptions('panelDate', 'all');
+        styleOptions('panelRegime', 'all');
+        styleOptions('panelDate', 'all');
+
+        function toggleAcomptesCa12() {
+            var val = document.getElementById('newRegimeTva')?.value || '';
+            var row = document.getElementById('acomptesCa12Row');
+            if (row) row.classList.toggle('d-none', val !== 'annuel');
+        }
+        function toggleEditAcomptesCa12() {
+            var val = document.getElementById('editRegimeTva')?.value || '';
+            var row = document.getElementById('editAcomptesCa12Row');
+            if (row) row.classList.toggle('d-none', val !== 'annuel');
+        }
 
         var dossiersData = {{ dossiers_data|tojson }};
     function openEditDossier(dossierId) {
@@ -663,6 +674,7 @@
         document.getElementById('editDateAcompte2').value = d.date_acompte_2 || '';
         document.getElementById('editRegimeFiscale').value = d.regime_fiscale || '';
         document.getElementById('editHasCfe').checked = !!d.has_cfe;
+        toggleEditAcomptesCa12();
         var form = document.getElementById('formModifierDossier');
         form.action = '/modifier_dossier/' + dossierId;
         var modalEl = document.getElementById('modalEditDossier');
