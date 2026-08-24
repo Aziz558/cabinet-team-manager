@@ -144,21 +144,27 @@ def _planifier_tva(dossier):
     
     # Handle CA12 annuel: 2 acomptes semestriels + 1 déclaration définitive
     if regime == 'annuel':
-        # Acompte 1: juillet (même jour que la date de référence)
-        try:
-            acompte1 = next_working_day(date(year, 7, day))
-        except ValueError:
-            acompte1 = next_working_day(date(year, 7, 15))
+        # Acompte 1: juillet — date personnalisée si définie, sinon jour de la date de référence
+        if dossier.date_acompte_1:
+            acompte1 = next_working_day(dossier.date_acompte_1)
+        else:
+            try:
+                acompte1 = next_working_day(date(year, 7, day))
+            except ValueError:
+                acompte1 = next_working_day(date(year, 7, 15))
         if acompte1 <= horizon and acompte1 >= date.today() - timedelta(days=60):
             make_task(f"Acompte TVA annuel (juillet) — {dossier.numero_dossier}",
                      f"Acompte TVA semestriel juillet pour {dossier.intitule} — échéance {acompte1.strftime('%d/%m/%Y')}",
                      acompte1, dossier.id, dossier.collaborateur_id, 'haute')
         
-        # Acompte 2: décembre (même jour que la date de référence)
-        try:
-            acompte2 = next_working_day(date(year, 12, day))
-        except ValueError:
-            acompte2 = next_working_day(date(year, 12, 15))
+        # Acompte 2: décembre — date personnalisée si définie, sinon jour de la date de référence
+        if dossier.date_acompte_2:
+            acompte2 = next_working_day(dossier.date_acompte_2)
+        else:
+            try:
+                acompte2 = next_working_day(date(year, 12, day))
+            except ValueError:
+                acompte2 = next_working_day(date(year, 12, 15))
         if acompte2 <= horizon and acompte2 >= date.today() - timedelta(days=60):
             make_task(f"Acompte TVA annuel (décembre) — {dossier.numero_dossier}",
                      f"Acompte TVA semestriel décembre pour {dossier.intitule} — échéance {acompte2.strftime('%d/%m/%Y')}",

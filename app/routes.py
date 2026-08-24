@@ -204,11 +204,18 @@ def prochaine_echeance_theorique(dossier, today):
             except ValueError:
                 echeances.append(next_working_day(date(annee, m, 15)))
     elif r in ('annuel', 'ca12'):
-        echeances.append(next_working_day(date(annee, 7, 15)))
-        try:
-            echeances.append(next_working_day(date(annee, 12, jour)))
-        except ValueError:
-            echeances.append(next_working_day(date(annee, 12, 15)))
+        # Acomptes : dates personnalisées si définies, sinon défauts
+        if dossier.date_acompte_1:
+            echeances.append(next_working_day(dossier.date_acompte_1))
+        else:
+            echeances.append(next_working_day(date(annee, 7, 15)))
+        if dossier.date_acompte_2:
+            echeances.append(next_working_day(dossier.date_acompte_2))
+        else:
+            try:
+                echeances.append(next_working_day(date(annee, 12, jour)))
+            except ValueError:
+                echeances.append(next_working_day(date(annee, 12, 15)))
         echeances.append(next_working_day(date(annee + 1, 5, 15)))
     # Prochaines échéances >= aujourd'hui
     futurs = [e for e in echeances if e >= today]
@@ -422,6 +429,8 @@ def dossiers():
             'regime_tva': d.regime_tva,
             'frequence_tva': d.frequence_tva,
             'date_limite_declaration': d.date_limite_declaration.strftime('%Y-%m-%d') if d.date_limite_declaration else None,
+            'date_acompte_1': d.date_acompte_1.strftime('%Y-%m-%d') if d.date_acompte_1 else None,
+            'date_acompte_2': d.date_acompte_2.strftime('%Y-%m-%d') if d.date_acompte_2 else None,
             'regime_fiscale': d.regime_fiscale,
             'has_cfe': d.has_cfe,
         }
@@ -1031,6 +1040,8 @@ def modifier_dossier(dossier_id):
         regime_tva = request.form.get('regime_tva')
         frequence_tva = request.form.get('frequence_tva')
         date_limite_declaration = request.form.get('date_limite_declaration')
+        date_acompte_1 = request.form.get('date_acompte_1')
+        date_acompte_2 = request.form.get('date_acompte_2')
         regime_fiscale = request.form.get('regime_fiscale')
         has_cfe = ('has_cfe' in request.form)
 
@@ -1046,11 +1057,21 @@ def modifier_dossier(dossier_id):
                 flash('Format de date invalide.', 'danger')
                 return redirect(url_for('dossiers'))
 
+        def _parse_date(v):
+            if not v:
+                return None
+            try:
+                return datetime.strptime(v, '%Y-%m-%d').date()
+            except ValueError:
+                return None
+
         # Détecter si les paramètres fiscaux ont changé → régénération nécessaire
         params_fiscaux_changes = (
             dossier.regime_tva != (regime_tva or None) or
             dossier.frequence_tva != (frequence_tva or None) or
             dossier.date_limite_declaration != date_limite or
+            dossier.date_acompte_1 != _parse_date(date_acompte_1) or
+            dossier.date_acompte_2 != _parse_date(date_acompte_2) or
             dossier.regime_fiscale != (regime_fiscale or None) or
             dossier.has_cfe != has_cfe
         )
@@ -1062,6 +1083,8 @@ def modifier_dossier(dossier_id):
         dossier.regime_tva = regime_tva if regime_tva else None
         dossier.frequence_tva = frequence_tva if frequence_tva else None
         dossier.date_limite_declaration = date_limite
+        dossier.date_acompte_1 = _parse_date(date_acompte_1)
+        dossier.date_acompte_2 = _parse_date(date_acompte_2)
         dossier.regime_fiscale = regime_fiscale if regime_fiscale else None
         dossier.has_cfe = has_cfe
         db.session.flush()
@@ -1358,7 +1381,22 @@ def importer_csv():
             
             has_cfe_str = row.get('has_cfe', '').strip().upper()
             has_cfe = has_cfe_str in ('TRUE', '1', 'OUI', 'YES', 'ON')
-            
+
+            # Dates des acomptes CA12 (optionnel)
+            def _parse_csv_date(v):
+                if not v:
+                    return None
+                try:
+                    return datetime.strptime(v, '%Y-%m-%d').date()
+                except ValueError:
+                    try:
+                        return datetime.strptime(v, '%d/%m/%Y').date()
+                    except ValueError:
+                        return None
+
+            date_acompte_1 = _parse_csv_date(row.get('date_acompte_1', '').strip())
+            date_acompte_2 = _parse_csv_date(row.get('date_acompte_2', '').strip())
+
             dossier = Dossier(
                 numero_dossier=numero,
                 intitule=intitule,
@@ -1367,6 +1405,8 @@ def importer_csv():
                 regime_tva=regime_tva,
                 frequence_tva=frequence_tva,
                 date_limite_declaration=date_limite,
+                date_acompte_1=date_acompte_1,
+                date_acompte_2=date_acompte_2,
                 regime_fiscale=regime_fiscale,
                 has_cfe=has_cfe
             )
@@ -2122,6 +2162,8 @@ def ajouter_dossier():
         regime_tva = request.form.get('regime_tva')
         frequence_tva = request.form.get('frequence_tva')
         date_limite_declaration = request.form.get('date_limite_declaration')
+        date_acompte_1 = request.form.get('date_acompte_1')
+        date_acompte_2 = request.form.get('date_acompte_2')
         regime_fiscale = request.form.get('regime_fiscale')
         has_cfe = ('has_cfe' in request.form)
 
@@ -2137,6 +2179,14 @@ def ajouter_dossier():
                 flash('Format de date invalide.', 'danger')
                 return redirect(url_for('dossiers'))
 
+        def _parse_date(v):
+            if not v:
+                return None
+            try:
+                return datetime.strptime(v, '%Y-%m-%d').date()
+            except ValueError:
+                return None
+
         nouveau_dossier = Dossier(
             numero_dossier=numero_dossier,
             intitule=intitule,
@@ -2145,6 +2195,8 @@ def ajouter_dossier():
             regime_tva=regime_tva if regime_tva else None,
             frequence_tva=frequence_tva if frequence_tva else None,
             date_limite_declaration=date_limite,
+            date_acompte_1=_parse_date(date_acompte_1),
+            date_acompte_2=_parse_date(date_acompte_2),
             regime_fiscale=regime_fiscale if regime_fiscale else None,
             has_cfe=has_cfe
         )

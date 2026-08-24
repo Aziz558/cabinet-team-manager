@@ -105,6 +105,12 @@ with app.app_context():
                 if 'has_cfe' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN has_cfe BOOLEAN DEFAULT FALSE"))
                     app.logger.info("Added has_cfe column to dossiers")
+                if 'date_acompte_1' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN date_acompte_1 DATE"))
+                    app.logger.info("Added date_acompte_1 column to dossiers")
+                if 'date_acompte_2' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN date_acompte_2 DATE"))
+                    app.logger.info("Added date_acompte_2 column to dossiers")
     except Exception as e:
         app.logger.warning(f"Migration error (dossiers columns): {e}")
 

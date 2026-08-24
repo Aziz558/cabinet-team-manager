@@ -322,6 +322,18 @@
                             <p class="text-tertiary small mt-1">Date de référence pour les échéances TVA (jour du mois)</p>
                         </div>
                     </div>
+                    <div class="row" id="acomptesCa12Row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Acompte CA12 — Juillet <small class="text-tertiary">(optionnel)</small></label>
+                            <input type="date" name="date_acompte_1" class="input-premium">
+                            <p class="text-tertiary small mt-1">Date de l'acompte de juillet (CA12). Vide = jour de la date limite</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Acompte CA12 — Décembre <small class="text-tertiary">(optionnel)</small></label>
+                            <input type="date" name="date_acompte_2" class="input-premium">
+                            <p class="text-tertiary small mt-1">Date de l'acompte de décembre (CA12). Vide = jour de la date limite</p>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Fréquence TVA</label>
@@ -418,6 +430,16 @@
                         <div class="col-md-4 mb-3">
                             <label class="form-label-premium">Date limite de déclaration</label>
                             <input type="date" name="date_limite_declaration" id="editDateLimite" class="input-premium">
+                        </div>
+                    </div>
+                    <div class="row" id="editAcomptesCa12Row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Acompte CA12 — Juillet <small class="text-tertiary">(optionnel)</small></label>
+                            <input type="date" name="date_acompte_1" id="editDateAcompte1" class="input-premium">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Acompte CA12 — Décembre <small class="text-tertiary">(optionnel)</small></label>
+                            <input type="date" name="date_acompte_2" id="editDateAcompte2" class="input-premium">
                         </div>
                     </div>
                     <div class="row">
@@ -637,6 +659,8 @@
         document.getElementById('editRegimeTva').value = d.regime_tva || '';
         document.getElementById('editFrequenceTva').value = d.frequence_tva || '';
         document.getElementById('editDateLimite').value = d.date_limite_declaration || '';
+        document.getElementById('editDateAcompte1').value = d.date_acompte_1 || '';
+        document.getElementById('editDateAcompte2').value = d.date_acompte_2 || '';
         document.getElementById('editRegimeFiscale').value = d.regime_fiscale || '';
         document.getElementById('editHasCfe').checked = !!d.has_cfe;
         var form = document.getElementById('formModifierDossier');

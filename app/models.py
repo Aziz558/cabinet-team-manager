@@ -90,6 +90,8 @@ class Dossier(db.Model):
     collaborateur_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     regime_tva = db.Column(db.String(50))  # ca3 | ca12 | exonere
     date_limite_declaration = db.Column(db.Date)
+    date_acompte_1 = db.Column(db.Date)  # CA12 : acompte juillet (optionnel, sinon jour de date_limite)
+    date_acompte_2 = db.Column(db.Date)  # CA12 : acompte décembre (optionnel, sinon jour de date_limite)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     date_cloture = db.Column(db.DateTime)
     frequence_tva = db.Column(db.String(20))  # mensuelle | trimestrielle | None
