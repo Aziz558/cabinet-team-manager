@@ -42,6 +42,14 @@
             <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="en_cours" onclick="toggleStatut({{ item.membre.id }}, 'en_cours')">En cours</button>
             <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="terminee" onclick="toggleStatut({{ item.membre.id }}, 'terminee')">Terminée</button>
             <div class="vr mx-1" style="height:20px;border-color:var(--border-color);"></div>
+            <span class="text-tertiary small">Nature :</span>
+            <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'nature', this.value)">
+                <option value="all">Toutes</option>
+                <option value="tva">TVA</option>
+                <option value="is">IS</option>
+                <option value="cfe">CFE</option>
+                <option value="generale">Générales</option>
+            </select>
             <span class="text-tertiary small">Dossier :</span>
             <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'dossier', this.value)">
                 <option value="all">Tous</option>
@@ -61,7 +69,12 @@
                 <thead><tr><th>Tâche</th><th>Dossier</th><th>Priorité</th><th>Statut</th><th>Échéance</th><th>Action</th></tr></thead>
                 <tbody>
                     {% for t in item.toutes_taches %}
-                    <tr class="task-row" data-statut="{{ t.statut }}" data-dossier="{{ t.dossier_id or '' }}" data-echeance="{{ t.date_echeance }}">
+                    {% set tl = t.titre|lower %}
+                    {% if 'cfe' in tl %}{% set nat = 'cfe' %}
+                    {% elif ' is ' in tl or tl.startswith('is ') %}{% set nat = 'is' %}
+                    {% elif 'tva' in tl or 'ca3' in tl or 'ca12' in tl or 'dépôt' in tl or 'depot' in tl or 'déclaration' in tl %}{% set nat = 'tva' %}
+                    {% else %}{% set nat = 'generale' %}{% endif %}
+                    <tr class="task-row" data-statut="{{ t.statut }}" data-dossier="{{ t.dossier_id or '' }}" data-echeance="{{ t.date_echeance }}" data-nature="{{ nat }}">
                         <td><strong>{{ t.titre }}</strong></td>
                         <td><small class="text-tertiary">{{ t.dossier.numero_dossier if t.dossier else '-' }}</small></td>
                         <td><span class="task-priority priority-{{ t.priorite }}" style="font-size:0.7rem;">{{ t.priorite|capitalize }}</span></td>
@@ -124,6 +137,7 @@ function toggleStatut(membreId, value) {
 function filterMembre(membreId, filterType, value) {
     var card = document.getElementById('membreCard' + membreId);
     if (filterType === 'dossier') card.dataset.dossierFilter = value;
+    if (filterType === 'nature') card.dataset.natureFilter = value;
     if (filterType === 'date_debut') card.dataset.dateDebut = value;
     if (filterType === 'date_fin') card.dataset.dateFin = value;
     applyAllFilters(membreId);
@@ -138,6 +152,7 @@ function applyAllFilters(membreId) {
     var statutStr = card.dataset.statutFilter || '';
     var statuts = statutStr ? statutStr.split(',') : [];
     var dossierF = card.dataset.dossierFilter || 'all';
+    var natureF = card.dataset.natureFilter || 'all';
     var dateDebut = card.dataset.dateDebut || '';
     var dateFin = card.dataset.dateFin || '';
     
@@ -147,6 +162,7 @@ function applyAllFilters(membreId) {
             show = statuts.indexOf(row.dataset.statut) >= 0;
         }
         if (show && dossierF !== 'all' && row.dataset.dossier !== dossierF) show = false;
+        if (show && natureF !== 'all' && row.dataset.nature !== natureF) show = false;
         if (show && dateDebut) {
             var e = row.dataset.echeance;
             if (e && e < dateDebut) show = false;

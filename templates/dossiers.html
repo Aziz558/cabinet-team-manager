@@ -22,7 +22,7 @@
 {% endif %}
 
 <!-- Search bar -->
-<div class="card-premium mb-3 animate-fade-in-up border-0" style="background:transparent;">
+<div class="card-premium mb-3 animate-fade-in-up border-0" style="background:transparent;overflow:visible;">
     <div class="card-body-premium p-0">
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <div class="position-relative flex-grow-1" style="min-width:200px;">
@@ -41,7 +41,7 @@
                 <a href="{{ url_for('telecharger_template_csv') }}" class="btn-premium btn-premium-secondary btn-press">
                     <i class="bi bi-download me-1"></i>Template
                 </a>
-                <div class="dropdown">
+                <div class="dropdown" style="position:relative;z-index:1050;">
                     <button class="btn-premium btn-premium-secondary btn-press dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-layout-three-columns me-1"></i>Colonnes
                     </button>
