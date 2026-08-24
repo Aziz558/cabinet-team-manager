@@ -1174,6 +1174,31 @@ def regenerer_taches_dossier(dossier_id):
         flash(f'Erreur lors de la régénération: {str(e)}', 'danger')
     return redirect(url_for('dossiers'))
 
+@app.route('/debug_regen/<int:dossier_id>')
+@login_required
+def debug_regen(dossier_id):
+    """Diagnostic : exécute la planification et renvoie le résultat détaillé."""
+    dossier = Dossier.query.get_or_404(dossier_id)
+    out = {
+        'dossier': dossier.numero_dossier,
+        'regime_tva': dossier.regime_tva,
+        'date_limite': str(dossier.date_limite_declaration) if dossier.date_limite_declaration else None,
+        'taches_avant': Tache.query.filter_by(dossier_id=dossier.id).count(),
+    }
+    try:
+        from .tva_scheduler import planifier_impots_dossier
+        planifier_impots_dossier(dossier)
+        db.session.commit()
+        out['ok'] = True
+    except Exception as e:
+        db.session.rollback()
+        out['ok'] = False
+        out['erreur'] = str(e)
+    taches_apres = Tache.query.filter_by(dossier_id=dossier.id).all()
+    out['taches_apres'] = len(taches_apres)
+    out['titres'] = [t.titre for t in taches_apres][:25]
+    return jsonify(out)
+
 @app.route('/prendre_en_charge/<int:tache_id>', methods=['POST'])
 @login_required
 def prendre_en_charge(tache_id):
