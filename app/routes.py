@@ -1156,6 +1156,25 @@ def modifier_dossier(dossier_id):
         flash(f'Erreur lors de la modification du dossier: {str(e)}', 'danger')
     return redirect(url_for('dossiers'))
 
+@app.route('/regenerer_taches_dossier/<int:dossier_id>', methods=['POST'])
+@login_required
+def regenerer_taches_dossier(dossier_id):
+    """Régénère les tâches fiscales (TVA, IS, CFE) d'un dossier."""
+    dossier = Dossier.query.get_or_404(dossier_id)
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    try:
+        from .tva_scheduler import planifier_impots_dossier
+        planifier_impots_dossier(dossier)
+        db.session.commit()
+        flash(f'Tâches fiscales régénérées pour {dossier.numero_dossier}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erreur régénération dossier {dossier_id}: {e}")
+        flash(f'Erreur lors de la régénération: {str(e)}', 'danger')
+    return redirect(url_for('dossiers'))
+
 @app.route('/prendre_en_charge/<int:tache_id>', methods=['POST'])
 @login_required
 def prendre_en_charge(tache_id):

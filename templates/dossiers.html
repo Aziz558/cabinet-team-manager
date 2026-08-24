@@ -231,6 +231,11 @@
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="#" onclick="openEditDossier({{ d.id }});return false;"><i class="bi bi-pencil me-2"></i>Modifier</a></li>
+                                    <li>
+                                        <form method="POST" action="{{ url_for('regenerer_taches_dossier', dossier_id=d.id) }}" class="d-inline" onsubmit="return confirm('Régénérer les tâches fiscales (TVA, IS, CFE) de ce dossier ? Les tâches existantes seront recréées.');">
+                                            <button type="submit" class="dropdown-item" style="border:none;background:none;width:100%;text-align:left;"><i class="bi bi-lightning-charge me-2"></i>Régénérer les tâches</button>
+                                        </form>
+                                    </li>
                                     {% set nb_taches_dossier = d._tva_taches_count if d._tva_taches_count is defined else 0 %}
                                     {% if nb_taches_dossier > 0 %}
                                     <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
