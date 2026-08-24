@@ -251,10 +251,8 @@ def dossiers():
             if cible and cible.date_echeance:
                 restant = (cible.date_echeance - today).days
                 done = cible.statut in ('terminee', 'terminée')
-                is_acompte = 'Acompte' in (cible.titre or '')
-                verbe = 'Payé' if is_acompte else 'Déclaré'
                 if done:
-                    d._delai_label = verbe
+                    d._delai_label = 'Déclaré'
                     d._delai_class = 'text-success'
                     d._delai_icon = 'bi-check-circle-fill'
                 elif restant < 0:
@@ -483,6 +481,7 @@ def taches():
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
         dossiers=Dossier.query.order_by(Dossier.numero_dossier).all(),
+        dossier_filtre=request.args.get('dossier', type=int),
         date=date, timedelta=timedelta)
 
 @app.route('/equipes')
@@ -1789,7 +1788,8 @@ def vue_tache(tache_id):
 @app.route('/voir_taches_dossier/<int:dossier_id>')
 @login_required
 def voir_taches_dossier(dossier_id):
-    return redirect(url_for('taches'))
+    # Rediriger vers la page des tâches avec le dossier pré-filtré
+    return redirect(url_for('taches', dossier=dossier_id))
 
 @app.route('/profil')
 @login_required

@@ -39,7 +39,7 @@
             <select class="select-premium select-sm" id="filterDossier" onchange="applyFilter()" style="width:auto;">
                 <option value="all">Tous</option>
                 {% for d in dossiers %}
-                <option value="{{ d.id }}">{{ d.numero_dossier }}</option>
+                <option value="{{ d.id }}" {% if dossier_filtre == d.id %}selected{% endif %}>{{ d.numero_dossier }} — {{ d.intitule[:25] }}</option>
                 {% endfor %}
             </select>
             <span class="text-tertiary small">Du :</span>
