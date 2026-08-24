@@ -192,7 +192,8 @@ def _planifier_is(dossier):
     if dossier.regime_fiscale != 'IS':
         return
     
-    _cleanup_existing_tasks(dossier.id, ['IS', 'Acompte IS', 'Déclaration IS', 'Préparation IS'])
+    # Mots-clés PRÉCIS (ne pas utiliser 'IS' seul : matcherait 'CHOISY', 'PERMIS', etc.)
+    _cleanup_existing_tasks(dossier.id, ['Acompte IS', 'Déclaration IS', 'Préparation Acompte IS', 'Préparation Déclaration IS'])
     
     year = date.today().year
     horizon = date.today() + timedelta(days=30)
