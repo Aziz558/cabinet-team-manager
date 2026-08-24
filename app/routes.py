@@ -1174,58 +1174,6 @@ def regenerer_taches_dossier(dossier_id):
         flash(f'Erreur lors de la régénération: {str(e)}', 'danger')
     return redirect(url_for('dossiers'))
 
-@app.route('/debug_regen/<int:dossier_id>')
-@login_required
-def debug_regen(dossier_id):
-    """Diagnostic : exécute la planification et renvoie le résultat détaillé."""
-    dossier = Dossier.query.get_or_404(dossier_id)
-    out = {
-        'dossier': dossier.numero_dossier,
-        'regime_tva': dossier.regime_tva,
-        'date_limite': str(dossier.date_limite_declaration) if dossier.date_limite_declaration else None,
-        'taches_avant': Tache.query.filter_by(dossier_id=dossier.id).count(),
-    }
-    try:
-        from . import tva_scheduler
-        from datetime import date as _date, timedelta as _td
-        # Simuler la logique de _planifier_tva pour diagnostic
-        regime = (dossier.regime_tva or '').lower().strip()
-        out['regime_normalise'] = regime
-        ref_date = dossier.date_limite_declaration or _date.today()
-        out['ref_date'] = str(ref_date)
-        deadlines = []
-        if regime in ('mensuel', 'ca3'):
-            for m in range(1, 13):
-                try:
-                    deadlines.append(_date(ref_date.year, m, ref_date.day))
-                except ValueError:
-                    deadlines.append(_date(ref_date.year, m, 15))
-        elif regime == 'trimestriel':
-            for m in (1, 4, 7, 10):
-                try:
-                    deadlines.append(_date(ref_date.year, m, ref_date.day))
-                except ValueError:
-                    deadlines.append(_date(ref_date.year, m, 15))
-        today = _date.today()
-        horizon = today + _td(days=30)
-        out['today'] = str(today)
-        out['fenetre'] = [str(today - _td(days=60)), str(horizon)]
-        dans_fenetre = [str(dl) for dl in deadlines if dl >= today - _td(days=60) and dl <= horizon]
-        out['echeances_dans_fenetre'] = dans_fenetre
-        # Exécuter la vraie planification
-        from .tva_scheduler import planifier_impots_dossier
-        planifier_impots_dossier(dossier)
-        db.session.commit()
-        out['ok'] = True
-    except Exception as e:
-        db.session.rollback()
-        out['ok'] = False
-        out['erreur'] = str(e)
-    taches_apres = Tache.query.filter_by(dossier_id=dossier.id).all()
-    out['taches_apres'] = len(taches_apres)
-    out['titres'] = [t.titre for t in taches_apres][:25]
-    return jsonify(out)
-
 @app.route('/prendre_en_charge/<int:tache_id>', methods=['POST'])
 @login_required
 def prendre_en_charge(tache_id):
