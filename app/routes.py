@@ -184,7 +184,7 @@ def prochaine_echeance_theorique(dossier, today):
     """Calcule la prochaine échéance TVA théorique pour les tâches pas encore générées."""
     from .tva_scheduler import next_working_day
     import calendar
-    r = dossier._regime_norm
+    r = (dossier.regime_tva or '').lower().strip()
     ref = dossier.date_limite_declaration
     if not ref or r in ('', 'exonere'):
         return None
