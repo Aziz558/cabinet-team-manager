@@ -69,7 +69,7 @@
     {# Masquer les tâches deadline au-delà de 1 mois #}
     {% set is_fiscal_display = false %}
     {% for kw in fiscal_keywords %}{% if kw in (t.titre|lower) %}{% set is_fiscal_display = true %}{% endif %}{% endfor %}
-    {% if not (is_fiscal_display and t.date_echeance and t.date_echeance > horizon_1m) %}
+    {% if not ((is_fiscal_display or t.frequence_repetition) and t.date_echeance and t.date_echeance > horizon_1m) %}
     {% set titre_low = t.titre|lower %}
     {% if 'cfe' in titre_low %}{% set nature_tache = 'cfe' %}
     {% elif ' is ' in titre_low or titre_low.startswith('is ') %}{% set nature_tache = 'is' %}

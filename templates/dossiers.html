@@ -42,7 +42,7 @@
                     <i class="bi bi-download me-1"></i>Template
                 </a>
                 <div class="dropdown" style="position:relative;z-index:1050;">
-                    <button class="btn-premium btn-premium-secondary btn-press dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn-premium btn-premium-secondary btn-press dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                         <i class="bi bi-layout-three-columns me-1"></i>Colonnes
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end border-0 rounded-3 p-2" style="min-width:220px;max-height:340px;overflow-y:auto;">
@@ -682,9 +682,10 @@
                         if (cb) cb.checked = visible;
                     }
                 }
-                function toggleDossierCol(n) {
+                function toggleDossierCol(cb) {
+                    var n = parseInt(cb.dataset.col);
                     var cols = JSON.parse(localStorage.getItem(COLS_KEY) || '{}');
-                    cols[n] = !cols[n];
+                    cols[n] = cb.checked;  // état actuel du checkbox
                     // Si toutes les colonnes sont visibles, effacer pour repartir sur défaut
                     var allVisible = true;
                     for (var i = 2; i <= 11; i++) { if (cols[i] === false) { allVisible = false; break; } }
@@ -700,7 +701,7 @@
                 // Event listeners sur les checkboxes
                 document.addEventListener('change', function(e) {
                     if (e.target && e.target.classList.contains('col-toggle')) {
-                        toggleDossierCol(parseInt(e.target.dataset.col));
+                        toggleDossierCol(e.target);
                     }
                 });
                 // Appliquer au chargement

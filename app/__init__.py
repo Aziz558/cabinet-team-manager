@@ -360,7 +360,7 @@ try:
                         except ValueError:
                             next_date = dt_date((t.date_echeance or today).year + 1, (t.date_echeance or today).month, 28)
                     
-                    if next_date and (not t.fin_repetition or next_date <= t.fin_repetition):
+                    if next_date and (not t.fin_repetition or next_date <= t.fin_repetition) and next_date <= today + timedelta(days=30):
                         # Garde-fou : ne pas recréer une occurrence déjà existante avec la même date
                         template_ref = t.template_id or t.id
                         exists = Tache.query.filter(
@@ -369,7 +369,7 @@ try:
                         ).first()
                         if exists:
                             continue
-                        # Créer la nouvelle occurrence (sans limite de 7 jours : on crée la prochaine occurrence)
+                        # Créer la nouvelle occurrence (horizon 1 mois, comme les tâches deadlines)
                         new_t = Tache(
                             titre=t.titre,
                             description=t.description,

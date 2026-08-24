@@ -542,9 +542,11 @@ def taches():
         db.session.add(t)
         db.session.flush()  # pour obtenir t.id avant de pré-générer les occurrences
         
-        # Pré-générer les occurrences récurrentes (jusqu'à +3 mois ou fin_repetition)
+        # Pré-générer les occurrences récurrentes (horizon 1 mois comme les deadlines)
         if t.frequence_repetition and t.date_echeance:
-            max_date = t.fin_repetition or (date.today() + timedelta(days=90))
+            max_date = date.today() + timedelta(days=30)
+            if t.fin_repetition and t.fin_repetition < max_date:
+                max_date = t.fin_repetition
             next_date = t.date_echeance
             for _ in range(36):  # sécurité : max 36 occurrences
                 if t.frequence_repetition == 'daily':
