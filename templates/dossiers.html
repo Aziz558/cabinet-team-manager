@@ -174,7 +174,18 @@
                                     <span class="badge badge-tertiary">-</span>
                                     {% endif %}
                                 </td>
-                        <td>{{ d.date_limite_declaration.strftime('%d/%m/%Y') if d.date_limite_declaration else '-' }}</td>
+                        <td>
+                            {% if d._echeances %}
+                                {% for echeance, nature in d._echeances %}
+                                <div class="d-flex align-items-center gap-1 py-1" style="border-bottom:1px solid rgba(255,255,255,0.05);{% if loop.last %}border-bottom:none{% endif %}">
+                                    <span class="text-nowrap small">{{ echeance.strftime('%d/%m') }}</span>
+                                    <span class="badge {% if nature == 'TVA' %}badge-info{% elif nature == 'IS' %}badge-primary{% else %}badge-warning{% endif %}" style="font-size:0.55rem;line-height:1.2;padding:2px 5px;">{{ nature }}</span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                            <span class="text-tertiary">-</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if d._delai_label != '-' %}
                             <span class="{{ d._delai_class }} fw-medium" title="Délai calculé à partir de la date du jour">

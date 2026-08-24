@@ -228,6 +228,54 @@ def prochaine_echeance_theorique(dossier, today):
                     futurs.append(next_working_day(date(annee + 1, m, 15)))
     return min(futurs) if futurs else None
 
+def prochaine_echeance_par_nature(d, today):
+    """Prochaines échéances (date, nature) par nature d'impôt : TVA, IS, CFE."""
+    from .tva_scheduler import next_working_day
+    import calendar
+    resultats = []
+    taches_d = [t for t in d.taches if t.titre and 'Préparation' not in t.titre]
+
+    # --- TVA ---
+    taches_tva = [t for t in taches_d if 'TVA' in t.titre or 'Dépôt' in t.titre]
+    futurs_tva = [t.date_echeance for t in taches_tva if t.date_echeance and t.date_echeance >= today]
+    if futurs_tva:
+        resultats.append((min(futurs_tva), 'TVA'))
+    else:
+        theo = prochaine_echeance_theorique(d, today)
+        if theo:
+            resultats.append((theo, 'TVA'))
+
+    # --- IS ---
+    if (d.regime_fiscale or '').upper() == 'IS':
+        taches_is = [t for t in taches_d if 'IS' in t.titre]
+        futurs_is = [t.date_echeance for t in taches_is if t.date_echeance and t.date_echeance >= today]
+        if futurs_is:
+            resultats.append((min(futurs_is), 'IS'))
+        else:
+            echeances = []
+            for y in [today.year, today.year + 1]:
+                for m in [3, 6, 9, 12]:
+                    echeances.append(next_working_day(date(y, m, 15)))
+                echeances.append(next_working_day(date(y + 1, 5, 15)))
+            futurs = [e for e in echeances if e >= today]
+            if futurs:
+                resultats.append((min(futurs), 'IS'))
+
+    # --- CFE ---
+    if d.has_cfe:
+        taches_cfe = [t for t in taches_d if 'CFE' in t.titre]
+        futurs_cfe = [t.date_echeance for t in taches_cfe if t.date_echeance and t.date_echeance >= today]
+        if futurs_cfe:
+            resultats.append((min(futurs_cfe), 'CFE'))
+        else:
+            echeances = [next_working_day(date(y, 12, 15)) for y in [today.year, today.year + 1]]
+            futurs = [e for e in echeances if e >= today]
+            if futurs:
+                resultats.append((min(futurs), 'CFE'))
+
+    resultats.sort(key=lambda x: x[0])
+    return resultats[:4]
+
 @app.route('/dossiers')
 @login_required
 def dossiers():
@@ -344,6 +392,10 @@ def dossiers():
         d._regime_norm = (d.regime_tva or '').lower()
         d._freq_norm = (d.frequence_tva or '').lower()
         d._date_iso = d.date_limite_declaration.strftime('%Y-%m-%d') if d.date_limite_declaration else ''
+        d._echeances = prochaine_echeance_par_nature(d, today)
+        # data-date-iso ← première échéance (pour le filtre date)
+        if d._echeances:
+            d._date_iso = d._echeances[0][0].strftime('%Y-%m-%d')
         # Combo régime + fréquence pour l'affichage et le filtre unifié
         _r = d._regime_norm
         _f = d._freq_norm
