@@ -79,7 +79,8 @@ def _cleanup_existing_tasks(dossier_id, keywords):
     Tache.query.filter(Tache.dossier_id == dossier_id, or_(*conditions)).delete(synchronize_session=False)
     try:
         db.session.commit()
-    except Exception:
+    except Exception as e:
+        logger.error(f"cleanup commit failed for dossier {dossier_id}: {e}")
         db.session.rollback()
 
 def _planifier_tva(dossier):
@@ -179,8 +180,10 @@ def _planifier_tva(dossier):
     
     try:
         db.session.commit()
-    except Exception:
+    except Exception as e:
+        logger.error(f"_planifier_tva commit failed for {dossier.numero_dossier}: {e}")
         db.session.rollback()
+        raise
 
 def _planifier_is(dossier):
     """IS: fixed dates for acomptes (15/03, 15/06, 15/09, 15/12) and déclaration (15/05)."""
@@ -213,8 +216,10 @@ def _planifier_is(dossier):
     
     try:
         db.session.commit()
-    except Exception:
+    except Exception as e:
+        logger.error(f"_planifier_is commit failed for {dossier.numero_dossier}: {e}")
         db.session.rollback()
+        raise
 
 def _planifier_cfe(dossier):
     """CFE: fixed date 15/12 each year."""
@@ -238,8 +243,10 @@ def _planifier_cfe(dossier):
     
     try:
         db.session.commit()
-    except Exception:
+    except Exception as e:
+        logger.error(f"_planifier_cfe commit failed for {dossier.numero_dossier}: {e}")
         db.session.rollback()
+        raise
 
 def planifier_impots_dossier(dossier):
     """Generate all tax tasks for a dossier."""
