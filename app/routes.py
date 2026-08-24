@@ -1166,9 +1166,8 @@ def regenerer_taches_dossier(dossier_id):
         return redirect(url_for('dossiers'))
     try:
         from .tva_scheduler import planifier_impots_dossier
-        planifier_impots_dossier(dossier)
-        db.session.commit()
-        flash(f'Tâches fiscales régénérées pour {dossier.numero_dossier}.', 'success')
+        planifier_impots_dossier(dossier)  # planifier fait ses propres commits internes
+        flash(f"Tâches fiscales régénérées pour {dossier.numero_dossier}.", "success")
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Erreur régénération dossier {dossier_id}: {e}")
