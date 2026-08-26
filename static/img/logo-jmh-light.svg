@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF8C00"/>
+      <stop offset="100%" stop-color="#E06600"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="108" height="108" rx="26" fill="#FFFFFF" stroke="url(#g)" stroke-width="5"/>
+  <text x="60" y="74" font-family="Poppins, Arial, sans-serif" font-size="46" font-weight="800" fill="#FF8C00" text-anchor="middle" letter-spacing="1">JMH</text>
+</svg>
