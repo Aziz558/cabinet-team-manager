@@ -846,22 +846,40 @@ def assigner_equipe_manager():
 @app.route('/supprimer_membre/<int:user_id>')
 @login_required
 def supprimer_membre(user_id):
-    """Supprime un membre de fa\u00e7on d\u00e9finitive."""
+    """Supprime un membre de façon définitive."""
     if current_user.role not in ('admin', 'manager'):
-        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        flash('Accès refusé.', 'danger')
         return redirect(url_for('membres'))
     user = User.query.get_or_404(user_id)
     if user.role == 'admin' and current_user.role != 'admin':
         flash('Seul un admin peut supprimer un autre admin.', 'danger')
         return redirect(url_for('membres'))
     try:
+        # Nettoyer les dépendances avant suppression
+        from app.models import Tache, Notification, CommentaireTache, Suggestion, Dossier, Equipe, Performance
+        # 1. Réassigner les tâches assignées à cet utilisateur (mettre à None)
+        Tache.query.filter_by(assigne_a=user_id).update({'assigne_a': None})
+        Tache.query.filter_by(cree_par=user_id).update({'cree_par': None})
+        # 2. Supprimer les notifications
+        Notification.query.filter_by(user_id=user_id).delete()
+        # 3. Réassigner les dossiers dont il est collaborateur
+        Dossier.query.filter_by(collaborateur_id=user_id).update({'collaborateur_id': None})
+        # 4. Réassigner les suggestions
+        Suggestion.query.filter_by(cree_par=user_id).update({'cree_par': None})
+        # 5. Si l'utilisateur est manager d'équipes, retirer la gestion
+        Equipe.query.filter_by(manager_id=user_id).update({'manager_id': None})
+        # 6. Supprimer les commentaires de tâches
+        CommentaireTache.query.filter_by(user_id=user_id).delete()
+        # 7. Supprimer les performances
+        Performance.query.filter_by(user_id=user_id).delete()
+        db.session.flush()
         db.session.delete(user)
         db.session.commit()
-        flash(f'Membre {user.prenom} {user.nom} supprim\u00e9.', 'success')
+        flash(f'Membre {user.prenom} {user.nom} supprimé.', 'success')
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Erreur suppression membre: {e}")
-        flash('Erreur lors de la suppression.', 'danger')
+        app.logger.error(f"Erreur suppression membre {user_id}: {e}")
+        flash(f'Erreur lors de la suppression: {str(e)}', 'danger')
     return redirect(url_for('membres'))
 
 # ==========================
