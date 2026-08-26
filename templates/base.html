@@ -303,6 +303,23 @@
     document.documentElement.setAttribute('data-theme', theme);
     var icon = document.getElementById('themeIcon');
     if (icon) icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+    // Auto-réparation : si le CSS chargé ne contient pas le thème clair (cache périmé),
+    // forcer le rechargement du CSS à jour avec un cache-buster dynamique.
+    var hasLight = false;
+    try {
+        Array.from(document.styleSheets).forEach(function(s) {
+            if (s.href && s.href.indexOf('style.css') > -1 && s.cssRules) {
+                Array.from(s.cssRules).forEach(function(r) {
+                    if (r.selectorText === '[data-theme="light"]') hasLight = true;
+                });
+            }
+        });
+    } catch(e) {}
+    if (!hasLight) {
+        document.querySelectorAll('link[href*="style.css"]').forEach(function(l) {
+            l.href = l.href.split('?')[0] + '?v=' + Date.now();
+        });
+    }
 })();
 function toggleTheme() {
     var html = document.documentElement;
