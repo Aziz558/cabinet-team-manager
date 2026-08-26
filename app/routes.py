@@ -843,7 +843,7 @@ def assigner_equipe_manager():
             flash(f'\u00c9quipe mise \u00e0 jour pour {user.prenom} {user.nom}.', 'success')
     return redirect(url_for('membres'))
 
-@app.route('/supprimer_membre/<int:user_id>')
+@app.route('/supprimer_membre/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def supprimer_membre(user_id):
     """Supprime un membre de façon définitive."""
