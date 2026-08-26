@@ -2902,3 +2902,63 @@ p {
 [data-theme="light"] .sidebar {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* ================= UI GLOBALE AMELIOREE ================= */
+
+/* Scrollbar personnalisee (dark et light) */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,140,0,0.25); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,140,0,0.45); }
+
+/* Transition douce au survol des lignes de tableau */
+.table-premium tbody tr { transition: background-color 0.2s ease; }
+
+/* Cards : hover lift leger */
+.card-premium { transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease; }
+.card-premium:hover { border-color: var(--border-active); }
+
+/* Badges arrondis et coherents */
+.badge { border-radius: 8px; padding: 0.35em 0.7em; font-weight: 600; letter-spacing: 0.3px; }
+
+/* Focus visible sur les inputs */
+.input-premium:focus, .select-premium:focus {
+    outline: none;
+    border-color: var(--orange-primary);
+    box-shadow: 0 0 0 3px var(--orange-subtle);
+}
+
+/* Toasts : animation slide-in fluide */
+.toast { animation: toastSlideIn 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes toastSlideIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Boutons : effet presse coherent */
+.btn-premium { transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease; }
+.btn-premium:active { transform: scale(0.97); }
+
+/* Photos dans la sidebar : bordure orange subtile */
+.sidebar-user-img { border: 2px solid transparent; transition: border-color 0.2s ease; }
+.user-icon-badge:hover .sidebar-user-img { border-color: var(--orange-primary); }
+
+/* Titres de sections : petite barre orange a gauche */
+h2.fw-semibold, h4.fw-semibold {
+    position: relative;
+    padding-left: 12px;
+}
+h2.fw-semibold::before, h4.fw-semibold::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 12%;
+    height: 76%;
+    width: 4px;
+    border-radius: 4px;
+    background: var(--orange-gradient);
+}
+
+/* Light theme adjustments supplementaires */
+[data-theme="light"] .btn-premium-secondary { border-color: rgba(0,0,0,0.12); }
+[data-theme="light"] .badge-tertiary { background: rgba(0,0,0,0.06); color: #555; }
+[data-theme="light"] .dropdown-menu { background: #ffffff; border-color: rgba(0,0,0,0.1); }
