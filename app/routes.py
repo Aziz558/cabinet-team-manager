@@ -2290,6 +2290,7 @@ def ajouter_dossier():
         date_acompte_2 = request.form.get('date_acompte_2')
         regime_fiscale = request.form.get('regime_fiscale')
         has_cfe = ('has_cfe' in request.form)
+        pennylane_api_token = (request.form.get('pennylane_api_token') or '').strip() or None
 
         if not numero_dossier or not intitule or not collaborateur_id or not equipe_id:
             flash('Veuillez remplir tous les champs obligatoires.', 'danger')
