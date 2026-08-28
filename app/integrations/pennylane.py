@@ -237,24 +237,88 @@ def sync_dossiers_pennylane(token: str = None) -> dict:
 def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
     """
     Récupère les données Pennylane associées à un dossier du cabinet
-    (factures clients/fournisseurs, écritures) en filtrant par client.
-    Le token spécifique du dossier (dossier.pennylane_api_token) est utilisé en
-    priorité ; sinon on retombe sur le token global.
+    (factures clients/fournisseurs, transactions, écritures).
+
+    Deux cas :
+    - Le dossier a son propre token (Company API d'une société) : on liste
+      TOUT directement (le token est déjà lié à cette société, pas besoin de filtre).
+    - Sinon on utilise le token global (Firm API) en filtrant par customer_id.
     """
+    from app.models import Dossier
+    from app import db
+
     token = token or getattr(dossier, 'pennylane_api_token', None) or get_pennylane_token()
     customer_id = getattr(dossier, 'pennylane_customer_id', None)
     if not token:
-        return {'ok': False, 'message': 'Token non configuré pour ce dossier ni globalement.', 'factures': [], 'ecritures': []}
-    result = {'ok': True, 'factures': [], 'ecritures': [], 'transactions': []}
+        return {'ok': False, 'message': 'Token non configuré pour ce dossier ni globalement.', 'factures': [], 'ecritures': [], 'transactions': []}
+
+    has_dossier_token = bool(getattr(dossier, 'pennylane_api_token', None))
+    result = {'ok': True, 'factures': [], 'ecritures': [], 'transactions': [], 'source_token': 'dossier' if has_dossier_token else 'global'}
+
     try:
-        if customer_id:
-            invs = _paginated_get('customer_invoices', params={'customer_id': customer_id, 'limit': 50}, token=token)
-            result['factures'] = [{
-                'numero': i.get('invoice_number') or '',
-                'montant_ttc': i.get('total_with_tax'),
-                'statut': i.get('status') or '',
-                'date': i.get('date'),
-            } for i in invs]
+        # 1) Auto-associer la société si on a un token par dossier et pas encore de customer_id
+        if has_dossier_token and not customer_id:
+            try:
+                me = requests.get(_api_url('me'), headers=_headers(token), timeout=15)
+                if me.status_code == 200:
+                    me_data = me.json() or {}
+                    company = me_data.get('company') or {}
+                    if company.get('id'):
+                        dossier.pennylane_customer_id = str(company['id'])
+                        db.session.commit()
+                        customer_id = str(company['id'])
+            except Exception as e:
+                logger.warning(f'auto-assoc me: {e}')
+
+        # 2) Factures clients
+        invs_params = {'limit': 50}
+        if customer_id and not has_dossier_token:
+            invs_params['customer_id'] = customer_id
+        invs = _paginated_get('customer_invoices', params=invs_params, token=token)
+        result['factures'] = [{
+            'numero': i.get('invoice_number') or i.get('invoice_number_formatted') or '',
+            'montant_ht': i.get('total_without_tax'),
+            'montant_ttc': i.get('total_with_tax'),
+            'statut': i.get('status') or '',
+            'date': i.get('date'),
+        } for i in invs]
+
+        # 3) Factures fournisseurs (dépenses)
+        try:
+            sinvs = _paginated_get('supplier_invoices', params={'limit': 50}, token=token)
+            result['factures_fournisseurs'] = [{
+                'numero': s.get('invoice_number') or '',
+                'montant_ttc': s.get('total_with_tax'),
+                'statut': s.get('status') or '',
+                'date': s.get('date'),
+            } for s in sinvs]
+        except Exception:
+            result['factures_fournisseurs'] = []
+
+        # 4) Transactions bancaires
+        try:
+            txs = _paginated_get('transactions', params={'limit': 30}, token=token)
+            result['transactions'] = [{
+                'date': t.get('transaction_date') or t.get('date'),
+                'libelle': t.get('label') or '',
+                'montant': t.get('amount'),
+                'statut': t.get('status') or '',
+            } for t in txs]
+        except Exception:
+            result['transactions'] = []
+
+        # 5) Écritures comptables
+        try:
+            entries = _paginated_get('ledger_entries', params={'limit': 30}, token=token)
+            result['ecritures'] = [{
+                'date': e.get('date'),
+                'libelle': e.get('label') or '',
+                'montant_debit': e.get('amount') if (e.get('direction') or '').lower() == 'debit' else 0,
+                'montant_credit': e.get('amount') if (e.get('direction') or '').lower() == 'credit' else 0,
+            } for e in entries]
+        except Exception:
+            result['ecritures'] = []
+
     except Exception as e:
         logger.error(f'get_dossier_pennylane_data: {e}')
         result['ok'] = False

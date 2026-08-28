@@ -9,7 +9,12 @@
     </a>
 </div>
 
-<p class="text-tertiary mb-4">{{ dossier.intitule }} {% if dossier.pennylane_customer_id %}<span class="badge badge-orange ms-2">Client Pennylane associé</span>{% endif %}</p>
+<p class="text-tertiary mb-4">
+    {{ dossier.intitule }}
+    {% if dossier.pennylane_customer_id %}<span class="badge badge-orange ms-2">Société associée</span>{% endif %}
+    {% if dossier.pennylane_api_token %}<span class="badge badge-success ms-2">Token dédié actif</span>{% endif %}
+    {% if data.source_token == 'dossier' %}<span class="badge badge-info ms-2">Source : token du dossier</span>{% elif data.source_token == 'global' %}<span class="badge badge-tertiary ms-2">Source : token global</span>{% endif %}
+</p>
 
 {% if not data.ok %}
 <div class="alert alert-danger">{{ data.message or 'Impossible de récupérer les données Pennylane.' }}</div>
@@ -20,7 +25,7 @@
     <div class="col-lg-6">
         <div class="card-premium animate-fade-in-up stagger-1">
             <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-receipt me-2 text-tertiary"></i>Factures clients</h5>
+                <h5 class="fw-semibold mb-3"><i class="bi bi-receipt me-2 text-tertiary"></i>Factures clients <span class="badge badge-tertiary ms-1">{{ data.factures|length }}</span></h5>
                 {% if data.factures %}
                 <table class="table-premium mb-0">
                     <thead>
@@ -32,11 +37,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for f in data.factures %}
+                        {% for f in data.factures[:20] %}
                         <tr>
                             <td>{{ f.numero }}</td>
                             <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
-                            <td>{{ f.montant_ttc }} €</td>
+                            <td>{{ f.montant_ttc if f.montant_ttc is not none else '—' }} €</td>
                             <td><span class="badge {% if f.statut == 'paid' %}badge-success{% elif f.statut == 'draft' %}badge-tertiary{% else %}badge-info{% endif %}">{{ f.statut }}</span></td>
                         </tr>
                         {% endfor %}
@@ -49,11 +54,77 @@
         </div>
     </div>
 
-    <!-- Écritures comptables -->
+    <!-- Factures fournisseurs -->
     <div class="col-lg-6">
         <div class="card-premium animate-fade-in-up stagger-2">
             <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-journal-text me-2 text-tertiary"></i>Écritures comptables</h5>
+                <h5 class="fw-semibold mb-3"><i class="bi bi-cart me-2 text-tertiary"></i>Factures fournisseurs <span class="badge badge-tertiary ms-1">{{ data.factures_fournisseurs|length if data.factures_fournisseurs is defined else 0 }}</span></h5>
+                {% if data.factures_fournisseurs is defined and data.factures_fournisseurs %}
+                <table class="table-premium mb-0">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Date</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in data.factures_fournisseurs[:20] %}
+                        <tr>
+                            <td>{{ f.numero }}</td>
+                            <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
+                            <td>{{ f.montant_ttc if f.montant_ttc is not none else '—' }} €</td>
+                            <td><span class="badge badge-tertiary">{{ f.statut or '—' }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-tertiary small mb-0">Aucune facture fournisseur trouvée.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions bancaires -->
+    <div class="col-lg-6">
+        <div class="card-premium animate-fade-in-up stagger-3">
+            <div class="card-body-premium">
+                <h5 class="fw-semibold mb-3"><i class="bi bi-bank me-2 text-tertiary"></i>Transactions bancaires <span class="badge badge-tertiary ms-1">{{ data.transactions|length }}</span></h5>
+                {% if data.transactions %}
+                <table class="table-premium mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Libellé</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in data.transactions[:20] %}
+                        <tr>
+                            <td class="text-tertiary small">{{ t.date[:10] if t.date else '—' }}</td>
+                            <td>{{ t.libelle[:35] }}{% if t.libelle|length > 35 %}…{% endif %}</td>
+                            <td class="{% if t.montant is not none and t.montant < 0 %}text-danger{% else %}text-success{% endif %} text-nowrap">
+                                {{ t.montant if t.montant is not none else '—' }} €
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-tertiary small mb-0">Aucune transaction trouvée.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Écritures comptables -->
+    <div class="col-lg-6">
+        <div class="card-premium animate-fade-in-up stagger-4">
+            <div class="card-body-premium">
+                <h5 class="fw-semibold mb-3"><i class="bi bi-journal-text me-2 text-tertiary"></i>Écritures comptables <span class="badge badge-tertiary ms-1">{{ data.ecritures|length }}</span></h5>
                 {% if data.ecritures %}
                 <table class="table-premium mb-0">
                     <thead>
@@ -65,10 +136,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for e in data.ecritures %}
+                        {% for e in data.ecritures[:20] %}
                         <tr>
                             <td class="small text-tertiary">{{ e.date[:10] if e.date else '—' }}</td>
-                            <td>{{ e.libelle[:40] }}{% if e.libelle|length > 40 %}…{% endif %}</td>
+                            <td>{{ e.libelle[:35] }}{% if e.libelle|length > 35 %}…{% endif %}</td>
                             <td class="text-nowrap">{% if e.montant_debit > 0 %}{{ e.montant_debit }} €{% endif %}</td>
                             <td class="text-nowrap">{% if e.montant_credit > 0 %}{{ e.montant_credit }} €{% endif %}</td>
                         </tr>

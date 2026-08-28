@@ -86,6 +86,7 @@
                         <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
                             <div>
                                 <strong class="small">{{ d.numero_dossier }}</strong>
+                                {% if d.pennylane_api_token and not d.pennylane_customer_id %}<span class="badge badge-success ms-1" style="font-size:0.55rem;">Token</span>{% endif %}
                                 <div class="small text-tertiary">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</div>
                             </div>
                             <a href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}" class="btn-premium btn-premium-secondary btn-press" title="Voir les données Pennylane">

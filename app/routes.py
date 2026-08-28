@@ -2395,8 +2395,9 @@ def pennylane_page():
         equipes_list = mes_equipes
 
     # Grouper les dossiers associés par équipe
-    dossiers_associes = [d for d in dossiers_pl if d.pennylane_customer_id]
-    dossiers_non_associes = [d for d in dossiers_pl if not d.pennylane_customer_id]
+    # Un dossier est "connecté" s'il a un customer_id OU un token API dédié
+    dossiers_associes = [d for d in dossiers_pl if d.pennylane_customer_id or d.pennylane_api_token]
+    dossiers_non_associes = [d for d in dossiers_pl if not (d.pennylane_customer_id or d.pennylane_api_token)]
     par_equipe = {}
     for d in dossiers_associes:
         nom_eq = d.equipe.nom if d.equipe else 'Sans équipe'
