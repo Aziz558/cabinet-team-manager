@@ -2367,21 +2367,47 @@ def not_found(error):
 @app.route('/pennylane')
 @login_required
 def pennylane_page():
-    """Page de configuration et statut de l'intégration Pennylane (admin)."""
-    if current_user.role != 'admin':
-        flash('Accès réservé aux administrateurs.', 'danger')
-        return redirect(url_for('dashboard'))
+    """Page de configuration et statut de l'intégration Pennylane.
+       Admin : configuration complète + vue globale.
+       Manager : vue limitée aux dossiers de SES équipes (lecture seule)."""
     from app.integrations.pennylane import get_pennylane_token
+    is_admin = current_user.role == 'admin'
+    if not is_admin and current_user.role != 'manager':
+        flash('Accès réservé aux administrateurs et managers.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # Scoping des dossiers : admin voit tout, manager voit les dossiers de ses équipes
+    if is_admin:
+        dossiers_pl = Dossier.query.order_by(Dossier.numero_dossier).all()
+        equipes_list = Equipe.query.order_by(Equipe.nom).all()
+    else:
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        equipe_ids = [eq.id for eq in mes_equipes]
+        dossiers_pl = Dossier.query.filter(Dossier.equipe_id.in_(equipe_ids)).order_by(Dossier.numero_dossier).all()
+        equipes_list = mes_equipes
+
+    # Grouper les dossiers associés par équipe
+    dossiers_associes = [d for d in dossiers_pl if d.pennylane_customer_id]
+    dossiers_non_associes = [d for d in dossiers_pl if not d.pennylane_customer_id]
+    par_equipe = {}
+    for d in dossiers_associes:
+        nom_eq = d.equipe.nom if d.equipe else 'Sans équipe'
+        par_equipe.setdefault(nom_eq, []).append(d)
+
     token = get_pennylane_token()
     configured = bool(token)
     test_result = None
-    if configured:
+    if configured and is_admin:
         try:
             from app.integrations.pennylane import test_connexion
             test_result = test_connexion()
         except Exception:
             test_result = {'ok': False, 'message': 'Erreur lors du test de connexion.'}
     return render_template('pennylane.html', configured=configured, test_result=test_result,
+                           is_admin=is_admin,
+                           dossiers_associes=dossiers_associes, dossiers_non_associes=dossiers_non_associes,
+                           par_equipe=par_equipe, equipes_list=equipes_list,
+                           total_dossiers=len(dossiers_pl),
                            token_masque=('••••' + token[-4:]) if configured and len(token) > 4 else ('••••' if configured else ''))
 
 
@@ -2417,8 +2443,15 @@ def pennylane_sync():
 def pennylane_dossier(dossier_id):
     """Données Pennylane associées à un dossier (factures, écritures)."""
     dossier = Dossier.query.get_or_404(dossier_id)
-    # Restriction : admin ou manager de l'équipe du dossier
-    if current_user.role not in ('admin', 'manager'):
+    # Scoping par équipe/manager : chaque manager ne voit que les dossiers de SES équipes
+    if current_user.role == 'admin':
+        pass  # admin voit tout
+    elif current_user.role == 'manager':
+        mes_equipes_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
+        if dossier.equipe_id not in mes_equipes_ids:
+            flash('Accès refusé : ce dossier ne fait pas partie de vos équipes.', 'danger')
+            return redirect(url_for('dossiers'))
+    else:
         flash('Accès refusé.', 'danger')
         return redirect(url_for('dossiers'))
     try:

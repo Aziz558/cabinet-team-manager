@@ -4,77 +4,126 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
     <h2 class="text-gradient-animated"><i class="bi bi-link-45deg me-2"></i>Intégration Pennylane</h2>
+    {% if not configured %}
+    <span class="badge badge-tertiary">Non connecté</span>
+    {% else %}
+    <span class="badge badge-success">Connecté</span>
+    {% endif %}
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card-premium animate-fade-in-up stagger-1">
-            <div class="card-body-premium">
-                <h4 class="fw-semibold mb-3">🔑 Configuration de l'API</h4>
-                <p class="text-tertiary small mb-4">
-                    Renseignez votre token <strong>Company API</strong> Pennylane pour connecter votre cabinet.
-                    Générez-le dans Pennylane : <em>Paramètres → Intégrations → API → Créer un token</em>.
-                </p>
-                <div id="plStatus" class="mb-3"></div>
-                <form id="plConfigForm" onsubmit="savePlConfig(event)">
-                    <div class="mb-3">
-                        <label class="form-label-premium">Token API Pennylane</label>
-                        <input type="password" name="api_token" id="plToken" class="input-premium"
-                               placeholder="pl_o_..." value="" autocomplete="off">
-                        {% if configured %}
-                        <small class="text-tertiary">Token actuel : <code>{{ token_masque }}</code> (laissez vide pour conserver)</small>
-                        {% endif %}
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn-premium btn-premium-primary btn-press">
-                            <i class="bi bi-plug me-1"></i>Enregistrer & tester
-                        </button>
-                        <button type="button" class="btn-premium btn-premium-secondary btn-press" onclick="syncPl()">
-                            <i class="bi bi-arrow-repeat me-1"></i>Synchroniser les dossiers
-                        </button>
-                    </div>
-                </form>
+{% if is_admin %}
+<div class="card-premium mb-4 animate-fade-in-up stagger-1">
+    <div class="card-body-premium">
+        <h4 class="fw-semibold mb-3">🔑 Configuration de l'API</h4>
+        <p class="text-tertiary small mb-4">
+            Renseignez votre token <strong>Company API</strong> Pennylane pour connecter votre cabinet.
+            Générez-le dans Pennylane : <em>Paramètres → Intégrations → API → Créer un token</em>.
+        </p>
+        <div id="plStatus" class="mb-3"></div>
+        <form id="plConfigForm" onsubmit="savePlConfig(event)">
+            <div class="mb-3">
+                <label class="form-label-premium">Token API Pennylane</label>
+                <input type="password" name="api_token" id="plToken" class="input-premium"
+                       placeholder="pl_o_..." value="" autocomplete="off">
+                {% if configured %}
+                <small class="text-tertiary">Token actuel : <code>{{ token_masque }}</code> (laissez vide pour conserver)</small>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn-premium btn-premium-primary btn-press">
+                    <i class="bi bi-plug me-1"></i>Enregistrer & tester
+                </button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-press" onclick="syncPl()">
+                    <i class="bi bi-arrow-repeat me-1"></i>Synchroniser les dossiers
+                </button>
+            </div>
+        </form>
 
-                {% if test_result %}
-                <div class="mt-4">
-                    {% if test_result.ok %}
-                    <div class="p-3 rounded-3" style="background: var(--success-bg); border:1px solid var(--success);">
-                        <i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>
-                        <strong>Connexion réussie</strong>
-                        <div class="small mt-1 text-tertiary">Société : {{ test_result.societe }} {% if test_result.siret %}(SIRET {{ test_result.siret }}){% endif %}</div>
+        {% if test_result %}
+        <div class="mt-4">
+            {% if test_result.ok %}
+            <div class="p-3 rounded-3" style="background: var(--success-bg); border:1px solid var(--success);">
+                <i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>
+                <strong>Connexion réussie</strong>
+                <div class="small mt-1 text-tertiary">Société : {{ test_result.societe }} {% if test_result.siret %}(SIRET {{ test_result.siret }}){% endif %}</div>
+            </div>
+            {% else %}
+            <div class="p-3 rounded-3" style="background: var(--danger-bg); border:1px solid var(--danger);">
+                <i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>
+                <strong>Connexion impossible</strong>
+                <div class="small mt-1">{{ test_result.message }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Vue des dossiers par équipe (scoping manager/admin) -->
+<div class="card-premium animate-fade-in-up stagger-2">
+    <div class="card-body-premium">
+        <h4 class="fw-semibold mb-2">
+            <i class="bi bi-folder-check me-2 text-tertiary"></i>
+            Dossiers connectés à Pennylane
+            <span class="badge badge-orange ms-2">{{ dossiers_associes|length }}/{{ total_dossiers }}</span>
+        </h4>
+        <p class="text-tertiary small mb-4">
+            {% if is_admin %}
+            Vue globale (toutes les équipes).
+            {% else %}
+            Vue limitée aux dossiers de vos équipes ({{ equipes_list|map(attribute='nom')|join(', ') }}).
+            {% endif %}
+        </p>
+
+        {% if par_equipe %}
+            {% for eq_nom, dossiers_eq in par_equipe.items() %}
+            <div class="mb-4">
+                <h6 class="text-gradient-animated fw-semibold mb-2"><i class="bi bi-people me-1"></i>{{ eq_nom }} ({{ dossiers_eq|length }})</h6>
+                <div class="row g-2">
+                    {% for d in dossiers_eq %}
+                    <div class="col-md-4 col-lg-3">
+                        <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
+                            <div>
+                                <strong class="small">{{ d.numero_dossier }}</strong>
+                                <div class="small text-tertiary">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</div>
+                            </div>
+                            <a href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}" class="btn-premium btn-premium-secondary btn-press" title="Voir les données Pennylane">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </div>
                     </div>
-                    {% else %}
-                    <div class="p-3 rounded-3" style="background: var(--danger-bg); border:1px solid var(--danger);">
-                        <i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>
-                        <strong>Connexion impossible</strong>
-                        <div class="small mt-1">{{ test_result.message }}</div>
-                    </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <p class="text-tertiary small">
+            Aucun dossier associé pour le moment.
+            {% if is_admin and configured %}Cliquez sur « Synchroniser les dossiers » pour lancer l'association automatique.{% endif %}
+        </p>
+        {% endif %}
+
+        {% if dossiers_non_associes and is_admin %}
+        <div class="mt-4 pt-3" style="border-top:1px solid var(--border-color);">
+            <h6 class="text-tertiary fw-semibold mb-2">Dossiers non associés ({{ dossiers_non_associes|length }})</h6>
+            <div class="d-flex flex-wrap gap-2">
+                {% for d in dossiers_non_associes[:15] %}
+                <span class="badge badge-tertiary">{{ d.numero_dossier }} — {{ d.intitule[:22] }}</span>
+                {% endfor %}
+                {% if dossiers_non_associes|length > 15 %}
+                <span class="badge badge-tertiary">+{{ dossiers_non_associes|length - 15 }}…</span>
                 {% endif %}
             </div>
         </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card-premium animate-fade-in-up stagger-2">
-            <div class="card-body-premium">
-                <h4 class="fw-semibold mb-3">ℹ️ Ce que l'intégration permet</h4>
-                <ul class="mb-0" style="line-height:2;">
-                    <li><i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i><strong>Factures clients</strong> — liste des factures importées sur Pennylane pour chaque dossier</li>
-                    <li><i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i><strong>Écritures comptables</strong> — accès aux écritures passées</li>
-                    <li><i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i><strong>Transactions bancaires</strong> — vue des mouvements</li>
-                    <li><i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i><strong>Association automatique</strong> des dossiers du cabinet aux clients Pennylane (par nom/SIRET)</li>
-                    <li><i class="bi bi-arrow-right-circle me-2" style="color:var(--orange-primary);"></i><strong>À venir :</strong> suivi du temps, rentabilité, webhooks temps réel</li>
-                </ul>
-            </div>
-        </div>
+        {% endif %}
     </div>
 </div>
 
 <script>
 function showPl(msg, ok) {
     var el = document.getElementById('plStatus');
+    if (!el) return;
     el.innerHTML = ok
         ? '<div class="p-3 rounded-3" style="background:var(--success-bg);border:1px solid var(--success);">' +
           '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + msg + '</div>'
