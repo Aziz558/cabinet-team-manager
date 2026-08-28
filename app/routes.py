@@ -2467,7 +2467,9 @@ def pennylane_dossier(dossier_id):
         from app.integrations.pennylane import get_dossier_pennylane_data
         data = get_dossier_pennylane_data(dossier)
     except Exception as e:
-        data = {'ok': False, 'message': str(e), 'factures': [], 'ecritures': [], 'transactions': []}
+        app.logger.error(f'pennylane_dossier {dossier_id}: {e}')
+        data = {'ok': False, 'message': str(e), 'factures': [], 'factures_fournisseurs': [],
+                'ecritures': [], 'transactions': [], 'source_token': None}
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
 

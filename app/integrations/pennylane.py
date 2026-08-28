@@ -250,7 +250,9 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
     token = token or getattr(dossier, 'pennylane_api_token', None) or get_pennylane_token()
     customer_id = getattr(dossier, 'pennylane_customer_id', None)
     if not token:
-        return {'ok': False, 'message': 'Token non configuré pour ce dossier ni globalement.', 'factures': [], 'ecritures': [], 'transactions': []}
+        return {'ok': False, 'message': 'Token non configuré pour ce dossier ni globalement.',
+                'factures': [], 'factures_fournisseurs': [], 'ecritures': [], 'transactions': [],
+                'source_token': None}
 
     has_dossier_token = bool(getattr(dossier, 'pennylane_api_token', None))
     result = {'ok': True, 'factures': [], 'ecritures': [], 'transactions': [], 'source_token': 'dossier' if has_dossier_token else 'global'}

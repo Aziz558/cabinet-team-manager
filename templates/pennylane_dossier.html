@@ -58,7 +58,7 @@
     <div class="col-lg-6">
         <div class="card-premium animate-fade-in-up stagger-2">
             <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-cart me-2 text-tertiary"></i>Factures fournisseurs <span class="badge badge-tertiary ms-1">{{ data.factures_fournisseurs|length if data.factures_fournisseurs is defined else 0 }}</span></h5>
+                <h5 class="fw-semibold mb-3"><i class="bi bi-cart me-2 text-tertiary"></i>Factures fournisseurs <span class="badge badge-tertiary ms-1">{{ (data.factures_fournisseurs or [])|length }}</span></h5>
                 {% if data.factures_fournisseurs is defined and data.factures_fournisseurs %}
                 <table class="table-premium mb-0">
                     <thead>
