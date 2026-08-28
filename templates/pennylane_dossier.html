@@ -106,8 +106,8 @@
                         <tr>
                             <td class="text-tertiary small">{{ t.date[:10] if t.date else '—' }}</td>
                             <td>{{ t.libelle[:35] }}{% if t.libelle|length > 35 %}…{% endif %}</td>
-                            <td class="{% if t.montant is not none and t.montant < 0 %}text-danger{% else %}text-success{% endif %} text-nowrap">
-                                {{ t.montant if t.montant is not none else '—' }} €
+                            <td class="{% if t.montant is not none and t.montant|float < 0 %}text-danger{% else %}text-success{% endif %} text-nowrap">
+                                {{ t.montant|float if t.montant is not none else '—' }} €
                             </td>
                         </tr>
                         {% endfor %}

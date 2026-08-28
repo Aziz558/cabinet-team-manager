@@ -2471,11 +2471,7 @@ def pennylane_dossier(dossier_id):
         app.logger.error(f'pennylane_dossier {dossier_id}: {e}\n{traceback.format_exc()}')
         data = {'ok': False, 'message': str(e), 'factures': [], 'factures_fournisseurs': [],
                 'ecritures': [], 'transactions': [], 'source_token': None}
-    try:
-        return render_template('pennylane_dossier.html', dossier=dossier, data=data)
-    except Exception as e:
-        import traceback
-        return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+    return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
 
 # ==========================
