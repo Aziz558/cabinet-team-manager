@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Pennylane — {{ dossier.numero_dossier }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
+    <h2 class="text-gradient-animated"><i class="bi bi-link-45deg me-2"></i>Pennylane — {{ dossier.numero_dossier }}</h2>
+    <a href="{{ url_for('dossiers') }}" class="btn-premium btn-premium-secondary btn-press">
+        <i class="bi bi-arrow-left me-1"></i>Retour aux dossiers
+    </a>
+</div>
+
+<p class="text-tertiary mb-4">{{ dossier.intitule }} {% if dossier.pennylane_customer_id %}<span class="badge badge-orange ms-2">Client Pennylane associé</span>{% endif %}</p>
+
+{% if not data.ok %}
+<div class="alert alert-danger">{{ data.message or 'Impossible de récupérer les données Pennylane.' }}</div>
+{% endif %}
+
+<div class="row g-4">
+    <!-- Factures clients -->
+    <div class="col-lg-6">
+        <div class="card-premium animate-fade-in-up stagger-1">
+            <div class="card-body-premium">
+                <h5 class="fw-semibold mb-3"><i class="bi bi-receipt me-2 text-tertiary"></i>Factures clients</h5>
+                {% if data.factures %}
+                <table class="table-premium mb-0">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Date</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in data.factures %}
+                        <tr>
+                            <td>{{ f.numero }}</td>
+                            <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
+                            <td>{{ f.montant_ttc }} €</td>
+                            <td><span class="badge {% if f.statut == 'paid' %}badge-success{% elif f.statut == 'draft' %}badge-tertiary{% else %}badge-info{% endif %}">{{ f.statut }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-tertiary small mb-0">Aucune facture client trouvée.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Écritures comptables -->
+    <div class="col-lg-6">
+        <div class="card-premium animate-fade-in-up stagger-2">
+            <div class="card-body-premium">
+                <h5 class="fw-semibold mb-3"><i class="bi bi-journal-text me-2 text-tertiary"></i>Écritures comptables</h5>
+                {% if data.ecritures %}
+                <table class="table-premium mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Libellé</th>
+                            <th>Débit</th>
+                            <th>Crédit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in data.ecritures %}
+                        <tr>
+                            <td class="small text-tertiary">{{ e.date[:10] if e.date else '—' }}</td>
+                            <td>{{ e.libelle[:40] }}{% if e.libelle|length > 40 %}…{% endif %}</td>
+                            <td class="text-nowrap">{% if e.montant_debit > 0 %}{{ e.montant_debit }} €{% endif %}</td>
+                            <td class="text-nowrap">{% if e.montant_credit > 0 %}{{ e.montant_credit }} €{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-tertiary small mb-0">Aucune écriture trouvée.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

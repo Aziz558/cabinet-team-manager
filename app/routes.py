@@ -2364,6 +2364,77 @@ def configurer_email_equipe():
 def not_found(error):
     return render_template('error.html', code=404, message="Page non trouv\u00e9e."), 404
 
+@app.route('/pennylane')
+@login_required
+def pennylane_page():
+    """Page de configuration et statut de l'intégration Pennylane (admin)."""
+    if current_user.role != 'admin':
+        flash('Accès réservé aux administrateurs.', 'danger')
+        return redirect(url_for('dashboard'))
+    from app.integrations.pennylane import get_pennylane_token
+    token = get_pennylane_token()
+    configured = bool(token)
+    test_result = None
+    if configured:
+        try:
+            from app.integrations.pennylane import test_connexion
+            test_result = test_connexion()
+        except Exception:
+            test_result = {'ok': False, 'message': 'Erreur lors du test de connexion.'}
+    return render_template('pennylane.html', configured=configured, test_result=test_result,
+                           token_masque=('••••' + token[-4:]) if configured and len(token) > 4 else ('••••' if configured else ''))
+
+
+@app.route('/pennylane/config', methods=['POST'])
+@login_required
+def pennylane_config():
+    """Sauvegarde le token Pennylane et teste la connexion."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
+    token = (request.form.get('api_token') or '').strip()
+    from app.integrations.pennylane import save_pennylane_token, test_connexion
+    save_pennylane_token(token)
+    result = test_connexion(token) if token else {'ok': False, 'message': 'Token effacé.'}
+    return jsonify(result)
+
+
+@app.route('/pennylane/sync', methods=['POST'])
+@login_required
+def pennylane_sync():
+    """Lance la synchronisation des dossiers avec les clients Pennylane."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
+    try:
+        from app.integrations.pennylane import sync_dossiers_pennylane
+        result = sync_dossiers_pennylane()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'ok': False, 'message': f'Erreur synchro: {str(e)}'})
+
+
+@app.route('/pennylane/dossier/<int:dossier_id>')
+@login_required
+def pennylane_dossier(dossier_id):
+    """Données Pennylane associées à un dossier (factures, écritures)."""
+    dossier = Dossier.query.get_or_404(dossier_id)
+    # Restriction : admin ou manager de l'équipe du dossier
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    try:
+        from app.integrations.pennylane import get_dossier_pennylane_data
+        data = get_dossier_pennylane_data(dossier)
+    except Exception as e:
+        data = {'ok': False, 'message': str(e), 'factures': [], 'ecritures': [], 'transactions': []}
+    return render_template('pennylane_dossier.html', dossier=dossier, data=data)
+
+
+# ==========================
+# Error handlers
+# ==========================
+def not_found(error):
+    return render_template('error.html', code=404, message="Page non trouvée."), 404
+
 @app.errorhandler(500)
 def internal_error(error):
     app.logger.error(f"500 error: {error}")
@@ -2371,4 +2442,4 @@ def internal_error(error):
         db.session.rollback()
     except Exception:
         pass
-    return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos \u00e9quipes ont \u00e9t\u00e9 notifi\u00e9es."), 500
+    return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos équipes ont été notifiées."), 500
