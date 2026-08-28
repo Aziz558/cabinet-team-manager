@@ -605,13 +605,12 @@ def taches():
             db.session.add(notif)
             db.session.commit()
             
-            # Email seulement si NON fiscale
-            if not is_fiscal:
-                try:
-                    from app.integrations.brevo import send_task_assigned_email_brevo
-                    send_task_assigned_email_brevo(t, t.assigne_a)
-                except Exception as e:
-                    app.logger.warning(f"Send email failed: {e}")
+            # Envoyer email d'assignation (tous les types de tâches)
+            try:
+                from app.integrations.brevo import send_task_assigned_email_brevo
+                send_task_assigned_email_brevo(t, t.assigne_a)
+            except Exception as e:
+                app.logger.warning(f"Send email failed: {e}")
         
         flash('Tâche créée avec succès.', 'success')
         return redirect(url_for('taches'))
@@ -2010,6 +2009,35 @@ def api_commentaires(tache_id):
         db.session.add(notif2)
     
     db.session.commit()
+    
+    # Envoyer un email de notification aux personnes concernées
+    comment_nom = f"{current_user.prenom} {current_user.nom}"
+    comment_msg = f"Un nouveau commentaire a été ajouté sur la tâche \"{tache.titre}\" par {comment_nom} :\n\n\"{message}\""
+    from app.integrations.brevo import send_email_via_brevo_api
+    # À l'assigné de la tâche
+    if tache.assigne_a and tache.assigne_a != current_user.id:
+        assigne = User.query.get(tache.assigne_a)
+        if assigne and assigne.email:
+            try:
+                send_email_via_brevo_api(
+                    to_email=assigne.email,
+                    subject=f"Commentaire sur : {tache.titre}",
+                    body=f"Bonjour {assigne.prenom},\n\n{comment_msg}\n\nConsultez la tâche sur https://cabinet-team-manager.onrender.com/taches"
+                )
+            except Exception as e:
+                app.logger.warning(f"Send comment email failed (assigne): {e}")
+    # Au créateur de la tâche (si différent)
+    if tache.cree_par and tache.cree_par != current_user.id and tache.cree_par != tache.assigne_a:
+        createur = User.query.get(tache.cree_par)
+        if createur and createur.email:
+            try:
+                send_email_via_brevo_api(
+                    to_email=createur.email,
+                    subject=f"Commentaire sur : {tache.titre}",
+                    body=f"Bonjour {createur.prenom},\n\n{comment_msg}\n\nConsultez la tâche sur https://cabinet-team-manager.onrender.com/taches"
+                )
+            except Exception as e:
+                app.logger.warning(f"Send comment email failed (createur): {e}")
     
     return jsonify({'ok': True, 'commentaire': {
         'id': comment.id,

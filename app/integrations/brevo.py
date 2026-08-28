@@ -23,8 +23,8 @@ def send_email_via_brevo_api(
 ) -> bool:
     api_key = get_brevo_api_key()
     if not api_key:
-        logger.error('BREVO_API_KEY is not configured')
-        return False
+        logger.error('BREVO_API_KEY is not configured, falling back to SMTP')
+        return send_email_notification_fallback(to_email, subject, body, html_content)
 
     url = 'https://api.brevo.com/v3/smtp/email'
     headers = {
@@ -285,7 +285,7 @@ def send_daily_digest_email(user, tasks, date_str=''):
     )
 
 
-def send_email_notification_fallback(to_email, subject, body):
+def send_email_notification_fallback(to_email, subject, body, html_content=None):
     """Fallback to SMTP if Brevo is not configured."""
     try:
         from app.routes import get_mail_config
@@ -296,12 +296,17 @@ def send_email_notification_fallback(to_email, subject, body):
         username = config['MAIL_USERNAME']
         password = config['MAIL_PASSWORD']
         if not username or not password:
+            logger.error('SMTP fallback: MAIL_USERNAME/PASSWORD not configured')
             return False
-        msg = MIMEMultipart()
+        msg = MIMEMultipart('alternative')
         msg['From'] = config.get('MAIL_DEFAULT_SENDER', username)
         msg['To'] = to_email
         msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
+        if html_content:
+            msg.attach(MIMEText(body, 'plain'))
+            msg.attach(MIMEText(html_content, 'html'))
+        else:
+            msg.attach(MIMEText(body, 'plain'))
         server_host = config['MAIL_SERVER']
         server_port = int(config['MAIL_PORT'])
         server = smtplib.SMTP(server_host, server_port)
@@ -310,6 +315,7 @@ def send_email_notification_fallback(to_email, subject, body):
         server.login(username, password)
         server.send_message(msg)
         server.quit()
+        logger.info('SMTP fallback email sent to %s', to_email)
         return True
     except Exception as e:
         logger.error('SMTP fallback failed: %s', e)
