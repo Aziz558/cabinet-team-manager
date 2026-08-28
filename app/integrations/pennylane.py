@@ -14,7 +14,7 @@ from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
 
-PENNYLANE_API_URL = 'https://api.pennylane.com'
+PENNYLANE_API_URL = 'https://app.pennylane.com/api/external'
 PENNYLANE_API_VERSION = 'v2'
 
 
@@ -66,8 +66,8 @@ def test_connexion(token: str = None) -> dict:
     if not token:
         return {'ok': False, 'message': 'Token API Pennylane non configuré.'}
     try:
-        # Endpoint le plus léger : récupérer la société connectée
-        resp = requests.get(_api_url('me/company'), headers=_headers(token), timeout=15)
+        # Endpoint le plus léger : récupérer les infos de la société connectée
+        resp = requests.get(_api_url('me'), headers=_headers(token), timeout=15)
         if resp.status_code == 200:
             data = resp.json()
             company = data.get('company', {}) if isinstance(data, dict) else {}
