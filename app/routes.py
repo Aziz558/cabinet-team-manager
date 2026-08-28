@@ -433,6 +433,7 @@ def dossiers():
             'date_acompte_2': d.date_acompte_2.strftime('%Y-%m-%d') if d.date_acompte_2 else None,
             'regime_fiscale': d.regime_fiscale,
             'has_cfe': d.has_cfe,
+            'pennylane_api_token_set': bool(d.pennylane_api_token),
         }
         if d.collaborateur_id:
             dossiers_par_collab[d.collaborateur_id] = dossiers_par_collab.get(d.collaborateur_id, 0) + 1
@@ -1158,6 +1159,11 @@ def modifier_dossier(dossier_id):
         dossier.date_acompte_2 = _parse_date(date_acompte_2)
         dossier.regime_fiscale = regime_fiscale if regime_fiscale else None
         dossier.has_cfe = has_cfe
+        # Token Pennylane : ne mettre à jour que si un nouveau token est fourni
+        # (champ vide = conserver le token existant)
+        token_val = (request.form.get('pennylane_api_token') or '').strip()
+        if token_val:
+            dossier.pennylane_api_token = token_val
         db.session.flush()
 
         # Régénérer les tâches deadlines si les paramètres fiscaux ont changé
@@ -2316,7 +2322,8 @@ def ajouter_dossier():
             date_acompte_1=_parse_date(date_acompte_1),
             date_acompte_2=_parse_date(date_acompte_2),
             regime_fiscale=regime_fiscale if regime_fiscale else None,
-            has_cfe=has_cfe
+            has_cfe=has_cfe,
+            pennylane_api_token=pennylane_api_token
         )
         db.session.add(nouveau_dossier)
         db.session.flush()

@@ -93,6 +93,7 @@ class Dossier(db.Model):
     date_acompte_1 = db.Column(db.Date)  # CA12 : acompte juillet (optionnel, sinon jour de date_limite)
     date_acompte_2 = db.Column(db.Date)  # CA12 : acompte décembre (optionnel, sinon jour de date_limite)
     pennylane_customer_id = db.Column(db.String(64), nullable=True)  # ID client Pennylane associé
+    pennylane_api_token = db.Column(db.String(256), nullable=True)  # Token API Pennylane spécifique au dossier (optionnel)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     date_cloture = db.Column(db.DateTime)
     frequence_tva = db.Column(db.String(20))  # mensuelle | trimestrielle | None

@@ -238,11 +238,13 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
     """
     Récupère les données Pennylane associées à un dossier du cabinet
     (factures clients/fournisseurs, écritures) en filtrant par client.
+    Le token spécifique du dossier (dossier.pennylane_api_token) est utilisé en
+    priorité ; sinon on retombe sur le token global.
     """
-    token = token or get_pennylane_token()
+    token = token or getattr(dossier, 'pennylane_api_token', None) or get_pennylane_token()
     customer_id = getattr(dossier, 'pennylane_customer_id', None)
     if not token:
-        return {'ok': False, 'message': 'Token non configuré.', 'factures': [], 'ecritures': []}
+        return {'ok': False, 'message': 'Token non configuré pour ce dossier ni globalement.', 'factures': [], 'ecritures': []}
     result = {'ok': True, 'factures': [], 'ecritures': [], 'transactions': []}
     try:
         if customer_id:

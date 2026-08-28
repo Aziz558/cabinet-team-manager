@@ -114,6 +114,9 @@ with app.app_context():
                 if 'pennylane_customer_id' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN pennylane_customer_id VARCHAR(64)"))
                     app.logger.info("Added pennylane_customer_id column to dossiers")
+                if 'pennylane_api_token' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN pennylane_api_token VARCHAR(256)"))
+                    app.logger.info("Added pennylane_api_token column to dossiers")
     except Exception as e:
         app.logger.warning(f"Migration error (dossiers columns): {e}")
 

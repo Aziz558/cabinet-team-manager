@@ -240,6 +240,7 @@
                                     {% if nb_taches_dossier > 0 %}
                                     <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
                                     {% endif %}
+                                    <li><a class="dropdown-item" href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}"><i class="bi bi-link-45deg me-2"></i>Pennylane{% if d.pennylane_customer_id %} <span class="badge badge-success ms-1">●</span>{% endif %}</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="{{ url_for('supprimer_dossier', dossier_id=d.id) }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce dossier ? Cette action est irréversible.');"><i class="bi bi-trash me-2"></i>Supprimer</a></li>
                                 </ul>
@@ -382,6 +383,11 @@
                         <input type="checkbox" class="form-check-input" name="has_cfe" id="hasCFECheckbox">
                         <label class="form-check-label" for="hasCFECheckbox">Soumis à la CFE</label>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Token API Pennylane <small class="text-tertiary">(optionnel, spécifique à ce dossier)</small></label>
+                        <input type="password" name="pennylane_api_token" class="input-premium" placeholder="pl_o_..." autocomplete="off">
+                        <small class="text-tertiary">Si vide, le token global de la page Pennylane est utilisé.</small>
+                    </div>
                 </div>
                 <div class="modal-footer-premium">
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -482,6 +488,11 @@
                                 <label class="form-check-label" for="editHasCfe">Soumis à la CFE</label>
                             </div>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Token API Pennylane <small class="text-tertiary">(optionnel, spécifique à ce dossier)</small></label>
+                        <input type="password" name="pennylane_api_token" id="editPennylaneToken" class="input-premium" placeholder="pl_o_..." autocomplete="off">
+                        <small class="text-tertiary">Si vide, le token global de la page Pennylane est utilisé.</small>
                     </div>
                     <div class="alert alert-warning py-2 small mb-0">
                         <i class="bi bi-exclamation-triangle me-1"></i>
@@ -738,6 +749,12 @@
         document.getElementById('editDateAcompte2').value = d.date_acompte_2 || '';
         document.getElementById('editRegimeFiscale').value = d.regime_fiscale || '';
         document.getElementById('editHasCfe').checked = !!d.has_cfe;
+        // Token Pennylane : ne jamais afficher le token complet, juste un indicateur
+        var tokenInput = document.getElementById('editPennylaneToken');
+        if (tokenInput) {
+            tokenInput.value = '';
+            tokenInput.placeholder = d.pennylane_api_token_set ? '•••••••• (token configuré — laisser vide pour conserver)' : 'pl_o_...';
+        }
         toggleEditAcomptesCa12();
         var form = document.getElementById('formModifierDossier');
         form.action = '/modifier_dossier/' + dossierId;
