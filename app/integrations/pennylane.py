@@ -246,11 +246,59 @@ def _to_float(v):
         return None
 
 
+def traduire_statut_pl(statut_raw: str, item_type: str = 'transaction') -> str:
+    """Traduit le statut brut Pennylane en français (Traité / Prétraité / À traiter).
+    
+    Pour les transactions (bank) : unaffected→À traiter, partially_affected→Prétraité, affected→Traité
+    Pour les factures clients : draft→À traiter, to_be_sent→À traiter, sent→À traiter,
+                                paid→Traité, partially_paid→Prétraité, overdue→À traiter
+    Pour les factures fournisseurs : draft→À traiter, pending_approval→À traiter,
+                                     approved→Traité, paid→Traité, partially_paid→Prétraité
+    """
+    status = (statut_raw or '').strip().lower()
+    
+    if not status:
+        return '—'
+    
+    # Mapping par type
+    if item_type == 'transaction':
+        mapping = {
+            'unaffected': 'À traiter',
+            'partially_affected': 'Prétraité',
+            'affected': 'Traité',
+            'marked_as_unexpected': 'Marqué',
+        }
+        return mapping.get(status, status.replace('_', ' ').title())
+    
+    # Factures (client ou fournisseur)
+    if item_type in ('facture_vente', 'facture_achat'):
+        if status in ('paid', 'approved', 'completed'):
+            return 'Traité'
+        elif status in ('partially_paid', 'partially_approved'):
+            return 'Prétraité'
+        elif status in ('draft', 'to_be_sent', 'sent', 'pending_approval', 'overdue', 'pending'):
+            return 'À traiter'
+        elif status in ('cancelled', 'void'):
+            return 'Annulé'
+        return status.replace('_', ' ').title()
+    
+    return status.replace('_', ' ').title()
+
+
+def est_pl_a_traiter(statut_raw: str, item_type: str = 'transaction') -> bool:
+    """Un item Pennylane nécessite-t-il une action ?
+    Seuls les items À traiter ou Prétraité comptent comme 'à traiter'."""
+    fr = traduire_statut_pl(statut_raw, item_type)
+    return fr in ('À traiter', 'Prétraité')
+
+
 def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
     """
     Compare les items reçus avec la table pennylane_items.
-    - Nouveau item → inséré en DB avec statut 'a_traiter' + retour dans la liste.
-    - Item connu → mis à jour (référence/montant), statut conservé.
+    - Nouveau item → inséré en DB avec api_statut (statut Pennylane) + statut 'a_traiter'.
+    - Item connu → mis à jour (référence/montant/statut API).
+    - Seuls les items DONT le statut Pennylane est "À traiter" ou "Prétraité" sont
+      retournés comme nouveaux (pas ceux déjà traités/annulés).
     Retourne la liste des nouveaux items détectés.
     """
     from app import db
@@ -261,7 +309,7 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
     existing = {(it.item_type, it.item_id): it for it in all_rows}
     dirty = False
 
-    def _process(item_type, items, ref_keys, montant_key, date_keys):
+    def _process(item_type, items, ref_keys, montant_key, date_keys, status_key='status'):
         nonlocal dirty
         for it in items or []:
             iid = str(it.get('id') or '')
@@ -278,6 +326,7 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
                 if it.get(k):
                     date_item = str(it[k])
                     break
+            api_statut = str(it.get(status_key) or '').strip()
             row = existing.get((item_type, iid))
             if row is None:
                 row = PennylaneItem(
@@ -287,11 +336,15 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
                     reference=ref[:120],
                     montant=montant,
                     date_item=date_item[:30],
+                    api_statut=api_statut[:30],
                     statut='a_traiter',
                 )
                 db.session.add(row)
                 existing[(item_type, iid)] = row
-                nouveaux.append({'type': item_type, 'reference': ref, 'montant': montant, 'date': date_item})
+                # Ne signaler que si pas encore traité/annulé côté Pennylane
+                if est_pl_a_traiter(api_statut, item_type):
+                    nouveaux.append({'type': item_type, 'reference': ref, 'montant': montant, 'date': date_item,
+                                     'api_statut': api_statut})
                 dirty = True
             else:
                 # Mise à jour douce
@@ -300,6 +353,14 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
                     dirty = True
                 if montant is not None and row.montant != montant:
                     row.montant = montant
+                    dirty = True
+                if api_statut and row.api_statut != api_statut[:30]:
+                    row.api_statut = api_statut[:30]
+                    dirty = True
+                # Si l'item était "a_traiter" mais que Pennylane dit maintenant "traité",
+                # l'auto-marquer comme traité (le statut API fait foi)
+                if row.statut == 'a_traiter' and api_statut and not est_pl_a_traiter(api_statut, item_type):
+                    row.statut = 'traite'
                     dirty = True
 
     _process('facture_vente', invs, ('invoice_number', 'invoice_number_formatted'), 'total_with_tax', ('date',))
@@ -410,6 +471,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
             'montant_ht': i.get('total_without_tax'),
             'montant_ttc': i.get('total_with_tax'),
             'statut': i.get('status') or '',
+            'statut_fr': traduire_statut_pl(i.get('status') or '', 'facture_vente'),
             'date': i.get('date'),
         } for i in invs]
 
@@ -421,6 +483,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
                 'numero': s.get('invoice_number') or '',
                 'montant_ttc': s.get('total_with_tax'),
                 'statut': s.get('status') or '',
+                'statut_fr': traduire_statut_pl(s.get('status') or '', 'facture_achat'),
                 'date': s.get('date'),
             } for s in sinvs]
         except Exception as e:
@@ -437,6 +500,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
                 'libelle': t.get('label') or '',
                 'montant': t.get('amount'),
                 'statut': t.get('status') or '',
+                'statut_fr': traduire_statut_pl(t.get('status') or '', 'transaction'),
             } for t in txs]
         except Exception as e:
             logger.warning(f'transactions: {e}')

@@ -222,6 +222,7 @@ class PennylaneItem(db.Model):
     date_item = db.Column(db.String(30))             # date de la facture/transaction (string API)
     vu_premiere_fois = db.Column(db.DateTime, default=datetime.utcnow)
     statut = db.Column(db.String(20), default='a_traiter')  # a_traiter | traite | ignore
+    api_statut = db.Column(db.String(30), nullable=True)    # statut brut Pennylane (affected, paid, draft...)
     statut_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     statut_date = db.Column(db.DateTime, nullable=True)
 

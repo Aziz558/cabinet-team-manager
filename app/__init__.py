@@ -130,6 +130,13 @@ with app.app_context():
                     conn.execute(db.text("CREATE UNIQUE INDEX uq_pl_item ON pennylane_items (dossier_id, item_type, item_id)"))
                     conn.execute(db.text("CREATE INDEX ix_pl_items_dossier ON pennylane_items (dossier_id)"))
                     app.logger.info("Created table pennylane_items")
+                # Ajouter api_statut si absent
+                pl_cols = [c[0] for c in conn.execute(db.text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name='pennylane_items'"
+                )).fetchall()]
+                if 'api_statut' not in pl_cols:
+                    conn.execute(db.text("ALTER TABLE pennylane_items ADD COLUMN api_statut VARCHAR(30)"))
+                    app.logger.info("Added api_statut to pennylane_items")
     except Exception as e:
         app.logger.warning(f"Migration error (dossiers columns): {e}")
 
