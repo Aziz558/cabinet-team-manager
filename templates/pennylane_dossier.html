@@ -45,23 +45,28 @@
 {% if data.resume_nouveaux %}
 <div class="alert alert-success d-flex align-items-center animate-fade-in-up">
     <i class="bi bi-stars me-2 fs-5"></i>
-    <div>
-        <strong>{{ data.resume_nouveaux }} nouveau(x)</strong> détecté(s) sur ce dossier —
-        marquez-les comme traités après vérification.
-    </div>
+    <div><strong>{{ data.resume_nouveaux }} nouveau(x)</strong> détecté(s) — marquez-les comme traités après vérification.</div>
 </div>
 {% endif %}
 
 <!-- Filtres -->
 <div class="card-premium mb-3 animate-fade-in-up">
     <div class="card-body-premium py-2">
-        <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="d-flex flex-wrap align-items-end gap-3">
             <div>
-                <label class="text-tertiary small mb-1 d-block">Statut</label>
+                <label class="text-tertiary small mb-1 d-block">Nature</label>
+                <select id="filter-nature" class="form-select form-select-sm" style="min-width:160px;">
+                    <option value="">Toutes les natures</option>
+                    <option value="vente">Ventes ({{ data.nb_ventes }})</option>
+                    <option value="achat">Achats ({{ data.nb_achats }})</option>
+                    <option value="banque">Flux bancaires ({{ data.nb_banque }})</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-tertiary small mb-1 d-block">Traitement</label>
                 <select id="filter-statut" class="form-select form-select-sm" style="min-width:140px;">
-                    <option value="">Tous les statuts</option>
+                    <option value="">Tous les traitements</option>
                     <option value="a_traiter">À traiter</option>
-                    <option value="pretraite">Prétraité</option>
                     <option value="traite">Traité</option>
                     <option value="ignore">Ignoré</option>
                 </select>
@@ -75,116 +80,51 @@
                     <option value="30j">30 derniers jours</option>
                 </select>
             </div>
-            <div class="align-self-end">
-                <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">Réinitialiser</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">Réinitialiser</button>
+            <div class="ms-auto text-tertiary small d-none d-md-block">
+                <i class="bi bi-mouse me-1"></i>Molette pour faire défiler — {{ (data.lignes or [])|length }} lignes
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-4">
-
-    <!-- Factures clients (ventes) -->
-    <div class="col-lg-6">
-        <div class="card-premium animate-fade-in-up">
-            <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-receipt me-2"></i>Factures clients (ventes) <span class="badge badge-tertiary ms-1">{{ (data.factures or [])|length }}</span></h5>
-                {% if data.factures %}
-                <div class="table-responsive">
-                <table class="table-premium mb-0 pl-table">
-                    <thead>
-                        <tr>
-                            <th>N°</th><th>Date</th><th>Montant</th><th>Statut</th><th>Traitement</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for f in data.factures[:40] %}
-                        <tr class="pl-row {% if f.nouveau %}pl-item-new{% endif %}" data-statut="{{ f.statut_traitement }}" data-ajout="{{ f.ajout_date }}">
-                            <td>{{ f.numero or '—' }} {% if f.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
-                            <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
-                            <td>{{ f.montant_ttc|float if f.montant_ttc is not none else '—' }} €</td>
-                            <td><span class="badge {{ 'badge-success' if f.statut_fr == 'Traité' else ('badge-warning' if f.statut_fr == 'Prétraité' else 'badge-orange') }}">{{ f.statut_fr or '—' }}</span></td>
-                            <td id="pl-cell-{{ f.id }}">{{ pl_statut_badge(f.statut_traitement) }} {{ pl_statut_buttons(f.id, f.statut_traitement) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                </div>
-                {% else %}
-                <p class="text-tertiary small mb-0">Aucune facture client trouvée.</p>
-                {% endif %}
-            </div>
+<!-- Tableau unifié -->
+<div class="card-premium animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
+    <div class="card-body-premium p-0">
+        <div class="pl-table-wrap">
+            <table class="table-premium table-premium-breathe mb-0" id="tablePennylane">
+                <thead>
+                    <tr>
+                        <th>Nature</th>
+                        <th>N° / Libellé</th>
+                        <th>Date</th>
+                        <th>Traitement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in data.lignes %}
+                    <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
+                        data-nature="{{ l.nature }}" data-statut="{{ l.statut_traitement }}" data-ajout="{{ l.ajout_date|default('') }}">
+                        <td>
+                            <span class="badge {{ 'badge-info' if l.nature == 'banque' else ('badge-warning' if l.nature == 'achat' else 'badge-orange') }}">{{ l.nature_label }}</span>
+                            {% if l.nouveau %}<span class="badge badge-success ms-1" style="font-size:0.55rem;">NOUVEAU</span>{% endif %}
+                        </td>
+                        <td>
+                            <div class="small">{{ l.libelle[:45] }}{% if l.libelle|length > 45 %}…{% endif %}</div>
+                            {% if l.nature != 'banque' %}
+                            <div class="text-tertiary" style="font-size:0.65rem;">
+                                <span class="badge {{ 'badge-success' if l.statut_fr == 'Traité' else ('badge-warning' if l.statut_fr == 'Prétraité' else 'badge-orange') }}" style="font-size:0.55rem;">{{ l.statut_fr or '—' }}</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="text-tertiary small text-nowrap">{{ l.date or '—' }}</td>
+                        <td id="pl-cell-{{ l.db_id }}">{{ pl_statut_badge(l.statut_traitement) }} {{ pl_statut_buttons(l.db_id, l.statut_traitement) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
-
-    <!-- Factures fournisseurs (achats) -->
-    <div class="col-lg-6">
-        <div class="card-premium animate-fade-in-up stagger-2">
-            <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-cart me-2 text-tertiary"></i>Factures fournisseurs (achats) <span class="badge badge-tertiary ms-1">{{ (data.factures_fournisseurs or [])|length }}</span></h5>
-                {% if data.factures_fournisseurs %}
-                <div class="table-responsive">
-                <table class="table-premium mb-0 pl-table">
-                    <thead>
-                        <tr>
-                            <th>N°</th><th>Date</th><th>Montant</th><th>Statut</th><th>Traitement</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for f in data.factures_fournisseurs[:40] %}
-                        <tr class="pl-row {% if f.nouveau %}pl-item-new{% endif %}" data-statut="{{ f.statut_traitement }}" data-ajout="{{ f.ajout_date }}">
-                            <td>{{ f.numero or '—' }} {% if f.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
-                            <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
-                            <td>{{ f.montant_ttc|float if f.montant_ttc is not none else '—' }} €</td>
-                            <td><span class="badge {{ 'badge-success' if f.statut_fr == 'Traité' else ('badge-warning' if f.statut_fr == 'Prétraité' else 'badge-orange') }}">{{ f.statut_fr or '—' }}</span></td>
-                            <td id="pl-cell-{{ f.id }}">{{ pl_statut_badge(f.statut_traitement) }} {{ pl_statut_buttons(f.id, f.statut_traitement) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                </div>
-                {% else %}
-                <p class="text-tertiary small mb-0">Aucune facture fournisseur trouvée.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Transactions bancaires -->
-    <div class="col-lg-6">
-        <div class="card-premium animate-fade-in-up stagger-3">
-            <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-bank me-2 text-tertiary"></i>Transactions bancaires <span class="badge badge-tertiary ms-1">{{ (data.transactions or [])|length }}</span></h5>
-                {% if data.transactions %}
-                <div class="table-responsive">
-                <table class="table-premium mb-0 pl-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th><th>Libellé</th><th>Montant</th><th>Statut</th><th>Traitement</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in data.transactions[:40] %}
-                        <tr class="pl-row {% if t.nouveau %}pl-item-new{% endif %}" data-statut="{{ t.statut_traitement }}" data-ajout="{{ t.ajout_date }}">
-                            <td class="text-tertiary small">{{ t.date[:10] if t.date else '—' }}</td>
-                            <td>{{ t.libelle[:35] }}{% if t.libelle|length > 35 %}…{% endif %} {% if t.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
-                            <td class="{% if t.montant is not none and t.montant|float < 0 %}text-danger{% else %}text-success{% endif %} text-nowrap">
-                                {{ t.montant|float if t.montant is not none else '—' }} €
-                            </td>
-                            <td><span class="badge {{ 'badge-success' if t.statut_fr == 'Traité' else ('badge-warning' if t.statut_fr == 'Prétraité' else 'badge-orange') }}">{{ t.statut_fr or '—' }}</span></td>
-                            <td id="pl-cell-{{ t.id }}">{{ pl_statut_badge(t.statut_traitement) }} {{ pl_statut_buttons(t.id, t.statut_traitement) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                </div>
-                {% else %}
-                <p class="text-tertiary small mb-0">Aucune transaction trouvée.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <style>
@@ -196,6 +136,11 @@
 .pl-btns .btn-ignore { color: #94a3b8; }
 .pl-btns button:hover { background: rgba(255,255,255,0.08); }
 .pl-row.hidden-row { display: none; }
+/* Hauteur fixe + scroll à la molette */
+.pl-table-wrap { max-height: 560px; overflow-y: auto; }
+.pl-table-wrap::-webkit-scrollbar { width: 8px; }
+.pl-table-wrap::-webkit-scrollbar-track { background: transparent; }
+.pl-table-wrap::-webkit-scrollbar-thumb { background: var(--orange-primary); border-radius: 8px; }
 </style>
 
 <script>
@@ -206,13 +151,7 @@ function setStatut(itemId, statut) {
         body: JSON.stringify({statut: statut})
     })
     .then(r => r.json())
-    .then(d => {
-        if (d.ok) {
-            location.reload();
-        } else {
-            alert(d.message || 'Erreur');
-        }
-    })
+    .then(d => { d.ok ? location.reload() : alert(d.message || 'Erreur'); })
     .catch(() => alert('Erreur réseau'));
 }
 
@@ -223,34 +162,20 @@ function checkPennylane() {
     fetch(`/pennylane/check/{{ dossier.id }}`, {method: 'POST'})
     .then(r => r.json())
     .then(d => {
-        if (d.ok && d.nouveaux && d.nouveaux.length > 0) {
-            alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
-        } else if (d.ok) {
-            alert('✅ Aucun nouveau document — tout est à jour.');
-        } else {
-            alert(d.message || 'Erreur de connexion à Pennylane.');
-        }
+        if (d.ok && d.nouveaux && d.nouveaux.length > 0) alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
+        else if (d.ok) alert('✅ Aucun nouveau document — tout est à jour.');
+        else alert(d.message || 'Erreur de connexion à Pennylane.');
         location.reload();
     })
     .catch(() => { alert('Erreur réseau'); location.reload(); });
 }
 
-// ---- Filtres par statut et date d'ajout ----
-function plStatutMatch(rowStatut, filterStatut) {
-    if (!filterStatut) return true;
-    if (filterStatut === 'a_traiter') return rowStatut === 'a_traiter';
-    if (filterStatut === 'traite') return rowStatut === 'traite';
-    if (filterStatut === 'ignore') return rowStatut === 'ignore';
-    if (filterStatut === 'pretraite') return true; // réservé (prétraité = à traiter côté app)
-    return true;
-}
-
+// ---- Filtres : nature + traitement + date d'ajout ----
 function plDateMatch(ajoutDateStr, filterDate) {
     if (!filterDate || !ajoutDateStr) return true;
     const d = new Date(ajoutDateStr.replace(' ', 'T'));
     if (isNaN(d.getTime())) return true;
-    const now = new Date();
-    const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+    const diffDays = (new Date() - d) / (1000 * 60 * 60 * 24);
     if (filterDate === 'aujourdhui') return diffDays <= 1;
     if (filterDate === '7j') return diffDays <= 7;
     if (filterDate === '30j') return diffDays <= 30;
@@ -258,21 +183,23 @@ function plDateMatch(ajoutDateStr, filterDate) {
 }
 
 function applyPlFilters() {
+    const fn = document.getElementById('filter-nature').value;
     const fs = document.getElementById('filter-statut').value;
     const fd = document.getElementById('filter-date').value;
     document.querySelectorAll('.pl-row').forEach(row => {
-        const okStatut = plStatutMatch(row.dataset.statut, fs);
+        const okNature = !fn || row.dataset.nature === fn;
+        const okStatut = !fs || row.dataset.statut === fs;
         const okDate = plDateMatch(row.dataset.ajout, fd);
-        row.classList.toggle('hidden-row', !(okStatut && okDate));
+        row.classList.toggle('hidden-row', !(okNature && okStatut && okDate));
     });
 }
 
+document.getElementById('filter-nature').addEventListener('change', applyPlFilters);
 document.getElementById('filter-statut').addEventListener('change', applyPlFilters);
 document.getElementById('filter-date').addEventListener('change', applyPlFilters);
 
 function resetFilters() {
-    document.getElementById('filter-statut').value = '';
-    document.getElementById('filter-date').value = '';
+    ['filter-nature', 'filter-statut', 'filter-date'].forEach(id => document.getElementById(id).value = '');
     applyPlFilters();
 }
 </script>

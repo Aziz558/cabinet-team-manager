@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache
+from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
 from sqlalchemy import or_
 import os
 from datetime import date, datetime, timedelta
@@ -2471,6 +2471,63 @@ def pennylane_dossier(dossier_id):
         app.logger.error(f'pennylane_dossier {dossier_id}: {e}\n{traceback.format_exc()}')
         data = {'ok': False, 'message': str(e), 'factures': [], 'factures_fournisseurs': [],
                 'ecritures': [], 'transactions': [], 'source_token': None}
+
+    # Fusionner les 3 natures en une seule liste pour le tableau unifié
+    lignes = []
+    # Indexer les PennylaneItem (type, api_id) -> db_id
+    pl_items_db = {(it.item_type, it.item_id): it.id
+                   for it in PennylaneItem.query.filter_by(dossier_id=dossier.id).all()}
+    for f in data.get('factures', []):
+        lignes.append({
+            'nature': 'vente',
+            'nature_label': 'Vente',
+            'numero': f.get('numero') or '—',
+            'date': (f.get('date') or '')[:10],
+            'libelle': f.get('numero') or '—',
+            'montant': f.get('montant_ttc'),
+            'statut_fr': f.get('statut_fr') or '',
+            'statut_traitement': f.get('statut_traitement') or 'a_traiter',
+            'item_id': f.get('id'),
+            'db_id': pl_items_db.get(('facture_vente', str(f.get('id') or ''))),
+            'ajout_date': str(f.get('ajout_date') or ''),
+            'nouveau': f.get('nouveau', False),
+        })
+    for f in data.get('factures_fournisseurs', []):
+        lignes.append({
+            'nature': 'achat',
+            'nature_label': 'Achat',
+            'numero': f.get('numero') or '—',
+            'date': (f.get('date') or '')[:10],
+            'libelle': f.get('numero') or '—',
+            'montant': f.get('montant_ttc'),
+            'statut_fr': f.get('statut_fr') or '',
+            'statut_traitement': f.get('statut_traitement') or 'a_traiter',
+            'item_id': f.get('id'),
+            'db_id': pl_items_db.get(('facture_achat', str(f.get('id') or ''))),
+            'ajout_date': str(f.get('ajout_date') or ''),
+            'nouveau': f.get('nouveau', False),
+        })
+    for t in data.get('transactions', []):
+        lignes.append({
+            'nature': 'banque',
+            'nature_label': 'Flux bancaire',
+            'numero': t.get('libelle') or '—',
+            'date': (t.get('date') or '')[:10],
+            'libelle': t.get('libelle') or '—',
+            'montant': t.get('montant'),
+            'statut_fr': t.get('statut_fr') or '',
+            'statut_traitement': t.get('statut_traitement') or 'a_traiter',
+            'item_id': t.get('id'),
+            'db_id': pl_items_db.get(('transaction', str(t.get('id') or ''))),
+            'ajout_date': str(t.get('ajout_date') or ''),
+            'nouveau': t.get('nouveau', False),
+        })
+    # Tri : les plus récents en premier (par date, puis par statut à traiter)
+    lignes.sort(key=lambda x: (x['date'] or ''), reverse=True)
+    data['lignes'] = lignes
+    data['nb_ventes'] = sum(1 for l in lignes if l['nature'] == 'vente')
+    data['nb_achats'] = sum(1 for l in lignes if l['nature'] == 'achat')
+    data['nb_banque'] = sum(1 for l in lignes if l['nature'] == 'banque')
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
 @app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])

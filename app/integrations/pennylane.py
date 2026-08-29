@@ -461,7 +461,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
                 logger.warning(f'auto-assoc me: {e}')
 
         # 2) Factures clients (ventes)
-        invs_params = {'limit': 50}
+        invs_params = {'limit': 100}
         if customer_id and not has_dossier_token:
             invs_params['customer_id'] = customer_id
         invs = _paginated_get('customer_invoices', params=invs_params, token=token)
@@ -477,7 +477,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
 
         # 3) Factures fournisseurs (achats)
         try:
-            sinvs = _paginated_get('supplier_invoices', params={'limit': 50}, token=token)
+            sinvs = _paginated_get('supplier_invoices', params={'limit': 100}, token=token)
             result['factures_fournisseurs'] = [{
                 'id': s.get('id'),
                 'numero': s.get('invoice_number') or '',
@@ -493,7 +493,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
 
         # 4) Transactions bancaires
         try:
-            txs = _paginated_get('transactions', params={'limit': 30}, token=token)
+            txs = _paginated_get('transactions', params={'limit': 100}, token=token)
             result['transactions'] = [{
                 'id': t.get('id'),
                 'date': t.get('transaction_date') or t.get('date'),
