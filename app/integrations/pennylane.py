@@ -238,12 +238,11 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
 
     # Factures clients (ventes)
     if item_type == 'facture_vente':
-        if status in ('paid', 'completed'):
+        if status in ('paid', 'completed', 'late', 'overdue', 'unpaid', 'upcoming'):
             return 'Traité'
-        elif status in ('partially_paid',):
+        elif status in ('incomplete', 'partially_paid'):
             return 'Prétraité'
-        elif status in ('draft', 'to_be_sent', 'sent', 'pending', 'late', 'overdue',
-                        'unpaid', 'overdue_invoice', 'incomplete', 'upcoming'):
+        elif status in ('draft', 'to_be_sent', 'sent', 'pending', 'overdue_invoice'):
             return 'À traiter'
         elif status in ('credit_note',):
             return 'Avoir'
@@ -465,19 +464,28 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
             if sum(1 for n in nouveaux if n['type'] == 'transaction'): parts.append(f"{sum(1 for n in nouveaux if n['type'] == 'transaction')} transaction(s)")
             result['resume_nouveaux'] = ' + '.join(parts)
 
-        # Statuts de traitement locaux
+        # Statut de traitement : dérivé du STATUT PENNYLANE (source de vérité),
+        # avec possibilité de surcharge manuelle (traite/ignore) enregistrée en DB.
         tracked = {(it.item_type, it.item_id): it for it in PennylaneItem.query.filter_by(dossier_id=dossier.id).all()}
-        def _stt_full(item_type, iid):
+
+        def _stt(item_type, iid, statut_fr):
             row = tracked.get((item_type, str(iid)))
-            return ('a_traiter', None) if not row else (row.statut, row.vu_premiere_fois)
+            if row and row.statut in ('traite', 'ignore'):
+                # surcharge manuelle explicite
+                return row.statut, row.vu_premiere_fois
+            # sinon le statut Pennylane fait foi
+            if statut_fr in ('Traité', 'Avoir', 'Annulé'):
+                return 'traite', (row.vu_premiere_fois if row else None)
+            return 'a_traiter', (row.vu_premiere_fois if row else None)
+
         for f in result['factures']:
-            f['statut_traitement'], f['ajout_date'] = _stt_full('facture_vente', f['id'])
+            f['statut_traitement'], f['ajout_date'] = _stt('facture_vente', f['id'], f['statut_fr'])
             f['nouveau'] = f['statut_traitement'] == 'a_traiter'
         for f in result['factures_fournisseurs']:
-            f['statut_traitement'], f['ajout_date'] = _stt_full('facture_achat', f['id'])
+            f['statut_traitement'], f['ajout_date'] = _stt('facture_achat', f['id'], f['statut_fr'])
             f['nouveau'] = f['statut_traitement'] == 'a_traiter'
         for t in result['transactions']:
-            t['statut_traitement'], t['ajout_date'] = _stt_full('transaction', t['id'])
+            t['statut_traitement'], t['ajout_date'] = _stt('transaction', t['id'], t['statut_fr'])
             t['nouveau'] = t['statut_traitement'] == 'a_traiter'
     except Exception as e:
         logger.error(f'get_dossier_pennylane_data: {e}')

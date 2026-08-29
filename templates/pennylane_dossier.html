@@ -42,12 +42,28 @@
 </div>
 {% endif %}
 
-<!-- 3 widgets nature (tabs) + filtres -->
+<!-- Barre : onglets statut (style Pennylane) + widgets nature -->
 <div class="card-premium mb-3 animate-fade-in-up">
     <div class="card-body-premium">
-        <div class="d-flex align-items-center gap-3 mb-3">
+        <!-- Onglets par statut -->
+        <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--border-color);">
+            <button class="btn btn-sm pl-tab active" data-ftab="" onclick="setStatutTab('')">
+                Toutes <span class="badge badge-tertiary ms-1">{{ (data.lignes or [])|length }}</span>
+            </button>
+            <button class="btn btn-sm pl-tab" data-ftab="a_traiter" onclick="setStatutTab('a_traiter')">
+                <i class="bi bi-exclamation-circle me-1"></i>À traiter <span class="badge badge-orange ms-1">{{ data.nb_a_traiter }}</span>
+            </button>
+            <button class="btn btn-sm pl-tab" data-ftab="pretraite" onclick="setStatutTab('pretraite')">
+                <i class="bi bi-clock me-1"></i>Pré-traitées <span class="badge badge-warning ms-1">{{ data.nb_pretraite }}</span>
+            </button>
+            <button class="btn btn-sm pl-tab" data-ftab="traite" onclick="setStatutTab('traite')">
+                <i class="bi bi-check2-circle me-1"></i>Traitées <span class="badge badge-success ms-1">{{ data.nb_traite }}</span>
+            </button>
+        </div>
+        <!-- Widgets nature + filtres -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
             <button class="btn btn-sm btn-outline-orange pl-filter-nature active" data-nature="" onclick="setNatureFilter('')">
-                <i class="bi bi-grid-3x3-gap-fill me-1"></i>Tous <span class="badge badge-tertiary ms-1">{{ (data.lignes or [])|length }}</span>
+                <i class="bi bi-grid-3x3-gap-fill me-1"></i>Toutes natures
             </button>
             <button class="btn btn-sm btn-outline-orange pl-filter-nature" data-nature="vente" onclick="setNatureFilter('vente')">
                 <i class="bi bi-receipt me-1"></i>Ventes <span class="badge badge-tertiary ms-1">{{ data.nb_ventes }}</span>
@@ -59,19 +75,13 @@
                 <i class="bi bi-bank me-1"></i>Flux bancaires <span class="badge badge-tertiary ms-1">{{ data.nb_banque }}</span>
             </button>
             <div class="ms-auto d-flex gap-2">
-                <select id="filter-statut" class="form-select form-select-sm" style="min-width:120px;">
-                    <option value="">Traitement</option>
-                    <option value="a_traiter">À traiter</option>
-                    <option value="traite">Traité</option>
-                    <option value="ignore">Ignoré</option>
-                </select>
-                <select id="filter-date" class="form-select form-select-sm" style="min-width:120px;">
+                <select id="filter-date" class="form-select form-select-sm" style="min-width:130px;">
                     <option value="">Date ajout</option>
                     <option value="aujourdhui">Aujourd'hui</option>
                     <option value="7j">7 jours</option>
                     <option value="30j">30 jours</option>
                 </select>
-                <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">×</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">Réinitialiser</button>
             </div>
         </div>
     </div>
@@ -84,6 +94,7 @@
             <table class="table-premium table-premium-breathe mb-0" id="tablePennylane">
                 <thead>
                     <tr>
+                        <th>Statut</th>
                         <th>Nature</th>
                         <th>N° / Libellé</th>
                         <th>Date</th>
@@ -93,18 +104,16 @@
                 <tbody>
                     {% for l in data.lignes %}
                     <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
-                        data-nature="{{ l.nature }}" data-statut="{{ l.statut_traitement }}" data-ajout="{{ l.ajout_date|default('') }}">
+                        data-nature="{{ l.nature }}" data-ftab="{{ 'traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter') }}" data-ajout="{{ l.ajout_date|default('') }}">
+                        <td>
+                            <span class="badge {{ 'badge-success' if l.statut_fr == 'Traité' else ('badge-warning' if l.statut_fr == 'Prétraité' else ('badge-tertiary' if l.statut_fr == 'Annulé' else 'badge-orange')) }}">{{ l.statut_fr or '—' }}</span>
+                        </td>
                         <td>
                             <span class="badge {{ 'badge-info' if l.nature == 'banque' else ('badge-warning' if l.nature == 'achat' else 'badge-orange') }}">{{ l.nature_label }}</span>
                             {% if l.nouveau %}<span class="badge badge-success ms-1" style="font-size:0.55rem;">NOUVEAU</span>{% endif %}
                         </td>
                         <td>
                             <div class="small">{{ l.libelle[:45] }}{% if l.libelle|length > 45 %}…{% endif %}</div>
-                            {% if l.nature != 'banque' %}
-                            <div class="text-tertiary" style="font-size:0.65rem;">
-                                <span class="badge {{ 'badge-success' if l.statut_fr == 'Traité' else ('badge-warning' if l.statut_fr == 'Prétraité' else 'badge-orange') }}" style="font-size:0.55rem;">{{ l.statut_fr or '—' }}</span>
-                            </div>
-                            {% endif %}
                         </td>
                         <td class="text-tertiary small text-nowrap">{{ l.date or '—' }}</td>
                         <td id="pl-cell-{{ l.db_id }}">{{ pl_statut_badge(l.statut_traitement) }} {{ pl_statut_buttons(l.db_id, l.statut_traitement) }}</td>
@@ -133,6 +142,7 @@
 .pl-table-wrap::-webkit-scrollbar-track { background: transparent; }
 .pl-table-wrap::-webkit-scrollbar-thumb { background: var(--orange-primary); border-radius: 8px; }
 .pl-filter-nature.active { background: var(--orange-primary) !important; color: #000 !important; border-color: var(--orange-primary) !important; }
+.pl-tab.active { background: var(--bg-card-hover) !important; color: var(--orange-primary) !important; border: 1px solid var(--orange-primary) !important; }
 </style>
 
 <script>
@@ -155,17 +165,6 @@ function checkPennylane() {
     }).catch(() => { alert('Erreur'); location.reload(); });
 }
 
-function setNatureFilter(nature) {
-    document.querySelectorAll('.pl-filter-nature').forEach(b => b.classList.remove('active'));
-    document.querySelector(`.pl-filter-nature[data-nature="${nature}"]`).classList.add('active');
-    document.querySelectorAll('.pl-row').forEach(row => {
-        const okNature = !nature || row.dataset.nature === nature;
-        const okStatut = !document.getElementById('filter-statut').value || row.dataset.statut === document.getElementById('filter-statut').value;
-        const okDate = plDateMatch(row.dataset.ajout, document.getElementById('filter-date').value);
-        row.classList.toggle('hidden-row', !(okNature && okStatut && okDate));
-    });
-}
-
 function plDateMatch(ajoutDateStr, filterDate) {
     if (!filterDate || !ajoutDateStr) return true;
     const d = new Date(ajoutDateStr.replace(' ', 'T'));
@@ -177,14 +176,31 @@ function plDateMatch(ajoutDateStr, filterDate) {
     return true;
 }
 
-function applyPlFilters() { setNatureFilter(document.querySelector('.pl-filter-nature.active')?.dataset?.nature || ''); }
+function applyPlFilters() {
+    const ftab = document.querySelector('.pl-tab.active')?.dataset?.ftab || '';
+    const fnature = document.querySelector('.pl-filter-nature.active')?.dataset?.nature || '';
+    const fdate = document.getElementById('filter-date').value;
+    document.querySelectorAll('.pl-row').forEach(row => {
+        const okTab = !ftab || row.dataset.ftab === ftab;
+        const okNature = !fnature || row.dataset.nature === fnature;
+        const okDate = plDateMatch(row.dataset.ajout, fdate);
+        row.classList.toggle('hidden-row', !(okTab && okNature && okDate));
+    });
+}
 
-document.getElementById('filter-statut').addEventListener('change', applyPlFilters);
+function setStatutTab(ftab) {
+    document.querySelectorAll('.pl-tab').forEach(b => b.classList.toggle('active', b.dataset.ftab === ftab));
+    applyPlFilters();
+}
+function setNatureFilter(nature) {
+    document.querySelectorAll('.pl-filter-nature').forEach(b => b.classList.toggle('active', b.dataset.nature === nature));
+    applyPlFilters();
+}
 document.getElementById('filter-date').addEventListener('change', applyPlFilters);
 
 function resetFilters() {
-    document.getElementById('filter-statut').value = '';
     document.getElementById('filter-date').value = '';
+    setStatutTab('');
     setNatureFilter('');
 }
 </script>

@@ -2528,38 +2528,13 @@ def pennylane_dossier(dossier_id):
     data['nb_ventes'] = sum(1 for l in lignes if l['nature'] == 'vente')
     data['nb_achats'] = sum(1 for l in lignes if l['nature'] == 'achat')
     data['nb_banque'] = sum(1 for l in lignes if l['nature'] == 'banque')
+    data['nb_a_traiter'] = sum(1 for l in lignes if l['statut_traitement'] == 'a_traiter')
+    data['nb_traite'] = sum(1 for l in lignes if l['statut_traitement'] == 'traite')
+    data['nb_pretraite'] = sum(1 for l in lignes if l['statut_fr'] == 'Prétraité')
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
 
 
-
-@app.route('/pennylane/debug_keys/<int:dossier_id>')
-@login_required
-def pennylane_debug_keys(dossier_id):
-    """DEBUG: affiche TOUTES les clés d'un item pour trouver le champ statut de traitement."""
-    if current_user.role != 'admin':
-        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
-    dossier = Dossier.query.get_or_404(dossier_id)
-    from app.integrations.pennylane import _headers, _api_url, get_pennylane_token
-    import requests, json
-    token = dossier.pennylane_api_token or get_pennylane_token()
-    out = {}
-    for ep, label in [('customer_invoices', 'ventes'), ('supplier_invoices', 'achats'), ('transactions', 'banque')]:
-        try:
-            r = requests.get(_api_url(ep), headers=_headers(token), params={'limit': 5}, timeout=20)
-            data = r.json() if r.status_code == 200 else {}
-            items = []
-            if isinstance(data, dict):
-                for k, v in data.items():
-                    if isinstance(v, list):
-                        items = v
-                        break
-            # Afficher l'item complet (toutes clés)
-            out[label] = {'http': r.status_code,
-                          'item_complet': items[0] if items else {}}
-        except Exception as e:
-            out[label] = {'error': str(e)}
-    return jsonify(out)
 
 
 @app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])
