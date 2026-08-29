@@ -2556,7 +2556,8 @@ def pennylane_debug_status(dossier_id):
                 st = str(it.get('status') or '(vide)')
                 stats[st] = stats.get(st, 0) + 1
             out['types'][label] = {'http': r.status_code, 'count': len(items), 'statuses': stats,
-                                   'sample_keys': list(items[0].keys()) if items else []}
+                                   'sample_keys': list(items[0].keys()) if items else [],
+                                   'first_item': {k: items[0].get(k) for k in ['id', 'status', 'invoice_status', 'invoice_number', 'label', 'amount', 'total_with_tax', 'date', 'transaction_date', 'affected_at', 'booked', 'accounted_at', 'matching_status'] if items and k in items[0]} if items else {}}
         except Exception as e:
             out['types'][label] = {'error': str(e)}
     return jsonify(out)
