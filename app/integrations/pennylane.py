@@ -276,7 +276,7 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'transaction') -> str:
             return 'Traité'
         elif status in ('partially_paid', 'partially_approved'):
             return 'Prétraité'
-        elif status in ('draft', 'to_be_sent', 'sent', 'pending_approval', 'overdue', 'pending'):
+        elif status in ('draft', 'to_be_sent', 'sent', 'pending_approval', 'pending', 'overdue', 'late', 'unpaid', 'overdue_invoice'):
             return 'À traiter'
         elif status in ('cancelled', 'void'):
             return 'Annulé'
@@ -507,18 +507,6 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
             result['transactions'] = []
             txs = []
 
-        # 5) Écritures comptables (pas de suivi de nouveaux)
-        try:
-            entries = _paginated_get('ledger_entries', params={'limit': 30}, token=token)
-            result['ecritures'] = [{
-                'date': e.get('date'),
-                'libelle': e.get('label') or '',
-                'montant_debit': e.get('amount') if (e.get('direction') or '').lower() == 'debit' else 0,
-                'montant_credit': e.get('amount') if (e.get('direction') or '').lower() == 'credit' else 0,
-            } for e in entries]
-        except Exception:
-            result['ecritures'] = []
-
         # 6) DÉTECTION des nouveaux items (facture_vente / facture_achat / transaction)
         nouveaux = _detecter_nouveaux_items(dossier, invs, sinvs, txs)
         if nouveaux:
@@ -551,14 +539,20 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
             return any(n['type'] == item_type and (n['reference'] == numero)
                        for n in result['nouveaux'])
 
+        def _stt_full(item_type, iid):
+            row = tracked.get((item_type, str(iid)))
+            if not row:
+                return 'a_traiter', None
+            return row.statut, row.vu_premiere_fois
+
         for f in result['factures']:
-            f['statut_traitement'] = _stt('facture_vente', f['id'])
+            f['statut_traitement'], f['ajout_date'] = _stt_full('facture_vente', f['id'])
             f['nouveau'] = _is_new('facture_vente', f['id'], f['numero'])
         for f in result['factures_fournisseurs']:
-            f['statut_traitement'] = _stt('facture_achat', f['id'])
+            f['statut_traitement'], f['ajout_date'] = _stt_full('facture_achat', f['id'])
             f['nouveau'] = _is_new('facture_achat', f['id'], f['numero'])
         for t in result['transactions']:
-            t['statut_traitement'] = _stt('transaction', t['id'])
+            t['statut_traitement'], t['ajout_date'] = _stt_full('transaction', t['id'])
             t['nouveau'] = _is_new('transaction', t['id'], t['libelle'])
 
     except Exception as e:
