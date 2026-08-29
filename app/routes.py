@@ -2557,7 +2557,15 @@ def pennylane_debug_status(dossier_id):
                 stats[st] = stats.get(st, 0) + 1
             out['types'][label] = {'http': r.status_code, 'count': len(items), 'statuses': stats,
                                    'sample_keys': list(items[0].keys()) if items else [],
-                                   'first_item': {k: items[0].get(k) for k in ['id', 'status', 'invoice_status', 'invoice_number', 'label', 'amount', 'total_with_tax', 'date', 'transaction_date', 'affected_at', 'booked', 'accounted_at', 'matching_status'] if items and k in items[0]} if items else {}}
+                                   'first_item': {k: items[0].get(k) for k in ['id', 'status', 'invoice_status', 'invoice_number', 'label', 'amount', 'total_with_tax', 'date', 'transaction_date', 'affected_at', 'booked', 'accounted_at', 'matching_status', 'payment_status', 'accounting_status', 'paid', 'reconciled', 'draft', 'archived_at', 'attachment_required', 'matched_invoices'] if items and k in items[0]} if items else {}}
+            # Comptage des statuts alternatifs pour achats/banque
+            alt_stats = {}
+            for it in items[:200]:
+                for alt in ['payment_status', 'accounting_status', 'reconciled', 'paid', 'draft', 'attachment_required']:
+                    if it.get(alt) is not None and alt in it:
+                        v = str(it.get(alt))
+                        alt_stats[f'{alt}={v}'] = alt_stats.get(f'{alt}={v}', 0) + 1
+            out['types'][label]['alt_statuses'] = alt_stats
         except Exception as e:
             out['types'][label] = {'error': str(e)}
     return jsonify(out)
