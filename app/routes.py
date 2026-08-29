@@ -2530,45 +2530,7 @@ def pennylane_dossier(dossier_id):
     data['nb_banque'] = sum(1 for l in lignes if l['nature'] == 'banque')
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
-@app.route('/pennylane/debug_status/<int:dossier_id>')
-@login_required
-def pennylane_debug_status(dossier_id):
-    """DEBUG: affiche les statuts bruts renvoyés par l'API Pennylane pour un dossier."""
-    if current_user.role != 'admin':
-        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
-    dossier = Dossier.query.get_or_404(dossier_id)
-    from app.integrations.pennylane import (_headers, _api_url, get_pennylane_token)
-    import requests
-    token = dossier.pennylane_api_token or get_pennylane_token()
-    out = {'ok': True, 'dossier': dossier.numero_dossier, 'types': {}}
-    for ep, label in [('customer_invoices', 'ventes'), ('supplier_invoices', 'achats'), ('transactions', 'banque')]:
-        try:
-            r = requests.get(_api_url(ep), headers=_headers(token), params={'limit': 100}, timeout=20)
-            data = r.json() if r.status_code == 200 else {}
-            items = []
-            if isinstance(data, dict):
-                for k, v in data.items():
-                    if isinstance(v, list):
-                        items = v
-                        break
-            stats = {}
-            for it in items[:200]:
-                st = str(it.get('status') or '(vide)')
-                stats[st] = stats.get(st, 0) + 1
-            out['types'][label] = {'http': r.status_code, 'count': len(items), 'statuses': stats,
-                                   'sample_keys': list(items[0].keys()) if items else [],
-                                   'first_item': {k: items[0].get(k) for k in ['id', 'status', 'invoice_status', 'invoice_number', 'label', 'amount', 'total_with_tax', 'date', 'transaction_date', 'affected_at', 'booked', 'accounted_at', 'matching_status', 'payment_status', 'accounting_status', 'paid', 'reconciled', 'draft', 'archived_at', 'attachment_required', 'matched_invoices'] if items and k in items[0]} if items else {}}
-            # Comptage des statuts alternatifs pour achats/banque
-            alt_stats = {}
-            for it in items[:200]:
-                for alt in ['payment_status', 'accounting_status', 'reconciled', 'paid', 'draft', 'attachment_required']:
-                    if it.get(alt) is not None and alt in it:
-                        v = str(it.get(alt))
-                        alt_stats[f'{alt}={v}'] = alt_stats.get(f'{alt}={v}', 0) + 1
-            out['types'][label]['alt_statuses'] = alt_stats
-        except Exception as e:
-            out['types'][label] = {'error': str(e)}
-    return jsonify(out)
+
 
 
 @app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])

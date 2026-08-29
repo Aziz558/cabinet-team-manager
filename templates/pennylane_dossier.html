@@ -21,11 +21,7 @@
     <div>
         <h2 class="text-gradient-orange mb-1"><i class="bi bi-link-45deg me-2"></i>Pennylane — {{ dossier.numero_dossier }}</h2>
         <p class="text-tertiary mb-0">{{ dossier.intitule }}
-            {% if data.source_token == 'dossier' %}
-            <span class="badge badge-success ms-2">Token dédié</span>
-            {% else %}
-            <span class="badge badge-tertiary ms-2">Token global</span>
-            {% endif %}
+            {% if data.source_token == 'dossier' %}<span class="badge badge-success ms-2">Token dédié</span>{% else %}<span class="badge badge-tertiary ms-2">Token global</span>{% endif %}
         </p>
     </div>
     <div>
@@ -37,11 +33,8 @@
 </div>
 
 {% if not data.ok %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle me-2"></i>{{ data.message or 'Erreur de connexion à Pennylane.' }}
-</div>
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>{{ data.message or 'Erreur de connexion à Pennylane.' }}</div>
 {% endif %}
-
 {% if data.resume_nouveaux %}
 <div class="alert alert-success d-flex align-items-center animate-fade-in-up">
     <i class="bi bi-stars me-2 fs-5"></i>
@@ -49,40 +42,36 @@
 </div>
 {% endif %}
 
-<!-- Filtres -->
+<!-- 3 widgets nature (tabs) + filtres -->
 <div class="card-premium mb-3 animate-fade-in-up">
-    <div class="card-body-premium py-2">
-        <div class="d-flex flex-wrap align-items-end gap-3">
-            <div>
-                <label class="text-tertiary small mb-1 d-block">Nature</label>
-                <select id="filter-nature" class="form-select form-select-sm" style="min-width:160px;">
-                    <option value="">Toutes les natures</option>
-                    <option value="vente">Ventes ({{ data.nb_ventes }})</option>
-                    <option value="achat">Achats ({{ data.nb_achats }})</option>
-                    <option value="banque">Flux bancaires ({{ data.nb_banque }})</option>
-                </select>
-            </div>
-            <div>
-                <label class="text-tertiary small mb-1 d-block">Traitement</label>
-                <select id="filter-statut" class="form-select form-select-sm" style="min-width:140px;">
-                    <option value="">Tous les traitements</option>
+    <div class="card-body-premium">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <button class="btn btn-sm btn-outline-orange pl-filter-nature active" data-nature="" onclick="setNatureFilter('')">
+                <i class="bi bi-grid-3x3-gap-fill me-1"></i>Tous <span class="badge badge-tertiary ms-1">{{ (data.lignes or [])|length }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-orange pl-filter-nature" data-nature="vente" onclick="setNatureFilter('vente')">
+                <i class="bi bi-receipt me-1"></i>Ventes <span class="badge badge-tertiary ms-1">{{ data.nb_ventes }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-orange pl-filter-nature" data-nature="achat" onclick="setNatureFilter('achat')">
+                <i class="bi bi-cart me-1"></i>Achats <span class="badge badge-tertiary ms-1">{{ data.nb_achats }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-orange pl-filter-nature" data-nature="banque" onclick="setNatureFilter('banque')">
+                <i class="bi bi-bank me-1"></i>Flux bancaires <span class="badge badge-tertiary ms-1">{{ data.nb_banque }}</span>
+            </button>
+            <div class="ms-auto d-flex gap-2">
+                <select id="filter-statut" class="form-select form-select-sm" style="min-width:120px;">
+                    <option value="">Traitement</option>
                     <option value="a_traiter">À traiter</option>
                     <option value="traite">Traité</option>
                     <option value="ignore">Ignoré</option>
                 </select>
-            </div>
-            <div>
-                <label class="text-tertiary small mb-1 d-block">Date d'ajout</label>
-                <select id="filter-date" class="form-select form-select-sm" style="min-width:140px;">
-                    <option value="">Toutes les dates</option>
+                <select id="filter-date" class="form-select form-select-sm" style="min-width:120px;">
+                    <option value="">Date ajout</option>
                     <option value="aujourdhui">Aujourd'hui</option>
-                    <option value="7j">7 derniers jours</option>
-                    <option value="30j">30 derniers jours</option>
+                    <option value="7j">7 jours</option>
+                    <option value="30j">30 jours</option>
                 </select>
-            </div>
-            <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">Réinitialiser</button>
-            <div class="ms-auto text-tertiary small d-none d-md-block">
-                <i class="bi bi-mouse me-1"></i>Molette pour faire défiler — {{ (data.lignes or [])|length }} lignes
+                <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">×</button>
             </div>
         </div>
     </div>
@@ -123,6 +112,9 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="text-center text-tertiary py-2 small" style="border-top:1px solid var(--border-color);">
+                <i class="bi bi-mouse me-1"></i>Molette pour défiler — {{ (data.lignes or [])|length }} lignes
+            </div>
         </div>
     </div>
 </div>
@@ -136,41 +128,44 @@
 .pl-btns .btn-ignore { color: #94a3b8; }
 .pl-btns button:hover { background: rgba(255,255,255,0.08); }
 .pl-row.hidden-row { display: none; }
-/* Hauteur fixe + scroll à la molette */
 .pl-table-wrap { max-height: 560px; overflow-y: auto; }
 .pl-table-wrap::-webkit-scrollbar { width: 8px; }
 .pl-table-wrap::-webkit-scrollbar-track { background: transparent; }
 .pl-table-wrap::-webkit-scrollbar-thumb { background: var(--orange-primary); border-radius: 8px; }
+.pl-filter-nature.active { background: var(--orange-primary) !important; color: #000 !important; border-color: var(--orange-primary) !important; }
 </style>
 
 <script>
 function setStatut(itemId, statut) {
     fetch(`/pennylane/item/${itemId}/statut`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({statut: statut})
-    })
-    .then(r => r.json())
-    .then(d => { d.ok ? location.reload() : alert(d.message || 'Erreur'); })
-    .catch(() => alert('Erreur réseau'));
+    }).then(r => r.json()).then(d => { d.ok ? location.reload() : alert(d.message || 'Erreur'); }).catch(() => alert('Erreur'));
 }
 
 function checkPennylane() {
     const btn = document.getElementById('btn-check-pl');
-    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Vérification...';
-    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Vérification...'; btn.disabled = true;
     fetch(`/pennylane/check/{{ dossier.id }}`, {method: 'POST'})
-    .then(r => r.json())
-    .then(d => {
+    .then(r => r.json()).then(d => {
         if (d.ok && d.nouveaux && d.nouveaux.length > 0) alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
         else if (d.ok) alert('✅ Aucun nouveau document — tout est à jour.');
-        else alert(d.message || 'Erreur de connexion à Pennylane.');
+        else alert(d.message || 'Erreur');
         location.reload();
-    })
-    .catch(() => { alert('Erreur réseau'); location.reload(); });
+    }).catch(() => { alert('Erreur'); location.reload(); });
 }
 
-// ---- Filtres : nature + traitement + date d'ajout ----
+function setNatureFilter(nature) {
+    document.querySelectorAll('.pl-filter-nature').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.pl-filter-nature[data-nature="${nature}"]`).classList.add('active');
+    document.querySelectorAll('.pl-row').forEach(row => {
+        const okNature = !nature || row.dataset.nature === nature;
+        const okStatut = !document.getElementById('filter-statut').value || row.dataset.statut === document.getElementById('filter-statut').value;
+        const okDate = plDateMatch(row.dataset.ajout, document.getElementById('filter-date').value);
+        row.classList.toggle('hidden-row', !(okNature && okStatut && okDate));
+    });
+}
+
 function plDateMatch(ajoutDateStr, filterDate) {
     if (!filterDate || !ajoutDateStr) return true;
     const d = new Date(ajoutDateStr.replace(' ', 'T'));
@@ -182,25 +177,15 @@ function plDateMatch(ajoutDateStr, filterDate) {
     return true;
 }
 
-function applyPlFilters() {
-    const fn = document.getElementById('filter-nature').value;
-    const fs = document.getElementById('filter-statut').value;
-    const fd = document.getElementById('filter-date').value;
-    document.querySelectorAll('.pl-row').forEach(row => {
-        const okNature = !fn || row.dataset.nature === fn;
-        const okStatut = !fs || row.dataset.statut === fs;
-        const okDate = plDateMatch(row.dataset.ajout, fd);
-        row.classList.toggle('hidden-row', !(okNature && okStatut && okDate));
-    });
-}
+function applyPlFilters() { setNatureFilter(document.querySelector('.pl-filter-nature.active')?.dataset?.nature || ''); }
 
-document.getElementById('filter-nature').addEventListener('change', applyPlFilters);
 document.getElementById('filter-statut').addEventListener('change', applyPlFilters);
 document.getElementById('filter-date').addEventListener('change', applyPlFilters);
 
 function resetFilters() {
-    ['filter-nature', 'filter-statut', 'filter-date'].forEach(id => document.getElementById(id).value = '');
-    applyPlFilters();
+    document.getElementById('filter-statut').value = '';
+    document.getElementById('filter-date').value = '';
+    setNatureFilter('');
 }
 </script>
 {% endblock %}
