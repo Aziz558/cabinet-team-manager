@@ -2581,7 +2581,8 @@ def pennylane_debug_all_status(dossier_id):
                 for it in items:
                     st = str(it.get('status') or '(vide)')
                     paid = it.get('paid')
-                    key = f'{st}|paid={paid}'
+                    annee = (it.get('date') or '')[:4]
+                    key = f'{st}|{annee}|paid={paid}'
                     stats[key] = stats.get(key, 0) + 1
                     if key not in examples and len(examples) < 10:
                         examples[key] = {'numero': it.get('invoice_number'), 'date': it.get('date'),
