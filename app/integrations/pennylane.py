@@ -242,16 +242,14 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
 
     # Factures clients (ventes)
     # IMPORTANT : sur Pennylane, le statut "Traitée" = facture comptabilisée (ledger_entry).
-    # Le champ API `status` est un statut de cycle de vie (paid/late/archived...),
-    # mais TOUTES ces factures sont traitées côté Pennylane sauf les "incomplete".
+    # Le champ API `status` est un statut de cycle de vie (paid/late/archived...).
+    # Seule `incomplete` = Prétraité ; TOUT le reste des factures actives = Traité.
     if item_type == 'facture_vente':
         if status == 'incomplete':
             return 'Prétraité'
-        elif status == 'partially_paid':
-            return 'Prétraité'
         elif status in ('draft', 'to_be_sent', 'sent', 'pending', 'overdue_invoice'):
             return 'À traiter'
-        # paid, late, upcoming, credit_note, archived, completed, cancelled, void, refunded
+        # paid, late, upcoming, credit_note, partially_paid, completed, cancelled, void, refunded
         # → toutes considérées comme TRAITÉES (factures comptabilisées)
         return 'Traité'
 

@@ -2522,7 +2522,6 @@ def pennylane_dossier(dossier_id):
             'ajout_date': str(t.get('ajout_date') or ''),
             'nouveau': t.get('nouveau', False),
         })
-    # Tri : les plus récents en premier (par date, puis par statut à traiter)
     # Extrait l'exercice (année) de la date d'émission
     for l in lignes:
         try:
@@ -2530,14 +2529,24 @@ def pennylane_dossier(dossier_id):
             l['exercice'] = int(y) if y.isdigit() and 2000 <= int(y) <= 2100 else None
         except (ValueError, IndexError):
             l['exercice'] = None
-    lignes.sort(key=lambda x: (x['date'] or ''), reverse=True)
-    data['lignes'] = lignes
-    data['nb_ventes'] = sum(1 for l in lignes if l['nature'] == 'vente')
-    data['nb_achats'] = sum(1 for l in lignes if l['nature'] == 'achat')
-    data['nb_banque'] = sum(1 for l in lignes if l['nature'] == 'banque')
-    data['nb_a_traiter'] = sum(1 for l in lignes if l['statut_traitement'] == 'a_traiter')
-    data['nb_traite'] = sum(1 for l in lignes if l['statut_traitement'] == 'traite')
-    data['nb_pretraite'] = sum(1 for l in lignes if l['statut_fr'] == 'Prétraité')
+
+    # Filtre par exercice (défaut : année en cours, comme Pennylane)
+    try:
+        exercice_filtre = int(request.args.get('exercice') or str(date.today().year))
+    except (ValueError, TypeError):
+        exercice_filtre = date.today().year
+    lignes_filtrees = [l for l in lignes if l['exercice'] == exercice_filtre]
+
+    # Tri : les plus récents en premier
+    lignes_filtrees.sort(key=lambda x: (x['date'] or ''), reverse=True)
+    data['lignes'] = lignes_filtrees
+    data['exercice_actif'] = exercice_filtre
+    data['nb_ventes'] = sum(1 for l in lignes_filtrees if l['nature'] == 'vente')
+    data['nb_achats'] = sum(1 for l in lignes_filtrees if l['nature'] == 'achat')
+    data['nb_banque'] = sum(1 for l in lignes_filtrees if l['nature'] == 'banque')
+    data['nb_a_traiter'] = sum(1 for l in lignes_filtrees if l['statut_traitement'] == 'a_traiter')
+    data['nb_traite'] = sum(1 for l in lignes_filtrees if l['statut_traitement'] == 'traite')
+    data['nb_pretraite'] = sum(1 for l in lignes_filtrees if l['statut_fr'] == 'Prétraité')
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
 
