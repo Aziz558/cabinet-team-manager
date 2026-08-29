@@ -75,6 +75,13 @@
                 <i class="bi bi-bank me-1"></i>Flux bancaires <span class="badge badge-tertiary ms-1">{{ data.nb_banque }}</span>
             </button>
             <div class="ms-auto d-flex gap-2">
+                <select id="filter-exercice" class="form-select form-select-sm" style="min-width:110px;">
+                    <option value="">Exercice</option>
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                </select>
                 <select id="filter-date" class="form-select form-select-sm" style="min-width:130px;">
                     <option value="">Date ajout</option>
                     <option value="aujourdhui">Aujourd'hui</option>
@@ -97,14 +104,15 @@
                         <th>Statut</th>
                         <th>Nature</th>
                         <th>N° / Libellé</th>
-                        <th>Date</th>
+                        <th>Date émission</th>
+                        <th>Date d'ajout</th>
                         <th>Traitement</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for l in data.lignes %}
                     <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
-                        data-nature="{{ l.nature }}" data-ftab="{{ 'traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter') }}" data-ajout="{{ l.ajout_date|default('') }}">
+                        data-nature="{{ l.nature }}" data-ftab="{{ 'traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter') }}" data-exercice="{{ l.exercice }}" data-ajout="{{ l.ajout_date|default('') }}">
                         <td>
                             <span class="badge {{ 'badge-success' if l.statut_fr == 'Traité' else ('badge-warning' if l.statut_fr == 'Prétraité' else ('badge-tertiary' if l.statut_fr == 'Annulé' else 'badge-orange')) }}">{{ l.statut_fr or '—' }}</span>
                         </td>
@@ -116,6 +124,7 @@
                             <div class="small">{{ l.libelle[:45] }}{% if l.libelle|length > 45 %}…{% endif %}</div>
                         </td>
                         <td class="text-tertiary small text-nowrap">{{ l.date or '—' }}</td>
+                        <td class="text-tertiary small text-nowrap">{{ (l.ajout_date or '—')[:10] if l.ajout_date else '—' }}</td>
                         <td id="pl-cell-{{ l.db_id }}">{{ pl_statut_badge(l.statut_traitement) }} {{ pl_statut_buttons(l.db_id, l.statut_traitement) }}</td>
                     </tr>
                     {% endfor %}
@@ -179,12 +188,14 @@ function plDateMatch(ajoutDateStr, filterDate) {
 function applyPlFilters() {
     const ftab = document.querySelector('.pl-tab.active')?.dataset?.ftab || '';
     const fnature = document.querySelector('.pl-filter-nature.active')?.dataset?.nature || '';
+    const fexercice = document.getElementById('filter-exercice').value;
     const fdate = document.getElementById('filter-date').value;
     document.querySelectorAll('.pl-row').forEach(row => {
         const okTab = !ftab || row.dataset.ftab === ftab;
         const okNature = !fnature || row.dataset.nature === fnature;
+        const okExercice = !fexercice || row.dataset.exercice === fexercice;
         const okDate = plDateMatch(row.dataset.ajout, fdate);
-        row.classList.toggle('hidden-row', !(okTab && okNature && okDate));
+        row.classList.toggle('hidden-row', !(okTab && okNature && okExercice && okDate));
     });
 }
 
@@ -200,6 +211,7 @@ document.getElementById('filter-date').addEventListener('change', applyPlFilters
 
 function resetFilters() {
     document.getElementById('filter-date').value = '';
+    document.getElementById('filter-exercice').value = '';
     setStatutTab('');
     setNatureFilter('');
 }

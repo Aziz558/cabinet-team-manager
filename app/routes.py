@@ -2523,6 +2523,13 @@ def pennylane_dossier(dossier_id):
             'nouveau': t.get('nouveau', False),
         })
     # Tri : les plus récents en premier (par date, puis par statut à traiter)
+    # Extrait l'exercice (année) de la date d'émission
+    for l in lignes:
+        try:
+            y = (l['date'] or '')[:4]
+            l['exercice'] = int(y) if y.isdigit() and 2000 <= int(y) <= 2100 else None
+        except (ValueError, IndexError):
+            l['exercice'] = None
     lignes.sort(key=lambda x: (x['date'] or ''), reverse=True)
     data['lignes'] = lignes
     data['nb_ventes'] = sum(1 for l in lignes if l['nature'] == 'vente')
@@ -2536,56 +2543,6 @@ def pennylane_dossier(dossier_id):
 
 
 
-
-@app.route('/pennylane/debug_pages/<int:dossier_id>')
-@login_required
-def pennylane_debug_pages(dossier_id):
-    """DEBUG: compte le nombre réel de factures/transactions (test pagination)."""
-    if current_user.role != 'admin':
-        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
-    dossier = Dossier.query.get_or_404(dossier_id)
-    from app.integrations.pennylane import _headers, _api_url, get_pennylane_token
-    import requests
-    token = dossier.pennylane_api_token or get_pennylane_token()
-    out = {}
-    for ep, label in [('customer_invoices', 'ventes'), ('supplier_invoices', 'achats'), ('transactions', 'banque')]:
-        n = 0
-        cursor = None
-        pages = 0
-        total_key = None
-        try:
-            while True:
-                params = {'limit': 100}
-                if cursor:
-                    params['cursor'] = cursor
-                r = requests.get(_api_url(ep), headers=_headers(token), params=params, timeout=20)
-                if r.status_code != 200:
-                    out[label] = {'error': f'HTTP {r.status_code}: {r.text[:150]}'}
-                    break
-                d = r.json()
-                items = None
-                if isinstance(d, dict):
-                    for k, v in d.items():
-                        if isinstance(v, list):
-                            items = v
-                            total_key = list(d.keys())
-                            break
-                if items:
-                    n += len(items)
-                    pages += 1
-                    pag = (d.get('pagination') or {}) if isinstance(d, dict) else {}
-                    cursor = pag.get('next_cursor')
-                    if not cursor or len(items) == 0:
-                        break
-                else:
-                    break
-                if pages > 100:
-                    break
-        except Exception as e:
-            out[label] = {'error': str(e)}
-            continue
-        out[label] = {'total_recup': n, 'pages': pages, 'keys': total_key}
-    return jsonify(out)
 
 
 @app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])
