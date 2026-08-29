@@ -2473,6 +2473,52 @@ def pennylane_dossier(dossier_id):
                 'ecritures': [], 'transactions': [], 'source_token': None}
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
+@app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])
+@login_required
+def pennylane_item_statut(item_db_id):
+    """Change le statut de traitement d'un item Pennylane (a_traiter / traite / ignore)."""
+    from app.models import PennylaneItem
+    item = PennylaneItem.query.get_or_404(item_db_id)
+    dossier = Dossier.query.get_or_404(item.dossier_id)
+
+    # Scoping : admin, manager de l'équipe du dossier, ou collaborateur du dossier
+    if current_user.role != 'admin':
+        mes_equipes_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
+        if item.dossier_id not in [d.id for d in Dossier.query.filter(
+                Dossier.equipe_id.in_(mes_equipes_ids)).all()] and dossier.collaborateur_id != current_user.id:
+            return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
+
+    statut = (request.json or {}).get('statut') if request.is_json else request.form.get('statut')
+    if statut not in ('a_traiter', 'traite', 'ignore'):
+        return jsonify({'ok': False, 'message': 'Statut invalide'}), 400
+
+    item.statut = statut
+    item.statut_par_id = current_user.id
+    item.statut_date = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'ok': True, 'statut': statut})
+
+
+@app.route('/pennylane/check/<int:dossier_id>', methods=['POST'])
+@login_required
+def pennylane_check(dossier_id):
+    """Vérifie les nouveaux documents/transactions Pennylane d'un dossier (à la demande)."""
+    dossier = Dossier.query.get_or_404(dossier_id)
+
+    # Même scoping que pennylane_dossier
+    if current_user.role != 'admin':
+        mes_equipes_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
+        if dossier.equipe_id not in mes_equipes_ids and dossier.collaborateur_id != current_user.id:
+            return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
+
+    from app.integrations.pennylane import get_dossier_pennylane_data
+    data = get_dossier_pennylane_data(dossier)
+    return jsonify({'ok': data.get('ok'),
+                    'nouveaux': data.get('nouveaux', []),
+                    'resume': data.get('resume_nouveaux', ''),
+                    'message': data.get('message', '')})
+
+
 
 # ==========================
 # Error handlers

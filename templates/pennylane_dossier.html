@@ -1,52 +1,85 @@
 {% extends "base.html" %}
 {% block title %}Pennylane — {{ dossier.numero_dossier }}{% endblock %}
 
+{% macro pl_statut_badge(statut) %}
+{% if statut == 'traite' %}<span class="badge badge-success">Traité</span>
+{% elif statut == 'ignore' %}<span class="badge badge-tertiary">Ignoré</span>
+{% else %}<span class="badge badge-orange">À traiter</span>
+{% endif %}
+{% endmacro %}
+
+{% macro pl_statut_buttons(item_id, statut) %}
+<span class="pl-btns">
+    {% if statut != 'traite' %}<button class="btn-traite" title="Marquer traité" onclick="setStatut({{ item_id }}, 'traite')"><i class="bi bi-check-lg"></i></button>{% endif %}
+    {% if statut != 'ignore' %}<button class="btn-ignore" title="Ignorer" onclick="setStatut({{ item_id }}, 'ignore')"><i class="bi bi-dash-lg"></i></button>{% endif %}
+    {% if statut != 'a_traiter' %}<button title="Remettre à traiter" onclick="setStatut({{ item_id }}, 'a_traiter')"><i class="bi bi-arrow-counterclockwise"></i></button>{% endif %}
+</span>
+{% endmacro %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <h2 class="text-gradient-animated"><i class="bi bi-link-45deg me-2"></i>Pennylane — {{ dossier.numero_dossier }}</h2>
-    <a href="{{ url_for('dossiers') }}" class="btn-premium btn-premium-secondary btn-press">
-        <i class="bi bi-arrow-left me-1"></i>Retour aux dossiers
-    </a>
+    <div>
+        <h2 class="text-gradient-orange mb-1"><i class="bi bi-link-45deg me-2"></i>Pennylane — {{ dossier.numero_dossier }}</h2>
+        <p class="text-tertiary mb-0">{{ dossier.intitule }}
+            {% if data.source_token == 'dossier' %}
+            <span class="badge badge-success ms-2">Token dédié</span>
+            {% else %}
+            <span class="badge badge-tertiary ms-2">Token global</span>
+            {% endif %}
+        </p>
+    </div>
+    <div>
+        <button id="btn-check-pl" class="btn btn-outline-orange btn-sm me-2" onclick="checkPennylane()">
+            <i class="bi bi-arrow-repeat me-1"></i>Vérifier les nouveaux
+        </button>
+        <a href="{{ url_for('dossiers') }}" class="btn btn-outline-secondary btn-sm">← Retour</a>
+    </div>
 </div>
 
-<p class="text-tertiary mb-4">
-    {{ dossier.intitule }}
-    {% if dossier.pennylane_customer_id %}<span class="badge badge-orange ms-2">Société associée</span>{% endif %}
-    {% if dossier.pennylane_api_token %}<span class="badge badge-success ms-2">Token dédié actif</span>{% endif %}
-    {% if data.source_token == 'dossier' %}<span class="badge badge-info ms-2">Source : token du dossier</span>{% elif data.source_token == 'global' %}<span class="badge badge-tertiary ms-2">Source : token global</span>{% endif %}
-</p>
-
 {% if not data.ok %}
-<div class="alert alert-danger">{{ data.message or 'Impossible de récupérer les données Pennylane.' }}</div>
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>{{ data.message or 'Erreur de connexion à Pennylane.' }}
+</div>
+{% endif %}
+
+{% if data.resume_nouveaux %}
+<div class="alert alert-success d-flex align-items-center animate-fade-in-up">
+    <i class="bi bi-stars me-2 fs-5"></i>
+    <div>
+        <strong>{{ data.resume_nouveaux }} nouveau(x)</strong> détecté(s) sur ce dossier —
+        marquez-les comme traités après vérification.
+    </div>
+</div>
 {% endif %}
 
 <div class="row g-4">
-    <!-- Factures clients -->
+
+    <!-- Factures clients (ventes) -->
     <div class="col-lg-6">
-        <div class="card-premium animate-fade-in-up stagger-1">
+        <div class="card-premium animate-fade-in-up">
             <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-receipt me-2 text-tertiary"></i>Factures clients <span class="badge badge-tertiary ms-1">{{ data.factures|length }}</span></h5>
+                <h5 class="fw-semibold mb-3"><i class="bi bi-receipt me-2"></i>Factures clients (ventes) <span class="badge badge-tertiary ms-1">{{ (data.factures or [])|length }}</span></h5>
                 {% if data.factures %}
+                <div class="table-responsive">
                 <table class="table-premium mb-0">
                     <thead>
                         <tr>
-                            <th>N°</th>
-                            <th>Date</th>
-                            <th>Montant</th>
-                            <th>Statut</th>
+                            <th>N°</th><th>Date</th><th>Montant</th><th>Statut</th><th>Traitement</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for f in data.factures[:20] %}
-                        <tr>
-                            <td>{{ f.numero }}</td>
+                        {% for f in data.factures[:25] %}
+                        <tr class="{% if f.nouveau %}pl-item-new{% endif %}">
+                            <td>{{ f.numero or '—' }} {% if f.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
                             <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
-                            <td>{{ f.montant_ttc if f.montant_ttc is not none else '—' }} €</td>
-                            <td><span class="badge {% if f.statut == 'paid' %}badge-success{% elif f.statut == 'draft' %}badge-tertiary{% else %}badge-info{% endif %}">{{ f.statut }}</span></td>
+                            <td>{{ f.montant_ttc|float if f.montant_ttc is not none else '—' }} €</td>
+                            <td><span class="badge badge-tertiary">{{ f.statut or '—' }}</span></td>
+                            <td id="pl-cell-{{ f.id }}">{{ pl_statut_badge(f.statut_traitement) }} {{ pl_statut_buttons(f.id, f.statut_traitement) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% else %}
                 <p class="text-tertiary small mb-0">Aucune facture client trouvée.</p>
                 {% endif %}
@@ -54,32 +87,32 @@
         </div>
     </div>
 
-    <!-- Factures fournisseurs -->
+    <!-- Factures fournisseurs (achats) -->
     <div class="col-lg-6">
         <div class="card-premium animate-fade-in-up stagger-2">
             <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-cart me-2 text-tertiary"></i>Factures fournisseurs <span class="badge badge-tertiary ms-1">{{ (data.factures_fournisseurs or [])|length }}</span></h5>
-                {% if data.factures_fournisseurs is defined and data.factures_fournisseurs %}
+                <h5 class="fw-semibold mb-3"><i class="bi bi-cart me-2 text-tertiary"></i>Factures fournisseurs (achats) <span class="badge badge-tertiary ms-1">{{ (data.factures_fournisseurs or [])|length }}</span></h5>
+                {% if data.factures_fournisseurs %}
+                <div class="table-responsive">
                 <table class="table-premium mb-0">
                     <thead>
                         <tr>
-                            <th>N°</th>
-                            <th>Date</th>
-                            <th>Montant</th>
-                            <th>Statut</th>
+                            <th>N°</th><th>Date</th><th>Montant</th><th>Statut</th><th>Traitement</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for f in data.factures_fournisseurs[:20] %}
-                        <tr>
-                            <td>{{ f.numero }}</td>
+                        {% for f in data.factures_fournisseurs[:25] %}
+                        <tr class="{% if f.nouveau %}pl-item-new{% endif %}">
+                            <td>{{ f.numero or '—' }} {% if f.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
                             <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
-                            <td>{{ f.montant_ttc if f.montant_ttc is not none else '—' }} €</td>
+                            <td>{{ f.montant_ttc|float if f.montant_ttc is not none else '—' }} €</td>
                             <td><span class="badge badge-tertiary">{{ f.statut or '—' }}</span></td>
+                            <td id="pl-cell-{{ f.id }}">{{ pl_statut_badge(f.statut_traitement) }} {{ pl_statut_buttons(f.id, f.statut_traitement) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% else %}
                 <p class="text-tertiary small mb-0">Aucune facture fournisseur trouvée.</p>
                 {% endif %}
@@ -91,28 +124,29 @@
     <div class="col-lg-6">
         <div class="card-premium animate-fade-in-up stagger-3">
             <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-bank me-2 text-tertiary"></i>Transactions bancaires <span class="badge badge-tertiary ms-1">{{ data.transactions|length }}</span></h5>
+                <h5 class="fw-semibold mb-3"><i class="bi bi-bank me-2 text-tertiary"></i>Transactions bancaires <span class="badge badge-tertiary ms-1">{{ (data.transactions or [])|length }}</span></h5>
                 {% if data.transactions %}
+                <div class="table-responsive">
                 <table class="table-premium mb-0">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Libellé</th>
-                            <th>Montant</th>
+                            <th>Date</th><th>Libellé</th><th>Montant</th><th>Traitement</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for t in data.transactions[:20] %}
-                        <tr>
+                        {% for t in data.transactions[:25] %}
+                        <tr class="{% if t.nouveau %}pl-item-new{% endif %}">
                             <td class="text-tertiary small">{{ t.date[:10] if t.date else '—' }}</td>
-                            <td>{{ t.libelle[:35] }}{% if t.libelle|length > 35 %}…{% endif %}</td>
+                            <td>{{ t.libelle[:35] }}{% if t.libelle|length > 35 %}…{% endif %} {% if t.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
                             <td class="{% if t.montant is not none and t.montant|float < 0 %}text-danger{% else %}text-success{% endif %} text-nowrap">
                                 {{ t.montant|float if t.montant is not none else '—' }} €
                             </td>
+                            <td id="pl-cell-{{ t.id }}">{{ pl_statut_badge(t.statut_traitement) }} {{ pl_statut_buttons(t.id, t.statut_traitement) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% else %}
                 <p class="text-tertiary small mb-0">Aucune transaction trouvée.</p>
                 {% endif %}
@@ -124,33 +158,79 @@
     <div class="col-lg-6">
         <div class="card-premium animate-fade-in-up stagger-4">
             <div class="card-body-premium">
-                <h5 class="fw-semibold mb-3"><i class="bi bi-journal-text me-2 text-tertiary"></i>Écritures comptables <span class="badge badge-tertiary ms-1">{{ data.ecritures|length }}</span></h5>
+                <h5 class="fw-semibold mb-3"><i class="bi bi-journals me-2 text-tertiary"></i>Écritures comptables <span class="badge badge-tertiary ms-1">{{ (data.ecritures or [])|length }}</span></h5>
                 {% if data.ecritures %}
+                <div class="table-responsive">
                 <table class="table-premium mb-0">
                     <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Libellé</th>
-                            <th>Débit</th>
-                            <th>Crédit</th>
-                        </tr>
+                        <tr><th>Date</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr>
                     </thead>
                     <tbody>
-                        {% for e in data.ecritures[:20] %}
+                        {% for e in data.ecritures[:25] %}
                         <tr>
-                            <td class="small text-tertiary">{{ e.date[:10] if e.date else '—' }}</td>
-                            <td>{{ e.libelle[:35] }}{% if e.libelle|length > 35 %}…{% endif %}</td>
-                            <td class="text-nowrap">{% if e.montant_debit > 0 %}{{ e.montant_debit }} €{% endif %}</td>
-                            <td class="text-nowrap">{% if e.montant_credit > 0 %}{{ e.montant_credit }} €{% endif %}</td>
+                            <td class="text-tertiary small">{{ e.date[:10] if e.date else '—' }}</td>
+                            <td>{{ e.libelle[:30] }}{% if e.libelle|length > 30 %}…{% endif %}</td>
+                            <td class="text-nowrap">{{ e.montant_debit|float if e.montant_debit else '—' }} €</td>
+                            <td class="text-nowrap">{{ e.montant_credit|float if e.montant_credit else '—' }} €</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% else %}
                 <p class="text-tertiary small mb-0">Aucune écriture trouvée.</p>
                 {% endif %}
             </div>
         </div>
     </div>
+
 </div>
+
+<style>
+.pl-item-new { background: rgba(255, 140, 0, 0.07); }
+[data-theme="light"] .pl-item-new { background: rgba(255, 140, 0, 0.1); }
+.pl-btns { display: inline-flex; gap: 4px; margin-left: 6px; }
+.pl-btns button { border: none; background: transparent; cursor: pointer; font-size: 0.8rem; padding: 1px 5px; border-radius: 6px; }
+.pl-btns .btn-traite { color: #22c55e; }
+.pl-btns .btn-ignore { color: #94a3b8; }
+.pl-btns button:hover { background: rgba(255,255,255,0.08); }
+</style>
+
+<script>
+function setStatut(itemId, statut) {
+    fetch(`/pennylane/item/${itemId}/statut`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({statut: statut})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) {
+            location.reload();
+        } else {
+            alert(d.message || 'Erreur');
+        }
+    })
+    .catch(() => alert('Erreur réseau'));
+}
+
+function checkPennylane() {
+    const btn = document.getElementById('btn-check-pl');
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Vérification...';
+    btn.disabled = true;
+    fetch(`/pennylane/check/{{ dossier.id }}`, {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok && d.nouveaux && d.nouveaux.length > 0) {
+            alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
+        } else if (d.ok) {
+            alert('✅ Aucun nouveau document — tout est à jour.');
+        } else {
+            alert(d.message || 'Erreur de connexion à Pennylane.');
+        }
+        location.reload();
+    })
+    .catch(() => { alert('Erreur réseau'); location.reload(); });
+}
+</script>
 {% endblock %}

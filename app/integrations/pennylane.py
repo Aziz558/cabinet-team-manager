@@ -234,31 +234,158 @@ def sync_dossiers_pennylane(token: str = None) -> dict:
     return {'ok': True, 'message': f'{associes} dossier(s) associé(s) à Pennylane.', 'associes': associes}
 
 
+
+
+def _to_float(v):
+    """Convertit une valeur API (string ou number) en float ou None."""
+    if v is None or v == '':
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
+    """
+    Compare les items reçus avec la table pennylane_items.
+    - Nouveau item → inséré en DB avec statut 'a_traiter' + retour dans la liste.
+    - Item connu → mis à jour (référence/montant), statut conservé.
+    Retourne la liste des nouveaux items détectés.
+    """
+    from app import db
+    from app.models import PennylaneItem
+
+    nouveaux = []
+    all_rows = PennylaneItem.query.filter_by(dossier_id=dossier.id).all()
+    existing = {(it.item_type, it.item_id): it for it in all_rows}
+    dirty = False
+
+    def _process(item_type, items, ref_keys, montant_key, date_keys):
+        nonlocal dirty
+        for it in items or []:
+            iid = str(it.get('id') or '')
+            if not iid:
+                continue
+            ref = ''
+            for k in ref_keys:
+                if it.get(k):
+                    ref = str(it[k])
+                    break
+            montant = _to_float(it.get(montant_key))
+            date_item = ''
+            for k in date_keys:
+                if it.get(k):
+                    date_item = str(it[k])
+                    break
+            row = existing.get((item_type, iid))
+            if row is None:
+                row = PennylaneItem(
+                    dossier_id=dossier.id,
+                    item_type=item_type,
+                    item_id=iid,
+                    reference=ref[:120],
+                    montant=montant,
+                    date_item=date_item[:30],
+                    statut='a_traiter',
+                )
+                db.session.add(row)
+                existing[(item_type, iid)] = row
+                nouveaux.append({'type': item_type, 'reference': ref, 'montant': montant, 'date': date_item})
+                dirty = True
+            else:
+                # Mise à jour douce
+                if ref and row.reference != ref[:120]:
+                    row.reference = ref[:120]
+                    dirty = True
+                if montant is not None and row.montant != montant:
+                    row.montant = montant
+                    dirty = True
+
+    _process('facture_vente', invs, ('invoice_number', 'invoice_number_formatted'), 'total_with_tax', ('date',))
+    _process('facture_achat', sinvs, ('invoice_number',), 'total_with_tax', ('date',))
+    _process('transaction', txs, ('label',), 'amount', ('transaction_date', 'date'))
+
+    if dirty:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.warning(f'commit pennylane_items: {e}')
+    return nouveaux
+
+
+def _notifier_nouveaux_items(dossier, nouveaux: list):
+    """Crée une notification in-app (et email léger) pour manager + collaborateur du dossier."""
+    if not nouveaux:
+        return
+    from app import db
+    from app.models import Notification
+
+    try:
+        eq = getattr(dossier, 'equipe', None)
+        manager = getattr(eq, 'manager', None) if eq else None
+        collab = getattr(dossier, 'collaborateur', None)
+        type_label = {'facture_vente': 'Facture de vente', 'facture_achat': "Facture d'achat",
+                      'transaction': 'Transaction bancaire'}
+        n_ventes = sum(1 for n in nouveaux if n['type'] == 'facture_vente')
+        n_achats = sum(1 for n in nouveaux if n['type'] == 'facture_achat')
+        n_tx = sum(1 for n in nouveaux if n['type'] == 'transaction')
+        parts = []
+        if n_ventes:
+            parts.append(f"{n_ventes} facture(s) de vente")
+        if n_achats:
+            parts.append(f"{n_achats} facture(s) d'achat")
+        if n_tx:
+            parts.append(f"{n_tx} transaction(s) bancaire(s)")
+        resume = ' + '.join(parts)
+
+        # Une notification résumée par destinataire (évite le spam)
+        destinataires = set()
+        if manager:
+            destinataires.add(manager.id)
+        if collab:
+            destinataires.add(collab.id)
+        for uid in destinataires:
+            notif = Notification(
+                user_id=uid,
+                message=f"🆕 Pennylane — {dossier.numero_dossier} ({dossier.intitule[:30]}) : {resume} nouveau(x) à traiter",
+                type_notification='pennylane'
+            )
+            db.session.add(notif)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f'notifications nouveaux items: {e}')
+
+
 def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
     """
     Récupère les données Pennylane associées à un dossier du cabinet
-    (factures clients/fournisseurs, transactions, écritures).
+    (factures clients/fournisseurs, transactions, écritures) et DÉTECTE
+    les nouveaux items (factures achats/ventes, transactions bancaires).
 
     Deux cas :
-    - Le dossier a son propre token (Company API d'une société) : on liste
-      TOUT directement (le token est déjà lié à cette société, pas besoin de filtre).
-    - Sinon on utilise le token global (Firm API) en filtrant par customer_id.
+    - Le dossier a son propre token (Company API) : on liste TOUT directement.
+    - Sinon token global (Firm API) filtré par customer_id.
     """
-    from app.models import Dossier
     from app import db
+    from app.models import PennylaneItem
 
     token = token or getattr(dossier, 'pennylane_api_token', None) or get_pennylane_token()
     customer_id = getattr(dossier, 'pennylane_customer_id', None)
     if not token:
         return {'ok': False, 'message': 'Token non configuré pour ce dossier ni globalement.',
                 'factures': [], 'factures_fournisseurs': [], 'ecritures': [], 'transactions': [],
-                'source_token': None}
+                'nouveaux': [], 'resume_nouveaux': '', 'source_token': None}
 
     has_dossier_token = bool(getattr(dossier, 'pennylane_api_token', None))
-    result = {'ok': True, 'factures': [], 'ecritures': [], 'transactions': [], 'source_token': 'dossier' if has_dossier_token else 'global'}
+    result = {'ok': True, 'factures': [], 'ecritures': [], 'transactions': [],
+              'factures_fournisseurs': [], 'nouveaux': [], 'resume_nouveaux': '',
+              'source_token': 'dossier' if has_dossier_token else 'global'}
 
     try:
-        # 1) Auto-associer la société si on a un token par dossier et pas encore de customer_id
+        # 1) Auto-associer la société si token par dossier et pas de customer_id
         if has_dossier_token and not customer_id:
             try:
                 me = requests.get(_api_url('me'), headers=_headers(token), timeout=15)
@@ -272,12 +399,13 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
             except Exception as e:
                 logger.warning(f'auto-assoc me: {e}')
 
-        # 2) Factures clients
+        # 2) Factures clients (ventes)
         invs_params = {'limit': 50}
         if customer_id and not has_dossier_token:
             invs_params['customer_id'] = customer_id
         invs = _paginated_get('customer_invoices', params=invs_params, token=token)
         result['factures'] = [{
+            'id': i.get('id'),
             'numero': i.get('invoice_number') or i.get('invoice_number_formatted') or '',
             'montant_ht': i.get('total_without_tax'),
             'montant_ttc': i.get('total_with_tax'),
@@ -285,31 +413,37 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
             'date': i.get('date'),
         } for i in invs]
 
-        # 3) Factures fournisseurs (dépenses)
+        # 3) Factures fournisseurs (achats)
         try:
             sinvs = _paginated_get('supplier_invoices', params={'limit': 50}, token=token)
             result['factures_fournisseurs'] = [{
+                'id': s.get('id'),
                 'numero': s.get('invoice_number') or '',
                 'montant_ttc': s.get('total_with_tax'),
                 'statut': s.get('status') or '',
                 'date': s.get('date'),
             } for s in sinvs]
-        except Exception:
+        except Exception as e:
+            logger.warning(f'supplier_invoices: {e}')
             result['factures_fournisseurs'] = []
+            sinvs = []
 
         # 4) Transactions bancaires
         try:
             txs = _paginated_get('transactions', params={'limit': 30}, token=token)
             result['transactions'] = [{
+                'id': t.get('id'),
                 'date': t.get('transaction_date') or t.get('date'),
                 'libelle': t.get('label') or '',
                 'montant': t.get('amount'),
                 'statut': t.get('status') or '',
             } for t in txs]
-        except Exception:
+        except Exception as e:
+            logger.warning(f'transactions: {e}')
             result['transactions'] = []
+            txs = []
 
-        # 5) Écritures comptables
+        # 5) Écritures comptables (pas de suivi de nouveaux)
         try:
             entries = _paginated_get('ledger_entries', params={'limit': 30}, token=token)
             result['ecritures'] = [{
@@ -320,6 +454,48 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
             } for e in entries]
         except Exception:
             result['ecritures'] = []
+
+        # 6) DÉTECTION des nouveaux items (facture_vente / facture_achat / transaction)
+        nouveaux = _detecter_nouveaux_items(dossier, invs, sinvs, txs)
+        if nouveaux:
+            _notifier_nouveaux_items(dossier, nouveaux)
+            result['nouveaux'] = nouveaux
+            n_ventes = sum(1 for n in nouveaux if n['type'] == 'facture_vente')
+            n_achats = sum(1 for n in nouveaux if n['type'] == 'facture_achat')
+            n_tx = sum(1 for n in nouveaux if n['type'] == 'transaction')
+            parts = []
+            if n_ventes:
+                parts.append(f"{n_ventes} vente(s)")
+            if n_achats:
+                parts.append(f"{n_achats} achat(s)")
+            if n_tx:
+                parts.append(f"{n_tx} transaction(s)")
+            result['resume_nouveaux'] = ' + '.join(parts)
+
+        # 7) Statuts de traitement par item (depuis pennylane_items)
+        tracked = {(it.item_type, it.item_id): it
+                   for it in PennylaneItem.query.filter_by(dossier_id=dossier.id).all()}
+
+        def _stt(item_type, iid):
+            row = tracked.get((item_type, str(iid)))
+            return row.statut if row else 'a_traiter'
+
+        def _is_new(item_type, iid, numero):
+            row = tracked.get((item_type, str(iid)))
+            if not row:
+                return False
+            return any(n['type'] == item_type and (n['reference'] == numero)
+                       for n in result['nouveaux'])
+
+        for f in result['factures']:
+            f['statut_traitement'] = _stt('facture_vente', f['id'])
+            f['nouveau'] = _is_new('facture_vente', f['id'], f['numero'])
+        for f in result['factures_fournisseurs']:
+            f['statut_traitement'] = _stt('facture_achat', f['id'])
+            f['nouveau'] = _is_new('facture_achat', f['id'], f['numero'])
+        for t in result['transactions']:
+            t['statut_traitement'] = _stt('transaction', t['id'])
+            t['nouveau'] = _is_new('transaction', t['id'], t['libelle'])
 
     except Exception as e:
         logger.error(f'get_dossier_pennylane_data: {e}')

@@ -117,6 +117,19 @@ with app.app_context():
                 if 'pennylane_api_token' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN pennylane_api_token VARCHAR(256)"))
                     app.logger.info("Added pennylane_api_token column to dossiers")
+                # Table pennylane_items : suivi documents/transactions + statut traitement
+                pl_tables = [r[0] for r in conn.execute(db.text("SELECT tablename FROM pg_tables WHERE schemaname='public'")).fetchall()]
+                if 'pennylane_items' not in pl_tables:
+                    _sql_pl = ("CREATE TABLE pennylane_items (id SERIAL PRIMARY KEY, dossier_id INTEGER NOT NULL "
+                               "REFERENCES dossiers(id) ON DELETE CASCADE, item_type VARCHAR(30) NOT NULL, "
+                               "item_id VARCHAR(64) NOT NULL, reference VARCHAR(120), montant FLOAT, "
+                               "date_item VARCHAR(30), vu_premiere_fois TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(), "
+                               "statut VARCHAR(20) DEFAULT 'a_traiter', statut_par_id INTEGER, "
+                               "statut_date TIMESTAMP WITHOUT TIME ZONE)")
+                    conn.execute(db.text(_sql_pl))
+                    conn.execute(db.text("CREATE UNIQUE INDEX uq_pl_item ON pennylane_items (dossier_id, item_type, item_id)"))
+                    conn.execute(db.text("CREATE INDEX ix_pl_items_dossier ON pennylane_items (dossier_id)"))
+                    app.logger.info("Created table pennylane_items")
     except Exception as e:
         app.logger.warning(f"Migration error (dossiers columns): {e}")
 
@@ -414,12 +427,40 @@ try:
                 app.logger.info(f"Monthly fiscal refresh: {count} dossiers traités")
             except Exception as e:
                 app.logger.error(f"Monthly fiscal refresh error: {e}")
-    
+
+    def verifier_nouveaux_pennylane():
+        """Vérifie les nouveaux documents/transactions Pennylane de tous les dossiers connectés."""
+        with app.app_context():
+            try:
+                from app.models import Dossier
+                from app.integrations.pennylane import get_dossier_pennylane_data
+                # Dossiers avec token dédié
+                dossiers_connectes = Dossier.query.filter(
+                    Dossier.pennylane_api_token.isnot(None),
+                    Dossier.pennylane_api_token != ''
+                ).all()
+                # Dossiers avec customer_id (token global)
+                dossiers_customer = Dossier.query.filter(
+                    Dossier.pennylane_customer_id.isnot(None),
+                    (Dossier.pennylane_api_token.is_(None)) | (Dossier.pennylane_api_token == '')
+                ).all()
+                tous = list(dossiers_connectes) + list(dossiers_customer)
+                app.logger.info(f"Pennylane check: {len(tous)} dossier(s) à vérifier")
+                for dossier in tous:
+                    try:
+                        get_dossier_pennylane_data(dossier)
+                    except Exception as e:
+                        app.logger.warning(f"Pennylane check dossier {dossier.id}: {e}")
+                app.logger.info("Pennylane check terminé")
+            except Exception as e:
+                app.logger.error(f"Pennylane check global error: {e}")
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
     scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)
     scheduler.add_job(regenerer_taches_fiscales, 'cron', day=1, hour=6, minute=0)  # 1er du mois à 06:00
+    scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0)  # toutes les heures
     scheduler.start()
-    app.logger.info("APScheduler started: daily at 08:00, monthly fiscal refresh on 1st")
+    app.logger.info("APScheduler started: daily 08:00, recurring 07:00, fiscal 1st 06:00, pennylane hourly")
 except Exception as e:
     app.logger.warning(f"APScheduler not available: {e}")

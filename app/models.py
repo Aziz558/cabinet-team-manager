@@ -209,6 +209,30 @@ class AppSetting(db.Model):
         return f'<AppSetting {self.cle}>'
 
 
+class PennylaneItem(db.Model):
+    """Item Pennylane (facture client/fournisseur, transaction) vu pour un dossier.
+       Permet de détecter les NOUVEAUX items et de suivre leur traitement."""
+    __tablename__ = 'pennylane_items'
+    id = db.Column(db.Integer, primary_key=True)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=False, index=True)
+    item_type = db.Column(db.String(30), nullable=False)  # facture_vente | facture_achat | transaction
+    item_id = db.Column(db.String(64), nullable=False, index=True)  # ID Pennylane de l'item
+    reference = db.Column(db.String(120))            # n° facture ou libellé transaction
+    montant = db.Column(db.Float, nullable=True)
+    date_item = db.Column(db.String(30))             # date de la facture/transaction (string API)
+    vu_premiere_fois = db.Column(db.DateTime, default=datetime.utcnow)
+    statut = db.Column(db.String(20), default='a_traiter')  # a_traiter | traite | ignore
+    statut_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    statut_date = db.Column(db.DateTime, nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('dossier_id', 'item_type', 'item_id', name='uq_pl_item'),
+    )
+
+    def __repr__(self):
+        return f'<PennylaneItem dossier={self.dossier_id} {self.item_type} {self.item_id}>'
+
+
 class Equipe(db.Model):
     __tablename__ = 'equipes'
     id = db.Column(db.Integer, primary_key=True)
