@@ -313,10 +313,11 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
             api_statut = str(it.get(status_key) or '').strip()
             row = existing.get((item_type, iid))
             if row is None:
+                initial_statut = 'traite' if est_pl_traite(api_statut, item_type) else 'a_traiter'
                 row = PennylaneItem(
                     dossier_id=dossier.id, item_type=item_type, item_id=iid,
                     reference=ref[:120], montant=montant, date_item=date_item[:30],
-                    api_statut=api_statut[:30], statut='a_traiter',
+                    api_statut=api_statut[:30], statut=initial_statut,
                 )
                 db.session.add(row)
                 existing[(item_type, iid)] = row
@@ -337,7 +338,13 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
 
     _process('facture_vente', invs, ('invoice_number', 'invoice_number_formatted'), 'total_with_tax', ('date',))
     _process('facture_achat', sinvs, ('invoice_number',), 'total_with_tax', ('date',), status_key='accounting_status')
-    _process('transaction', txs, ('label',), 'amount', ('transaction_date', 'date'))
+    # Transactions : le statut est inféré depuis attachment_required
+    txs_mapped = []
+    for t in txs or []:
+        t2 = dict(t)
+        t2['status'] = 'unaffected' if t.get('attachment_required') in (True, 'true') else 'affected'
+        txs_mapped.append(t2)
+    _process('transaction', txs_mapped, ('label',), 'amount', ('transaction_date', 'date'))
 
     if dirty:
         try:
