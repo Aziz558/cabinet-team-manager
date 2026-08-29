@@ -73,7 +73,7 @@
                             <td>{{ f.numero or '—' }} {% if f.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
                             <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
                             <td>{{ f.montant_ttc|float if f.montant_ttc is not none else '—' }} €</td>
-                            <td><span class="badge badge-tertiary">{{ f.statut or '—' }}</span></td>
+                            <td><span class="badge {{ 'badge-success' if f.statut_fr == 'Traité' else ('badge-warning' if f.statut_fr == 'Prétraité' else 'badge-orange') }}">{{ f.statut_fr or '—' }}</span></td>
                             <td id="pl-cell-{{ f.id }}">{{ pl_statut_badge(f.statut_traitement) }} {{ pl_statut_buttons(f.id, f.statut_traitement) }}</td>
                         </tr>
                         {% endfor %}
@@ -106,7 +106,7 @@
                             <td>{{ f.numero or '—' }} {% if f.nouveau %}<span class="badge badge-orange ms-1">NOUVEAU</span>{% endif %}</td>
                             <td class="text-tertiary small">{{ f.date[:10] if f.date else '—' }}</td>
                             <td>{{ f.montant_ttc|float if f.montant_ttc is not none else '—' }} €</td>
-                            <td><span class="badge badge-tertiary">{{ f.statut or '—' }}</span></td>
+                            <td><span class="badge {{ 'badge-success' if f.statut_fr == 'Traité' else ('badge-warning' if f.statut_fr == 'Prétraité' else 'badge-orange') }}">{{ f.statut_fr or '—' }}</span></td>
                             <td id="pl-cell-{{ f.id }}">{{ pl_statut_badge(f.statut_traitement) }} {{ pl_statut_buttons(f.id, f.statut_traitement) }}</td>
                         </tr>
                         {% endfor %}
@@ -130,7 +130,7 @@
                 <table class="table-premium mb-0">
                     <thead>
                         <tr>
-                            <th>Date</th><th>Libellé</th><th>Montant</th><th>Traitement</th>
+                            <th>Date</th><th>Libellé</th><th>Montant</th><th>Statut</th><th>Traitement</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -141,6 +141,7 @@
                             <td class="{% if t.montant is not none and t.montant|float < 0 %}text-danger{% else %}text-success{% endif %} text-nowrap">
                                 {{ t.montant|float if t.montant is not none else '—' }} €
                             </td>
+                            <td><span class="badge {{ 'badge-success' if t.statut_fr == 'Traité' else ('badge-warning' if t.statut_fr == 'Prétraité' else 'badge-orange') }}">{{ t.statut_fr or '—' }}</span></td>
                             <td id="pl-cell-{{ t.id }}">{{ pl_statut_badge(t.statut_traitement) }} {{ pl_statut_buttons(t.id, t.statut_traitement) }}</td>
                         </tr>
                         {% endfor %}
