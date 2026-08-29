@@ -102,6 +102,11 @@ def _paginated_get(path: str, params: dict = None, token: str = None, max_pages:
             logger.warning(f'Pennylane GET {path} -> {resp.status_code}: {resp.text[:200]}')
             break
         data = resp.json()
+        # DEBUG pagination structure
+        if path in ('customer_invoices', 'supplier_invoices', 'transactions'):
+            pag_key = list(data.keys()) if isinstance(data, dict) else []
+            pag_info = data.get('pagination') if isinstance(data, dict) else None
+            logger.warning(f'PENNYLANE PAGINATION DEBUG {path}: keys={pag_key} pagination={pag_info}')
         key = None
         if isinstance(data, dict):
             for k, v in data.items():
