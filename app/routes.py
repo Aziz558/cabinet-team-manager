@@ -2530,6 +2530,38 @@ def pennylane_dossier(dossier_id):
     data['nb_banque'] = sum(1 for l in lignes if l['nature'] == 'banque')
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
+@app.route('/pennylane/debug_status/<int:dossier_id>')
+@login_required
+def pennylane_debug_status(dossier_id):
+    """DEBUG: affiche les statuts bruts renvoyés par l'API Pennylane pour un dossier."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
+    dossier = Dossier.query.get_or_404(dossier_id)
+    from app.integrations.pennylane import (_headers, _api_url, get_pennylane_token)
+    import requests
+    token = dossier.pennylane_api_token or get_pennylane_token()
+    out = {'ok': True, 'dossier': dossier.numero_dossier, 'types': {}}
+    for ep, label in [('customer_invoices', 'ventes'), ('supplier_invoices', 'achats'), ('transactions', 'banque')]:
+        try:
+            r = requests.get(_api_url(ep), headers=_headers(token), params={'limit': 100}, timeout=20)
+            data = r.json() if r.status_code == 200 else {}
+            items = []
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if isinstance(v, list):
+                        items = v
+                        break
+            stats = {}
+            for it in items[:200]:
+                st = str(it.get('status') or '(vide)')
+                stats[st] = stats.get(st, 0) + 1
+            out['types'][label] = {'http': r.status_code, 'count': len(items), 'statuses': stats,
+                                   'sample_keys': list(items[0].keys()) if items else []}
+        except Exception as e:
+            out['types'][label] = {'error': str(e)}
+    return jsonify(out)
+
+
 @app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])
 @login_required
 def pennylane_item_statut(item_db_id):
