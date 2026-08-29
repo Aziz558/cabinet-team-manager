@@ -2545,58 +2545,6 @@ def pennylane_dossier(dossier_id):
 
 
 
-@app.route('/pennylane/debug_all_status/<int:dossier_id>')
-@login_required
-def pennylane_debug_all_status(dossier_id):
-    """DEBUG: liste TOUTES les valeurs de statut distinctes (toutes pages) + exemples."""
-    if current_user.role != 'admin':
-        return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
-    dossier = Dossier.query.get_or_404(dossier_id)
-    from app.integrations.pennylane import _headers, _api_url, get_pennylane_token
-    import requests
-    token = dossier.pennylane_api_token or get_pennylane_token()
-    out = {}
-    for ep, label in [('customer_invoices', 'ventes')]:
-        stats = {}
-        examples = {}
-        cursor = None
-        try:
-            while True:
-                params = {'limit': 100}
-                if cursor:
-                    params['cursor'] = cursor
-                r = requests.get(_api_url(ep), headers=_headers(token), params=params, timeout=20)
-                if r.status_code != 200:
-                    out[label] = {'error': f'HTTP {r.status_code}: {r.text[:150]}'}
-                    break
-                d = r.json()
-                items = None
-                if isinstance(d, dict):
-                    for k, v in d.items():
-                        if isinstance(v, list):
-                            items = v
-                            break
-                if not items:
-                    break
-                for it in items:
-                    st = str(it.get('status') or '(vide)')
-                    paid = it.get('paid')
-                    annee = (it.get('date') or '')[:4]
-                    key = f'{st}|{annee}|paid={paid}'
-                    stats[key] = stats.get(key, 0) + 1
-                    if key not in examples and len(examples) < 10:
-                        examples[key] = {'numero': it.get('invoice_number'), 'date': it.get('date'),
-                                         'ledger_entry': bool(it.get('ledger_entry')), 'filename': it.get('filename')}
-                pag = (d.get('pagination') or {}) if isinstance(d, dict) else {}
-                cursor = pag.get('next_cursor') or d.get('next_cursor')
-                if d.get('has_more') is False or not cursor:
-                    break
-        except Exception as e:
-            out[label] = {'error': str(e)}
-            continue
-        out[label] = {'statuses': stats, 'examples': examples}
-    return jsonify(out)
-
 
 @app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])
 @login_required

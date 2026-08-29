@@ -241,18 +241,19 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
         return mapping.get(status, status.replace('_', ' ').title())
 
     # Factures clients (ventes)
+    # IMPORTANT : sur Pennylane, le statut "Traitée" = facture comptabilisée (ledger_entry).
+    # Le champ API `status` est un statut de cycle de vie (paid/late/archived...),
+    # mais TOUTES ces factures sont traitées côté Pennylane sauf les "incomplete".
     if item_type == 'facture_vente':
-        if status in ('paid', 'completed', 'late', 'overdue', 'unpaid', 'upcoming'):
-            return 'Traité'
-        elif status in ('incomplete', 'partially_paid'):
+        if status == 'incomplete':
+            return 'Prétraité'
+        elif status == 'partially_paid':
             return 'Prétraité'
         elif status in ('draft', 'to_be_sent', 'sent', 'pending', 'overdue_invoice'):
             return 'À traiter'
-        elif status in ('credit_note',):
-            return 'Avoir'
-        elif status in ('cancelled', 'void', 'archived', 'refunded'):
-            return 'Annulé'
-        return status.replace('_', ' ').title()
+        # paid, late, upcoming, credit_note, archived, completed, cancelled, void, refunded
+        # → toutes considérées comme TRAITÉES (factures comptabilisées)
+        return 'Traité'
 
     # Factures fournisseurs (achats) — champ `accounting_status`
     if item_type == 'facture_achat':
@@ -422,6 +423,8 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
         if customer_id and not has_dossier_token:
             invs_params['customer_id'] = customer_id
         invs = _paginated_get('customer_invoices', params=invs_params, token=token)
+        # Exclure les factures archivées (elles ne sont plus actives)
+        invs = [i for i in invs if (i.get('status') or '') != 'archived' and not i.get('archived_at')]
         result['factures'] = [{
             'id': i.get('id'), 'numero': i.get('invoice_number') or i.get('invoice_number_formatted') or '',
             'montant_ht': i.get('total_without_tax'), 'montant_ttc': i.get('total_with_tax'),
@@ -431,6 +434,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
 
         try:
             sinvs = _paginated_get('supplier_invoices', params={'limit': 100}, token=token)
+            sinvs = [s for s in sinvs if not s.get('archived_at')]
             result['factures_fournisseurs'] = [{
                 'id': s.get('id'), 'numero': s.get('invoice_number') or '',
                 'montant_ttc': s.get('total_with_tax'),
@@ -445,6 +449,7 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
 
         try:
             txs = _paginated_get('transactions', params={'limit': 100}, token=token)
+            txs = [t for t in txs if not t.get('archived_at')]
             result['transactions'] = [{
                 'id': t.get('id'), 'date': t.get('transaction_date') or t.get('date'),
                 'libelle': t.get('label') or '', 'montant': t.get('amount'),
