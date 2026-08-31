@@ -24,6 +24,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo-jmh.png') }}">
     <!-- Toast container -->
     <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;"></div>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Minimal top bar (replaces bulky Bootstrap navbar) -->
@@ -475,5 +476,6 @@ function changeNotifSound(value) {
     }
 })();
 </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>
