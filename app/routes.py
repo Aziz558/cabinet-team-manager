@@ -287,13 +287,15 @@ def prochaine_echeance_par_nature(d, today):
 @app.route('/checklist')
 @login_required
 def checklist():
-    """Checklist métier (inspirée FollowApp) : grille dossiers × obligations.
-    Chaque case = état des tâches du dossier pour cette obligation sur l'année :
-    ✓ terminé, n/m partiel, ✗ en retard, — aucune."""
-    from collections import defaultdict
+    """Workflow checklist métier (inspiré FollowApp) :
+    étape 1 : type de tâches (fiscale/comptable/sociale/perso)
+    étape 2 : fréquence (récurrentes / ponctuelles)
+    étape 3 : grille taxe — Dénomination × Jour d'échéance × 12 mois (déclarée / payée)."""
+    from app.models import ChecklistEntry
 
     annee = request.args.get('annee', type=int) or date.today().year
-    module = request.args.get('module', 'fiscal')
+    etape = request.args.get('etape', 'type')
+    taxe = request.args.get('taxe', '')
 
     team_member_ids = None
     if current_user.role == 'manager':
@@ -310,86 +312,152 @@ def checklist():
         dossiers_q = dossiers_q.filter(Dossier.collaborateur_id.in_(team_member_ids))
     dossiers_list = dossiers_q.order_by(Dossier.numero_dossier).all()
 
-    taches_q = Tache.query.filter(
-        Tache.date_echeance.between(date(annee, 1, 1), date(annee, 12, 31))
-    )
-    if team_member_ids:
-        dossiers_ids = [d.id for d in dossiers_list]
-        taches_q = taches_q.filter(Tache.dossier_id.in_(dossiers_ids))
-    taches_list = taches_q.filter(~Tache.titre.ilike('%Préparation%')).all()
-
-    def _categorie(t):
-        titre = (t.titre or '').lower()
-        if 'tva' in titre:
-            return 'tva', 'TVA'
-        if 'acompte' in titre and 'is' in titre:
-            return 'is_acompte', 'IS Acomptes'
-        if 'is' in titre and ('dépôt' in titre or 'depot' in titre or 'déclaration' in titre or 'declaration' in titre):
-            return 'is_depot', 'IS Déclaration'
-        if 'cfe' in titre:
-            return 'cfe', 'CFE'
-        if 'liasse' in titre:
-            return 'liasse', 'Liasse'
-        if 'paie' in titre or 'bulletin' in titre or 'salaire' in titre:
-            return 'paie', 'Paie'
-        if 'tenue' in titre:
-            return 'tenue', 'Tenue'
-        if 'impot' in titre or 'fiscal' in titre or 'déclaration' in titre or 'declaration' in titre:
-            return 'fiscal_autres', 'Fiscal autre'
-        return 'autres', 'Autre'
-
-    def _module_of_cat(cat):
-        return {'tva': 'fiscal', 'is_acompte': 'fiscal', 'is_depot': 'fiscal', 'cfe': 'fiscal',
-                'liasse': 'fiscal', 'fiscal_autres': 'fiscal',
-                'paie': 'social', 'tenue': 'comptable', 'autres': 'comptable'}.get(cat, 'comptable')
-
-    # colonnes = obligations présentes dans les données (ordre logique)
-    ORDRE_COLS = ['tva', 'is_acompte', 'is_depot', 'cfe', 'liasse', 'fiscal_autres', 'tenue', 'paie', 'autres']
-    cols_presentes = {}
-    # cells[dossier_id][cat] = {'done': n, 'todo': m, 'late': k}
-    cells = defaultdict(lambda: defaultdict(lambda: {'done': 0, 'todo': 0, 'late': 0}))
-    for t in taches_list:
-        cat, label = _categorie(t)
-        cols_presentes[cat] = label
-        c = cells[t.dossier_id][cat]
-        if t.statut == 'terminee':
-            c['done'] += 1
-        else:
-            c['todo'] += 1
-            if t.est_en_retard():
-                c['late'] += 1
-
-    colonnes = [{'cat': cat, 'label': cols_presentes[cat], 'module': _module_of_cat(cat)}
-                for cat in ORDRE_COLS if cat in cols_presentes]
+    jour_std = 15
+    TAXE_META = {
+        'tva_mensuel':     {'label': 'TVA mensuelle (CA3)', 'module': 'fiscal', 'freq': 'recurrentes'},
+        'tva_trimestriel': {'label': 'TVA trimestrielle (CA3)', 'module': 'fiscal', 'freq': 'recurrentes'},
+        'tva_ca12':        {'label': 'TVA annuelle (CA12)', 'module': 'fiscal', 'freq': 'recurrentes'},
+        'is':              {'label': 'Impôt sur les Sociétés', 'module': 'fiscal', 'freq': 'ponctuelles'},
+        'cfe':             {'label': 'CFE', 'module': 'fiscal', 'freq': 'ponctuelles'},
+        'tenue':           {'label': 'Tenue comptable', 'module': 'comptable', 'freq': 'recurrentes'},
+        'paie':            {'label': 'Paie', 'module': 'social', 'freq': 'recurrentes'},
+        'autres_fiscales': {'label': 'Autres obligations fiscales', 'module': 'fiscal', 'freq': 'ponctuelles'},
+        'divers':          {'label': 'Divers', 'module': 'comptable', 'freq': 'ponctuelles'},
+        'perso':           {'label': 'Perso', 'module': 'perso', 'freq': 'recurrentes'},
+    }
 
     grille = []
-    for d in dossiers_list:
-        row_cells = []
-        for col in colonnes:
-            c = cells.get(d.id, {}).get(col['cat'])
-            if not c or (c['done'] + c['todo'] == 0):
-                state = 'none'
-            elif c['todo'] == 0:
-                state = 'done'
-            elif c['late'] > 0:
-                state = 'late'
+    if etape == 'grille' and taxe in TAXE_META:
+        dossiers_f = []
+        for d in dossiers_list:
+            regime = (d.regime_tva or '').lower().strip()
+            if taxe == 'tva_mensuel':
+                keep = regime in ('ca3', 'mensuel')
+            elif taxe == 'tva_trimestriel':
+                keep = regime == 'trimestriel'
+            elif taxe == 'tva_ca12':
+                keep = regime in ('annuel', 'ca12')
+            elif taxe == 'is':
+                keep = (d.regime_fiscale or '').upper() == 'IS'
+            elif taxe == 'cfe':
+                keep = bool(d.has_cfe)
             else:
-                state = 'partial'
-            row_cells.append({'state': state,
-                              'done': c['done'] if c else 0,
-                              'todo': c['todo'] if c else 0,
-                              'total': (c['done'] + c['todo']) if c else 0})
-        grille.append({'dossier': d, 'cells': row_cells})
+                keep = True  # tenue / paie / autres / divers / perso : tous les dossiers
+            if keep:
+                dossiers_f.append(d)
 
-    data = {'annee': annee, 'module': module, 'colonnes': colonnes, 'grille': grille}
+        entries = ChecklistEntry.query.filter(
+            ChecklistEntry.taxe == taxe,
+            ChecklistEntry.annee == annee,
+            ChecklistEntry.dossier_id.in_([d.id for d in dossiers_f])
+        ).all()
+        ent_by = {(e.dossier_id, e.mois, e.kind): e for e in entries}
+
+        def _col(d, m, kind, oblig, jour):
+            e = ent_by.get((d.id, m, kind))
+            return {'mois': m, 'kind': kind, 'oblig': oblig,
+                    'declare': bool(e.declare) if e else False,
+                    'paye': bool(e.paye) if e else False,
+                    'jour': jour}
+
+        for d in dossiers_f:
+            regime = (d.regime_tva or '').lower().strip()
+            jour_lim = d.date_limite_declaration.day if d.date_limite_declaration else jour_std
+            cols = []
+            if taxe == 'tva_mensuel':
+                for m in range(1, 13):
+                    cols.append(_col(d, m, 'depot', True, jour_lim))
+            elif taxe == 'tva_trimestriel':
+                for m in range(1, 13):
+                    cols.append(_col(d, m, 'depot', m in (1, 4, 7, 10), jour_lim))
+            elif taxe == 'tva_ca12':
+                j1 = d.date_acompte_1.day if d.date_acompte_1 else jour_lim
+                j2 = d.date_acompte_2.day if d.date_acompte_2 else jour_lim
+                for m in range(1, 13):
+                    if m == 7:
+                        cols.append(_col(d, 7, 'acompte', True, j1))
+                    elif m == 12:
+                        cols.append(_col(d, 12, 'acompte', True, j2))
+                    elif m == 5:
+                        cols.append(_col(d, 5, 'declaration', True, 15))
+                    else:
+                        cols.append({'mois': m, 'kind': 'na', 'oblig': False,
+                                     'declare': False, 'paye': False, 'jour': 0})
+            elif taxe == 'is':
+                if (d.regime_fiscale or '').upper() != 'IS':
+                    continue
+                for m in range(1, 13):
+                    if m in (3, 6, 9, 12):
+                        cols.append(_col(d, m, 'acompte', True, 15))
+                    elif m == 5:
+                        cols.append(_col(d, 5, 'declaration', True, 15))
+                    else:
+                        cols.append({'mois': m, 'kind': 'na', 'oblig': False,
+                                     'declare': False, 'paye': False, 'jour': 0})
+            elif taxe == 'cfe':
+                if not d.has_cfe:
+                    continue
+                for m in range(1, 13):
+                    if m == 12:
+                        cols.append(_col(d, 12, 'depot', True, 15))
+                    else:
+                        cols.append({'mois': m, 'kind': 'na', 'oblig': False,
+                                     'declare': False, 'paye': False, 'jour': 0})
+            else:
+                # tenue / paie / autres / divers / perso : 1 case générique par mois
+                for m in range(1, 13):
+                    cols.append(_col(d, m, 'depot', True, 1))
+
+            if cols:
+                grille.append({'dossier': d, 'regime': regime or '—', 'cols': cols})
+
+    meta = TAXE_META.get(taxe)
+    data = {'annee': annee, 'etape': etape, 'taxe': taxe, 'meta': meta, 'grille': grille}
     if request.args.get('format') == 'json':
         from flask import jsonify
-        return jsonify({'annee': annee, 'module': module,
-                        'colonnes': colonnes,
+        return jsonify({'annee': annee, 'taxe': taxe,
                         'grille': [{'id': g['dossier'].id, 'numero': g['dossier'].numero_dossier,
-                                    'intitule': g['dossier'].intitule, 'cells': g['cells']} for g in grille]})
-    return render_template('checklist.html', data=data, annee=annee, module_actif=module,
+                                    'intitule': g['dossier'].intitule, 'regime': g['regime'],
+                                    'cols': g['cols']} for g in grille]})
+    return render_template('checklist.html', data=data, annee=annee,
                            annees=sorted({date.today().year, date.today().year - 1, date.today().year - 2, date.today().year + 1}, reverse=True))
+
+
+@app.route('/checklist/toggle', methods=['POST'])
+@login_required
+def checklist_toggle():
+    """Bascule déclarée / payée d'une case de checklist."""
+    from app.models import ChecklistEntry
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'error': 'acces refuse'}), 403
+    payload = request.get_json(silent=True) or {}
+    try:
+        dossier_id = int(payload.get('dossier_id'))
+        taxe = str(payload.get('taxe') or '')
+        annee = int(payload.get('annee'))
+        mois = int(payload.get('mois'))
+        kind = str(payload.get('kind') or 'depot')
+        field = str(payload.get('field') or '')
+        value = bool(payload.get('value'))
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'payload invalide'}), 400
+    if taxe not in ('tva_mensuel', 'tva_trimestriel', 'tva_ca12', 'is', 'cfe', 'tenue', 'paie', 'autres_fiscales', 'divers', 'perso'):
+        return jsonify({'ok': False, 'error': 'taxe inconnue'}), 400
+    if field not in ('declare', 'paye') or not (1 <= mois <= 12):
+        return jsonify({'ok': False, 'error': 'champ invalide'}), 400
+    e = ChecklistEntry.query.filter_by(dossier_id=dossier_id, taxe=taxe, annee=annee,
+                                       mois=mois, kind=kind).first()
+    if not e:
+        e = ChecklistEntry(dossier_id=dossier_id, taxe=taxe, annee=annee, mois=mois, kind=kind)
+        db.session.add(e)
+    if field == 'declare':
+        e.declare = value
+    else:
+        e.paye = value
+    e.updated_by_id = current_user.id
+    e.date_modif = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'ok': True, 'declare': e.declare, 'paye': e.paye})
 
 
 @app.route('/calendrier')

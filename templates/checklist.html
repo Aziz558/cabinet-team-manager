@@ -4,80 +4,234 @@
 
 {% block extra_css %}
 <style>
-    .cl-cell { width: 64px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center;
-        justify-content: center; font-size: 0.75rem; font-weight: 600; }
-    .cl-done { background: rgba(76,175,80,0.14); color: var(--success); }
-    .cl-partial { background: rgba(66,165,245,0.14); color: var(--info); }
-    .cl-late { background: rgba(239,83,80,0.14); color: var(--danger); }
-    .cl-none { color: var(--text-tertiary); opacity: 0.5; }
-    .cl-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    .cl-table th { padding: 10px 12px; color: var(--text-tertiary); font-weight: 600;
-        border-bottom: 1px solid var(--border-color); text-align: center; white-space: nowrap; }
-    .cl-table th.cl-th-dossier { text-align: left; }
-    .cl-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); text-align: center; }
+    .wf-card { border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 14px;
+        padding: 20px 18px; cursor: pointer; transition: all 0.15s ease; text-decoration: none; display: block; }
+    .wf-card:hover { border-color: var(--orange-primary); transform: translateY(-2px); }
+    .wf-card i { font-size: 1.6rem; color: var(--orange-primary); }
+    .wf-card h6 { color: var(--text-primary); margin: 10px 0 4px; font-weight: 600; }
+    .wf-card small { color: var(--text-tertiary); }
+    .wf-back { color: var(--text-tertiary); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
+    .wf-back:hover { color: var(--orange-primary); }
+    .cl-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .cl-table th { padding: 8px 6px; color: var(--text-tertiary); font-weight: 600;
+        border-bottom: 1px solid var(--border-color); text-align: center; white-space: nowrap; font-size: 0.72rem; }
+    .cl-table th.cl-th-dossier { text-align: left; padding-left: 12px; }
+    .cl-table td { padding: 7px 6px; border-bottom: 1px solid var(--border-color); text-align: center; }
     .cl-table tbody tr:hover { background: var(--bg-card-hover); }
-    .cl-td-dossier { text-align: left !important; }
-    .cl-td-dossier strong { color: var(--text-primary); font-size: 0.82rem; }
-    .cl-td-dossier small { color: var(--text-tertiary); display: block; max-width: 220px;
+    .cl-td-dossier { text-align: left !important; padding-left: 12px !important; white-space: nowrap; }
+    .cl-td-dossier strong { color: var(--text-primary); display: block; font-size: 0.8rem; }
+    .cl-td-dossier small { color: var(--text-tertiary); display: block; max-width: 190px;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cl-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 0.78rem; color: var(--text-tertiary); }
-    .cl-legend .cl-cell { width: 26px; height: 20px; font-size: 0.68rem; }
+    .cell-dp { display: inline-flex; gap: 3px; }
+    .chip-dp { width: 17px; height: 17px; border-radius: 5px; font-size: 0.6rem; font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+        border: 1px solid var(--border-color); color: var(--text-tertiary); user-select: none; transition: all 0.1s ease; }
+    .chip-dp:hover { border-color: var(--orange-primary); }
+    .chip-d { background: rgba(76,175,80,0.18); color: var(--success); border-color: transparent; }
+    .chip-p { background: rgba(255,140,0,0.18); color: var(--orange-primary); border-color: transparent; }
+    .cell-retard { background: rgba(239,83,80,0.10); border-radius: 8px; padding: 2px; }
+    .cell-na { color: var(--text-tertiary); opacity: 0.55; font-size: 0.75rem; }
+    .cl-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--text-tertiary); }
+    .cl-legend .chip-dp { cursor: default; }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- ===== ÉTAPE 1 : TYPE DE TÂCHES ===== -->
+{% if data.etape == 'type' %}
+<div class="mb-4">
+    <h4 class="mb-1"><i class="bi bi-check2-square me-2" style="color: var(--orange-primary);"></i>Checklist métier</h4>
+    <p class="text-tertiary mb-4">Choisissez le type de tâches à afficher.</p>
+    <div class="row g-3">
+        <div class="col-md-3 col-sm-6">
+            <a class="wf-card" href="{{ url_for('checklist', etape='freq', type='fiscale', annee=annee) }}">
+                <i class="bi bi-bank"></i>
+                <h6>Fiscale</h6>
+                <small>TVA, IS, CFE, liasse, autres impôts</small>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a class="wf-card" href="{{ url_for('checklist', etape='freq', type='comptable', annee=annee) }}">
+                <i class="bi bi-journal-check"></i>
+                <h6>Comptable</h6>
+                <small>Tenue, saisies, rapprochements</small>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a class="wf-card" href="{{ url_for('checklist', etape='freq', type='sociale', annee=annee) }}">
+                <i class="bi bi-people"></i>
+                <h6>Sociale</h6>
+                <small>Paie, bulletins, Urssaf</small>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a class="wf-card" href="{{ url_for('checklist', etape='freq', type='perso', annee=annee) }}">
+                <i class="bi bi-person"></i>
+                <h6>Perso</h6>
+                <small>Tâches internes du cabinet</small>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ÉTAPE 2 : FRÉQUENCE ===== -->
+{% elif data.etape == 'freq' %}
+{% set t_label = {'fiscale': 'Fiscale', 'comptable': 'Comptable', 'sociale': 'Sociale', 'perso': 'Perso'}.get(request.args.get('type'), '—') %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-    <h4 class="mb-0"><i class="bi bi-check2-square me-2" style="color: var(--orange-primary);"></i>Checklist métier {{ annee }}</h4>
-    <select class="select-premium" style="width:auto;" onchange="location.href='/checklist?annee='+this.value+'&module={{ module_actif }}';">
-        {% for a in annees %}
-        <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
-        {% endfor %}
+    <div>
+        <a class="wf-back mb-2" href="{{ url_for('checklist', annee=annee) }}"><i class="bi bi-arrow-left"></i> Types de tâches</a>
+        <h4 class="mb-1">Checklist {{ t_label }}</h4>
+        <p class="text-tertiary mb-0">Choisissez la fréquence des obligations.</p>
+    </div>
+    <select class="select-premium" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='freq', type=request.args.get('type')) }}&annee='+this.value;">
+        {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select>
+</div>
+<div class="row g-3 justify-content-center">
+    {% set base = url_for('checklist', etape='grille', type=request.args.get('type'), annee=annee) %}
+    <div class="col-md-5">
+        <a class="wf-card" href="{{ base }}&taxe=tva_mensuel">
+            <i class="bi bi-arrow-repeat"></i>
+            <h6>Récurrentes</h6>
+            <small>TVA mensuelle · TVA trimestrielle · CA12 · Tenue · Paie</small>
+        </a>
+    </div>
+    <div class="col-md-5">
+        <a class="wf-card" href="{{ base }}&taxe=is">
+            <i class="bi bi-calendar-event"></i>
+            <h6>Ponctuelles</h6>
+            <small>IS (acomptes + déclaration) · CFE · autres obligations</small>
+        </a>
+    </div>
+</div>
+
+<!-- ===== ÉTAPE 3 : GRILLE TAXE ===== -->
+{% elif data.etape == 'grille' and data.meta %}
+{% set taxe = data.taxe %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <a class="wf-back mb-2" href="{{ url_for('checklist', etape='freq', type=request.args.get('type'), annee=annee) }}"><i class="bi bi-arrow-left"></i> Fréquences</a>
+        <h4 class="mb-0">{{ data.meta.label }} — {{ annee }}</h4>
+    </div>
+    <select class="select-premium" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='grille', type=request.args.get('type'), taxe=taxe) }}&annee='+this.value;">
+        {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
     </select>
 </div>
 
 <div class="card-premium">
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h6 class="mb-0"><i class="bi bi-grid-3x3-gap me-2" style="color: var(--orange-primary);"></i>{{ data.grille|length }} dossiers × {{ data.colonnes|length }} obligations</h6>
+        <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — cliquez sur <strong style="color:var(--success)">D</strong> (déclarée) / <strong style="color:var(--orange-primary)">P</strong> (payée)</h6>
         <div class="cl-legend">
-            <span><span class="cl-cell cl-done">✓</span> Terminé</span>
-            <span><span class="cl-cell cl-partial">n/m</span> En cours</span>
-            <span><span class="cl-cell cl-late">✗</span> En retard</span>
-            <span><span class="cl-cell cl-none">—</span> Sans objet</span>
+            <span><span class="chip-dp chip-d">D</span> déclarée</span>
+            <span><span class="chip-dp chip-p">P</span> payée</span>
+            <span><span class="cell-na">●</span> rien à signaler</span>
+            <span><span class="cell-retard px-2 py-1 rounded" style="font-size:0.68rem;">case</span> échéance passée non soldée</span>
         </div>
     </div>
     <div class="card-body-premium p-0">
         <div style="overflow-x: auto;">
-            <table class="cl-table">
+            <table class="cl-table" id="clGrid">
                 <thead>
                     <tr>
-                        <th class="cl-th-dossier">Dossier</th>
-                        {% for col in data.colonnes %}
-                        <th title="{{ col.module }}">{{ col.label }}</th>
-                        {% endfor %}
+                        <th class="cl-th-dossier">Dénomination</th>
+                        <th>Régime</th>
+                        <th>Jour d'échéance</th>
+                        {% for m in range(1, 13) %}<th>{{ ['J','F','M','A','M','J','J','A','S','O','N','D'][m-1] }}</th>{% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for g in data.grille %}
-                    <tr>
+                    {% set oblig_cols = g.cols | selectattr('oblig') | list %}
+                    <tr data-dossier="{{ g.dossier.id }}">
                         <td class="cl-td-dossier">
                             <strong>{{ g.dossier.numero_dossier }}</strong>
                             <small>{{ g.dossier.intitule }}</small>
                         </td>
-                        {% for c in g.cells %}
-                        <td>
-                            {% if c.state == 'done' %}<span class="cl-cell cl-done">✓</span>
-                            {% elif c.state == 'late' %}<span class="cl-cell cl-late" title="{{ c.todo }} à faire dont retard">{{ c.done }}/{{ c.total }}</span>
-                            {% elif c.state == 'partial' %}<span class="cl-cell cl-partial" title="{{ c.todo }} à faire">{{ c.done }}/{{ c.total }}</span>
-                            {% else %}<span class="cl-cell cl-none">—</span>{% endif %}
+                        <td class="text-tertiary" style="font-size:0.72rem;">{{ g.regime | upper }}</td>
+                        <td class="text-tertiary" style="font-size:0.72rem;">
+                            {% if taxe in ('tva_mensuel', 'tva_trimestriel') %}le {{ oblig_cols[0].jour if oblig_cols else 15 }} de chaque mois d'échéance
+                            {% elif taxe == 'tva_ca12' %}acomptes juil. + déc. · décl. 15 mai
+                            {% elif taxe == 'is' %}15/03 · 15/06 · 15/09 · 15/12 + 15/05
+                            {% elif taxe == 'cfe' %}15 décembre
+                            {% else %}mensuel{% endif %}
+                        </td>
+                        {% for c in g.cols %}
+                        <td data-mois="{{ c.mois }}" data-kind="{{ c.kind }}">
+                            {% if c.kind == 'na' %}
+                                <span class="cell-na" title="Aucune obligation ce mois">●</span>
+                            {% else %}
+                                <span class="cell-dp {% if c.oblig == false %}opacity-50{% endif %}">
+                                    <span class="chip-dp {% if c.declare %}chip-d{% endif %}" data-field="declare"
+                                          data-dossier="{{ g.dossier.id }}" data-mois="{{ c.mois }}" data-kind="{{ c.kind }}"
+                                          title="Déclarée{% if c.oblig == false %} (hors échéance standard){% endif %}">D</span><span class="chip-dp {% if c.paye %}chip-p{% endif %}" data-field="paye"
+                                          data-dossier="{{ g.dossier.id }}" data-mois="{{ c.mois }}" data-kind="{{ c.kind }}"
+                                          title="Payée{% if c.oblig == false %} (hors échéance standard){% endif %}">P</span>
+                                </span>
+                            {% endif %}
                         </td>
                         {% endfor %}
                     </tr>
                     {% else %}
-                    <tr><td colspan="{{ data.colonnes|length + 1 }}" class="text-center text-tertiary py-4">Aucun dossier</td></tr>
+                    <tr><td colspan="15" class="text-center text-tertiary py-4">Aucun dossier pour cette obligation</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if data.etape == 'grille' %}
+<script>
+(function() {
+    var TAXE = {{ (data.taxe | tojson) }};
+    var ANNEE = {{ annee }};
+    var grid = document.getElementById('clGrid');
+    if (!grid) return;
+
+    function refreshRetard() {
+        var now = new Date();
+        var moisCour = (now.getFullYear() === ANNEE) ? (now.getMonth() + 1) : (ANNEE < now.getFullYear() ? 13 : 0);
+        grid.querySelectorAll('tbody tr[data-dossier]').forEach(function(tr) {
+            tr.querySelectorAll('td[data-mois]').forEach(function(td) {
+                if (td.dataset.kind === 'na') { td.classList.remove('cell-retard'); return; }
+                var m = parseInt(td.dataset.mois, 10);
+                var d = td.querySelector('[data-field="declare"]');
+                var p = td.querySelector('[data-field="paye"]');
+                var solded = d && d.classList.contains('chip-d') && p && p.classList.contains('chip-p');
+                td.classList.toggle('cell-retard', m < moisCour && !solded);
+            });
+        });
+    }
+    refreshRetard();
+
+    grid.addEventListener('click', function(ev) {
+        var chip = ev.target.closest('.chip-dp[data-field]');
+        if (!chip) return;
+        var tr = chip.closest('tr[data-dossier]');
+        var field = chip.dataset.field;
+        var newVal = !chip.classList.contains(field === 'declare' ? 'chip-d' : 'chip-p');
+        chip.classList.toggle(field === 'declare' ? 'chip-d' : 'chip-p', newVal);
+        refreshRetard();
+        fetch('/checklist/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                dossier_id: parseInt(tr.dataset.dossier, 10),
+                taxe: TAXE, annee: ANNEE,
+                mois: parseInt(chip.dataset.mois, 10),
+                kind: chip.dataset.kind,
+                field: field, value: newVal
+            })
+        }).then(function(r) { return r.json(); }).then(function(j) {
+            if (!j.ok) { showToast('Erreur : ' + (j.error || 'inconnue'), 'danger');
+                chip.classList.toggle(field === 'declare' ? 'chip-d' : 'chip-p', !newVal); refreshRetard(); }
+        }).catch(function() { showToast('Erreur réseau', 'danger');
+            chip.classList.toggle(field === 'declare' ? 'chip-d' : 'chip-p', !newVal); refreshRetard(); });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

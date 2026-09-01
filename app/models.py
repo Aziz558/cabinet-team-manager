@@ -101,6 +101,7 @@ class Dossier(db.Model):
     has_cfe = db.Column(db.Boolean, default=False)
     forme_juridique = db.Column(db.String(20))  # SAS | SARL | SCI | SA | EURL | Autre
     secteur_activite = db.Column(db.String(60))  # libellé libre pour analytics
+    honoraires_mensuel = db.Column(db.Float, nullable=True)  # honoraires mensuels € pour rentabilité
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
 
     taches = db.relationship('Tache', backref='dossier', lazy='dynamic')
@@ -234,6 +235,30 @@ class PennylaneItem(db.Model):
 
     def __repr__(self):
         return f'<PennylaneItem dossier={self.dossier_id} {self.item_type} {self.item_id}>'
+
+
+class ChecklistEntry(db.Model):
+    """Case de checklist métier : état déclarée/payée d'une obligation pour un dossier.
+    taxe: tva_mensuel | tva_trimestriel | tva_ca12 | is | cfe
+    mois: 1..12 (5=déclaration mai, 7/12=acomptes CA12) ; kind: depot|acompte|declaration"""
+    __tablename__ = 'checklist_entries'
+    id = db.Column(db.Integer, primary_key=True)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=False, index=True)
+    taxe = db.Column(db.String(20), nullable=False)
+    annee = db.Column(db.Integer, nullable=False)
+    mois = db.Column(db.Integer, nullable=False)
+    kind = db.Column(db.String(20), nullable=False)
+    declare = db.Column(db.Boolean, default=False)
+    paye = db.Column(db.Boolean, default=False)
+    updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    date_modif = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('dossier_id', 'taxe', 'annee', 'mois', 'kind', name='uq_checklist_entry'),
+    )
+
+    def __repr__(self):
+        return f'<ChecklistEntry d={self.dossier_id} {self.taxe} {self.annee}-{self.mois} {self.kind}>'
 
 
 class Equipe(db.Model):
