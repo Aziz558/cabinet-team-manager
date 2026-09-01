@@ -489,6 +489,26 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Forme juridique <small class="text-tertiary">(optionnel)</small></label>
+                            <select name="forme_juridique" id="editFormeJuridique" class="select-premium">
+                                <option value="">-- Non renseignée --</option>
+                                <option value="SAS">SAS</option>
+                                <option value="SARL">SARL</option>
+                                <option value="SCI">SCI</option>
+                                <option value="SA">SA</option>
+                                <option value="EURL">EURL</option>
+                                <option value="SASU">SASU</option>
+                                <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Secteur d'activité <small class="text-tertiary">(optionnel)</small></label>
+                            <input type="text" name="secteur_activite" id="editSecteurActivite" class="input-premium" placeholder="ex: Hébergement, Conseil, Commerce...">
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label-premium">Token API Pennylane <small class="text-tertiary">(optionnel, spécifique à ce dossier)</small></label>
                         <input type="password" name="pennylane_api_token" id="editPennylaneToken" class="input-premium" placeholder="pl_o_..." autocomplete="off">
@@ -749,6 +769,8 @@
         document.getElementById('editDateAcompte2').value = d.date_acompte_2 || '';
         document.getElementById('editRegimeFiscale').value = d.regime_fiscale || '';
         document.getElementById('editHasCfe').checked = !!d.has_cfe;
+        document.getElementById('editFormeJuridique').value = d.forme_juridique || '';
+        document.getElementById('editSecteurActivite').value = d.secteur_activite || '';
         // Token Pennylane : ne jamais afficher le token complet, juste un indicateur
         var tokenInput = document.getElementById('editPennylaneToken');
         if (tokenInput) {

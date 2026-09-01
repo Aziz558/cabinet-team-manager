@@ -284,6 +284,106 @@ def prochaine_echeance_par_nature(d, today):
     resultats.sort(key=lambda x: x[0])
     return resultats[:4]
 
+@app.route('/analytics')
+@login_required
+def analytics():
+    """Dashboard analytics inspiré FollowApp : KPI annulaires, échéancier mensuel,
+    répartition statuts, dossiers par utilisateur / forme juridique / secteur."""
+    annee = request.args.get('annee', type=int) or date.today().year
+
+    # ---- Scoping identique au dashboard : manager = ses équipes, sinon ses dossiers
+    team_member_ids = None
+    if current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        ids = [current_user.id]
+        for eq in mes_equipes:
+            ids.extend([m.id for m in eq.membres.all()])
+        team_member_ids = list(set(ids))
+    elif current_user.role != 'admin':
+        team_member_ids = [current_user.id]
+
+    dossiers_q = Dossier.query
+    if team_member_ids:
+        dossiers_q = dossiers_q.filter(Dossier.collaborateur_id.in_(team_member_ids))
+    dossiers_list = dossiers_q.all()
+
+    # ---- Tâches de l'année (deadline fiscale ou échéance de tâche), hors « Préparation »
+    taches_q = Tache.query.filter(
+        Tache.date_echeance.between(date(annee, 1, 1), date(annee, 12, 31))
+    )
+    if team_member_ids:
+        dossiers_ids = [d.id for d in dossiers_list]
+        taches_q = taches_q.filter(Tache.dossier_id.in_(dossiers_ids))
+    taches_list = taches_q.filter(~Tache.titre.ilike('%Préparation%')).all()
+
+    def _module(t):
+        titre = (t.titre or '').lower()
+        if any(k in titre for k in ('tva', 'is ', 'is-', 'acompte', 'cfe', 'liasse', 'impot', 'fiscal', 'déclaration', 'declaration')):
+            return 'fiscal'
+        if any(k in titre for k in ('paie', 'bulletin', 'salaire', 'social', 'urssaf')):
+            return 'social'
+        return 'comptable'
+
+    # ---- Par module : fait / reste
+    modules = {'fiscal': {'fait': 0, 'reste': 0}, 'comptable': {'fait': 0, 'reste': 0}, 'social': {'fait': 0, 'reste': 0}}
+    par_mois = {m: {'fait': 0, 'reste': 0} for m in range(1, 13)}
+    statuts = {'fait': 0, 'a_faire': 0, 'en_retard': 0}
+    for t in taches_list:
+        mod = _module(t)
+        est_fait = (t.statut == 'terminee')
+        est_retard = t.est_en_retard()
+        if est_fait:
+            modules[mod]['fait'] += 1
+            statuts['fait'] += 1
+            par_mois[t.date_echeance.month]['fait'] += 1
+        else:
+            modules[mod]['reste'] += 1
+            statuts['en_retard' if est_retard else 'a_faire'] += 1
+            par_mois[t.date_echeance.month]['reste'] += 1
+    total_taches = len(taches_list)
+
+    # ---- Par utilisateur (dossiers suivis + tâches)
+    par_user = {}
+    for d in dossiers_list:
+        u = d.collaborateur
+        if u:
+            e = par_user.setdefault(u.id, {'nom': f"{u.prenom} {u.nom}", 'dossiers': 0, 'taches': 0})
+            e['dossiers'] += 1
+    from collections import Counter
+    tache_user = Counter(t.assigne_a for t in taches_list if t.assigne_a)
+    for uid, c in tache_user.items():
+        if uid in par_user:
+            par_user[uid]['taches'] = c
+        else:
+            u = User.query.get(uid)
+            if u:
+                par_user[uid] = {'nom': f"{u.prenom} {u.nom}", 'dossiers': 0, 'taches': c}
+    par_user_list = sorted(par_user.values(), key=lambda x: -x['taches'])[:10]
+
+    # ---- Formes juridiques / secteurs
+    formes = Counter((d.forme_juridique or 'Non renseigné') for d in dossiers_list)
+    secteurs = Counter((d.secteur_activite or 'Non renseigné') for d in dossiers_list)
+
+    data = {
+        'annee': annee,
+        'total_dossiers': len(dossiers_list),
+        'total_taches': total_taches,
+        'modules': modules,
+        'par_mois': par_mois,
+        'statuts': statuts,
+        'par_user': par_user_list,
+        'formes': formes.most_common(),
+        'secteurs': secteurs.most_common(),
+    }
+
+    if request.args.get('format') == 'json':
+        from flask import jsonify
+        return jsonify(data)
+
+    return render_template('analytics.html', data=data, annee=annee,
+                           annees=sorted({date.today().year, date.today().year - 1, date.today().year - 2}, reverse=True))
+
+
 @app.route('/dossiers')
 @login_required
 def dossiers():
@@ -434,6 +534,8 @@ def dossiers():
             'date_acompte_2': d.date_acompte_2.strftime('%Y-%m-%d') if d.date_acompte_2 else None,
             'regime_fiscale': d.regime_fiscale,
             'has_cfe': d.has_cfe,
+            'forme_juridique': d.forme_juridique,
+            'secteur_activite': d.secteur_activite,
             'pennylane_api_token_set': bool(d.pennylane_api_token),
         }
         if d.collaborateur_id:
@@ -1117,6 +1219,8 @@ def modifier_dossier(dossier_id):
         date_acompte_2 = request.form.get('date_acompte_2')
         regime_fiscale = request.form.get('regime_fiscale')
         has_cfe = ('has_cfe' in request.form)
+        forme_juridique = (request.form.get('forme_juridique') or '').strip() or None
+        secteur_activite = (request.form.get('secteur_activite') or '').strip() or None
 
         if not numero_dossier or not intitule or not collaborateur_id or not equipe_id:
             flash('Veuillez remplir tous les champs obligatoires.', 'danger')
@@ -1160,6 +1264,8 @@ def modifier_dossier(dossier_id):
         dossier.date_acompte_2 = _parse_date(date_acompte_2)
         dossier.regime_fiscale = regime_fiscale if regime_fiscale else None
         dossier.has_cfe = has_cfe
+        dossier.forme_juridique = forme_juridique
+        dossier.secteur_activite = secteur_activite
         # Token Pennylane : ne mettre à jour que si un nouveau token est fourni
         # (champ vide = conserver le token existant)
         token_val = (request.form.get('pennylane_api_token') or '').strip()
@@ -2291,6 +2397,8 @@ def ajouter_dossier():
         date_acompte_2 = request.form.get('date_acompte_2')
         regime_fiscale = request.form.get('regime_fiscale')
         has_cfe = ('has_cfe' in request.form)
+        forme_juridique = (request.form.get('forme_juridique') or '').strip() or None
+        secteur_activite = (request.form.get('secteur_activite') or '').strip() or None
         pennylane_api_token = (request.form.get('pennylane_api_token') or '').strip() or None
 
         if not numero_dossier or not intitule or not collaborateur_id or not equipe_id:
@@ -2325,6 +2433,8 @@ def ajouter_dossier():
             date_acompte_2=_parse_date(date_acompte_2),
             regime_fiscale=regime_fiscale if regime_fiscale else None,
             has_cfe=has_cfe,
+            forme_juridique=forme_juridique,
+            secteur_activite=secteur_activite,
             pennylane_api_token=pennylane_api_token
         )
         db.session.add(nouveau_dossier)

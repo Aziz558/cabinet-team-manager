@@ -99,6 +99,8 @@ class Dossier(db.Model):
     frequence_tva = db.Column(db.String(20))  # mensuelle | trimestrielle | None
     regime_fiscale = db.Column(db.String(10))  # IS | IRPP
     has_cfe = db.Column(db.Boolean, default=False)
+    forme_juridique = db.Column(db.String(20))  # SAS | SARL | SCI | SA | EURL | Autre
+    secteur_activite = db.Column(db.String(60))  # libellé libre pour analytics
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
 
     taches = db.relationship('Tache', backref='dossier', lazy='dynamic')

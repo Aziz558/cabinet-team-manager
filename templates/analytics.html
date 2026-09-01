@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ring-wrap { position: relative; width: 150px; height: 150px; margin: 0 auto; }
+    .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: var(--border-color); stroke-width: 10; }
+    .ring-fg { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+    .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-pct { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
+    .ring-sub { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 4px; }
+    .analytics-list-item { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border-color); }
+    .analytics-list-item:last-child { border-bottom: none; }
+    .analytics-list-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--border-color); overflow: hidden; }
+    .analytics-list-bar > div { height: 100%; border-radius: 4px; background: var(--orange-primary); }
+    .chart-box { position: relative; height: 300px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h4 class="mb-0"><i class="bi bi-graph-up-arrow me-2" style="color: var(--orange-primary);"></i>Analytics — Production {{ annee }}</h4>
+    <select id="anneeSelect" class="select-premium" style="width:auto;" onchange="location.href='/analytics?annee='+this.value;">
+        {% for a in annees %}
+        <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- KPI -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-card-icon"><i class="bi bi-folder2-open"></i></div>
+        <div class="stat-card-content">
+            <div class="stat-card-label">Dossiers suivis</div>
+            <div class="stat-card-value">{{ data.total_dossiers }}</div>
+            <div class="stat-card-trend"><i class="bi bi-collection"></i><span>Portefeuille actif</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon" style="background: rgba(66,165,245,0.15);"><i class="bi bi-list-check" style="color: var(--info);"></i></div>
+        <div class="stat-card-content">
+            <div class="stat-card-label">Obligations {{ annee }}</div>
+            <div class="stat-card-value">{{ data.total_taches }}</div>
+            <div class="stat-card-trend"><i class="bi bi-calendar3"></i><span>Tâches + deadlines</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon" style="background: rgba(76,175,80,0.15);"><i class="bi bi-check-circle" style="color: var(--success);"></i></div>
+        <div class="stat-card-content">
+            <div class="stat-card-label">Fait</div>
+            <div class="stat-card-value">{{ data.statuts.fait }}</div>
+            <div class="stat-card-trend up"><i class="bi bi-graph-up"></i>
+                <span>{{ ((data.statuts.fait / data.total_taches * 100) | round(1)) if data.total_taches else 0 }}%</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon" style="background: rgba(239,83,80,0.15);"><i class="bi bi-hourglass-split" style="color: var(--danger);"></i></div>
+        <div class="stat-card-content">
+            <div class="stat-card-label">Reste à faire</div>
+            <div class="stat-card-value">{{ data.statuts.a_faire + data.statuts.en_retard }}</div>
+            <div class="stat-card-trend down"><i class="bi bi-exclamation-triangle"></i>
+                <span>{{ data.statuts.en_retard }} en retard</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Jauges par module -->
+<div class="row g-3 mb-4">
+    {% set mods = [('fiscal', 'Fiscal', 'bi-bank', 'var(--orange-primary)'), ('comptable', 'Comptable', 'bi-journal-check', 'var(--info)'), ('social', 'Social', 'bi-people', 'var(--success)')] %}
+    {% for key, label, icon, color in mods %}
+    {% set m = data.modules[key] %}
+    {% set tot = m.fait + m.reste %}
+    {% set pct = ((m.fait / tot * 100) | round(1)) if tot else 0 %}
+    {% set C = 326.7 %}
+    <div class="col-md-4">
+        <div class="card-premium h-100">
+            <div class="card-header-premium d-flex align-items-center gap-2">
+                <i class="bi {{ icon }}" style="color: {{ color }};"></i>
+                <h6 class="mb-0">{{ label }}</h6>
+            </div>
+            <div class="card-body-premium text-center py-4">
+                <div class="ring-wrap">
+                    <svg viewBox="0 0 120 120">
+                        <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+                        <circle class="ring-fg" cx="60" cy="60" r="52"
+                                stroke="{{ color }}"
+                                stroke-dasharray="{{ C }}"
+                                stroke-dashoffset="{{ C - (C * pct / 100) | round(1) }}"></circle>
+                    </svg>
+                    <div class="ring-center">
+                        <span class="ring-pct">{{ pct }}%</span>
+                        <span class="ring-sub">{{ m.fait }} / {{ tot }} fait</span>
+                    </div>
+                </div>
+                <div class="mt-3 small text-tertiary">{{ m.reste }} reste{{ 'à faire' if m.reste != 1 else '' }}</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Échéancier + Statuts -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card-premium h-100">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2" style="color: var(--orange-primary);"></i>Obligations par mois</h6>
+                <span class="badge badge-tertiary">{{ data.total_taches }} au total</span>
+            </div>
+            <div class="card-body-premium">
+                <div class="chart-box"><canvas id="chartMois"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-premium h-100">
+            <div class="card-header-premium">
+                <h6 class="mb-0"><i class="bi bi-pie-chart me-2" style="color: var(--orange-primary);"></i>Répartition par statut</h6>
+            </div>
+            <div class="card-body-premium">
+                <div class="chart-box"><canvas id="chartStatuts"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Répartitions -->
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card-premium h-100">
+            <div class="card-header-premium">
+                <h6 class="mb-0"><i class="bi bi-person-check me-2" style="color: var(--orange-primary);"></i>Dossiers par utilisateur</h6>
+            </div>
+            <div class="card-body-premium">
+                <div class="chart-box" style="height: 260px;"><canvas id="chartUsers"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-premium h-100">
+            <div class="card-header-premium">
+                <h6 class="mb-0"><i class="bi bi-bank2 me-2" style="color: var(--orange-primary);"></i>Formes juridiques</h6>
+            </div>
+            <div class="card-body-premium">
+                <div class="chart-box" style="height: 260px;"><canvas id="chartFormes"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-premium h-100">
+            <div class="card-header-premium">
+                <h6 class="mb-0"><i class="bi bi-shop me-2" style="color: var(--orange-primary);"></i>Secteurs d'activité</h6>
+            </div>
+            <div class="card-body-premium">
+                {% set max_sect = data.secteurs[0][1] if data.secteurs else 1 %}
+                {% for nom, nb in data.secteurs[:8] %}
+                <div class="analytics-list-item">
+                    <span style="min-width: 130px; font-size: 0.8rem; color: var(--text-primary);">{{ nom }}</span>
+                    <div class="analytics-list-bar"><div style="width: {{ (nb / max_sect * 100) | round(0) }}%;"></div></div>
+                    <span class="badge badge-tertiary">{{ nb }}</span>
+                </div>
+                {% else %}
+                <div class="text-center text-tertiary py-4">Aucun dossier</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    const data = {{ data | tojson }};
+    const css = getComputedStyle(document.documentElement);
+    const c = (name, fallback) => (css.getPropertyValue(name) || fallback).trim();
+    const COL_ORANGE = c('--orange-primary', '#FF8C00');
+    const COL_SUCCESS = c('--success', '#4CAF50');
+    const COL_INFO = c('--info', '#42A5F5');
+    const COL_DANGER = c('--danger', '#EF5350');
+    const COL_TEXT = c('--text-primary', '#FFFFFF');
+    const COL_MUTED = c('--text-tertiary', '#888');
+    const COL_BORDER = c('--border-color', 'rgba(255,255,255,0.08)');
+    const font = { family: 'Inter', size: 11 };
+
+    Chart.defaults.color = COL_MUTED;
+    Chart.defaults.font.family = font.family;
+    Chart.defaults.font.size = font.size;
+    Chart.defaults.borderColor = COL_BORDER;
+
+    const MOIS = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+    const moisFait = [], moisReste = [];
+    for (let m = 1; m <= 12; m++) {
+        moisFait.push(data.par_mois[String(m)] ? data.par_mois[String(m)].fait : data.par_mois[m].fait);
+        moisReste.push(data.par_mois[String(m)] ? data.par_mois[String(m)].reste : data.par_mois[m].reste);
+    }
+
+    new Chart(document.getElementById('chartMois'), {
+        type: 'bar',
+        data: {
+            labels: MOIS,
+            datasets: [
+                { label: 'Fait', data: moisFait, backgroundColor: COL_SUCCESS, borderRadius: 4, stack: 's' },
+                { label: 'Reste', data: moisReste, backgroundColor: COL_ORANGE + '99', borderRadius: 4, stack: 's' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+            },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, borderRadius: 2, useBorderRadius: true } } }
+        }
+    });
+
+    new Chart(document.getElementById('chartStatuts'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Fait', 'À faire', 'En retard'],
+            datasets: [{
+                data: [data.statuts.fait, data.statuts.a_faire, data.statuts.en_retard],
+                backgroundColor: [COL_SUCCESS, COL_INFO, COL_DANGER],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '62%',
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } }
+        }
+    });
+
+    new Chart(document.getElementById('chartUsers'), {
+        type: 'bar',
+        data: {
+            labels: data.par_user.map(u => u.nom),
+            datasets: [
+                { label: 'Dossiers', data: data.par_user.map(u => u.dossiers), backgroundColor: COL_ORANGE, borderRadius: 4 },
+                { label: 'Tâches', data: data.par_user.map(u => u.taches), backgroundColor: COL_INFO, borderRadius: 4 }
+            ]
+        },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } }
+        }
+    });
+
+    new Chart(document.getElementById('chartFormes'), {
+        type: 'doughnut',
+        data: {
+            labels: data.formes.map(f => f[0]),
+            datasets: [{
+                data: data.formes.map(f => f[1]),
+                backgroundColor: [COL_ORANGE, COL_INFO, COL_SUCCESS, COL_DANGER, '#9C6ADE', '#E5B93C', '#4DB6AC'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '55%',
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } }
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -116,6 +116,10 @@ with app.app_context():
                     app.logger.info("Added pennylane_customer_id column to dossiers")
                 if 'pennylane_api_token' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN pennylane_api_token VARCHAR(256)"))
+                if 'forme_juridique' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN forme_juridique VARCHAR(20)"))
+                if 'secteur_activite' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN secteur_activite VARCHAR(60)"))
                     app.logger.info("Added pennylane_api_token column to dossiers")
                 # Table pennylane_items : suivi documents/transactions + statut traitement
                 pl_tables = [r[0] for r in conn.execute(db.text("SELECT tablename FROM pg_tables WHERE schemaname='public'")).fetchall()]
