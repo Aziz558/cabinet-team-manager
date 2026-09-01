@@ -16,36 +16,86 @@ from datetime import datetime, date
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Cache mémoire (TTL 5 min) — évite de rappeler l'API Pennylane (~2000 items,
-# plusieurs pages) à chaque changement de filtre/exercice => UI lente.
+# Cache DB partagé (TTL 5 min) — Render tourne avec plusieurs workers : un
+# cache mémoire serait vide 3 fois sur 4. On stocke le résultat JSON sérialisé
+# dans AppSetting (partagé par tous les workers) + stale-while-revalidate :
+# la page est servie IMMÉDIATEMENT depuis le cache, l'API est rafraîchie en
+# arrière-plan quand le cache expire.
 # ---------------------------------------------------------------------------
-_CACHE = {}          # {dossier_id: (timestamp, result_dict)}
 _CACHE_TTL = 300     # secondes
 _BG_REFRESH = set()  # dossiers en cours de rafraîchissement arrière-plan
+_MEM = {}            # mini cache mémoire par worker (évite re-désérialiser)
 
 
-def _cache_get(dossier_id):
-    """Cache frais uniquement (<= TTL)."""
-    ent = _CACHE.get(dossier_id)
-    if not ent:
-        return None
-    ts, res = ent
-    if time.time() - ts > _CACHE_TTL:
-        return None
-    return res
+def _cache_key(dossier_id):
+    return f'PL_CACHE_{dossier_id}'
 
 
-def _cache_get_stale(dossier_id):
-    """Cache même expiré (stale-while-revalidate) — renvoie (result, is_fresh)."""
-    ent = _CACHE.get(dossier_id)
-    if not ent:
+def _cache_load(dossier_id):
+    """Renvoie (result_dict, is_fresh) ou (None, False)."""
+    if dossier_id in _MEM:
+        ts, res = _MEM[dossier_id]
+        return res, (time.time() - ts <= _CACHE_TTL)
+    from app.models import AppSetting
+    import json as _json
+    try:
+        s = AppSetting.query.filter_by(cle=_cache_key(dossier_id)).first()
+        if not s or not s.valeur:
+            return None, False
+        payload = _json.loads(s.valeur)
+        res = payload.get('data')
+        if not isinstance(res, dict):
+            return None, False
+        fresh = (time.time() - payload.get('ts', 0)) <= _CACHE_TTL
+        _MEM[dossier_id] = (payload.get('ts', 0), res)
+        return res, fresh
+    except Exception as e:
+        logger.warning(f'cache load {dossier_id}: {e}')
         return None, False
-    ts, res = ent
-    return res, (time.time() - ts <= _CACHE_TTL)
+
+
+def _cache_save(dossier_id, res):
+    from app import db
+    from app.models import AppSetting
+    import json as _json
+    try:
+        payload = _json.dumps({'ts': time.time(), 'data': res}, ensure_ascii=False, separators=(',', ':'))
+        s = AppSetting.query.filter_by(cle=_cache_key(dossier_id)).first()
+        if not s:
+            s = AppSetting(cle=_cache_key(dossier_id), valeur=payload, type_valeur='json', service='pennylane')
+            db.session.add(s)
+        else:
+            s.valeur = payload
+        db.session.commit()
+        _MEM[dossier_id] = (time.time(), res)
+    except Exception as e:
+        logger.warning(f'cache save {dossier_id}: {e}')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def invalidate_dossier_cache(dossier_id):
+    """Force le rechargement API au prochain accès (ex: après action utilisateur)."""
+    _MEM.pop(dossier_id, None)
+    from app import db
+    from app.models import AppSetting
+    try:
+        s = AppSetting.query.filter_by(cle=_cache_key(dossier_id)).first()
+        if s:
+            db.session.delete(s)
+            db.session.commit()
+    except Exception as e:
+        logger.warning(f'cache invalidate {dossier_id}: {e}')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
 
 def _refresh_in_background(dossier_id):
-    """Lance (au plus 1 par dossier) un thread qui rafraîchit le cache via l'API."""
+    """Lance (au plus 1 par dossier/worker) un thread qui rafraîchit le cache via l'API."""
     if dossier_id in _BG_REFRESH:
         return
     _BG_REFRESH.add(dossier_id)
@@ -463,7 +513,7 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
     # Stale-while-revalidate : servir le cache IMMÉDIATEMENT (même expiré),
     # rafraîchir en arrière-plan si expiré. Page toujours rapide.
     if not force_refresh and token is None:
-        cached, fresh = _cache_get_stale(dossier.id)
+        cached, fresh = _cache_load(dossier.id)
         if cached is not None:
             if not fresh:
                 _refresh_in_background(dossier.id)
@@ -569,9 +619,9 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             t['statut_traitement'], t['ajout_date'] = _stt('transaction', t['id'], t['statut_fr'])
             t['nouveau'] = t['statut_traitement'] == 'a_traiter'
 
-        # Mise en cache du résultat (skip si erreur)
+        # Mise en cache du résultat (partagé entre workers)
         if token is None:
-            _cache_set(dossier.id, result)
+            _cache_save(dossier.id, result)
     except Exception as e:
         logger.error(f'get_dossier_pennylane_data: {e}')
         result['ok'] = False
