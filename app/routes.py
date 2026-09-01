@@ -2555,6 +2555,61 @@ def pennylane_dossier(dossier_id):
 
 
 
+@app.route('/pennylane/debug_count/<int:dossier_id>')
+@login_required
+def pennylane_debug_count(dossier_id):
+    """DEBUG: compte EXACT tous les items par type/annee/statut brut (toutes pages)."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'admin only'}), 403
+    dossier = Dossier.query.get_or_404(dossier_id)
+    from app.integrations.pennylane import _paginated_get
+    token = getattr(dossier, 'pennylane_api_token', None)
+    if not token:
+        return jsonify({'error': 'pas de token dossier'}), 400
+
+    out = {}
+    # VENTES : toutes, SANS filtre archived
+    invs = _paginated_get('customer_invoices', params={'limit': 100}, token=token)
+    v_by_year = {}
+    v_status_year = {}
+    for i in invs:
+        d = str(i.get('date') or '')
+        y = d[:4]
+        v_by_year[y] = v_by_year.get(y, 0) + 1
+        key = f"{i.get('status')}|{y}"
+        v_status_year[key] = v_status_year.get(key, 0) + 1
+    out['ventes_total'] = len(invs)
+    out['ventes_par_annee'] = dict(sorted(v_by_year.items(), reverse=True))
+    out['ventes_statut_annee'] = dict(sorted(v_status_year.items(), key=lambda x: (-x[1])))
+
+    # ACHATS : toutes, SANS filtre
+    sinvs = _paginated_get('supplier_invoices', params={'limit': 100}, token=token)
+    a_by_year = {}
+    a_status_year = {}
+    for s in sinvs:
+        d = str(s.get('date') or '')
+        y = d[:4]
+        a_by_year[y] = a_by_year.get(y, 0) + 1
+        acc = s.get('accounting_status')
+        pay = s.get('payment_status')
+        st = s.get('status')
+        key = f"acc={acc}|pay={pay}|st={st}|{y}"
+        a_status_year[key] = a_status_year.get(key, 0) + 1
+    out['achats_total'] = len(sinvs)
+    out['achats_par_annee'] = dict(sorted(a_by_year.items(), reverse=True))
+    out['achats_statut_annee'] = dict(sorted(a_status_year.items(), key=lambda x: (-x[1]))[:40])
+
+    # Transactions
+    txs = _paginated_get('transactions', params={'limit': 100}, token=token)
+    out['tx_total'] = len(txs)
+    tx_by_year = {}
+    for t in txs:
+        d = str(t.get('transaction_date') or t.get('date') or '')
+        tx_by_year[d[:4]] = tx_by_year.get(d[:4], 0) + 1
+    out['tx_par_annee'] = dict(sorted(tx_by_year.items(), reverse=True))
+    return jsonify(out)
+
+
 @app.route('/pennylane/item/<int:item_db_id>/statut', methods=['POST'])
 @login_required
 def pennylane_item_statut(item_db_id):
