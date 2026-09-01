@@ -2576,11 +2576,14 @@ def pennylane_dossier(dossier_id):
     data['nb_pretraite'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'pretraite')
     data['nb_archive'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'archive')
 
-    # JSON compact de toutes les lignes (filtres client instantanés, zéro rechargement)
+    # JSON compact de toutes les lignes (rendu + filtres 100% client, zéro rechargement)
     data['lignes_json'] = json.dumps([{
-        'n': l['nature'], 'f': _ftab(l['statut_fr']),
-        'a': (l['ajout_date'] or '')[:10], 'id': l['db_id'],
-    } for l in lignes_filtrees], separators=(',', ':'))
+        'n': l['nature'], 'f': _ftab(l['statut_fr']), 'sf': l['statut_fr'],
+        'num': l['libelle'] or '—', 'd': (l['date'] or ''),
+        'ad': (l['ajout_date'] or ''), 'm': l['montant'],
+        'st': l['statut_traitement'] or 'a_traiter', 'id': l['db_id'],
+        'nw': bool(l['nouveau']),
+    } for l in lignes_filtrees], separators=(',', ':'), ensure_ascii=False)
 
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 

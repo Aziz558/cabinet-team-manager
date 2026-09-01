@@ -149,45 +149,15 @@
                     <th style="width:16%;">Traitement</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for l in data.lignes %}
-                <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
-                    data-nature="{{ l.nature }}"
-                    data-ftab="{{ 'archive' if l.statut_fr == 'Archivé' else ('traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter')) }}"
-                    data-ajout="{{ l.ajout_date|default('') }}">
-                    <td class="pl-th-check"><input type="checkbox" class="pl-check" value="{{ l.db_id }}" onchange="updateBulkBar()"></td>
-                    <td>
-                        <span class="pl-status {{ 'ok' if l.statut_fr == 'Traité' else ('pre' if l.statut_fr == 'Prétraité' else ('archived' if l.statut_fr == 'Archivé' else ('off' if l.statut_fr == 'Annulé' else 'todo'))) }}">
-                            <span class="pl-status-dot"></span>{{ l.statut_fr or '—' }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="pl-nature {{ l.nature }}">
-                            <i class="bi {{ 'bi-bank' if l.nature == 'banque' else ('bi-cart' if l.nature == 'achat' else 'bi-receipt') }}"></i>
-                            {{ l.nature_label }}
-                            {% if l.nouveau %}<span class="pl-new-chip">NEW</span>{% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="pl-doc-title" title="{{ l.libelle }}">{{ l.libelle[:46] }}{% if l.libelle|length > 46 %}…{% endif %}</div>
-                    </td>
-                    <td class="pl-cell-date">{{ l.date or '—' }}</td>
-                    <td class="pl-cell-date">{{ (l.ajout_date or '—')[:10] if l.ajout_date else '—' }}</td>
-                    <td class="pl-cell-amount">{% if l.montant is not none %}{{ '{:,.2f}'.format(l.montant|float).replace(',', ' ') }} <span class="pl-devise">€</span>{% else %}—{% endif %}</td>
-                    <td id="pl-cell-{{ l.db_id }}" class="pl-cell-action">{{ pl_statut_badge(l.statut_traitement) }} {{ pl_statut_buttons(l.db_id, l.statut_traitement) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+            <tbody id="pl-tbody"><!-- rendu client depuis pl-lines-json --></tbody>
         </table>
-        {% if not data.lignes %}
-        <div class="pl-empty">
+        <div class="pl-empty d-none" id="pl-empty">
             <i class="bi bi-inbox"></i>
             <p class="mb-1">Aucun document trouvé</p>
             <small>Aucune facture ne correspond aux filtres actifs (nature / exercice).</small>
         </div>
-        {% endif %}
     </div>
-    {% if data.lignes %}
+    {% if data.lignes_json and data.lignes_json != '[]' %}
     <div class="pl-table-footer">
         <div class="pl-footer-left">
             <i class="bi bi-collection"></i> <span id="pl-visible-count">{{ data.cnt_toutes }}</span> document(s) affiché(s)
@@ -428,18 +398,70 @@ let plNature = '';
 let PL_LINES = [];
 try { PL_LINES = JSON.parse(document.getElementById('pl-lines-json').textContent || '[]'); } catch (e) { PL_LINES = []; }
 
+const PL_FTAB_LABEL = {a_traiter: 'À traiter', pretraite: 'Prétraité', traite: 'Traité', archive: 'Archivé'};
+const PL_FTAB_CLS = {a_traiter: 'todo', pretraite: 'pre', traite: 'ok', archive: 'archived'};
+const PL_NATURE_LABEL = {vente: 'Vente', achat: 'Achat', banque: 'Flux bancaire'};
+const PL_NATURE_ICON = {vente: 'bi-receipt', achat: 'bi-cart', banque: 'bi-bank'};
+
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function fmtMontant(m) {
+    if (m === null || m === undefined) return '—';
+    return Number(m).toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function plRowHtml(l) {
+    const nw = l.nw ? ' pl-item-new' : '';
+    const badge = l.st === 'traite' ? '<span class="badge badge-success">Traité</span>'
+        : l.st === 'ignore' ? '<span class="badge badge-tertiary">Ignoré</span>'
+        : '<span class="badge badge-orange">À traiter</span>';
+    const btns = (l.id ? `
+            <span class="pl-btns">
+                ${l.st !== 'traite' ? `<button class="btn-traite" title="Marquer traité" onclick="setStatut(${l.id}, 'traite')"><i class="bi bi-check-lg"></i></button>` : ''}
+                ${l.st !== 'ignore' ? `<button class="btn-ignore" title="Ignorer" onclick="setStatut(${l.id}, 'ignore')"><i class="bi bi-dash-lg"></i></button>` : ''}
+                ${l.st !== 'a_traiter' ? `<button title="Remettre à traiter" onclick="setStatut(${l.id}, 'a_traiter')"><i class="bi bi-arrow-counterclockwise"></i></button>` : ''}
+            </span>` : '');
+    return `<tr class="pl-row${nw}" data-nature="${l.n}" data-ftab="${l.f}" data-ajout="${esc((l.ad || '').replace(' ', 'T'))}">
+        <td class="pl-th-check">${l.id ? `<input type="checkbox" class="pl-check" value="${l.id}" onchange="updateBulkBar()">` : ''}</td>
+        <td><span class="pl-status ${PL_FTAB_CLS[l.f] || 'todo'}"><span class="pl-status-dot"></span>${esc(l.sf || '—')}</span></td>
+        <td><span class="pl-nature ${l.n}"><i class="bi ${PL_NATURE_ICON[l.n] || ''}"></i>${PL_NATURE_LABEL[l.n] || l.n}${l.nw ? ' <span class="pl-new-chip">NEW</span>' : ''}</span></td>
+        <td><div class="pl-doc-title" title="${esc(l.num)}">${esc(String(l.num || '').slice(0, 46))}${String(l.num || '').length > 46 ? '…' : ''}</div></td>
+        <td class="pl-cell-date">${esc(l.d || '—')}</td>
+        <td class="pl-cell-date">${esc((l.ad || '').slice(0, 10) || '—')}</td>
+        <td class="pl-cell-amount">${fmtMontant(l.m)} <span class="pl-devise">€</span></td>
+        <td id="pl-cell-${l.id}" class="pl-cell-action">${badge}${btns}</td>
+    </tr>`;
+}
+
+function plApplyFiltersOnly() {
+    const ftab = document.querySelector('.pl-tab.active')?.dataset?.ftab || '';
+    const fdate = document.getElementById('filter-date')?.value || '';
+    let visibles = 0;
+    document.querySelectorAll('.pl-row').forEach(row => {
+        const okNat = !plNature || row.dataset.nature === plNature;
+        const okTab = !ftab || row.dataset.ftab === ftab;
+        const okDate = plDateMatch(row.dataset.ajout, fdate);
+        const visible = okNat && okTab && okDate;
+        row.classList.toggle('hidden-row', !visible);
+        if (visible) visibles++;
+    });
+    const vc = document.getElementById('pl-visible-count');
+    if (vc) vc.textContent = visibles;
+    const emp = document.getElementById('pl-empty');
+    if (emp) emp.classList.toggle('d-none', visibles > 0);
+}
+
 function plRecompute() {
     const ftab = document.querySelector('.pl-tab.active')?.dataset?.ftab || '';
     const fdate = document.getElementById('filter-date')?.value || '';
     // Compteurs par nature (indépendants du filtre statut actif)
-    const perNature = { '': {t:0, a:0, p:0, tr:0, ar:0}, vente: {t:0,a:0,p:0,tr:0,ar:0}, achat: {t:0,a:0,p:0,tr:0,ar:0}, banque: {t:0,a:0,p:0,tr:0,ar:0} };
+    const perNature = { '': {t:0,a:0,p:0,tr:0,ar:0}, vente: {t:0,a:0,p:0,tr:0,ar:0}, achat: {t:0,a:0,p:0,tr:0,ar:0}, banque: {t:0,a:0,p:0,tr:0,ar:0} };
     PL_LINES.forEach(l => {
         const b = perNature[l.n] || perNature[''];
         b.t++;
-        if (l.f === 'a_traiter') b.a++;
-        else if (l.f === 'pretraite') b.p++;
-        else if (l.f === 'traite') b.tr++;
-        else if (l.f === 'archive') b.ar++;
+        if (l.f === 'a_traiter') b.a++; else if (l.f === 'pretraite') b.p++; else if (l.f === 'traite') b.tr++; else if (l.f === 'archive') b.ar++;
     });
     const seg = perNature[plNature] || perNature[''];
     document.getElementById('seg-toutes').textContent = seg.t;
@@ -452,18 +474,15 @@ function plRecompute() {
     document.getElementById('cnt-traite').textContent = seg.tr;
     const ca = document.getElementById('cnt-archive');
     if (ca) ca.textContent = seg.ar;
-    // Visibilité lignes
-    let visibles = 0;
-    document.querySelectorAll('.pl-row').forEach(row => {
-        const okNat = !plNature || row.dataset.nature === plNature;
-        const okTab = !ftab || row.dataset.ftab === ftab;
-        const okDate = plDateMatch(row.dataset.ajout, fdate);
-        const visible = okNat && okTab && okDate;
-        row.classList.toggle('hidden-row', !visible);
-        if (visible) visibles++;
-    });
-    const vc = document.getElementById('pl-visible-count');
-    if (vc) vc.textContent = visibles;
+    // Rendu + filtre
+    const tbody = document.getElementById('pl-tbody');
+    if (tbody && !tbody.dataset.rendered) {
+        const frag = document.createElement('tbody');
+        frag.innerHTML = PL_LINES.map(plRowHtml).join('');
+        [...frag.children].forEach(tr => tbody.appendChild(tr));
+        tbody.dataset.rendered = '1';
+    }
+    plApplyFiltersOnly();
     // Légende footer
     const leg = document.getElementById('pl-legende');
     if (leg) leg.innerHTML =
