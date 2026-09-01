@@ -2539,14 +2539,37 @@ def pennylane_dossier(dossier_id):
 
     # Tri : les plus récents en premier
     lignes_filtrees.sort(key=lambda x: (x['date'] or ''), reverse=True)
-    data['lignes'] = lignes_filtrees
+
+    # Filtre par nature côté serveur ('', 'vente', 'achat', 'banque') — compteurs TOUJOURS justes
+    nature_filtre = request.args.get('nature') or ''
+    if nature_filtre not in ('', 'vente', 'achat', 'banque'):
+        nature_filtre = ''
+    lignes_affichees = [l for l in lignes_filtrees if not nature_filtre or l['nature'] == nature_filtre]
+
+    def _ftab(sf):
+        """Mapping statut Pennylane -> onglet (identique au data-ftab du template)."""
+        if sf in ('Traité', 'Avoir', 'Annulé'):
+            return 'traite'
+        if sf == 'Prétraité':
+            return 'pretraite'
+        return 'a_traiter'
+
+    data['lignes'] = lignes_affichees
     data['exercice_actif'] = exercice_filtre
+    data['nature_actif'] = nature_filtre
+    data['nb_total'] = len(lignes_filtrees)
     data['nb_ventes'] = sum(1 for l in lignes_filtrees if l['nature'] == 'vente')
     data['nb_achats'] = sum(1 for l in lignes_filtrees if l['nature'] == 'achat')
     data['nb_banque'] = sum(1 for l in lignes_filtrees if l['nature'] == 'banque')
-    data['nb_a_traiter'] = sum(1 for l in lignes_filtrees if l['statut_traitement'] == 'a_traiter')
-    data['nb_traite'] = sum(1 for l in lignes_filtrees if l['statut_traitement'] == 'traite')
-    data['nb_pretraite'] = sum(1 for l in lignes_filtrees if l['statut_fr'] == 'Prétraité')
+    # Compteurs d'onglets : dérivés du statut PENNYLANE (statut_fr), même mapping que data-ftab
+    data['cnt_toutes'] = len(lignes_affichees)
+    data['cnt_a_traiter'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'a_traiter')
+    data['cnt_pretraite'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'pretraite')
+    data['cnt_traite'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'traite')
+    # Compat : compteurs globaux (toutes natures)
+    data['nb_a_traiter'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'a_traiter')
+    data['nb_traite'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'traite')
+    data['nb_pretraite'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'pretraite')
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
 

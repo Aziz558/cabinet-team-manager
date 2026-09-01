@@ -17,23 +17,38 @@
 {% endmacro %}
 
 {% block content %}
-<!-- Header Section -->
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <div>
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="header-icon"><i class="bi bi-link-45deg"></i></span>
-            <h2 class="text-gradient-orange mb-0">Pennylane — {{ dossier.numero_dossier }}</h2>
+<!-- ============ HEADER ============ -->
+<div class="pl-header animate-fade-in-up">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <nav class="pl-breadcrumb mb-2">
+                <a href="{{ url_for('dossiers') }}"><i class="bi bi-folder2 me-1"></i>Dossiers</a>
+                <i class="bi bi-chevron-right"></i>
+                <span>{{ dossier.numero_dossier }}</span>
+                <i class="bi bi-chevron-right"></i>
+                <span class="active">Pennylane</span>
+            </nav>
+            <div class="d-flex align-items-center gap-3">
+                <span class="pl-header-icon"><i class="bi bi-plug"></i></span>
+                <div>
+                    <h2 class="mb-1" style="font-size:1.35rem;font-weight:700;">Pennylane — {{ dossier.numero_dossier }}</h2>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="text-tertiary small"><i class="bi bi-building me-1"></i>{{ dossier.intitule }}</span>
+                        {% if data.source_token == 'dossier' %}
+                        <span class="pl-token-chip"><i class="bi bi-key me-1"></i>Token dédié</span>
+                        {% else %}
+                        <span class="pl-token-chip muted"><i class="bi bi-globe me-1"></i>Token global</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
-        <p class="text-tertiary mb-0 ms-1">
-            <i class="bi bi-building me-1"></i>{{ dossier.intitule }}
-            {% if data.source_token == 'dossier' %}<span class="badge badge-success ms-2"><i class="bi bi-key me-1"></i>Token dédié</span>{% else %}<span class="badge badge-tertiary ms-2">Token global</span>{% endif %}
-        </p>
-    </div>
-    <div class="d-flex gap-2">
-        <button id="btn-check-pl" class="btn btn-outline-orange btn-sm" onclick="checkPennylane()">
-            <i class="bi bi-arrow-repeat me-1"></i>Vérifier
-        </button>
-        <a href="{{ url_for('dossiers') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+        <div class="d-flex gap-2 align-items-center">
+            <button id="btn-check-pl" class="btn btn-outline-orange" onclick="checkPennylane()">
+                <i class="bi bi-arrow-repeat me-1"></i>Vérifier maintenant
+            </button>
+            <a href="{{ url_for('dossiers') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+        </div>
     </div>
 </div>
 
@@ -47,289 +62,330 @@
 </div>
 {% endif %}
 
-<!-- KPI Cards -->
-<div class="row g-3 mb-4 animate-fade-in-up">
-    <div class="col-md-3">
-        <div class="kpi-card" style="border-left: 3px solid var(--orange-primary);">
-            <div class="kpi-icon" style="background:rgba(255,140,0,0.12);"><i class="bi bi-grid-3x3-gap-fill" style="color:var(--orange-primary);"></i></div>
-            <div class="kpi-info">
-                <div class="kpi-value">{{ (data.lignes or [])|length }}</div>
-                <div class="kpi-label">Total documents</div>
-            </div>
+<!-- ============ BARRE DE FILTRES ============ -->
+<div class="pl-filterbar animate-fade-in-up">
+    <!-- Ligne 1 : Nature (segments) à gauche · Exercice + Date à droite -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="pl-segment" role="group" aria-label="Filtrer par nature">
+            <a class="pl-seg {% if not data.nature_actif %}active{% endif %}" href="?nature=&exercice={{ data.exercice_actif }}">
+                <i class="bi bi-grid-3x3-gap-fill"></i> Toutes
+                <span class="pl-seg-cnt">{{ data.nb_total }}</span>
+            </a>
+            <a class="pl-seg {% if data.nature_actif == 'vente' %}active{% endif %}" href="?nature=vente&exercice={{ data.exercice_actif }}">
+                <i class="bi bi-receipt"></i> Ventes
+                <span class="pl-seg-cnt">{{ data.nb_ventes }}</span>
+            </a>
+            <a class="pl-seg {% if data.nature_actif == 'achat' %}active{% endif %}" href="?nature=achat&exercice={{ data.exercice_actif }}">
+                <i class="bi bi-cart"></i> Achats
+                <span class="pl-seg-cnt">{{ data.nb_achats }}</span>
+            </a>
+            <a class="pl-seg {% if data.nature_actif == 'banque' %}active{% endif %}" href="?nature=banque&exercice={{ data.exercice_actif }}">
+                <i class="bi bi-bank"></i> Flux banc.
+                <span class="pl-seg-cnt">{{ data.nb_banque }}</span>
+            </a>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="pl-field-label">Exercice</span>
+            <select class="form-select form-select-sm pl-select" onchange="location.href='?nature={{ data.nature_actif }}&exercice='+this.value">
+                {% for y in [2026, 2025, 2024, 2023] %}
+                <option value="{{ y }}" {% if data.exercice_actif == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <span class="pl-field-label">Date ajout</span>
+            <select id="filter-date" class="form-select form-select-sm pl-select" style="min-width:120px;">
+                <option value="">Toutes</option>
+                <option value="aujourdhui">Aujourd'hui</option>
+                <option value="7j">7 derniers jours</option>
+                <option value="30j">30 derniers jours</option>
+            </select>
+            <button class="pl-reset" onclick="resetFilters()" title="Réinitialiser les filtres"><i class="bi bi-arrow-counterclockwise"></i></button>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="kpi-card" style="border-left: 3px solid var(--orange-primary, #FF8C00);">
-            <div class="kpi-icon" style="background:rgba(255,140,0,0.12);"><i class="bi bi-exclamation-circle" style="color:var(--orange-primary);"></i></div>
-            <div class="kpi-info">
-                <div class="kpi-value" style="color:var(--orange-primary);">{{ data.nb_a_traiter }}</div>
-                <div class="kpi-label">À traiter</div>
-            </div>
+    <!-- Ligne 2 : Onglets statut à gauche · Bulk à droite -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 pt-3" style="border-top:1px solid var(--border-color);">
+        <div class="pl-tabs" role="group" aria-label="Filtrer par statut">
+            <button class="pl-tab active" data-ftab="" onclick="setStatutTab('')">
+                Toutes <span class="pl-tab-cnt" id="cnt-toutes">{{ data.cnt_toutes }}</span>
+            </button>
+            <button class="pl-tab" data-ftab="a_traiter" onclick="setStatutTab('a_traiter')">
+                <span class="pl-dot" style="background:var(--orange-primary);"></span> À traiter
+                <span class="pl-tab-cnt orange" id="cnt-a_traiter">{{ data.cnt_a_traiter }}</span>
+            </button>
+            <button class="pl-tab" data-ftab="pretraite" onclick="setStatutTab('pretraite')">
+                <span class="pl-dot" style="background:#eab308;"></span> Pré-traitées
+                <span class="pl-tab-cnt yellow" id="cnt-pretraite">{{ data.cnt_pretraite }}</span>
+            </button>
+            <button class="pl-tab" data-ftab="traite" onclick="setStatutTab('traite')">
+                <span class="pl-dot" style="background:#22c55e;"></span> Traitées
+                <span class="pl-tab-cnt green" id="cnt-traite">{{ data.cnt_traite }}</span>
+            </button>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="kpi-card" style="border-left: 3px solid #eab308;">
-            <div class="kpi-icon" style="background:rgba(234,179,8,0.12);"><i class="bi bi-clock" style="color:#eab308;"></i></div>
-            <div class="kpi-info">
-                <div class="kpi-value" style="color:#eab308;">{{ data.nb_pretraite }}</div>
-                <div class="kpi-label">Pré-traitées</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="kpi-card" style="border-left: 3px solid #22c55e;">
-            <div class="kpi-icon" style="background:rgba(34,197,94,0.12);"><i class="bi bi-check2-circle" style="color:#22c55e;"></i></div>
-            <div class="kpi-info">
-                <div class="kpi-value" style="color:#22c55e;">{{ data.nb_traite }}</div>
-                <div class="kpi-label">Traitées</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Filters Bar -->
-<div class="card-premium mb-3 animate-fade-in-up">
-    <div class="card-body-premium">
-        <!-- Statut Tabs -->
-        <div class="d-flex align-items-center gap-2 mb-3 pb-3 flex-wrap" style="border-bottom: 1px solid var(--border-color);">
-            <button class="btn btn-sm pl-tab active" data-ftab="" onclick="setStatutTab('')">
-                Toutes <span class="badge badge-tertiary ms-1 rounded-pill" id="cnt-toutes">{{ (data.lignes or [])|length }}</span>
-            </button>
-            <button class="btn btn-sm pl-tab" data-ftab="a_traiter" onclick="setStatutTab('a_traiter')">
-                <span class="status-dot" style="background:var(--orange-primary);"></span>À traiter <span class="badge badge-orange ms-1 rounded-pill" id="cnt-a_traiter">{{ data.nb_a_traiter }}</span>
-            </button>
-            <button class="btn btn-sm pl-tab" data-ftab="pretraite" onclick="setStatutTab('pretraite')">
-                <span class="status-dot" style="background:#eab308;"></span>Pré-traitées <span class="badge badge-warning ms-1 rounded-pill" id="cnt-pretraite">{{ data.nb_pretraite }}</span>
-            </button>
-            <button class="btn btn-sm pl-tab" data-ftab="traite" onclick="setStatutTab('traite')">
-                <span class="status-dot" style="background:#22c55e;"></span>Traitées <span class="badge badge-success ms-1 rounded-pill" id="cnt-traite">{{ data.nb_traite }}</span>
-            </button>
-            <div id="bulk-bar" class="ms-auto d-none align-items-center gap-2">
-                <span class="text-tertiary small"><strong id="bulk-count" style="color:var(--orange-primary);">0</strong> sélectionné(s)</span>
-                <button class="btn btn-sm btn-outline-orange" onclick="bulkSetStatut('traite')"><i class="bi bi-check-lg me-1"></i>Traiter</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="bulkSetStatut('ignore')"><i class="bi bi-dash-lg me-1"></i>Ignorer</button>
-                <button class="btn btn-sm btn-ghost" onclick="clearSelection()" title="Désélectionner"><i class="bi bi-x-lg"></i></button>
-            </div>
-        </div>
-        <!-- Nature widgets + filters -->
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="filter-label small text-tertiary me-1"><i class="bi bi-funnel me-1"></i>Nature :</span>
-            <button class="btn btn-sm btn-outline-orange pl-filter-nature active" data-nature="" onclick="setNatureFilter('')">
-                <i class="bi bi-grid-3x3-gap-fill me-1"></i>Toutes
-            </button>
-            <button class="btn btn-sm btn-outline-orange pl-filter-nature" data-nature="vente" onclick="setNatureFilter('vente')">
-                <i class="bi bi-receipt me-1"></i>Ventes <span class="badge badge-tertiary ms-1">{{ data.nb_ventes }}</span>
-            </button>
-            <button class="btn btn-sm btn-outline-orange pl-filter-nature" data-nature="achat" onclick="setNatureFilter('achat')">
-                <i class="bi bi-cart me-1"></i>Achats <span class="badge badge-tertiary ms-1">{{ data.nb_achats }}</span>
-            </button>
-            <button class="btn btn-sm btn-outline-orange pl-filter-nature" data-nature="banque" onclick="setNatureFilter('banque')">
-                <i class="bi bi-bank me-1"></i>Flux bancaires <span class="badge badge-tertiary ms-1">{{ data.nb_banque }}</span>
-            </button>
-            <div class="ms-auto d-flex gap-2 align-items-center">
-                <span class="filter-label small text-tertiary"><i class="bi bi-calendar me-1"></i>Exercice :</span>
-                <select class="form-select form-select-sm" style="width:100px;" onchange="location.href='?exercice='+this.value">
-                    <option value="2026" {% if data.exercice_actif == 2026 %}selected{% endif %}>2026</option>
-                    <option value="2025" {% if data.exercice_actif == 2025 %}selected{% endif %}>2025</option>
-                    <option value="2024" {% if data.exercice_actif == 2024 %}selected{% endif %}>2024</option>
-                    <option value="2023" {% if data.exercice_actif == 2023 %}selected{% endif %}>2023</option>
-                </select>
-                <select id="filter-date" class="form-select form-select-sm" style="width:120px;">
-                    <option value="">Date ajout</option>
-                    <option value="aujourdhui">Aujourd'hui</option>
-                    <option value="7j">7 jours</option>
-                    <option value="30j">30 jours</option>
-                </select>
-                <button class="btn btn-sm btn-ghost" onclick="resetFilters()" title="Réinitialiser"><i class="bi bi-arrow-counterclockwise"></i></button>
-            </div>
+        <div id="bulk-bar" class="d-none align-items-center gap-2">
+            <span class="pl-bulk-info"><strong id="bulk-count">0</strong> sélectionné(s)</span>
+            <button class="btn btn-sm btn-outline-orange" onclick="bulkSetStatut('traite')"><i class="bi bi-check-lg me-1"></i>Traiter</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="bulkSetStatut('ignore')"><i class="bi bi-dash-lg me-1"></i>Ignorer</button>
+            <button class="pl-reset" onclick="clearSelection()" title="Désélectionner"><i class="bi bi-x-lg"></i></button>
         </div>
     </div>
 </div>
 
-<!-- Documents Table -->
-<div class="card-premium animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
-    <div class="card-body-premium p-0">
-        <div class="pl-table-wrap">
-            <table class="table-premium mb-0" id="tablePennylane">
-                <thead>
-                    <tr>
-                        <th style="width:4%;"><input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" title="Tout sélectionner (visible)"></th>
-                        <th style="width:15%;">Statut</th>
-                        <th style="width:9%;">Nature</th>
-                        <th style="width:27%;">N° / Libellé</th>
-                        <th style="width:13%;">Émission</th>
-                        <th style="width:13%;">Détection</th>
-                        <th style="width:19%;">Traitement</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for l in data.lignes %}
-                    <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
-                        data-nature="{{ l.nature }}" data-ftab="{{ 'traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter') }}" data-ajout="{{ l.ajout_date|default('') }}">
-                        <td><input type="checkbox" class="pl-check" value="{{ l.db_id }}" onchange="updateBulkBar()"></td>
-                        <td>
-                            <span class="status-badge status-{{ 'success' if l.statut_fr == 'Traité' else ('warning' if l.statut_fr == 'Prétraité' else ('tertiary' if l.statut_fr == 'Annulé' else 'orange')) }}">
-                                <span class="status-dot-sm"></span>{{ l.statut_fr or '—' }}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="nature-badge nature-{{ l.nature }}">
-                                <i class="bi {{ 'bi-bank' if l.nature == 'banque' else ('bi-cart' if l.nature == 'achat' else 'bi-receipt') }} me-1"></i>{{ l.nature_label }}
-                                {% if l.nouveau %}<span class="badge badge-success ms-1 pulse">NEW</span>{% endif %}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="doc-title">{{ l.libelle[:50] }}{% if l.libelle|length > 50 %}…{% endif %}</div>
-                        </td>
-                        <td class="text-tertiary small text-nowrap">{{ l.date or '—' }}</td>
-                        <td class="text-tertiary small text-nowrap">{{ (l.ajout_date or '—')[:10] if l.ajout_date else '—' }}</td>
-                        <td id="pl-cell-{{ l.db_id }}" class="text-nowrap">{{ pl_statut_badge(l.statut_traitement) }} {{ pl_statut_buttons(l.db_id, l.statut_traitement) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% if not data.lignes %}
-            <div class="text-center py-5">
-                <i class="bi bi-inbox" style="font-size:2.5rem;color:var(--text-tertiary);opacity:0.3;"></i>
-                <p class="text-tertiary mt-2 mb-0">Aucun document trouvé pour cet exercice.</p>
-            </div>
-            {% endif %}
-        </div>
-        {% if data.lignes %}
-        <div class="d-flex justify-content-between align-items-center px-3 py-2" style="border-top: 1px solid var(--border-color);">
-            <div class="text-tertiary small">
-                <i class="bi bi-arrows-vertical me-1"></i>{{ (data.lignes or [])|length }} ligne(s)
-                <span class="mx-2">|</span>
-                <i class="bi bi-mouse me-1"></i>Molette pour défiler
-            </div>
-            <div class="d-flex gap-3 small" id="legende-statuts">
-                <span><span class="status-dot-sm" style="background:var(--orange-primary);"></span> {{ data.nb_a_traiter }} à traiter</span>
-                <span><span class="status-dot-sm" style="background:#eab308;"></span> {{ data.nb_pretraite }} pré-traitée</span>
-                <span><span class="status-dot-sm" style="background:#22c55e;"></span> {{ data.nb_traite }} traitée</span>
-            </div>
+<!-- ============ TABLEAU ============ -->
+<div class="pl-tablecard animate-fade-in-up">
+    <div class="pl-table-wrap">
+        <table class="pl-table" id="tablePennylane">
+            <thead>
+                <tr>
+                    <th class="pl-th-check"><input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" title="Tout sélectionner (lignes visibles)"></th>
+                    <th style="width:13%;">Statut</th>
+                    <th style="width:11%;">Nature</th>
+                    <th style="width:26%;">N° / Libellé</th>
+                    <th style="width:11%;">Émission</th>
+                    <th style="width:11%;">Détection</th>
+                    <th style="width:12%; text-align:right;">Montant</th>
+                    <th style="width:16%;">Traitement</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in data.lignes %}
+                <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
+                    data-nature="{{ l.nature }}"
+                    data-ftab="{{ 'traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter') }}"
+                    data-ajout="{{ l.ajout_date|default('') }}">
+                    <td class="pl-th-check"><input type="checkbox" class="pl-check" value="{{ l.db_id }}" onchange="updateBulkBar()"></td>
+                    <td>
+                        <span class="pl-status {{ 'ok' if l.statut_fr == 'Traité' else ('pre' if l.statut_fr == 'Prétraité' else ('off' if l.statut_fr == 'Annulé' else 'todo')) }}">
+                            <span class="pl-status-dot"></span>{{ l.statut_fr or '—' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="pl-nature {{ l.nature }}">
+                            <i class="bi {{ 'bi-bank' if l.nature == 'banque' else ('bi-cart' if l.nature == 'achat' else 'bi-receipt') }}"></i>
+                            {{ l.nature_label }}
+                            {% if l.nouveau %}<span class="pl-new-chip">NEW</span>{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="pl-doc-title" title="{{ l.libelle }}">{{ l.libelle[:46] }}{% if l.libelle|length > 46 %}…{% endif %}</div>
+                    </td>
+                    <td class="pl-cell-date">{{ l.date or '—' }}</td>
+                    <td class="pl-cell-date">{{ (l.ajout_date or '—')[:10] if l.ajout_date else '—' }}</td>
+                    <td class="pl-cell-amount">{% if l.montant is not none %}{{ '{:,.2f}'.format(l.montant|float).replace(',', ' ') }} <span class="pl-devise">€</span>{% else %}—{% endif %}</td>
+                    <td id="pl-cell-{{ l.db_id }}" class="pl-cell-action">{{ pl_statut_badge(l.statut_traitement) }} {{ pl_statut_buttons(l.db_id, l.statut_traitement) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if not data.lignes %}
+        <div class="pl-empty">
+            <i class="bi bi-inbox"></i>
+            <p class="mb-1">Aucun document trouvé</p>
+            <small>Aucune facture ne correspond aux filtres actifs (nature / exercice).</small>
         </div>
         {% endif %}
     </div>
+    {% if data.lignes %}
+    <div class="pl-table-footer">
+        <div class="pl-footer-left">
+            <i class="bi bi-collection"></i> <span id="pl-visible-count">{{ data.cnt_toutes }}</span> document(s) affiché(s)
+            {% if data.nature_actif %}<span class="pl-footer-filter"><i class="bi bi-funnel-fill"></i> {{ {'vente':'Ventes','achat':'Achats','banque':'Flux bancaires'}[data.nature_actif] }}</span>{% endif %}
+            <span class="pl-footer-filter"><i class="bi bi-calendar3"></i> Exercice {{ data.exercice_actif }}</span>
+        </div>
+        <div class="pl-footer-right">
+            <span><span class="pl-dot" style="background:var(--orange-primary);"></span> {{ data.cnt_a_traiter }} à traiter</span>
+            <span><span class="pl-dot" style="background:#eab308;"></span> {{ data.cnt_pretraite }} pré-traitée(s)</span>
+            <span><span class="pl-dot" style="background:#22c55e;"></span> {{ data.cnt_traite }} traitée(s)</span>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-/* === KPI Cards === */
-.kpi-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
-.kpi-icon {
-    width: 44px; height: 44px; border-radius: 12px;
+/* ================= HEADER ================= */
+.pl-header { margin-bottom: 1.75rem; }
+.pl-breadcrumb { font-size: .78rem; color: var(--text-tertiary); display: flex; align-items: center; gap: 6px; }
+.pl-breadcrumb a { color: var(--text-tertiary); text-decoration: none; }
+.pl-breadcrumb a:hover { color: var(--orange-primary); }
+.pl-breadcrumb .bi-chevron-right { font-size: .6rem; opacity: .5; }
+.pl-breadcrumb .active { color: var(--text-primary); font-weight: 600; }
+.pl-header-icon {
+    width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(255,140,0,.18), rgba(255,140,0,.08));
+    border: 1px solid rgba(255,140,0,.25);
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.2rem; flex-shrink: 0;
+    color: var(--orange-primary); font-size: 1.25rem;
 }
-.kpi-value { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
-.kpi-label { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 2px; }
-
-/* === Status + Nature Badges === */
-.status-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
-    white-space: nowrap;
+.pl-token-chip {
+    font-size: .68rem; font-weight: 600; padding: 2px 9px; border-radius: 20px;
+    background: rgba(34,197,94,.12); color: #22c55e;
 }
-.status-success { background: rgba(34,197,94,0.12); color: #22c55e; }
-.status-warning { background: rgba(234,179,8,0.12); color: #eab308; }
-.status-orange { background: rgba(255,140,0,0.12); color: var(--orange-primary); }
-.status-tertiary { background: rgba(148,163,184,0.12); color: #94a3b8; }
-.status-dot, .status-dot-sm { display: inline-block; border-radius: 50%; }
-.status-dot { width: 8px; height: 8px; }
-.status-dot-sm { width: 6px; height: 6px; vertical-align: middle; margin-right: 3px; }
+.pl-token-chip.muted { background: rgba(148,163,184,.12); color: #94a3b8; }
 
-.nature-badge {
-    display: inline-flex; align-items: center;
-    padding: 2px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 600;
+/* ================= FILTERBAR ================= */
+.pl-filterbar {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 18px 20px; margin-bottom: 1.25rem;
 }
-.nature-vente { background: rgba(255,140,0,0.12); color: var(--orange-primary); }
-.nature-achat { background: rgba(234,179,8,0.12); color: #eab308; }
-.nature-banque { background: rgba(59,130,246,0.12); color: #3b82f6; }
+/* — Segments nature (style Pennylane) — */
+.pl-segment {
+    display: inline-flex; gap: 4px; padding: 4px;
+    background: var(--bg-page, rgba(148,163,184,.08));
+    border-radius: 12px;
+}
+.pl-seg {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px; border-radius: 9px;
+    font-size: .82rem; font-weight: 500; text-decoration: none;
+    color: var(--text-tertiary); transition: all .15s;
+    border: 1px solid transparent;
+}
+.pl-seg:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+.pl-seg.active {
+    background: var(--bg-card); color: var(--text-primary); font-weight: 600;
+    border-color: var(--border-color);
+    box-shadow: 0 1px 4px rgba(0,0,0,.12);
+}
+[data-theme="light"] .pl-seg.active { background: #fff; }
+.pl-seg.active i { color: var(--orange-primary); }
+.pl-seg-cnt {
+    font-size: .7rem; font-weight: 700; padding: 1px 8px; border-radius: 20px;
+    background: rgba(148,163,184,.15); color: var(--text-tertiary);
+}
+.pl-seg.active .pl-seg-cnt { background: rgba(255,140,0,.14); color: var(--orange-primary); }
 
-.doc-title { font-size: 0.8rem; font-weight: 500; max-width: 280px; }
+/* — Champs à droite — */
+.pl-field-label { font-size: .72rem; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .4px; }
+.pl-select { min-width: 96px; border-radius: 9px; }
+.pl-reset {
+    border: 1px solid var(--border-color); background: transparent; color: var(--text-tertiary);
+    width: 30px; height: 30px; border-radius: 9px; cursor: pointer; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center; font-size: .8rem;
+}
+.pl-reset:hover { color: var(--orange-primary); border-color: var(--orange-primary); }
 
-/* === Table === */
-.pl-table-wrap { max-height: 560px; overflow-y: auto; }
-.pl-table-wrap::-webkit-scrollbar { width: 6px; }
+/* — Onglets statut — */
+.pl-tabs { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pl-tab {
+    border: 1px solid var(--border-color); background: transparent;
+    padding: 6px 14px; border-radius: 10px; font-size: .8rem; font-weight: 500;
+    color: var(--text-tertiary); transition: all .18s; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+}
+.pl-tab:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.pl-tab.active {
+    background: rgba(255,140,0,.08); border-color: var(--orange-primary); color: var(--orange-primary); font-weight: 600;
+}
+.pl-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.pl-tab-cnt {
+    font-size: .68rem; font-weight: 700; padding: 1px 8px; border-radius: 20px;
+    background: rgba(148,163,184,.15); color: var(--text-tertiary);
+}
+.pl-tab-cnt.orange { background: rgba(255,140,0,.14); color: var(--orange-primary); }
+.pl-tab-cnt.yellow { background: rgba(234,179,8,.14); color: #eab308; }
+.pl-tab-cnt.green { background: rgba(34,197,94,.14); color: #22c55e; }
+.pl-tab.active .pl-tab-cnt { background: rgba(255,140,0,.18); color: var(--orange-primary); }
+
+/* — Bulk — */
+.pl-bulk-info { font-size: .8rem; color: var(--text-tertiary); }
+.pl-bulk-info strong { color: var(--orange-primary); font-size: .95rem; }
+#bulk-bar { animation: fadeInUp .2s ease; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ================= TABLE CARD ================= */
+.pl-tablecard {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; overflow: hidden;
+}
+.pl-table-wrap { max-height: calc(100vh - 380px); min-height: 320px; overflow-y: auto; }
+.pl-table-wrap::-webkit-scrollbar { width: 7px; }
 .pl-table-wrap::-webkit-scrollbar-track { background: transparent; }
-.pl-table-wrap::-webkit-scrollbar-thumb { background: var(--orange-primary); border-radius: 8px; }
-.table-premium td { padding: 8px 12px; vertical-align: middle; }
-.table-premium tbody tr { transition: background 0.15s; }
-.table-premium tbody tr:hover { background: rgba(255,255,255,0.03); }
+.pl-table-wrap::-webkit-scrollbar-thumb { background: rgba(255,140,0,.45); border-radius: 8px; }
+.pl-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--orange-primary); }
 
-/* === Row states === */
-.pl-item-new { background: rgba(255, 140, 0, 0.06); }
-[data-theme="light"] .pl-item-new { background: rgba(255, 140, 0, 0.08); }
-.pl-row.hidden-row { display: none; }
+.pl-table { width: 100%; margin: 0; border-collapse: collapse; }
+.pl-table thead th {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg-card);
+    font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--text-tertiary);
+    padding: 12px 14px; border-bottom: 1px solid var(--border-color);
+    text-align: left; white-space: nowrap;
+}
+.pl-table tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border-color); vertical-align: middle; font-size: .82rem; }
+.pl-table tbody tr:last-child td { border-bottom: none; }
+.pl-table tbody tr { transition: background .12s; }
+.pl-table tbody tr:hover { background: rgba(255,140,0,.035); }
 
-/* === Buttons === */
-.pl-btns { display: inline-flex; gap: 2px; margin-left: 4px; vertical-align: middle; }
+.pl-th-check { width: 36px; text-align: center; }
+.pl-check, #check-all { cursor: pointer; accent-color: var(--orange-primary); width: 15px; height: 15px; }
+.pl-check:hover, #check-all:hover { transform: scale(1.15); }
+
+/* — Badges statut — */
+.pl-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 11px; border-radius: 20px; font-size: .72rem; font-weight: 600; white-space: nowrap;
+}
+.pl-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pl-status.ok { background: rgba(34,197,94,.12); color: #22c55e; }
+.pl-status.pre { background: rgba(234,179,8,.14); color: #eab308; }
+.pl-status.todo { background: rgba(255,140,0,.12); color: var(--orange-primary); }
+.pl-status.off { background: rgba(148,163,184,.12); color: #94a3b8; }
+
+/* — Badges nature — */
+.pl-nature {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px; font-size: .68rem; font-weight: 600; white-space: nowrap;
+}
+.pl-nature i { font-size: .75rem; }
+.pl-nature.vente { background: rgba(255,140,0,.1); color: var(--orange-primary); }
+.pl-nature.achat { background: rgba(234,179,8,.1); color: #eab308; }
+.pl-nature.banque { background: rgba(59,130,246,.1); color: #3b82f6; }
+.pl-new-chip {
+    font-size: .58rem; font-weight: 800; padding: 1px 6px; border-radius: 12px;
+    background: #22c55e; color: #fff; letter-spacing: .5px;
+    animation: pulse 2s infinite;
+}
+
+.pl-doc-title { font-size: .82rem; font-weight: 500; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-cell-date { color: var(--text-tertiary); font-size: .78rem; white-space: nowrap; }
+.pl-cell-amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: .8rem; white-space: nowrap; }
+.pl-devise { color: var(--text-tertiary); font-weight: 400; margin-left: 2px; }
+.pl-cell-action { white-space: nowrap; }
+
+/* — État nouveaux — */
+.pl-item-new { background: rgba(255,140,0,.05); }
+.pl-item-new td:first-child { box-shadow: inset 3px 0 0 var(--orange-primary); }
+
+/* — Boutons ligne — */
+.pl-btns { display: inline-flex; gap: 2px; margin-left: 5px; vertical-align: middle; }
 .pl-btns button {
     border: none; background: transparent; cursor: pointer;
-    font-size: 0.75rem; padding: 2px 6px; border-radius: 6px;
-    opacity: 0.6; transition: all 0.15s;
+    font-size: .78rem; padding: 3px 7px; border-radius: 7px;
+    opacity: .55; transition: all .15s;
 }
-.pl-btns button:hover { opacity: 1; background: rgba(255,255,255,0.06); }
+.pl-btns button:hover { opacity: 1; background: rgba(255,255,255,.07); }
 .pl-btns .btn-traite { color: #22c55e; }
 .pl-btns .btn-ignore { color: #94a3b8; }
 
-/* === Tabs === */
-.pl-tab {
-    border: 1px solid transparent; background: transparent;
-    padding: 5px 14px; border-radius: 10px; font-size: 0.8rem;
-    color: var(--text-tertiary); transition: all 0.2s;
-    cursor: pointer;
+/* — Vide — */
+.pl-empty { text-align: center; padding: 4rem 1rem; }
+.pl-empty i { font-size: 2.6rem; color: var(--text-tertiary); opacity: .3; }
+.pl-empty p { margin-top: .75rem; font-weight: 600; }
+.pl-empty small { color: var(--text-tertiary); }
+
+/* — Footer — */
+.pl-table-footer {
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 11px 20px; border-top: 1px solid var(--border-color);
+    font-size: .75rem; color: var(--text-tertiary);
 }
-.pl-tab:hover { background: var(--bg-card-hover); color: var(--text-primary); }
-.pl-tab.active { background: var(--bg-card-hover); border-color: var(--orange-primary); color: var(--orange-primary); }
-
-/* === Nature filter buttons === */
-.pl-filter-nature.active { background: var(--orange-primary) !important; color: #000 !important; border-color: var(--orange-primary) !important; }
-
-/* === Header icon === */
-.header-icon {
-    width: 38px; height: 38px; border-radius: 12px;
-    background: rgba(255,140,0,0.12); display: flex;
-    align-items: center; justify-content: center;
-    color: var(--orange-primary); font-size: 1.1rem;
-    flex-shrink: 0;
+.pl-footer-left, .pl-footer-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pl-footer-filter {
+    padding: 2px 10px; border-radius: 14px; font-size: .7rem;
+    background: rgba(255,140,0,.08); color: var(--orange-primary);
 }
-
-/* === Ghost button === */
-.btn-ghost {
-    background: transparent; border: 1px solid transparent;
-    color: var(--text-tertiary); cursor: pointer;
-    padding: 4px 10px; border-radius: 8px; font-size: 0.8rem;
-    transition: all 0.15s;
-}
-.btn-ghost:hover { background: var(--bg-card-hover); border-color: var(--border-color); }
-
-/* === Pulse animation === */
-.pulse { animation: pulse 2s infinite; }
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* === Filter label === */
-.filter-label { font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
-
-/* === Checkboxes === */
-.pl-check, #check-all { cursor: pointer; accent-color: var(--orange-primary); width: 15px; height: 15px; }
-.pl-check:hover, #check-all:hover { transform: scale(1.15); transition: transform 0.1s; }
-#bulk-bar { animation: fadeInUp 0.2s ease; }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.pl-footer-right span { display: inline-flex; align-items: center; gap: 5px; }
 </style>
 {% endblock %}
 
@@ -344,7 +400,7 @@ function setStatut(itemId, statut) {
 
 function checkPennylane() {
     const btn = document.getElementById('btn-check-pl');
-    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>...'; btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Vérification...'; btn.disabled = true;
     fetch(`/pennylane/check/{{ dossier.id }}`, {method: 'POST'})
     .then(r => r.json()).then(d => {
         if (d.ok && d.nouveaux && d.nouveaux.length > 0) alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
@@ -365,34 +421,20 @@ function plDateMatch(ajoutDateStr, filterDate) {
     return true;
 }
 
+/* Filtre statut : côté client uniquement (nature + exercice gérés serveur → compteurs TOUJOURS justes) */
 function applyPlFilters() {
     const ftab = document.querySelector('.pl-tab.active')?.dataset?.ftab || '';
-    const fnature = document.querySelector('.pl-filter-nature.active')?.dataset?.nature || '';
-    const fdate = document.getElementById('filter-date').value;
-    let visibles = {toutes: 0, a_traiter: 0, pretraite: 0, traite: 0};
+    const fdate = document.getElementById('filter-date')?.value || '';
+    let visibles = 0;
     document.querySelectorAll('.pl-row').forEach(row => {
         const okTab = !ftab || row.dataset.ftab === ftab;
-        const okNature = !fnature || row.dataset.nature === fnature;
         const okDate = plDateMatch(row.dataset.ajout, fdate);
-        const visible = okTab && okNature && okDate;
+        const visible = okTab && okDate;
         row.classList.toggle('hidden-row', !visible);
-        if (visible) {
-            visibles.toutes++;
-            visibles[row.dataset.ftab] = (visibles[row.dataset.ftab] || 0) + 1;
-        }
+        if (visible) visibles++;
     });
-    // Compteurs dynamiques (filtre nature + date appliqués)
-    document.getElementById('cnt-toutes').textContent = visibles.toutes;
-    document.getElementById('cnt-a_traiter').textContent = visibles.a_traiter || 0;
-    document.getElementById('cnt-pretraite').textContent = visibles.pretraite || 0;
-    document.getElementById('cnt-traite').textContent = visibles.traite || 0;
-    // Légende bas de tableau
-    const leg = document.getElementById('legende-statuts');
-    if (leg) {
-        leg.innerHTML = `<span><span class="status-dot-sm" style="background:var(--orange-primary);"></span> ${visibles.a_traiter || 0} à traiter</span>
-        <span><span class="status-dot-sm" style="background:#eab308;"></span> ${visibles.pretraite || 0} pré-traitée(s)</span>
-        <span><span class="status-dot-sm" style="background:#22c55e;"></span> ${visibles.traite || 0} traitée(s)</span>`;
-    }
+    const c = document.getElementById('pl-visible-count');
+    if (c) c.textContent = visibles;
 }
 
 function toggleSelectAll(checked) {
@@ -439,18 +481,12 @@ function setStatutTab(ftab) {
     document.querySelectorAll('.pl-tab').forEach(b => b.classList.toggle('active', b.dataset.ftab === ftab));
     applyPlFilters();
 }
-function setNatureFilter(nature) {
-    document.querySelectorAll('.pl-filter-nature').forEach(b => b.classList.toggle('active', b.dataset.nature === nature));
-    applyPlFilters();
-}
-document.getElementById('filter-date').addEventListener('change', applyPlFilters);
+document.getElementById('filter-date')?.addEventListener('change', applyPlFilters);
 function resetFilters() {
     document.getElementById('filter-date').value = '';
     setStatutTab('');
-    setNatureFilter('');
 }
 {% if data.lignes %}
-// Apply initial filters on load (tabs default to active = Toutes)
 applyPlFilters();
 {% endif %}
 </script>
