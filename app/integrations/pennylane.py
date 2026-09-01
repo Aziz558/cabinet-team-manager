@@ -620,8 +620,8 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             t['nouveau'] = t['statut_traitement'] == 'a_traiter'
 
         # Mise en cache du résultat (partagé entre workers)
-        if token is None:
-            _cache_save(dossier.id, result)
+        # NB: token a été réassigné plus haut, il n'est jamais None ici -> cache inconditionnel
+        _cache_save(dossier.id, result)
     except Exception as e:
         logger.error(f'get_dossier_pennylane_data: {e}')
         result['ok'] = False
