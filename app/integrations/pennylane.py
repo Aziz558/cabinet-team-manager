@@ -59,7 +59,7 @@ def _cache_save(dossier_id, res):
     from app.models import AppSetting
     import json as _json
     try:
-        payload = _json.dumps({'ts': time.time(), 'data': res}, ensure_ascii=False, separators=(',', ':'))
+        payload = _json.dumps({'ts': time.time(), 'data': res}, ensure_ascii=False, separators=(',', ':'), default=str)
         s = AppSetting.query.filter_by(cle=_cache_key(dossier_id)).first()
         if not s:
             s = AppSetting(cle=_cache_key(dossier_id), valeur=payload, type_valeur='json', service='pennylane')
