@@ -91,19 +91,25 @@
 <div class="card-premium mb-3 animate-fade-in-up">
     <div class="card-body-premium">
         <!-- Statut Tabs -->
-        <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
+        <div class="d-flex align-items-center gap-2 mb-3 pb-3 flex-wrap" style="border-bottom: 1px solid var(--border-color);">
             <button class="btn btn-sm pl-tab active" data-ftab="" onclick="setStatutTab('')">
-                Toutes <span class="badge badge-tertiary ms-1 rounded-pill">{{ (data.lignes or [])|length }}</span>
+                Toutes <span class="badge badge-tertiary ms-1 rounded-pill" id="cnt-toutes">{{ (data.lignes or [])|length }}</span>
             </button>
             <button class="btn btn-sm pl-tab" data-ftab="a_traiter" onclick="setStatutTab('a_traiter')">
-                <span class="status-dot" style="background:var(--orange-primary);"></span>À traiter <span class="badge badge-orange ms-1 rounded-pill">{{ data.nb_a_traiter }}</span>
+                <span class="status-dot" style="background:var(--orange-primary);"></span>À traiter <span class="badge badge-orange ms-1 rounded-pill" id="cnt-a_traiter">{{ data.nb_a_traiter }}</span>
             </button>
             <button class="btn btn-sm pl-tab" data-ftab="pretraite" onclick="setStatutTab('pretraite')">
-                <span class="status-dot" style="background:#eab308;"></span>Pré-traitées <span class="badge badge-warning ms-1 rounded-pill">{{ data.nb_pretraite }}</span>
+                <span class="status-dot" style="background:#eab308;"></span>Pré-traitées <span class="badge badge-warning ms-1 rounded-pill" id="cnt-pretraite">{{ data.nb_pretraite }}</span>
             </button>
             <button class="btn btn-sm pl-tab" data-ftab="traite" onclick="setStatutTab('traite')">
-                <span class="status-dot" style="background:#22c55e;"></span>Traitées <span class="badge badge-success ms-1 rounded-pill">{{ data.nb_traite }}</span>
+                <span class="status-dot" style="background:#22c55e;"></span>Traitées <span class="badge badge-success ms-1 rounded-pill" id="cnt-traite">{{ data.nb_traite }}</span>
             </button>
+            <div id="bulk-bar" class="ms-auto d-none align-items-center gap-2">
+                <span class="text-tertiary small"><strong id="bulk-count" style="color:var(--orange-primary);">0</strong> sélectionné(s)</span>
+                <button class="btn btn-sm btn-outline-orange" onclick="bulkSetStatut('traite')"><i class="bi bi-check-lg me-1"></i>Traiter</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="bulkSetStatut('ignore')"><i class="bi bi-dash-lg me-1"></i>Ignorer</button>
+                <button class="btn btn-sm btn-ghost" onclick="clearSelection()" title="Désélectionner"><i class="bi bi-x-lg"></i></button>
+            </div>
         </div>
         <!-- Nature widgets + filters -->
         <div class="d-flex flex-wrap align-items-center gap-2">
@@ -147,18 +153,20 @@
             <table class="table-premium mb-0" id="tablePennylane">
                 <thead>
                     <tr>
-                        <th style="width:16%;">Statut</th>
-                        <th style="width:10%;">Nature</th>
-                        <th style="width:28%;">N° / Libellé</th>
-                        <th style="width:14%;">Émission</th>
-                        <th style="width:14%;">Détection</th>
-                        <th style="width:18%;">Traitement</th>
+                        <th style="width:4%;"><input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" title="Tout sélectionner (visible)"></th>
+                        <th style="width:15%;">Statut</th>
+                        <th style="width:9%;">Nature</th>
+                        <th style="width:27%;">N° / Libellé</th>
+                        <th style="width:13%;">Émission</th>
+                        <th style="width:13%;">Détection</th>
+                        <th style="width:19%;">Traitement</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for l in data.lignes %}
                     <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
                         data-nature="{{ l.nature }}" data-ftab="{{ 'traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter') }}" data-ajout="{{ l.ajout_date|default('') }}">
+                        <td><input type="checkbox" class="pl-check" value="{{ l.db_id }}" onchange="updateBulkBar()"></td>
                         <td>
                             <span class="status-badge status-{{ 'success' if l.statut_fr == 'Traité' else ('warning' if l.statut_fr == 'Prétraité' else ('tertiary' if l.statut_fr == 'Annulé' else 'orange')) }}">
                                 <span class="status-dot-sm"></span>{{ l.statut_fr or '—' }}
@@ -194,7 +202,7 @@
                 <span class="mx-2">|</span>
                 <i class="bi bi-mouse me-1"></i>Molette pour défiler
             </div>
-            <div class="d-flex gap-3 small">
+            <div class="d-flex gap-3 small" id="legende-statuts">
                 <span><span class="status-dot-sm" style="background:var(--orange-primary);"></span> {{ data.nb_a_traiter }} à traiter</span>
                 <span><span class="status-dot-sm" style="background:#eab308;"></span> {{ data.nb_pretraite }} pré-traitée</span>
                 <span><span class="status-dot-sm" style="background:#22c55e;"></span> {{ data.nb_traite }} traitée</span>
@@ -316,6 +324,12 @@
 
 /* === Filter label === */
 .filter-label { font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
+
+/* === Checkboxes === */
+.pl-check, #check-all { cursor: pointer; accent-color: var(--orange-primary); width: 15px; height: 15px; }
+.pl-check:hover, #check-all:hover { transform: scale(1.15); transition: transform 0.1s; }
+#bulk-bar { animation: fadeInUp 0.2s ease; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 {% endblock %}
 
@@ -355,12 +369,70 @@ function applyPlFilters() {
     const ftab = document.querySelector('.pl-tab.active')?.dataset?.ftab || '';
     const fnature = document.querySelector('.pl-filter-nature.active')?.dataset?.nature || '';
     const fdate = document.getElementById('filter-date').value;
+    let visibles = {toutes: 0, a_traiter: 0, pretraite: 0, traite: 0};
     document.querySelectorAll('.pl-row').forEach(row => {
         const okTab = !ftab || row.dataset.ftab === ftab;
         const okNature = !fnature || row.dataset.nature === fnature;
         const okDate = plDateMatch(row.dataset.ajout, fdate);
-        row.classList.toggle('hidden-row', !(okTab && okNature && okDate));
+        const visible = okTab && okNature && okDate;
+        row.classList.toggle('hidden-row', !visible);
+        if (visible) {
+            visibles.toutes++;
+            visibles[row.dataset.ftab] = (visibles[row.dataset.ftab] || 0) + 1;
+        }
     });
+    // Compteurs dynamiques (filtre nature + date appliqués)
+    document.getElementById('cnt-toutes').textContent = visibles.toutes;
+    document.getElementById('cnt-a_traiter').textContent = visibles.a_traiter || 0;
+    document.getElementById('cnt-pretraite').textContent = visibles.pretraite || 0;
+    document.getElementById('cnt-traite').textContent = visibles.traite || 0;
+    // Légende bas de tableau
+    const leg = document.getElementById('legende-statuts');
+    if (leg) {
+        leg.innerHTML = `<span><span class="status-dot-sm" style="background:var(--orange-primary);"></span> ${visibles.a_traiter || 0} à traiter</span>
+        <span><span class="status-dot-sm" style="background:#eab308;"></span> ${visibles.pretraite || 0} pré-traitée(s)</span>
+        <span><span class="status-dot-sm" style="background:#22c55e;"></span> ${visibles.traite || 0} traitée(s)</span>`;
+    }
+}
+
+function toggleSelectAll(checked) {
+    document.querySelectorAll('.pl-row:not(.hidden-row) .pl-check').forEach(cb => { cb.checked = checked; });
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    const sel = document.querySelectorAll('.pl-check:checked').length;
+    const bar = document.getElementById('bulk-bar');
+    if (!bar) return;
+    document.getElementById('bulk-count').textContent = sel;
+    bar.classList.toggle('d-none', sel === 0);
+    bar.classList.toggle('d-flex', sel > 0);
+    const all = document.getElementById('check-all');
+    if (all) {
+        const visibles = document.querySelectorAll('.pl-row:not(.hidden-row) .pl-check');
+        all.checked = visibles.length > 0 && sel >= visibles.length;
+    }
+}
+
+function clearSelection() {
+    document.querySelectorAll('.pl-check:checked').forEach(cb => { cb.checked = false; });
+    const all = document.getElementById('check-all');
+    if (all) all.checked = false;
+    updateBulkBar();
+}
+
+function bulkSetStatut(statut) {
+    const ids = Array.from(document.querySelectorAll('.pl-check:checked')).map(cb => parseInt(cb.value));
+    if (!ids.length) return;
+    const labels = {traite: 'traiter', ignore: 'ignorer'};
+    if (!confirm(`Marquer ${ids.length} document(s) comme ${labels[statut]} ?`)) return;
+    fetch('/pennylane/items/statut_bulk', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: ids, statut: statut})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) location.reload();
+        else alert(d.message || 'Erreur');
+    }).catch(() => alert('Erreur réseau'));
 }
 
 function setStatutTab(ftab) {
