@@ -284,6 +284,114 @@ def prochaine_echeance_par_nature(d, today):
     resultats.sort(key=lambda x: x[0])
     return resultats[:4]
 
+@app.route('/checklist')
+@login_required
+def checklist():
+    """Checklist métier (inspirée FollowApp) : grille dossiers × obligations.
+    Chaque case = état des tâches du dossier pour cette obligation sur l'année :
+    ✓ terminé, n/m partiel, ✗ en retard, — aucune."""
+    from collections import defaultdict
+
+    annee = request.args.get('annee', type=int) or date.today().year
+    module = request.args.get('module', 'fiscal')
+
+    team_member_ids = None
+    if current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        ids = [current_user.id]
+        for eq in mes_equipes:
+            ids.extend([m.id for m in eq.membres.all()])
+        team_member_ids = list(set(ids))
+    elif current_user.role != 'admin':
+        team_member_ids = [current_user.id]
+
+    dossiers_q = Dossier.query
+    if team_member_ids:
+        dossiers_q = dossiers_q.filter(Dossier.collaborateur_id.in_(team_member_ids))
+    dossiers_list = dossiers_q.order_by(Dossier.numero_dossier).all()
+
+    taches_q = Tache.query.filter(
+        Tache.date_echeance.between(date(annee, 1, 1), date(annee, 12, 31))
+    )
+    if team_member_ids:
+        dossiers_ids = [d.id for d in dossiers_list]
+        taches_q = taches_q.filter(Tache.dossier_id.in_(dossiers_ids))
+    taches_list = taches_q.filter(~Tache.titre.ilike('%Préparation%')).all()
+
+    def _categorie(t):
+        titre = (t.titre or '').lower()
+        if 'tva' in titre:
+            return 'tva', 'TVA'
+        if 'acompte' in titre and 'is' in titre:
+            return 'is_acompte', 'IS Acomptes'
+        if 'is' in titre and ('dépôt' in titre or 'depot' in titre or 'déclaration' in titre or 'declaration' in titre):
+            return 'is_depot', 'IS Déclaration'
+        if 'cfe' in titre:
+            return 'cfe', 'CFE'
+        if 'liasse' in titre:
+            return 'liasse', 'Liasse'
+        if 'paie' in titre or 'bulletin' in titre or 'salaire' in titre:
+            return 'paie', 'Paie'
+        if 'tenue' in titre:
+            return 'tenue', 'Tenue'
+        if 'impot' in titre or 'fiscal' in titre or 'déclaration' in titre or 'declaration' in titre:
+            return 'fiscal_autres', 'Fiscal autre'
+        return 'autres', 'Autre'
+
+    def _module_of_cat(cat):
+        return {'tva': 'fiscal', 'is_acompte': 'fiscal', 'is_depot': 'fiscal', 'cfe': 'fiscal',
+                'liasse': 'fiscal', 'fiscal_autres': 'fiscal',
+                'paie': 'social', 'tenue': 'comptable', 'autres': 'comptable'}.get(cat, 'comptable')
+
+    # colonnes = obligations présentes dans les données (ordre logique)
+    ORDRE_COLS = ['tva', 'is_acompte', 'is_depot', 'cfe', 'liasse', 'fiscal_autres', 'tenue', 'paie', 'autres']
+    cols_presentes = {}
+    # cells[dossier_id][cat] = {'done': n, 'todo': m, 'late': k}
+    cells = defaultdict(lambda: defaultdict(lambda: {'done': 0, 'todo': 0, 'late': 0}))
+    for t in taches_list:
+        cat, label = _categorie(t)
+        cols_presentes[cat] = label
+        c = cells[t.dossier_id][cat]
+        if t.statut == 'terminee':
+            c['done'] += 1
+        else:
+            c['todo'] += 1
+            if t.est_en_retard():
+                c['late'] += 1
+
+    colonnes = [{'cat': cat, 'label': cols_presentes[cat], 'module': _module_of_cat(cat)}
+                for cat in ORDRE_COLS if cat in cols_presentes]
+
+    grille = []
+    for d in dossiers_list:
+        row_cells = []
+        for col in colonnes:
+            c = cells.get(d.id, {}).get(col['cat'])
+            if not c or (c['done'] + c['todo'] == 0):
+                state = 'none'
+            elif c['todo'] == 0:
+                state = 'done'
+            elif c['late'] > 0:
+                state = 'late'
+            else:
+                state = 'partial'
+            row_cells.append({'state': state,
+                              'done': c['done'] if c else 0,
+                              'todo': c['todo'] if c else 0,
+                              'total': (c['done'] + c['todo']) if c else 0})
+        grille.append({'dossier': d, 'cells': row_cells})
+
+    data = {'annee': annee, 'module': module, 'colonnes': colonnes, 'grille': grille}
+    if request.args.get('format') == 'json':
+        from flask import jsonify
+        return jsonify({'annee': annee, 'module': module,
+                        'colonnes': colonnes,
+                        'grille': [{'id': g['dossier'].id, 'numero': g['dossier'].numero_dossier,
+                                    'intitule': g['dossier'].intitule, 'cells': g['cells']} for g in grille]})
+    return render_template('checklist.html', data=data, annee=annee, module_actif=module,
+                           annees=sorted({date.today().year, date.today().year - 1, date.today().year - 2, date.today().year + 1}, reverse=True))
+
+
 @app.route('/calendrier')
 @login_required
 def calendrier():
