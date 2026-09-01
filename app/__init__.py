@@ -455,7 +455,7 @@ try:
                 app.logger.info(f"Pennylane check: {len(tous)} dossier(s) à vérifier")
                 for dossier in tous:
                     try:
-                        get_dossier_pennylane_data(dossier)
+                        get_dossier_pennylane_data(dossier, force_refresh=True)
                     except Exception as e:
                         app.logger.warning(f"Pennylane check dossier {dossier.id}: {e}")
                 app.logger.info("Pennylane check terminé")

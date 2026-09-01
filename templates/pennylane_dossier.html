@@ -67,22 +67,22 @@
     <!-- Ligne 1 : Nature (segments) à gauche · Exercice + Date à droite -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div class="pl-segment" role="group" aria-label="Filtrer par nature">
-            <a class="pl-seg {% if not data.nature_actif %}active{% endif %}" href="?nature=&exercice={{ data.exercice_actif }}">
+            <button type="button" class="pl-seg active" data-nature="" onclick="setNature('')">
                 <i class="bi bi-grid-3x3-gap-fill"></i> Toutes
-                <span class="pl-seg-cnt">{{ data.nb_total }}</span>
-            </a>
-            <a class="pl-seg {% if data.nature_actif == 'vente' %}active{% endif %}" href="?nature=vente&exercice={{ data.exercice_actif }}">
+                <span class="pl-seg-cnt" id="seg-toutes">0</span>
+            </button>
+            <button type="button" class="pl-seg" data-nature="vente" onclick="setNature('vente')">
                 <i class="bi bi-receipt"></i> Ventes
-                <span class="pl-seg-cnt">{{ data.nb_ventes }}</span>
-            </a>
-            <a class="pl-seg {% if data.nature_actif == 'achat' %}active{% endif %}" href="?nature=achat&exercice={{ data.exercice_actif }}">
+                <span class="pl-seg-cnt" id="seg-vente">0</span>
+            </button>
+            <button type="button" class="pl-seg" data-nature="achat" onclick="setNature('achat')">
                 <i class="bi bi-cart"></i> Achats
-                <span class="pl-seg-cnt">{{ data.nb_achats }}</span>
-            </a>
-            <a class="pl-seg {% if data.nature_actif == 'banque' %}active{% endif %}" href="?nature=banque&exercice={{ data.exercice_actif }}">
+                <span class="pl-seg-cnt" id="seg-achat">0</span>
+            </button>
+            <button type="button" class="pl-seg" data-nature="banque" onclick="setNature('banque')">
                 <i class="bi bi-bank"></i> Flux banc.
-                <span class="pl-seg-cnt">{{ data.nb_banque }}</span>
-            </a>
+                <span class="pl-seg-cnt" id="seg-banque">0</span>
+            </button>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="pl-field-label">Exercice</span>
@@ -105,19 +105,23 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 pt-3" style="border-top:1px solid var(--border-color);">
         <div class="pl-tabs" role="group" aria-label="Filtrer par statut">
             <button class="pl-tab active" data-ftab="" onclick="setStatutTab('')">
-                Toutes <span class="pl-tab-cnt" id="cnt-toutes">{{ data.cnt_toutes }}</span>
+                Toutes <span class="pl-tab-cnt" id="cnt-toutes">0</span>
             </button>
             <button class="pl-tab" data-ftab="a_traiter" onclick="setStatutTab('a_traiter')">
                 <span class="pl-dot" style="background:var(--orange-primary);"></span> À traiter
-                <span class="pl-tab-cnt orange" id="cnt-a_traiter">{{ data.cnt_a_traiter }}</span>
+                <span class="pl-tab-cnt orange" id="cnt-a_traiter">0</span>
             </button>
             <button class="pl-tab" data-ftab="pretraite" onclick="setStatutTab('pretraite')">
-                <span class="pl-dot" style="background:#eab308;"></span> Pré-traitées
-                <span class="pl-tab-cnt yellow" id="cnt-pretraite">{{ data.cnt_pretraite }}</span>
+                <span class="pl-dot" style="background:var(--warning);"></span> Pré-traitées
+                <span class="pl-tab-cnt yellow" id="cnt-pretraite">0</span>
             </button>
             <button class="pl-tab" data-ftab="traite" onclick="setStatutTab('traite')">
-                <span class="pl-dot" style="background:#22c55e;"></span> Traitées
-                <span class="pl-tab-cnt green" id="cnt-traite">{{ data.cnt_traite }}</span>
+                <span class="pl-dot" style="background:var(--success);"></span> Traitées
+                <span class="pl-tab-cnt green" id="cnt-traite">0</span>
+            </button>
+            <button class="pl-tab" data-ftab="archive" onclick="setStatutTab('archive')">
+                <span class="pl-dot" style="background:var(--text-muted);"></span> Archivées
+                <span class="pl-tab-cnt muted" id="cnt-archive">0</span>
             </button>
         </div>
         <div id="bulk-bar" class="d-none align-items-center gap-2">
@@ -149,11 +153,11 @@
                 {% for l in data.lignes %}
                 <tr class="pl-row {% if l.nouveau %}pl-item-new{% endif %}"
                     data-nature="{{ l.nature }}"
-                    data-ftab="{{ 'traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter') }}"
+                    data-ftab="{{ 'archive' if l.statut_fr == 'Archivé' else ('traite' if l.statut_fr in ('Traité','Avoir','Annulé') else ('pretraite' if l.statut_fr == 'Prétraité' else 'a_traiter')) }}"
                     data-ajout="{{ l.ajout_date|default('') }}">
                     <td class="pl-th-check"><input type="checkbox" class="pl-check" value="{{ l.db_id }}" onchange="updateBulkBar()"></td>
                     <td>
-                        <span class="pl-status {{ 'ok' if l.statut_fr == 'Traité' else ('pre' if l.statut_fr == 'Prétraité' else ('off' if l.statut_fr == 'Annulé' else 'todo')) }}">
+                        <span class="pl-status {{ 'ok' if l.statut_fr == 'Traité' else ('pre' if l.statut_fr == 'Prétraité' else ('archived' if l.statut_fr == 'Archivé' else ('off' if l.statut_fr == 'Annulé' else 'todo'))) }}">
                             <span class="pl-status-dot"></span>{{ l.statut_fr or '—' }}
                         </span>
                     </td>
@@ -187,14 +191,9 @@
     <div class="pl-table-footer">
         <div class="pl-footer-left">
             <i class="bi bi-collection"></i> <span id="pl-visible-count">{{ data.cnt_toutes }}</span> document(s) affiché(s)
-            {% if data.nature_actif %}<span class="pl-footer-filter"><i class="bi bi-funnel-fill"></i> {{ {'vente':'Ventes','achat':'Achats','banque':'Flux bancaires'}[data.nature_actif] }}</span>{% endif %}
             <span class="pl-footer-filter"><i class="bi bi-calendar3"></i> Exercice {{ data.exercice_actif }}</span>
         </div>
-        <div class="pl-footer-right">
-            <span><span class="pl-dot" style="background:var(--orange-primary);"></span> {{ data.cnt_a_traiter }} à traiter</span>
-            <span><span class="pl-dot" style="background:#eab308;"></span> {{ data.cnt_pretraite }} pré-traitée(s)</span>
-            <span><span class="pl-dot" style="background:#22c55e;"></span> {{ data.cnt_traite }} traitée(s)</span>
-        </div>
+        <div class="pl-footer-right" id="pl-legende"></div>
     </div>
     {% endif %}
 </div>
@@ -218,9 +217,9 @@
 }
 .pl-token-chip {
     font-size: .68rem; font-weight: 600; padding: 2px 9px; border-radius: 20px;
-    background: rgba(34,197,94,.12); color: #22c55e;
+    background: var(--success-bg); color: var(--success);
 }
-.pl-token-chip.muted { background: rgba(148,163,184,.12); color: #94a3b8; }
+.pl-token-chip.muted { background: rgba(148,163,184,.12); color: var(--text-tertiary); }
 
 /* ================= FILTERBAR ================= */
 .pl-filterbar {
@@ -283,7 +282,8 @@
 }
 .pl-tab-cnt.orange { background: rgba(255,140,0,.14); color: var(--orange-primary); }
 .pl-tab-cnt.yellow { background: rgba(234,179,8,.14); color: #eab308; }
-.pl-tab-cnt.green { background: rgba(34,197,94,.14); color: #22c55e; }
+.pl-tab-cnt.green { background: var(--success-bg); color: var(--success); }
+.pl-tab-cnt.muted { background: rgba(148,163,184,.12); color: var(--text-tertiary); }
 .pl-tab.active .pl-tab-cnt { background: rgba(255,140,0,.18); color: var(--orange-primary); }
 
 /* — Bulk — */
@@ -327,10 +327,11 @@
     padding: 3px 11px; border-radius: 20px; font-size: .72rem; font-weight: 600; white-space: nowrap;
 }
 .pl-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.pl-status.ok { background: rgba(34,197,94,.12); color: #22c55e; }
-.pl-status.pre { background: rgba(234,179,8,.14); color: #eab308; }
-.pl-status.todo { background: rgba(255,140,0,.12); color: var(--orange-primary); }
-.pl-status.off { background: rgba(148,163,184,.12); color: #94a3b8; }
+.pl-status.ok { background: var(--success-bg); color: var(--success); }
+.pl-status.pre { background: var(--warning-bg); color: var(--warning); }
+.pl-status.todo { background: var(--orange-subtle); color: var(--orange-primary); }
+.pl-status.off { background: rgba(148,163,184,.12); color: var(--text-secondary); }
+.pl-status.archived { background: rgba(148,163,184,.09); color: var(--text-tertiary); }
 
 /* — Badges nature — */
 .pl-nature {
@@ -338,13 +339,13 @@
     padding: 3px 10px; border-radius: 20px; font-size: .68rem; font-weight: 600; white-space: nowrap;
 }
 .pl-nature i { font-size: .75rem; }
-.pl-nature.vente { background: rgba(255,140,0,.1); color: var(--orange-primary); }
-.pl-nature.achat { background: rgba(234,179,8,.1); color: #eab308; }
-.pl-nature.banque { background: rgba(59,130,246,.1); color: #3b82f6; }
+.pl-nature.vente { background: var(--orange-subtle); color: var(--orange-primary); }
+.pl-nature.achat { background: var(--warning-bg); color: var(--warning); }
+.pl-nature.banque { background: rgba(59,130,246,.1); color: #6ea8fe; }
 .pl-new-chip {
-    font-size: .58rem; font-weight: 800; padding: 1px 6px; border-radius: 12px;
-    background: #22c55e; color: #fff; letter-spacing: .5px;
-    animation: pulse 2s infinite;
+    font-size: .58rem; font-weight: 700; padding: 1px 6px; border-radius: 12px;
+    background: var(--orange-subtle); color: var(--orange-primary);
+    border: 1px solid rgba(255,140,0,.35); letter-spacing: .5px;
 }
 
 .pl-doc-title { font-size: .82rem; font-weight: 500; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -364,9 +365,9 @@
     font-size: .78rem; padding: 3px 7px; border-radius: 7px;
     opacity: .55; transition: all .15s;
 }
-.pl-btns button:hover { opacity: 1; background: rgba(255,255,255,.07); }
-.pl-btns .btn-traite { color: #22c55e; }
-.pl-btns .btn-ignore { color: #94a3b8; }
+.pl-btns button:hover { opacity: 1; background: var(--bg-card-hover); }
+.pl-btns .btn-traite { color: var(--success); }
+.pl-btns .btn-ignore { color: var(--text-tertiary); }
 
 /* — Vide — */
 .pl-empty { text-align: center; padding: 4rem 1rem; }
@@ -390,6 +391,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script type="application/json" id="pl-lines-json">{{ data.lignes_json | safe }}</script>
 <script>
 function setStatut(itemId, statut) {
     fetch(`/pennylane/item/${itemId}/statut`, {
@@ -421,20 +423,62 @@ function plDateMatch(ajoutDateStr, filterDate) {
     return true;
 }
 
-/* Filtre statut : côté client uniquement (nature + exercice gérés serveur → compteurs TOUJOURS justes) */
-function applyPlFilters() {
+/* État des filtres client (nature + statut + date) — tout est instantané, zéro rechargement */
+let plNature = '';
+let PL_LINES = [];
+try { PL_LINES = JSON.parse(document.getElementById('pl-lines-json').textContent || '[]'); } catch (e) { PL_LINES = []; }
+
+function plRecompute() {
     const ftab = document.querySelector('.pl-tab.active')?.dataset?.ftab || '';
     const fdate = document.getElementById('filter-date')?.value || '';
+    // Compteurs par nature (indépendants du filtre statut actif)
+    const perNature = { '': {t:0, a:0, p:0, tr:0, ar:0}, vente: {t:0,a:0,p:0,tr:0,ar:0}, achat: {t:0,a:0,p:0,tr:0,ar:0}, banque: {t:0,a:0,p:0,tr:0,ar:0} };
+    PL_LINES.forEach(l => {
+        const b = perNature[l.n] || perNature[''];
+        b.t++;
+        if (l.f === 'a_traiter') b.a++;
+        else if (l.f === 'pretraite') b.p++;
+        else if (l.f === 'traite') b.tr++;
+        else if (l.f === 'archive') b.ar++;
+    });
+    const seg = perNature[plNature] || perNature[''];
+    document.getElementById('seg-toutes').textContent = seg.t;
+    document.getElementById('seg-vente').textContent = perNature.vente.t;
+    document.getElementById('seg-achat').textContent = perNature.achat.t;
+    document.getElementById('seg-banque').textContent = perNature.banque.t;
+    document.getElementById('cnt-toutes').textContent = seg.t;
+    document.getElementById('cnt-a_traiter').textContent = seg.a;
+    document.getElementById('cnt-pretraite').textContent = seg.p;
+    document.getElementById('cnt-traite').textContent = seg.tr;
+    const ca = document.getElementById('cnt-archive');
+    if (ca) ca.textContent = seg.ar;
+    // Visibilité lignes
     let visibles = 0;
     document.querySelectorAll('.pl-row').forEach(row => {
+        const okNat = !plNature || row.dataset.nature === plNature;
         const okTab = !ftab || row.dataset.ftab === ftab;
         const okDate = plDateMatch(row.dataset.ajout, fdate);
-        const visible = okTab && okDate;
+        const visible = okNat && okTab && okDate;
         row.classList.toggle('hidden-row', !visible);
         if (visible) visibles++;
     });
-    const c = document.getElementById('pl-visible-count');
-    if (c) c.textContent = visibles;
+    const vc = document.getElementById('pl-visible-count');
+    if (vc) vc.textContent = visibles;
+    // Légende footer
+    const leg = document.getElementById('pl-legende');
+    if (leg) leg.innerHTML =
+        `<span><span class="pl-dot" style="background:var(--orange-primary);"></span> ${seg.a} à traiter</span>` +
+        `<span><span class="pl-dot" style="background:var(--warning);"></span> ${seg.p} pré-traitée(s)</span>` +
+        `<span><span class="pl-dot" style="background:var(--success);"></span> ${seg.tr} traitée(s)</span>` +
+        `<span><span class="pl-dot" style="background:var(--text-muted);"></span> ${seg.ar} archivée(s)</span>`;
+}
+
+function applyPlFilters() { plRecompute(); }
+
+function setNature(n) {
+    plNature = n;
+    document.querySelectorAll('.pl-seg').forEach(b => b.classList.toggle('active', b.dataset.nature === n));
+    plRecompute();
 }
 
 function toggleSelectAll(checked) {
@@ -479,11 +523,12 @@ function bulkSetStatut(statut) {
 
 function setStatutTab(ftab) {
     document.querySelectorAll('.pl-tab').forEach(b => b.classList.toggle('active', b.dataset.ftab === ftab));
-    applyPlFilters();
+    plRecompute();
 }
 document.getElementById('filter-date')?.addEventListener('change', applyPlFilters);
 function resetFilters() {
     document.getElementById('filter-date').value = '';
+    setNature('');
     setStatutTab('');
 }
 {% if data.lignes %}

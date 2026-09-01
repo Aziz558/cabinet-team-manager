@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from . import app, db
 from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
 from sqlalchemy import or_
+import json
 import os
 from datetime import date, datetime, timedelta
 
@@ -2548,6 +2549,8 @@ def pennylane_dossier(dossier_id):
 
     def _ftab(sf):
         """Mapping statut Pennylane -> onglet (identique au data-ftab du template)."""
+        if sf == 'Archivé':
+            return 'archive'
         if sf in ('Traité', 'Avoir', 'Annulé'):
             return 'traite'
         if sf == 'Prétraité':
@@ -2566,10 +2569,19 @@ def pennylane_dossier(dossier_id):
     data['cnt_a_traiter'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'a_traiter')
     data['cnt_pretraite'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'pretraite')
     data['cnt_traite'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'traite')
+    data['cnt_archive'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'archive')
     # Compat : compteurs globaux (toutes natures)
     data['nb_a_traiter'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'a_traiter')
     data['nb_traite'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'traite')
     data['nb_pretraite'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'pretraite')
+    data['nb_archive'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'archive')
+
+    # JSON compact de toutes les lignes (filtres client instantanés, zéro rechargement)
+    data['lignes_json'] = json.dumps([{
+        'n': l['nature'], 'f': _ftab(l['statut_fr']),
+        'a': (l['ajout_date'] or '')[:10], 'id': l['db_id'],
+    } for l in lignes_filtrees], separators=(',', ':'))
+
     return render_template('pennylane_dossier.html', dossier=dossier, data=data)
 
 
@@ -2601,6 +2613,11 @@ def pennylane_item_statut(item_db_id):
     item.statut_par_id = current_user.id
     item.statut_date = datetime.utcnow()
     db.session.commit()
+    try:
+        from app.integrations.pennylane import invalidate_dossier_cache
+        invalidate_dossier_cache(item.dossier_id)
+    except Exception:
+        pass
     return jsonify({'ok': True, 'statut': statut})
 
 
@@ -2631,6 +2648,14 @@ def pennylane_items_statut_bulk():
         item.statut_date = datetime.utcnow()
         updated += 1
     db.session.commit()
+    if updated:
+        dossier_ids = {it.dossier_id for it in items}
+        try:
+            from app.integrations.pennylane import invalidate_dossier_cache
+            for did in dossier_ids:
+                invalidate_dossier_cache(did)
+        except Exception:
+            pass
     return jsonify({'ok': True, 'updated': updated})
 
 
@@ -2647,7 +2672,7 @@ def pennylane_check(dossier_id):
             return jsonify({'ok': False, 'message': 'Accès refusé'}), 403
 
     from app.integrations.pennylane import get_dossier_pennylane_data
-    data = get_dossier_pennylane_data(dossier)
+    data = get_dossier_pennylane_data(dossier, force_refresh=True)
     return jsonify({'ok': data.get('ok'),
                     'nouveaux': data.get('nouveaux', []),
                     'resume': data.get('resume_nouveaux', ''),

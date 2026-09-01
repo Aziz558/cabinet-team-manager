@@ -10,9 +10,41 @@ Base URL API   : https://api.pennylane.com
 
 import requests
 import logging
+import time
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Cache mémoire (TTL 5 min) — évite de rappeler l'API Pennylane (~2000 items,
+# plusieurs pages) à chaque changement de filtre/exercice => UI lente.
+# ---------------------------------------------------------------------------
+_CACHE = {}          # {dossier_id: (timestamp, result_dict)}
+_CACHE_TTL = 300     # secondes
+
+
+def _cache_get(dossier_id):
+    ent = _CACHE.get(dossier_id)
+    if not ent:
+        return None
+    ts, res = ent
+    if time.time() - ts > _CACHE_TTL:
+        _CACHE.pop(dossier_id, None)
+        return None
+    return res
+
+
+def _cache_set(dossier_id, res):
+    # garder max 10 dossiers en cache (les plus récents)
+    _CACHE[dossier_id] = (time.time(), res)
+    if len(_CACHE) > 10:
+        for k in sorted(_CACHE, key=lambda k: _CACHE[k][0])[:-10]:
+            _CACHE.pop(k, None)
+
+
+def invalidate_dossier_cache(dossier_id):
+    """Force le rechargement API au prochain accès (ex: après action utilisateur)."""
+    _CACHE.pop(dossier_id, None)
 
 PENNYLANE_API_URL = 'https://app.pennylane.com/api/external'
 PENNYLANE_API_VERSION = 'v2'
@@ -245,6 +277,8 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
     # Le champ API `status` est un statut de cycle de vie (paid/late/archived...).
     # Seule `incomplete` = Prétraité ; TOUT le reste des factures actives = Traité.
     if item_type == 'facture_vente':
+        if status == 'archived':
+            return 'Archivé'
         if status == 'incomplete':
             return 'Prétraité'
         elif status in ('draft', 'to_be_sent', 'sent', 'pending', 'overdue_invoice'):
@@ -255,12 +289,14 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
 
     # Factures fournisseurs (achats) — champ `accounting_status`
     if item_type == 'facture_achat':
-        if status in ('complete', 'paid', 'approved', 'affected'):
+        if status == 'archived':
+            return 'Archivé'
+        elif status in ('complete', 'paid', 'approved', 'affected'):
             return 'Traité'
         elif status in ('validation_needed', 'to_be_processed', 'pending_approval',
                         'draft', 'pending', 'unpaid', 'unaffected'):
             return 'À traiter'
-        elif status in ('cancelled', 'void', 'archived'):
+        elif status in ('cancelled', 'void'):
             return 'Annulé'
         return status.replace('_', ' ').title()
 
@@ -270,7 +306,7 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
 def est_pl_traite(statut_raw: str, item_type: str = 'facture_vente') -> bool:
     """Un item est-il explicitement marqué comme traité côté Pennylane ?"""
     fr = traduire_statut_pl(statut_raw, item_type)
-    return fr in ('Traité', 'Avoir')
+    return fr in ('Traité', 'Avoir', 'Archivé')
 
 
 def est_pl_a_traiter(statut_raw: str, item_type: str = 'facture_vente') -> bool:
@@ -387,9 +423,15 @@ def _notifier_nouveaux_items(dossier, nouveaux: list):
         logger.warning(f'notif nouveaux: {e}')
 
 
-def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
+def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool = False) -> dict:
     from app import db
     from app.models import PennylaneItem
+
+    # Cache : si frais (<5 min) et sans force_refresh, renvoyer directement
+    if not force_refresh and token is None:
+        cached = _cache_get(dossier.id)
+        if cached is not None:
+            return cached
 
     token = token or getattr(dossier, 'pennylane_api_token', None) or get_pennylane_token()
     customer_id = getattr(dossier, 'pennylane_customer_id', None)
@@ -421,8 +463,6 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
         if customer_id and not has_dossier_token:
             invs_params['customer_id'] = customer_id
         invs = _paginated_get('customer_invoices', params=invs_params, token=token)
-        # Exclure les factures archivées (elles ne sont plus actives)
-        invs = [i for i in invs if (i.get('status') or '') != 'archived' and not i.get('archived_at')]
         result['factures'] = [{
             'id': i.get('id'), 'numero': i.get('invoice_number') or i.get('invoice_number_formatted') or '',
             'montant_ht': i.get('total_without_tax'), 'montant_ttc': i.get('total_with_tax'),
@@ -432,7 +472,6 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
 
         try:
             sinvs = _paginated_get('supplier_invoices', params={'limit': 100}, token=token)
-            sinvs = [s for s in sinvs if not s.get('archived_at')]
             result['factures_fournisseurs'] = [{
                 'id': s.get('id'), 'numero': s.get('invoice_number') or '',
                 'montant_ttc': s.get('total_with_tax'),
@@ -447,7 +486,6 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
 
         try:
             txs = _paginated_get('transactions', params={'limit': 100}, token=token)
-            txs = [t for t in txs if not t.get('archived_at')]
             result['transactions'] = [{
                 'id': t.get('id'), 'date': t.get('transaction_date') or t.get('date'),
                 'libelle': t.get('label') or '', 'montant': t.get('amount'),
@@ -494,6 +532,10 @@ def get_dossier_pennylane_data(dossier, token: str = None) -> dict:
         for t in result['transactions']:
             t['statut_traitement'], t['ajout_date'] = _stt('transaction', t['id'], t['statut_fr'])
             t['nouveau'] = t['statut_traitement'] == 'a_traiter'
+
+        # Mise en cache du résultat (skip si erreur)
+        if token is None:
+            _cache_set(dossier.id, result)
     except Exception as e:
         logger.error(f'get_dossier_pennylane_data: {e}')
         result['ok'] = False
