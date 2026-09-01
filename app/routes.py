@@ -2567,7 +2567,33 @@ def pennylane_debug_count(dossier_id):
 
     out = {}
     # VENTES : toutes, SANS filtre archived
-    invs = _paginated_get('customer_invoices', params={'limit': 100}, token=token)
+    # Trace pagination page par page
+    import requests as _rq
+    from app.integrations.pennylane import _api_url, _headers
+    pages_trace = []
+    cursor = None
+    invs = []
+    for p in range(15):
+        params_v = {'limit': 100}
+        if cursor:
+            params_v['cursor'] = cursor
+        rv = _rq.get(_api_url('customer_invoices'), headers=_headers(token), params=params_v, timeout=30)
+        if rv.status_code != 200:
+            pages_trace.append(f'p{p}: HTTP {rv.status_code}')
+            break
+        dv = rv.json()
+        vk = next((k for k, v in dv.items() if isinstance(v, list)), None)
+        items = dv.get(vk, []) if vk else []
+        invs.extend(items)
+        cursor = (dv.get('pagination') or {}).get('next_cursor') or dv.get('next_cursor')
+        if dv.get('has_more') is False:
+            cursor = None
+        pages_trace.append(f'p{p}: {len(items)} items, has_more={dv.get("has_more")}, cursor={bool(cursor)}')
+        if not cursor:
+            break
+    out['ventes_pages'] = pages_trace
+    if False:
+        invs = _paginated_get('customer_invoices', params={'limit': 100}, token=token)
     v_by_year = {}
     v_status_year = {}
     for i in invs:
