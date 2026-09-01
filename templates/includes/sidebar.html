@@ -20,6 +20,10 @@
             <i class="bi bi-graph-up-arrow"></i>
             <span>Analytics</span>
         </a>
+        <a href="{{ url_for('calendrier') }}" class="sidebar-nav-item {% if request.endpoint == 'calendrier' %}active{% endif %}">
+            <i class="bi bi-calendar3-week"></i>
+            <span>Calendrier</span>
+        </a>
         <a href="{{ url_for('taches_aujourdhui') }}" class="sidebar-nav-item {% if request.endpoint == 'taches_aujourdhui' %}active{% endif %}">
             <i class="bi bi-calendar-check"></i>
             <span>Tâches du jour</span>

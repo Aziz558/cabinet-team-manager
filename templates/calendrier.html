@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Calendrier prévisionnel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cal-tab { border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-tertiary);
+        border-radius: 20px; padding: 6px 16px; font-size: 0.85rem; font-weight: 500; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; text-decoration: none; }
+    .cal-tab:hover { color: var(--text-primary); border-color: var(--orange-primary); }
+    .cal-tab.active { background: var(--orange-primary); border-color: var(--orange-primary); color: #fff; }
+    .cal-tab .count { background: rgba(255,255,255,0.12); border-radius: 10px; padding: 0 7px; font-size: 0.75rem; }
+    .cal-tab:not(.active) .count { background: var(--border-color); color: var(--text-tertiary); }
+    .cal-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .cal-table th { text-align: left; padding: 10px 14px; color: var(--text-tertiary); font-weight: 600;
+        border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+    .cal-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); white-space: nowrap; }
+    .cal-table tbody tr { cursor: pointer; transition: background 0.1s ease; }
+    .cal-table tbody tr:hover { background: var(--bg-card-hover); }
+    .cal-badge-reste { background: rgba(255,140,0,0.12); color: var(--orange-primary); }
+    .cal-badge-fait { background: rgba(76,175,80,0.12); color: var(--success); }
+    .cal-badge-retard { background: rgba(239,83,80,0.12); color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h4 class="mb-0"><i class="bi bi-calendar3 me-2" style="color: var(--orange-primary);"></i>Calendrier prévisionnel {{ annee }}</h4>
+    <select id="anneeSelect" class="select-premium" style="width:auto;" onchange="location.href='/calendrier?annee='+this.value;">
+        {% for a in annees %}
+        <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- Onglets par module (compteurs) -->
+<div class="d-flex gap-2 flex-wrap mb-3" id="calTabs">
+    <button class="cal-tab active" data-mod="tous">Tous <span class="count">{{ data.compteurs.tous }}</span></button>
+    <button class="cal-tab" data-mod="fiscal"><i class="bi bi-bank"></i> Fiscal <span class="count">{{ data.compteurs.fiscal }}</span></button>
+    <button class="cal-tab" data-mod="comptable"><i class="bi bi-journal-check"></i> Comptable <span class="count">{{ data.compteurs.comptable }}</span></button>
+    <button class="cal-tab" data-mod="social"><i class="bi bi-people"></i> Social <span class="count">{{ data.compteurs.social }}</span></button>
+</div>
+
+<div class="card-premium">
+    <div class="card-body-premium p-0">
+        <div style="overflow-x: auto;">
+            <table class="cal-table">
+                <thead>
+                    <tr>
+                        <th>Catégorie</th>
+                        <th>Reste à faire</th>
+                        <th>Fait</th>
+                        <th>Prochaine échéance</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="calBody">
+                    {% for l in data.lignes %}
+                    <tr data-mod="{{ l.module }}" onclick="location.href='{{ url_for('taches') }}'">
+                        <td><strong>{{ l.label }}</strong></td>
+                        <td>{% if l.reste %}<span class="badge cal-badge-reste">{{ l.reste }}</span>{% else %}<span class="text-tertiary">—</span>{% endif %}</td>
+                        <td>{% if l.fait %}<span class="badge cal-badge-fait">{{ l.fait }}</span>{% else %}<span class="text-tertiary">—</span>{% endif %}</td>
+                        <td>{% if l.prochaine != '—' %}<i class="bi bi-calendar-event me-1 text-tertiary"></i>{{ l.prochaine }}{% else %}<span class="text-tertiary">—</span>{% endif %}</td>
+                        <td class="text-tertiary">{{ l.total }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-tertiary py-4">Aucune obligation en {{ annee }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    document.querySelectorAll('#calTabs .cal-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#calTabs .cal-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            var mod = btn.dataset.mod;
+            document.querySelectorAll('#calBody tr[data-mod]').forEach(function(tr) {
+                tr.style.display = (mod === 'tous' || tr.dataset.mod === mod) ? '' : 'none';
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}
