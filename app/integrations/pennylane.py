@@ -21,17 +21,50 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _CACHE = {}          # {dossier_id: (timestamp, result_dict)}
 _CACHE_TTL = 300     # secondes
+_BG_REFRESH = set()  # dossiers en cours de rafraîchissement arrière-plan
 
 
 def _cache_get(dossier_id):
+    """Cache frais uniquement (<= TTL)."""
     ent = _CACHE.get(dossier_id)
     if not ent:
         return None
     ts, res = ent
     if time.time() - ts > _CACHE_TTL:
-        _CACHE.pop(dossier_id, None)
         return None
     return res
+
+
+def _cache_get_stale(dossier_id):
+    """Cache même expiré (stale-while-revalidate) — renvoie (result, is_fresh)."""
+    ent = _CACHE.get(dossier_id)
+    if not ent:
+        return None, False
+    ts, res = ent
+    return res, (time.time() - ts <= _CACHE_TTL)
+
+
+def _refresh_in_background(dossier_id):
+    """Lance (au plus 1 par dossier) un thread qui rafraîchit le cache via l'API."""
+    if dossier_id in _BG_REFRESH:
+        return
+    _BG_REFRESH.add(dossier_id)
+
+    def _work():
+        from app import app as flask_app
+        from app.models import Dossier as _D
+        try:
+            with flask_app.app_context():
+                d = _D.query.get(dossier_id)
+                if d is not None:
+                    get_dossier_pennylane_data(d, force_refresh=True)
+        except Exception as e:
+            logger.warning(f'bg refresh {dossier_id}: {e}')
+        finally:
+            _BG_REFRESH.discard(dossier_id)
+
+    import threading
+    threading.Thread(target=_work, daemon=True).start()
 
 
 def _cache_set(dossier_id, res):
@@ -427,10 +460,13 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
     from app import db
     from app.models import PennylaneItem
 
-    # Cache : si frais (<5 min) et sans force_refresh, renvoyer directement
+    # Stale-while-revalidate : servir le cache IMMÉDIATEMENT (même expiré),
+    # rafraîchir en arrière-plan si expiré. Page toujours rapide.
     if not force_refresh and token is None:
-        cached = _cache_get(dossier.id)
+        cached, fresh = _cache_get_stale(dossier.id)
         if cached is not None:
+            if not fresh:
+                _refresh_in_background(dossier.id)
             return cached
 
     token = token or getattr(dossier, 'pennylane_api_token', None) or get_pennylane_token()
