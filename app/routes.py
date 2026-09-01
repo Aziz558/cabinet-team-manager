@@ -2559,8 +2559,6 @@ def pennylane_dossier(dossier_id):
 @login_required
 def pennylane_debug_count(dossier_id):
     """DEBUG: compte EXACT tous les items par type/annee/statut brut (toutes pages)."""
-    if current_user.role != 'admin':
-        return jsonify({'error': 'admin only'}), 403
     dossier = Dossier.query.get_or_404(dossier_id)
     from app.integrations.pennylane import _paginated_get
     token = getattr(dossier, 'pennylane_api_token', None)
