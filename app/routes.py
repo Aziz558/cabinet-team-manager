@@ -2592,6 +2592,19 @@ def pennylane_debug_count(dossier_id):
         if not cursor:
             break
     out['ventes_pages'] = pages_trace
+    # Métadonnées page 0
+    r0 = _rq.get(_api_url('customer_invoices'), headers=_headers(token), params={'limit': 1}, timeout=30)
+    d0 = r0.json() if r0.status_code == 200 else {}
+    out['ventes_meta'] = {k: v for k, v in d0.items() if not isinstance(v, list)}
+    # Test filtre date 2026 explicite
+    invs_2026 = _paginated_get('customer_invoices', params={'limit': 100, 'date_from': '2026-01-01', 'date_to': '2026-12-31'}, token=token)
+    out['ventes_2026_datefilter_total'] = len(invs_2026)
+    # Distribution invoice_type sur toutes
+    types = {}
+    for i in invs:
+        t = str(i.get('invoice_type'))
+        types[t] = types.get(t, 0) + 1
+    out['ventes_invoice_type'] = types
     if False:
         invs = _paginated_get('customer_invoices', params={'limit': 100}, token=token)
     v_by_year = {}
