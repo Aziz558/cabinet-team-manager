@@ -285,6 +285,60 @@ def send_daily_digest_email(user, tasks, date_str=''):
     )
 
 
+def send_pennylane_new_docs_email_brevo(dossier, nouveaux: list, destinataire_id: int) -> bool:
+    """Email « nouveaux documents Pennylane » (ventes/achats/transactions détectées).
+
+    Envoyé au manager + collaborateur du dossier dès détection (cron horaire
+    verifier_nouveaux_pennylane + bouton Vérifier maintenant).
+    """
+    from app.models import User
+
+    user = User.query.get(destinataire_id)
+    if not user or not user.email:
+        return False
+
+    n_ventes = sum(1 for n in nouveaux if n['type'] == 'facture_vente')
+    n_achats = sum(1 for n in nouveaux if n['type'] == 'facture_achat')
+    n_tx = sum(1 for n in nouveaux if n['type'] == 'transaction')
+    parts = []
+    if n_ventes: parts.append(f"{n_ventes} facture(s) de vente")
+    if n_achats: parts.append(f"{n_achats} facture(s) d'achat")
+    if n_tx: parts.append(f"{n_tx} transaction(s) bancaire(s)")
+    resume = ' + '.join(parts) or f"{len(nouveaux)} document(s)"
+
+    # Détail : max 8 lignes dans l'email pour rester lisible
+    rows_detail = []
+    for n in nouveaux[:8]:
+        type_label = {'facture_vente': 'Vente', 'facture_achat': 'Achat', 'transaction': 'Banque'}.get(n['type'], n['type'])
+        montant = f"{n['montant']:,.2f}".replace(',', ' ') + ' €' if n.get('montant') is not None else '—'
+        rows_detail.append((type_label, f"{n.get('reference') or '(sans référence)'} — {montant}"))
+
+    subject = f"🆕 Pennylane {dossier.numero_dossier} — {resume} nouveau(x)"
+
+    template = _email_layout(
+        header_title="Nouveaux documents Pennylane",
+        header_emoji="🆕",
+        intro_html=(
+            f'<p style="color:#e0e0e0;font-size:15px;margin:0 0 4px 0;">Bonjour <strong style="color:#FF8C00;">{user.prenom} {user.nom}</strong>,</p>'
+            f'<p style="color:#9a9a9a;font-size:13px;margin:0;">'
+            f'{len(nouveaux)} nouveau(x) document(s) viennent d\'être détecté(s) sur Pennylane '
+            f'pour le dossier <strong style="color:#FF8C00;">{dossier.numero_dossier}</strong> :</p>'
+        ),
+        rows=rows_detail,
+        cta_url=f"{APP_URL}/pennylane/dossier/{dossier.id}",
+        cta_text='Voir dans l\'application',
+        footer_note="Vous recevez cet email car vous êtes manager ou collaborateur de ce dossier.",
+    )
+
+    return send_email_via_brevo_api(
+        to_email=user.email,
+        subject=subject,
+        body=f"Bonjour {user.prenom}, {resume} nouveau(x) document(s) Pennylane sur le dossier {dossier.numero_dossier}. "
+             f"Consultez : {APP_URL}/pennylane/dossier/{dossier.id}",
+        html_content=template,
+    )
+
+
 def send_email_notification_fallback(to_email, subject, body, html_content=None):
     """Fallback to SMTP if Brevo is not configured."""
     try:

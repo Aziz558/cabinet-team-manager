@@ -335,8 +335,11 @@ def _to_float(v):
 
 
 def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str:
-    """Traduit le statut brut Pennylane en français (Traité / Prétraité / À traiter).
-    
+    """Traduit le statut brut Pennylane en français (Traité / À traiter / Archivé).
+
+    3 statuts uniquement (décision métier 2026-09) : À traiter, Traité, Archivé.
+    L'ancien statut "Pré-traité" est supprimé et compté comme "À traiter".
+
     Ventes (customer_invoices) : champ `status`
     Achats (supplier_invoices) : champ `accounting_status`
     Banque (transactions)       : inféré (attachment_required → unaffected)
@@ -349,7 +352,7 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
     if item_type == 'transaction':
         mapping = {
             'unaffected': 'À traiter',
-            'partially_affected': 'Prétraité',
+            'partially_affected': 'À traiter',
             'affected': 'Traité',
             'marked_as_unexpected': 'Marqué',
         }
@@ -358,12 +361,12 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
     # Factures clients (ventes)
     # IMPORTANT : sur Pennylane, le statut "Traitée" = facture comptabilisée (ledger_entry).
     # Le champ API `status` est un statut de cycle de vie (paid/late/archived...).
-    # Seule `incomplete` = Prétraité ; TOUT le reste des factures actives = Traité.
+    # Seule `incomplete` = À traiter ; TOUT le reste des factures actives = Traité.
     if item_type == 'facture_vente':
         if status == 'archived':
             return 'Archivé'
         if status == 'incomplete':
-            return 'Prétraité'
+            return 'À traiter'
         elif status in ('draft', 'to_be_sent', 'sent', 'pending', 'overdue_invoice'):
             return 'À traiter'
         # paid, late, upcoming, credit_note, partially_paid, completed, cancelled, void, refunded
@@ -394,11 +397,11 @@ def est_pl_traite(statut_raw: str, item_type: str = 'facture_vente') -> bool:
 
 def est_pl_a_traiter(statut_raw: str, item_type: str = 'facture_vente') -> bool:
     """Un item nécessite-t-il une action ?
-    Retourne True pour À traiter, Prétraité, ou statut inconnu (sécurité : on prévient par défaut)."""
+    Retourne True pour À traiter (y compris ex-Prétraité) ou statut inconnu (sécurité : on prévient par défaut)."""
     fr = traduire_statut_pl(statut_raw, item_type)
     if fr == '—':
         return True  # statut inconnu = à traiter par sécurité
-    return fr in ('À traiter', 'Prétraité')
+    return fr == 'À traiter'
 
 def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
     """Compare les items reçus avec la table pennylane_items.
@@ -477,15 +480,22 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
 
 
 def _notifier_nouveaux_items(dossier, nouveaux: list):
-    """Crée une notification in-app pour manager + collaborateur du dossier."""
+    """Notifie manager + collaborateur du dossier : notification in-app + EMAIL.
+
+    L'email (Brevo) est un bonus : s'il échoue, la notification in-app reste
+    créée et le flux de synchronisation n'est jamais interrompu.
+    """
     if not nouveaux:
         return
     from app import db
     from app.models import Notification
+    eq = getattr(dossier, 'equipe', None)
+    manager = getattr(eq, 'manager', None) if eq else None
+    collab = getattr(dossier, 'collaborateur', None)
+    destinataires = set()
+    if manager: destinataires.add(manager.id)
+    if collab: destinataires.add(collab.id)
     try:
-        eq = getattr(dossier, 'equipe', None)
-        manager = getattr(eq, 'manager', None) if eq else None
-        collab = getattr(dossier, 'collaborateur', None)
         n_ventes = sum(1 for n in nouveaux if n['type'] == 'facture_vente')
         n_achats = sum(1 for n in nouveaux if n['type'] == 'facture_achat')
         n_tx = sum(1 for n in nouveaux if n['type'] == 'transaction')
@@ -494,9 +504,6 @@ def _notifier_nouveaux_items(dossier, nouveaux: list):
         if n_achats: parts.append(f"{n_achats} achat(s)")
         if n_tx: parts.append(f"{n_tx} transaction(s)")
         resume = ' + '.join(parts)
-        destinataires = set()
-        if manager: destinataires.add(manager.id)
-        if collab: destinataires.add(collab.id)
         for uid in destinataires:
             n = Notification(user_id=uid, message=f"🆕 Pennylane — {dossier.numero_dossier} : {resume} nouveau(x) à traiter", type_notification='pennylane')
             db.session.add(n)
@@ -504,6 +511,17 @@ def _notifier_nouveaux_items(dossier, nouveaux: list):
     except Exception as e:
         db.session.rollback()
         logger.warning(f'notif nouveaux: {e}')
+
+    # Email Brevo (best-effort, jamais bloquant)
+    try:
+        from app.integrations.brevo import send_pennylane_new_docs_email_brevo
+        for uid in destinataires:
+            try:
+                send_pennylane_new_docs_email_brevo(dossier, nouveaux, uid)
+            except Exception as e:
+                logger.warning(f'email nouveauxPennylane user {uid}: {e}')
+    except Exception as e:
+        logger.warning(f'email nouveaux (import brevo): {e}')
 
 
 def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool = False) -> dict:

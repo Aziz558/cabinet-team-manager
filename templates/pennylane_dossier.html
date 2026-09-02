@@ -111,10 +111,6 @@
                 <span class="pl-dot" style="background:var(--orange-primary);"></span> À traiter
                 <span class="pl-tab-cnt orange" id="cnt-a_traiter">0</span>
             </button>
-            <button class="pl-tab" data-ftab="pretraite" onclick="setStatutTab('pretraite')">
-                <span class="pl-dot" style="background:var(--warning);"></span> Pré-traitées
-                <span class="pl-tab-cnt yellow" id="cnt-pretraite">0</span>
-            </button>
             <button class="pl-tab" data-ftab="traite" onclick="setStatutTab('traite')">
                 <span class="pl-dot" style="background:var(--success);"></span> Traitées
                 <span class="pl-tab-cnt green" id="cnt-traite">0</span>
@@ -398,8 +394,8 @@ let plNature = '';
 let PL_LINES = [];
 try { PL_LINES = JSON.parse(document.getElementById('pl-lines-json').textContent || '[]'); } catch (e) { PL_LINES = []; }
 
-const PL_FTAB_LABEL = {a_traiter: 'À traiter', pretraite: 'Prétraité', traite: 'Traité', archive: 'Archivé'};
-const PL_FTAB_CLS = {a_traiter: 'todo', pretraite: 'pre', traite: 'ok', archive: 'archived'};
+const PL_FTAB_LABEL = {a_traiter: 'À traiter', pretraite: 'À traiter', traite: 'Traité', archive: 'Archivé'};
+const PL_FTAB_CLS = {a_traiter: 'todo', pretraite: 'todo', traite: 'ok', archive: 'archived'};
 const PL_NATURE_LABEL = {vente: 'Vente', achat: 'Achat', banque: 'Flux bancaire'};
 const PL_NATURE_ICON = {vente: 'bi-receipt', achat: 'bi-cart', banque: 'bi-bank'};
 
@@ -441,7 +437,9 @@ function plApplyFiltersOnly() {
     let visibles = 0;
     document.querySelectorAll('.pl-row').forEach(row => {
         const okNat = !plNature || row.dataset.nature === plNature;
-        const okTab = !ftab || row.dataset.ftab === ftab;
+        // Pré-traité fusionné dans À traiter (3 statuts : à traiter / traité / archivé)
+        const rowFtab = row.dataset.ftab;
+        const okTab = !ftab || rowFtab === ftab || (ftab === 'a_traiter' && rowFtab === 'pretraite');
         const okDate = plDateMatch(row.dataset.ajout, fdate);
         const visible = okNat && okTab && okDate;
         row.classList.toggle('hidden-row', !visible);
@@ -458,10 +456,16 @@ function plRecompute() {
     const fdate = document.getElementById('filter-date')?.value || '';
     // Compteurs par nature (indépendants du filtre statut actif)
     const perNature = { '': {t:0,a:0,p:0,tr:0,ar:0}, vente: {t:0,a:0,p:0,tr:0,ar:0}, achat: {t:0,a:0,p:0,tr:0,ar:0}, banque: {t:0,a:0,p:0,tr:0,ar:0} };
+    // FIX compteurs : bucket TOUTES doit être rempli sur chaque ligne (sinon compteurs statut restent à 0)
     PL_LINES.forEach(l => {
-        const b = perNature[l.n] || perNature[''];
-        b.t++;
-        if (l.f === 'a_traiter') b.a++; else if (l.f === 'pretraite') b.p++; else if (l.f === 'traite') b.tr++; else if (l.f === 'archive') b.ar++;
+        perNature[''].t++;
+        if (l.n === 'vente') perNature.vente.t++;
+        else if (l.n === 'achat') perNature.achat.t++;
+        else if (l.n === 'banque') perNature.banque.t++;
+        const key = l.n in perNature ? l.n : '';
+        const b = perNature[key];
+        b.t += 0; // (compteur nature déjà incrémenté ci-dessus)
+        if (l.f === 'a_traiter' || l.f === 'pretraite') b.a++; else if (l.f === 'traite') b.tr++; else if (l.f === 'archive') b.ar++;
     });
     const seg = perNature[plNature] || perNature[''];
     document.getElementById('seg-toutes').textContent = seg.t;
@@ -470,7 +474,6 @@ function plRecompute() {
     document.getElementById('seg-banque').textContent = perNature.banque.t;
     document.getElementById('cnt-toutes').textContent = seg.t;
     document.getElementById('cnt-a_traiter').textContent = seg.a;
-    document.getElementById('cnt-pretraite').textContent = seg.p;
     document.getElementById('cnt-traite').textContent = seg.tr;
     const ca = document.getElementById('cnt-archive');
     if (ca) ca.textContent = seg.ar;
@@ -487,7 +490,6 @@ function plRecompute() {
     const leg = document.getElementById('pl-legende');
     if (leg) leg.innerHTML =
         `<span><span class="pl-dot" style="background:var(--orange-primary);"></span> ${seg.a} à traiter</span>` +
-        `<span><span class="pl-dot" style="background:var(--warning);"></span> ${seg.p} pré-traitée(s)</span>` +
         `<span><span class="pl-dot" style="background:var(--success);"></span> ${seg.tr} traitée(s)</span>` +
         `<span><span class="pl-dot" style="background:var(--text-muted);"></span> ${seg.ar} archivée(s)</span>`;
 }

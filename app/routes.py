@@ -3096,13 +3096,13 @@ def pennylane_dossier(dossier_id):
     lignes_affichees = [l for l in lignes_filtrees if not nature_filtre or l['nature'] == nature_filtre]
 
     def _ftab(sf):
-        """Mapping statut Pennylane -> onglet (identique au data-ftab du template)."""
+        """Mapping statut Pennylane -> onglet (identique au data-ftab du template).
+        3 statuts : À traiter (ex-Prétraité fusionné), Traité, Archivé."""
         if sf == 'Archivé':
             return 'archive'
         if sf in ('Traité', 'Avoir', 'Annulé'):
             return 'traite'
-        if sf == 'Prétraité':
-            return 'pretraite'
+        # 'Prétraité' (anciennes chaînes en cache DB) fusionné dans À traiter
         return 'a_traiter'
 
     data['lignes'] = lignes_affichees
@@ -3114,14 +3114,12 @@ def pennylane_dossier(dossier_id):
     data['nb_banque'] = sum(1 for l in lignes_filtrees if l['nature'] == 'banque')
     # Compteurs d'onglets : dérivés du statut PENNYLANE (statut_fr), même mapping que data-ftab
     data['cnt_toutes'] = len(lignes_affichees)
-    data['cnt_a_traiter'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'a_traiter')
-    data['cnt_pretraite'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'pretraite')
+    data['cnt_a_traiter'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) in ('a_traiter', 'pretraite'))
     data['cnt_traite'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'traite')
     data['cnt_archive'] = sum(1 for l in lignes_affichees if _ftab(l['statut_fr']) == 'archive')
-    # Compat : compteurs globaux (toutes natures)
-    data['nb_a_traiter'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'a_traiter')
+
+    data['nb_a_traiter'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) in ('a_traiter', 'pretraite'))
     data['nb_traite'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'traite')
-    data['nb_pretraite'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'pretraite')
     data['nb_archive'] = sum(1 for l in lignes_filtrees if _ftab(l['statut_fr']) == 'archive')
 
     # JSON compact de toutes les lignes (rendu + filtres 100% client, zéro rechargement)
