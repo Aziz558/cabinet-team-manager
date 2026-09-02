@@ -443,6 +443,7 @@ function plApplyFiltersOnly() {
         const okDate = plDateMatch(row.dataset.ajout, fdate);
         const visible = okNat && okTab && okDate;
         row.classList.toggle('hidden-row', !visible);
+        row.style.display = visible ? '' : 'none';
         if (visible) visibles++;
     });
     const vc = document.getElementById('pl-visible-count');
