@@ -397,12 +397,29 @@ def checklist():
                 ~Tache.titre.ilike('%Préparation%')
             ).all()
 
+        def _periode_depuis_deadline(dt, freq):
+            """Tâche deadline d'échéance dt -> période déclarée (année, mois).
+            Mensuel : échéance 24/08 => déclaration de JUILLET (07) de la même année.
+            Trimestriel : échéance 24/04 => CA3 du T1 (période janvier) ; 24/01/N+1 => T4/N."""
+            y, m = dt.year, dt.month - 1
+            if m == 0:
+                y, m = y - 1, 12
+            if freq == 'trimestriel':
+                m = ((m - 1) // 3) * 3 + 1
+            return y, m
+
         seed_map = {}  # (dossier_id, mois, kind) -> (declare, paye)
         if taxe in ('tva_mensuel', 'tva_trimestriel'):
             kw = 'Dépôt TVA mensuel' if taxe == 'tva_mensuel' else 'Dépôt TVA trimestriel'
             for t in _taches_deadline([kw]):
-                if t.date_echeance and t.date_echeance.year == annee and t.statut == 'terminee':
-                    seed_map[(t.dossier_id, t.date_echeance.month, 'depot')] = (True, False)
+                if not (t.date_echeance and t.statut == 'terminee'):
+                    continue
+                if not (date(annee, 1, 1) <= t.date_echeance <= date(annee + 1, 1, 31)):
+                    continue
+                py, pm = _periode_depuis_deadline(
+                    t.date_echeance, 'mensuel' if taxe == 'tva_mensuel' else 'trimestriel')
+                if py == annee:
+                    seed_map[(t.dossier_id, pm, 'depot')] = (True, False)
         elif taxe == 'tva_ca12':
             for t in _taches_deadline(['Acompte TVA annuel']):
                 if t.date_echeance and t.date_echeance.year == annee and t.statut == 'terminee':
@@ -450,19 +467,25 @@ def checklist():
             jour_lim = d.date_limite_declaration.day if d.date_limite_declaration else 15
             cols = []
             if taxe == 'tva_mensuel':
+                # Colonne M = déclaration du mois M ; son échéance tombe le mois SUIVANT
+                # (ex. déclaration de juillet 07 -> dépôt 24/08, report lundi si week-end)
                 for m in range(1, 13):
+                    ay, am = (annee, m + 1) if m < 12 else (annee + 1, 1)
                     try:
-                        jdt = _nwd(date(annee, m, jour_lim))
+                        jdt = _nwd(date(ay, am, jour_lim))
                     except ValueError:
-                        jdt = _nwd(date(annee, m, 15))
+                        jdt = _nwd(date(ay, am, 15))
                     cols.append(_col(d, m, 'depot', True, jdt))
             elif taxe == 'tva_trimestriel':
+                # Colonne M = 1er mois du TRIMESTRE déclaré ; échéance 3 mois plus tard
+                # (ex. CA3 du T1 janv-mars -> dépôt 24/04 ; CA3 du T4 oct-déc -> dépôt 24/01/N+1)
                 for m in range(1, 13):
                     if m in (1, 4, 7, 10):
+                        ay, am = (annee, m + 3) if m <= 9 else (annee + 1, m - 9)
                         try:
-                            jdt = _nwd(date(annee, m, jour_lim))
+                            jdt = _nwd(date(ay, am, jour_lim))
                         except ValueError:
-                            jdt = _nwd(date(annee, m, 15))
+                            jdt = _nwd(date(ay, am, 15))
                         cols.append(_col(d, m, 'depot', True, jdt))
                     else:
                         cols.append(_col(d, m, 'depot', False, None))

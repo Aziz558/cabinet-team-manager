@@ -160,7 +160,7 @@
 
 <div class="card-premium">
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — cliquez sur un symbole pour changer son statut</h6>
+        <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — chaque colonne = la période déclarée (ex. juillet → dépôt 24 août) · cliquez sur un symbole pour changer son statut</h6>
         <div class="cl-legend">
             <span><span class="sym sym-st-solde"><i class="bi bi-check-lg"></i></span> déclarée &amp; payée</span>
             <span><span class="sym sym-st-declare"><i class="bi bi-circle-half"></i></span> déclarée</span>
@@ -196,7 +196,7 @@
                         </td>
                         <td class="text-tertiary" style="font-size:0.72rem;">{{ g.regime | upper }}</td>
                         <td class="text-tertiary" style="font-size:0.72rem;">
-                            {% if taxe in ('tva_mensuel', 'tva_trimestriel') %}le {{ oblig_cols[0].jour if oblig_cols else 15 }} de chaque mois d'échéance
+                            {% if taxe in ('tva_mensuel', 'tva_trimestriel') %}le {{ oblig_cols[0].jour if oblig_cols else 15 }} du mois suivant
                             {% elif taxe == 'tva_ca12' %}acomptes juil. + déc. · décl. 15 mai
                             {% elif taxe == 'is' %}15/03 · 15/06 · 15/09 · 15/12 + 15/05
                             {% elif taxe == 'cfe' %}15 décembre
