@@ -464,8 +464,14 @@ function plRecompute() {
         else if (l.n === 'banque') perNature.banque.t++;
         const key = l.n in perNature ? l.n : '';
         const b = perNature[key];
-        b.t += 0; // (compteur nature déjà incrémenté ci-dessus)
-        if (l.f === 'a_traiter' || l.f === 'pretraite') b.a++; else if (l.f === 'traite') b.tr++; else if (l.f === 'archive') b.ar++;
+        const bt = perNature['']; // bucket TOUTES : cumul toutes natures
+        let s = null;
+        if (l.f === 'a_traiter' || l.f === 'pretraite') s = 'a';
+        else if (l.f === 'traite') s = 'tr';
+        else if (l.f === 'archive') s = 'ar';
+        // statuts : incrémenter le bucket nature sélectionnable + le bucket TOUTES
+        // (les compteurs statut affichent perNature[plNature] — 'TOUTES' doit cumuler)
+        if (s) { b[s]++; if (b !== bt) bt[s]++; }
     });
     const seg = perNature[plNature] || perNature[''];
     document.getElementById('seg-toutes').textContent = seg.t;
