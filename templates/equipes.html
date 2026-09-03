@@ -11,6 +11,42 @@
     {% endif %}
 </div>
 
+<!-- KPI band Équipes -->
+{% set ens = namespace(total=0, membres=0, avec_mgr=0, emails=0) %}
+{% for e in equipes %}
+    {% set ens.total = ens.total + 1 %}
+    {% set ens.membres = ens.membres + e.nb_membres() %}
+    {% if e.manager %}{% set ens.avec_mgr = ens.avec_mgr + 1 %}{% endif %}
+    {% if e.equipe_email %}{% set ens.emails = ens.emails + 1 %}{% endif %}
+{% endfor %}
+<div class="kpi-band animate-fade-in-up">
+    <div class="kpi-chip" style="--accent: var(--info);">
+        <div class="kpi-label"><i class="bi bi-diagram-3"></i> Équipes</div>
+        <div class="kpi-value">{{ ens.total }}</div>
+        <div class="kpi-sub">structures actives</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--success);">
+        <div class="kpi-label"><i class="bi bi-people"></i> Membres rattachés</div>
+        <div class="kpi-value">{{ ens.membres }}</div>
+        <div class="kpi-sub">toutes équipes confondues</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--orange-primary);">
+        <div class="kpi-label"><i class="bi bi-person-gear"></i> Avec responsable</div>
+        <div class="kpi-value">{{ ens.avec_mgr }}</div>
+        <div class="kpi-sub">{{ (ens.avec_mgr / ens.total * 100)|round(0) if ens.total else 0 }}% encadrées</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--danger);">
+        <div class="kpi-label"><i class="bi bi-person-x"></i> Sans responsable</div>
+        <div class="kpi-value">{{ ens.total - ens.avec_mgr }}</div>
+        <div class="kpi-sub">à désigner</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--warning);">
+        <div class="kpi-label"><i class="bi bi-envelope"></i> Emails dédiés</div>
+        <div class="kpi-value">{{ ens.emails }}</div>
+        <div class="kpi-sub">boîtes d'équipe</div>
+    </div>
+</div>
+
 <div class="row equipe-cards-container">
     {% for e in equipes %}
     <div class="col-md-6 col-lg-4 mb-4 animate-fade-in-up stagger-1">

@@ -10,6 +10,43 @@
     </button>
 </div>
 
+<!-- KPI band Membres -->
+{% set mns = namespace(total=0, actifs=0, mgr=0, adm=0, sans_eq=0) %}
+{% for m in membres %}
+    {% set mns.total = mns.total + 1 %}
+    {% if m.actif %}{% set mns.actifs = mns.actifs + 1 %}{% endif %}
+    {% if m.role == 'manager' %}{% set mns.mgr = mns.mgr + 1 %}{% endif %}
+    {% if m.role == 'admin' %}{% set mns.adm = mns.adm + 1 %}{% endif %}
+    {% if not m.equipe_id %}{% set mns.sans_eq = mns.sans_eq + 1 %}{% endif %}
+{% endfor %}
+<div class="kpi-band animate-fade-in-up">
+    <div class="kpi-chip" style="--accent: var(--info);">
+        <div class="kpi-label"><i class="bi bi-people"></i> Membres</div>
+        <div class="kpi-value">{{ mns.total }}</div>
+        <div class="kpi-sub">total du cabinet</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--success);">
+        <div class="kpi-label"><i class="bi bi-person-check"></i> Actifs</div>
+        <div class="kpi-value">{{ mns.actifs }}</div>
+        <div class="kpi-sub">{{ (mns.actifs / mns.total * 100)|round(0) if mns.total else 0 }}% de l'effectif</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--orange-primary);">
+        <div class="kpi-label"><i class="bi bi-person-lines-fill"></i> Managers</div>
+        <div class="kpi-value">{{ mns.mgr }}</div>
+        <div class="kpi-sub">responsables d'équipe</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--warning);">
+        <div class="kpi-label"><i class="bi bi-person-badge"></i> Admins</div>
+        <div class="kpi-value">{{ mns.adm }}</div>
+        <div class="kpi-sub">accès complet</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--danger);">
+        <div class="kpi-label"><i class="bi bi-person-dash"></i> Sans équipe</div>
+        <div class="kpi-value">{{ mns.sans_eq }}</div>
+        <div class="kpi-sub">à rattacher</div>
+    </div>
+</div>
+
 <div class="card-premium animate-fade-in-up stagger-1">
     <div class="card-body-premium">
         <div class="table-responsive">
