@@ -2964,3 +2964,97 @@ h2.fw-semibold::before, h4.fw-semibold::before {
 [data-theme="light"] .btn-premium-secondary { border-color: rgba(0,0,0,0.12); }
 [data-theme="light"] .badge-tertiary { background: rgba(0,0,0,0.06); color: #555; }
 [data-theme="light"] .dropdown-menu { background: #ffffff; border-color: rgba(0,0,0,0.1); }
+
+/* ============================================================
+   PREMIUM POLISH — effets « application haut de gamme »
+   ============================================================ */
+
+/* --- Cartes : lift + glow au survol --- */
+.card-premium {
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease,
+                box-shadow 0.25s ease, background 0.25s ease;
+}
+.card-premium:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 140, 0, 0.35);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 140, 0, 0.06),
+                0 0 30px rgba(255, 140, 0, 0.06);
+}
+
+/* --- Lignes de tableau : accent au survol --- */
+.table-premium tbody tr {
+    transition: background 0.18s ease, transform 0.18s ease;
+}
+.table-premium tbody tr:hover {
+    background: var(--bg-card-hover);
+}
+
+/* --- Focus rings accessibles et élégants --- */
+input:focus, select:focus, textarea:focus, .select-premium:focus, .input-premium:focus {
+    outline: none !important;
+    border-color: var(--orange-primary) !important;
+    box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.18) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* --- Boutons : effet presse + halo --- */
+.btn-premium:not(:active):hover {
+    box-shadow: 0 6px 18px rgba(255, 140, 0, 0.22);
+}
+
+/* --- Titres en dégradé (optionnel : .text-gradient) --- */
+.text-gradient {
+    background: var(--orange-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+/* --- Pastilles / badges : douce animation d'apparition --- */
+.badge {
+    transition: transform 0.15s ease;
+}
+.badge:hover {
+    transform: scale(1.08);
+}
+
+/* --- Scrollbar fine premium --- */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 140, 0, 0.25);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 140, 0, 0.45); background-clip: content-box; }
+
+/* --- Micro-animation d'entrée pour les cartes --- */
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.card-premium { animation: cardIn 0.35s ease backwards; }
+.card-premium:nth-child(2) { animation-delay: 0.05s; }
+.card-premium:nth-child(3) { animation-delay: 0.1s; }
+.card-premium:nth-child(4) { animation-delay: 0.15s; }
+.card-premium:nth-child(5) { animation-delay: 0.2s; }
+
+/* --- Liens de la sidebar : glow du texte au survol --- */
+.sidebar-nav-item { transition: all 0.2s ease; }
+.sidebar-nav-item:hover i { color: var(--orange-light); transform: scale(1.12); }
+.sidebar-nav-item i { transition: transform 0.2s ease, color 0.2s ease; }
+
+/* --- Avatar : léger halo orange --- */
+.user-icon-badge, .sidebar-user-icon { transition: box-shadow 0.25s ease; }
+.user-icon-badge:hover, .sidebar-user-icon:hover { box-shadow: var(--orange-glow); }
+
+/* --- Skeleton shimmer pour les chargements (utiliser .skeleton) --- */
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 8px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }

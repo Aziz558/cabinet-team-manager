@@ -627,8 +627,18 @@ def checklist_toggle():
 @app.route('/calendrier')
 @login_required
 def calendrier():
-    """Calendrier prévisionnel : vue annuelle par catégorie (tva, IS, CFE, paie...)
-    avec compteurs reste à faire / fait / prochaine échéance, onglets par module."""
+    """Fenêtre calendrier supprimée : redirige vers la page Avancement qui
+    intègre désormais l'échéancier annuel par module (fiscal/comptable/social)."""
+    annee = request.args.get('annee', type=int)
+    return redirect(url_for('suivi_avancement', annee=annee) if annee else url_for('suivi_avancement'))
+
+
+@app.route('/calendrier/data')
+@login_required
+def calendrier_data():
+    """API JSON : échéancier annuel par catégorie (tva, IS, CFE, paie...)
+    avec compteurs reste à faire / fait / prochaine échéance, onglets par module.
+    Utilisé par la page Avancement (onglet Échéancier)."""
     from collections import defaultdict
 
     annee = request.args.get('annee', type=int) or date.today().year
@@ -718,8 +728,7 @@ def calendrier():
     if request.args.get('format') == 'json':
         from flask import jsonify
         return jsonify(data)
-    return render_template('calendrier.html', data=data, annee=annee,
-                           annees=sorted({date.today().year, date.today().year - 1, date.today().year - 2, date.today().year + 1}, reverse=True))
+    return jsonify(data)
 
 
 @app.route('/analytics')
@@ -2127,10 +2136,13 @@ def taches_aujourdhui():
 @app.route('/suivi_avancement')
 @login_required
 def suivi_avancement():
-    """Page de suivi d'avancement des tâches par membre."""
+    """Page de suivi d'avancement des tâches par membre (+ échéancier annuel)."""
     from app.models import User, Equipe, Tache
     from datetime import date
-    
+
+    annee = request.args.get('annee', type=int) or date.today().year
+    annees = sorted({date.today().year, date.today().year - 1, date.today().year - 2, date.today().year + 1}, reverse=True)
+
     # Récupérer les membres selon le rôle
     if current_user.role == 'admin':
         membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
@@ -2172,7 +2184,7 @@ def suivi_avancement():
             'taches_terminees': terminees[:5],
         })
     
-    return render_template('suivi_avancement.html', suivi_data=suivi_data, membres=membres, dossiers_par_membre=dossiers_par_membre)
+    return render_template('suivi_avancement.html', suivi_data=suivi_data, membres=membres, dossiers_par_membre=dossiers_par_membre, annee=annee, annees=annees)
 
 # Gérer le changement de statut depuis le suivi
 @app.route('/suivi_avancement/changer_statut/<int:tache_id>', methods=['POST'])

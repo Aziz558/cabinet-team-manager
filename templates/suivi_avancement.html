@@ -1,110 +1,259 @@
 {% extends "base.html" %}
-{% block title %}Suivi d'avancement{% endblock %}
+{% block title %}Avancement{% endblock %}
+{% block extra_css %}
+<style>
+    /* ===== Page Avancement — design pilote ===== */
+    .av-tabs { display: inline-flex; gap: 4px; background: var(--bg-card); border: 1px solid var(--border-color);
+        border-radius: 14px; padding: 4px; }
+    .av-tab { border: none; background: transparent; color: var(--text-tertiary); font-weight: 600; font-size: 0.85rem;
+        padding: 8px 18px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+        transition: all 0.2s ease; }
+    .av-tab:hover { color: var(--text-primary); }
+    .av-tab.active { background: var(--orange-gradient); color: #fff; box-shadow: 0 4px 14px rgba(255,140,0,0.25); }
+    .av-tab .count { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 0 8px; font-size: 0.72rem; }
+    .av-tab:not(.active) .count { background: var(--border-color); color: var(--text-tertiary); }
+
+    .kpi-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .kpi-chip { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 16px 18px;
+        position: relative; overflow: hidden; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+    .kpi-chip:hover { transform: translateY(-3px); border-color: rgba(255,140,0,0.45); box-shadow: 0 10px 28px rgba(0,0,0,0.35); }
+    .kpi-chip::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--orange-primary)); }
+    .kpi-chip .kpi-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--text-tertiary); display: flex; align-items: center; gap: 6px; }
+    .kpi-chip .kpi-value { font-size: 1.65rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; margin-top: 4px;
+        font-variant-numeric: tabular-nums; }
+    .kpi-chip .kpi-sub { font-size: 0.72rem; color: var(--text-tertiary); }
+
+    .member-card { border-radius: 18px; overflow: hidden; }
+    .member-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .member-id { display: flex; align-items: center; gap: 12px; }
+    .member-avatar { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; background: var(--orange-subtle);
+        display: flex; align-items: center; justify-content: center; color: var(--orange-primary); font-weight: 700; font-size: 1.05rem;
+        border: 1px solid rgba(255,140,0,0.25); flex-shrink: 0; }
+    .member-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .member-name { font-size: 1.02rem; font-weight: 700; color: var(--text-primary); }
+    .member-role { font-size: 0.78rem; color: var(--text-tertiary); }
+    .member-progress-wrap { min-width: 200px; flex: 0 1 240px; }
+    .member-progress-top { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-tertiary); margin-bottom: 4px; }
+    .member-progress-top strong { color: var(--orange-primary); font-variant-numeric: tabular-nums; }
+    .member-bar { height: 7px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
+    .member-bar > div { height: 100%; background: var(--orange-gradient); border-radius: 4px;
+        transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+
+    .stat-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .stat-chip { border: 1px solid transparent; border-radius: 10px; padding: 5px 12px; font-size: 0.75rem; font-weight: 600;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; user-select: none; }
+    .stat-chip:hover { transform: translateY(-1px); filter: brightness(1.15); }
+    .stat-chip.on { box-shadow: 0 0 0 2px rgba(255,140,0,0.4); }
+    .stat-chip .n { font-variant-numeric: tabular-nums; }
+
+    .cal-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .cal-table th { text-align: left; padding: 12px 16px; color: var(--text-tertiary); font-weight: 600; font-size: 0.75rem;
+        letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+    .cal-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); white-space: nowrap; }
+    .cal-table tbody tr { cursor: pointer; transition: background 0.15s ease; }
+    .cal-table tbody tr:hover { background: var(--bg-card-hover); }
+    .cal-badge-reste { background: rgba(255,140,0,0.12); color: var(--orange-primary); }
+    .cal-badge-fait { background: rgba(76,175,80,0.12); color: var(--success); }
+    .cal-badge-retard { background: rgba(239,83,80,0.12); color: var(--danger); }
+    .cal-mod-ico { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; }
+    .cal-mod-fiscal { background: rgba(255,140,0,0.12); color: var(--orange-primary); }
+    .cal-mod-comptable { background: rgba(33,150,243,0.12); color: #42A5F5; }
+    .cal-mod-social { background: rgba(76,175,80,0.12); color: var(--success); }
+
+    /* Onglets module (échéancier) */
+    .cal-tab { border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-tertiary);
+        border-radius: 20px; padding: 6px 16px; font-size: 0.85rem; font-weight: 500; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px; transition: all 0.18s ease; text-decoration: none; }
+    .cal-tab:hover { color: var(--text-primary); border-color: var(--orange-primary); transform: translateY(-1px); }
+    .cal-tab.active { background: var(--orange-gradient); border-color: transparent; color: #fff;
+        box-shadow: 0 4px 14px rgba(255,140,0,0.25); }
+    .cal-tab .count { background: rgba(255,255,255,0.12); border-radius: 10px; padding: 0 7px; font-size: 0.75rem; }
+    .cal-tab:not(.active) .count { background: var(--border-color); color: var(--text-tertiary); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <h2 class="fw-semibold"><i class="bi bi-graph-up-arrow me-2" style="color:var(--orange-primary)"></i>Suivi d'avancement</h2>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 animate-fade-in-up">
+    <div>
+        <h2 class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-2" style="color:var(--orange-primary)"></i>Avancement</h2>
+        <span class="text-tertiary" style="font-size:0.85rem;">Pilotage de l'équipe et échéancier des obligations</span>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <select id="anneeSelect" class="select-premium" style="width:auto;" onchange="setAnnee(this.value)">
+            {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
+        </select>
+        <div class="av-tabs" id="avTabs">
+            <button class="av-tab active" data-view="equipe"><i class="bi bi-people"></i> Avancement équipe</button>
+            <button class="av-tab" data-view="echeancier"><i class="bi bi-calendar3-week"></i> Échéancier annuel</button>
+        </div>
+    </div>
 </div>
 
-{% for item in suivi_data %}
-<div class="card-premium mb-4 animate-fade-in-up" id="membreCard{{ item.membre.id }}">
-    <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-2">
-            {% set s_photo = item.membre.photo_display_src() %}
-            {% if s_photo %}
-            <span class="user-icon-badge"><img src="{{ s_photo }}" alt="" class="sidebar-user-img" style="width:32px;height:32px;"></span>
-            {% else %}
-            <span class="user-icon-badge"><i class="bi bi-person"></i></span>
-            {% endif %}
-            <div>
-                <h5 class="mb-0">{{ item.membre.prenom }} {{ item.membre.nom }}</h5>
-                <small class="text-tertiary">{{ item.membre.poste or item.membre.role }}</small>
+<!-- ============ VUE 1 : AVANCEMENT ÉQUIPE ============ -->
+<div id="view-equipe">
+    {% set ns = namespace(total=0, af=0, ec=0, done=0, retard=0) %}
+    {% for item in suivi_data %}
+        {% set ns.total = ns.total + item.total %}{% set ns.af = ns.af + item.a_faire %}
+        {% set ns.ec = ns.ec + item.en_cours %}{% set ns.done = ns.done + item.terminees %}
+        {% set ns.retard = ns.retard + item.en_retard %}
+    {% endfor %}
+    <div class="kpi-band animate-fade-in-up">
+        <div class="kpi-chip" style="--accent: var(--info);">
+            <div class="kpi-label"><i class="bi bi-stack"></i> Tâches totales</div>
+            <div class="kpi-value">{{ ns.total }}</div>
+            <div class="kpi-sub">{{ suivi_data|length }} membres suivis</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--danger);">
+            <div class="kpi-label"><i class="bi bi-exclamation-triangle"></i> En retard</div>
+            <div class="kpi-value">{{ ns.retard }}</div>
+            <div class="kpi-sub">{{ (ns.retard / ns.total * 100)|round(1) if ns.total else 0 }}% du total</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--warning);">
+            <div class="kpi-label"><i class="bi bi-hourglass-split"></i> À faire</div>
+            <div class="kpi-value">{{ ns.af }}</div>
+            <div class="kpi-sub">en attente de prise en charge</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--orange-primary);">
+            <div class="kpi-label"><i class="bi bi-arrow-repeat"></i> En cours</div>
+            <div class="kpi-value">{{ ns.ec }}</div>
+            <div class="kpi-sub">travaux actifs</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--success);">
+            <div class="kpi-label"><i class="bi bi-check2-circle"></i> Terminées</div>
+            <div class="kpi-value">{{ ns.done }}</div>
+            <div class="kpi-sub">{{ (ns.done / ns.total * 100)|round(1) if ns.total else 0 }}% d'avancement global</div>
+        </div>
+    </div>
+
+    {% for item in suivi_data %}
+    <div class="card-premium mb-4 member-card animate-fade-in-up" id="membreCard{{ item.membre.id }}">
+        <div class="card-header-premium member-head">
+            <div class="member-id">
+                <div class="member-avatar">
+                    {% set s_photo = item.membre.photo_display_src() %}
+                    {% if s_photo %}<img src="{{ s_photo }}" alt="">{% else %}{{ (item.membre.prenom[:1] ~ (item.membre.nom[:1] or ''))|upper }}{% endif %}
+                </div>
+                <div>
+                    <div class="member-name">{{ item.membre.prenom }} {{ item.membre.nom }}</div>
+                    <div class="member-role">{{ item.membre.poste or item.membre.role|capitalize }}</div>
+                </div>
+            </div>
+            <div class="stat-chips">
+                <span class="stat-chip" style="background:var(--warning-bg);color:var(--warning);" onclick="toggleStatut({{ item.membre.id }}, 'a_faire')" data-statut="a_faire">
+                    <i class="bi bi-hourglass"></i> À faire <span class="n">{{ item.a_faire }}</span></span>
+                <span class="stat-chip" style="background:var(--orange-subtle);color:var(--orange-primary);" onclick="toggleStatut({{ item.membre.id }}, 'en_cours')" data-statut="en_cours">
+                    <i class="bi bi-arrow-repeat"></i> En cours <span class="n">{{ item.en_cours }}</span></span>
+                <span class="stat-chip" style="background:var(--success-bg);color:var(--success);" onclick="toggleStatut({{ item.membre.id }}, 'terminee')" data-statut="terminee">
+                    <i class="bi bi-check2"></i> Fait <span class="n">{{ item.terminees }}</span></span>
+                {% if item.en_retard > 0 %}
+                <span class="stat-chip" style="background:var(--danger-bg);color:var(--danger);" title="Échéance dépassée">
+                    <i class="bi bi-exclamation-triangle"></i> Retard <span class="n">{{ item.en_retard }}</span></span>
+                {% endif %}
+            </div>
+            <div class="member-progress-wrap">
+                <div class="member-progress-top"><span>Avancement</span><strong>{{ (item.terminees / item.total * 100)|round(0) if item.total else 0 }}%</strong></div>
+                {% set pct = (item.terminees / item.total * 100) if item.total > 0 else 0 %}
+                <div class="member-bar"><div style="width:{{ pct }}%;"></div></div>
             </div>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <span class="badge" style="background:var(--info-bg);color:var(--info);">Total {{ item.total }}</span>
-            <span class="badge" style="background:var(--warning-bg);color:var(--warning);">À faire {{ item.a_faire }}</span>
-            <span class="badge" style="background:var(--orange-subtle);color:var(--orange-primary);">En cours {{ item.en_cours }}</span>
-            <span class="badge" style="background:var(--success-bg);color:var(--success);">Fait {{ item.terminees }}</span>
-            {% if item.en_retard > 0 %}<span class="badge" style="background:var(--danger-bg);color:var(--danger);">Retard {{ item.en_retard }}</span>{% endif %}
-        </div>
-    </div>
-    <div class="card-body-premium">
-        <!-- Barre de progression -->
-        <div class="progress mb-3" style="height:6px;background:var(--border-color);border-radius:3px;">
-            {% set pct = (item.terminees / item.total * 100) if item.total > 0 else 0 %}
-            <div class="progress-bar" style="width:{{ pct }}%;background:var(--orange-gradient);border-radius:3px;"></div>
-        </div>
-
-        <!-- Filtres -->
-        <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-            <span class="text-tertiary small">Statut :</span>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="a_faire" onclick="toggleStatut({{ item.membre.id }}, 'a_faire')">À faire</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="en_cours" onclick="toggleStatut({{ item.membre.id }}, 'en_cours')">En cours</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="terminee" onclick="toggleStatut({{ item.membre.id }}, 'terminee')">Terminée</button>
-            <div class="vr mx-1" style="height:20px;border-color:var(--border-color);"></div>
-            <span class="text-tertiary small">Nature :</span>
-            <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'nature', this.value)">
-                <option value="all">Toutes</option>
-                <option value="tva">TVA</option>
-                <option value="is">IS</option>
-                <option value="cfe">CFE</option>
-                <option value="generale">Générales</option>
-            </select>
-            <span class="text-tertiary small">Dossier :</span>
-            <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'dossier', this.value)">
-                <option value="all">Tous</option>
-                {% for d in dossiers_par_membre.get(item.membre.id, []) %}
-                <option value="{{ d.id }}">{{ d.numero_dossier }} — {{ d.intitule[:30] }}</option>
-                {% endfor %}
-            </select>
-            <span class="text-tertiary small">Du :</span>
-            <input type="date" class="input-premium select-sm" style="width:auto;font-size:0.75rem;padding:0.2rem;" onchange="filterMembre({{ item.membre.id }}, 'date_debut', this.value)">
-            <span class="text-tertiary small">Au :</span>
-            <input type="date" class="input-premium select-sm" style="width:auto;font-size:0.75rem;padding:0.2rem;" onchange="filterMembre({{ item.membre.id }}, 'date_fin', this.value)">
-        </div>
-
-        <!-- Liste des tâches -->
-        <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
-            <table class="table-premium" id="membreTable{{ item.membre.id }}">
-                <thead><tr><th>Tâche</th><th>Dossier</th><th>Priorité</th><th>Statut</th><th>Échéance</th><th>Action</th></tr></thead>
-                <tbody>
-                    {% for t in item.toutes_taches %}
-                    {% set tl = t.titre|lower %}
-                    {% if 'cfe' in tl %}{% set nat = 'cfe' %}
-                    {% elif ' is ' in tl or tl.startswith('is ') %}{% set nat = 'is' %}
-                    {% elif 'tva' in tl or 'ca3' in tl or 'ca12' in tl or 'dépôt' in tl or 'depot' in tl or 'déclaration' in tl %}{% set nat = 'tva' %}
-                    {% else %}{% set nat = 'generale' %}{% endif %}
-                    <tr class="task-row" data-statut="{{ t.statut }}" data-dossier="{{ t.dossier_id or '' }}" data-echeance="{{ t.date_echeance }}" data-nature="{{ nat }}">
-                        <td><strong>{{ t.titre }}</strong></td>
-                        <td><small class="text-tertiary">{{ t.dossier.numero_dossier if t.dossier else '-' }}</small></td>
-                        <td><span class="task-priority priority-{{ t.priorite }}" style="font-size:0.7rem;">{{ t.priorite|capitalize }}</span></td>
-                        <td><span class="task-status status-{{ t.statut }}" style="font-size:0.7rem;">{{ t.statut|replace('_',' ') }}</span></td>
-                        <td>{{ t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '-' }}</td>
-                        <td>
-                            <form method="POST" action="{{ url_for('suivi_changer_statut', tache_id=t.id) }}" class="d-flex gap-1">
-                                <select name="statut" class="select-premium select-sm" style="width:auto;font-size:0.7rem;padding:0.15rem;">
-                                    <option value="a_faire" {{ 'selected' if t.statut == 'a_faire' else '' }}>À faire</option>
-                                    <option value="en_cours" {{ 'selected' if t.statut == 'en_cours' else '' }}>En cours</option>
-                                    <option value="terminee" {{ 'selected' if t.statut == 'terminee' else '' }}>Terminée</option>
-                                </select>
-                                <button type="submit" class="btn-premium btn-premium-outline btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✓</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="6" class="text-center text-tertiary py-3">Aucune tâche pour ce membre.</td></tr>
+        <div class="card-body-premium">
+            <!-- Filtres secondaires -->
+            <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'nature', this.value)">
+                    <option value="all">Toutes natures</option>
+                    <option value="tva">TVA</option>
+                    <option value="is">IS</option>
+                    <option value="cfe">CFE</option>
+                    <option value="generale">Générales</option>
+                </select>
+                <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'dossier', this.value)">
+                    <option value="all">Tous dossiers</option>
+                    {% for d in dossiers_par_membre.get(item.membre.id, []) %}
+                    <option value="{{ d.id }}">{{ d.numero_dossier }} — {{ d.intitule[:30] }}</option>
                     {% endfor %}
-                </tbody>
-            </table>
+                </select>
+                <span class="text-tertiary small">Du</span>
+                <input type="date" class="input-premium select-sm" style="width:auto;font-size:0.75rem;padding:0.2rem;" onchange="filterMembre({{ item.membre.id }}, 'date_debut', this.value)">
+                <span class="text-tertiary small">au</span>
+                <input type="date" class="input-premium select-sm" style="width:auto;font-size:0.75rem;padding:0.2rem;" onchange="filterMembre({{ item.membre.id }}, 'date_fin', this.value)">
+                <span class="text-tertiary small ms-auto"><i class="bi bi-funnel me-1"></i>Cliquez les pastilles de statut pour filtrer</span>
+            </div>
+
+            <!-- Liste des tâches -->
+            <div class="table-responsive" style="max-height:420px;overflow-y:auto;">
+                <table class="table-premium" id="membreTable{{ item.membre.id }}">
+                    <thead><tr><th>Tâche</th><th>Dossier</th><th>Priorité</th><th>Statut</th><th>Échéance</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for t in item.toutes_taches %}
+                        {% set tl = t.titre|lower %}
+                        {% if 'cfe' in tl %}{% set nat = 'cfe' %}
+                        {% elif ' is ' in tl or tl.startswith('is ') %}{% set nat = 'is' %}
+                        {% elif 'tva' in tl or 'ca3' in tl or 'ca12' in tl or 'dépôt' in tl or 'depot' in tl or 'déclaration' in tl %}{% set nat = 'tva' %}
+                        {% else %}{% set nat = 'generale' %}{% endif %}
+                        <tr class="task-row" data-statut="{{ t.statut }}" data-dossier="{{ t.dossier_id or '' }}" data-echeance="{{ t.date_echeance }}" data-nature="{{ nat }}">
+                            <td><strong>{{ t.titre }}</strong></td>
+                            <td><small class="text-tertiary">{{ t.dossier.numero_dossier if t.dossier else '-' }}</small></td>
+                            <td><span class="task-priority priority-{{ t.priorite }}" style="font-size:0.7rem;">{{ t.priorite|capitalize }}</span></td>
+                            <td><span class="task-status status-{{ t.statut }}" style="font-size:0.7rem;">{{ t.statut|replace('_',' ') }}</span></td>
+                            <td>{{ t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '-' }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('suivi_changer_statut', tache_id=t.id) }}" class="d-flex gap-1">
+                                    <select name="statut" class="select-premium select-sm" style="width:auto;font-size:0.7rem;padding:0.15rem;">
+                                        <option value="a_faire" {{ 'selected' if t.statut == 'a_faire' else '' }}>À faire</option>
+                                        <option value="en_cours" {{ 'selected' if t.statut == 'en_cours' else '' }}>En cours</option>
+                                        <option value="terminee" {{ 'selected' if t.statut == 'terminee' else '' }}>Terminée</option>
+                                    </select>
+                                    <button type="submit" class="btn-premium btn-premium-outline btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✓</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center text-tertiary py-3">Aucune tâche pour ce membre.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size:48px;color:var(--text-tertiary);"></i>
+        <p class="text-tertiary mt-3">Aucun membre à afficher.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ============ VUE 2 : ÉCHÉANCIER ANNUEL (ex-calendrier) ============ -->
+<div id="view-echeancier" style="display:none;">
+    <div class="d-flex gap-2 flex-wrap mb-3" id="calTabs">
+        <button class="cal-tab active" data-mod="tous">Tous <span class="count" id="cnt-tous">…</span></button>
+        <button class="cal-tab" data-mod="fiscal"><i class="bi bi-bank"></i> Fiscal <span class="count" id="cnt-fiscal">…</span></button>
+        <button class="cal-tab" data-mod="comptable"><i class="bi bi-journal-check"></i> Comptable <span class="count" id="cnt-comptable">…</span></button>
+        <button class="cal-tab" data-mod="social"><i class="bi bi-people"></i> Social <span class="count" id="cnt-social">…</span></button>
+    </div>
+
+    <div class="card-premium">
+        <div class="card-body-premium p-0">
+            <div style="overflow-x: auto;">
+                <table class="cal-table">
+                    <thead>
+                        <tr>
+                            <th>Catégorie</th>
+                            <th>Reste à faire</th>
+                            <th>Fait</th>
+                            <th>Prochaine échéance</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calBody">
+                        <tr><td colspan="5" class="text-center text-tertiary py-4"><span class="spinner-border spinner-border-sm me-2"></span>Chargement de l'échéancier…</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
-{% else %}
-<div class="text-center py-5">
-    <i class="bi bi-inbox" style="font-size:48px;color:var(--text-tertiary);"></i>
-    <p class="text-tertiary mt-3">Aucun membre à afficher.</p>
-</div>
-{% endfor %}
 {% endblock %}
 
 {% block scripts %}
@@ -112,23 +261,38 @@
 <script>
 var statutSelections = {};  // { membreId: ['a_faire', 'en_cours'] }
 
+/* ===== Onglets de vue + persistance ===== */
+var ANNEE = {{ annee }};
+function setAnnee(v) {
+    localStorage.setItem('av_annee', v);
+    location.href = '{{ url_for("suivi_avancement") }}?annee=' + v;
+}
+function switchView(view) {
+    document.querySelectorAll('#avTabs .av-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    document.getElementById('view-equipe').style.display = view === 'equipe' ? '' : 'none';
+    document.getElementById('view-echeancier').style.display = view === 'echeancier' ? '' : 'none';
+    localStorage.setItem('av_view', view);
+    if (view === 'echeancier') loadEcheancier();
+}
+document.querySelectorAll('#avTabs .av-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() { switchView(btn.dataset.view); });
+});
+(function() {
+    var v = localStorage.getItem('av_view');
+    if (v === 'echeancier') switchView('echeancier');
+})();
+
+/* ===== Filtres par membre ===== */
 function toggleStatut(membreId, value) {
     if (!statutSelections[membreId]) statutSelections[membreId] = [];
     var arr = statutSelections[membreId];
     var idx = arr.indexOf(value);
     if (idx >= 0) { arr.splice(idx, 1); }
     else { arr.push(value); }
-    // Update button style
     var card = document.getElementById('membreCard' + membreId);
-    card.querySelectorAll('.filter-toggle').forEach(function(b) {
-        var v = b.dataset.statut;
-        if (arr.indexOf(v) >= 0) {
-            b.classList.add('active', 'btn-premium-primary');
-            b.classList.remove('btn-premium-secondary');
-        } else {
-            b.classList.remove('active', 'btn-premium-primary');
-            b.classList.add('btn-premium-secondary');
-        }
+    card.querySelectorAll('.stat-chip[data-statut]').forEach(function(b) {
+        var on = arr.indexOf(b.dataset.statut) >= 0;
+        b.classList.toggle('on', on);
     });
     card.dataset.statutFilter = arr.join(',');
     applyAllFilters(membreId);
@@ -148,14 +312,14 @@ function applyAllFilters(membreId) {
     var table = document.getElementById('membreTable' + membreId);
     if (!table || !card) return;
     var rows = table.querySelectorAll('.task-row');
-    
+
     var statutStr = card.dataset.statutFilter || '';
     var statuts = statutStr ? statutStr.split(',') : [];
     var dossierF = card.dataset.dossierFilter || 'all';
     var natureF = card.dataset.natureFilter || 'all';
     var dateDebut = card.dataset.dateDebut || '';
     var dateFin = card.dataset.dateFin || '';
-    
+
     rows.forEach(function(row) {
         var show = true;
         if (statuts.length > 0) {
@@ -174,5 +338,50 @@ function applyAllFilters(membreId) {
         row.style.display = show ? '' : 'none';
     });
 }
+
+/* ===== Échéancier annuel (ex-calendrier, chargé en JSON) ===== */
+var calMod = 'tous';
+var calData = null;
+function loadEcheancier() {
+    fetch('/calendrier/data?annee=' + ANNEE, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(r => r.json())
+        .then(function(data) {
+            calData = data;
+            document.getElementById('cnt-tous').textContent = data.compteurs.tous;
+            document.getElementById('cnt-fiscal').textContent = data.compteurs.fiscal;
+            document.getElementById('cnt-comptable').textContent = data.compteurs.comptable;
+            document.getElementById('cnt-social').textContent = data.compteurs.social;
+            renderEcheancier();
+        })
+        .catch(function() {
+            document.getElementById('calBody').innerHTML =
+                '<tr><td colspan="5" class="text-center text-tertiary py-4">Erreur de chargement de l\'échéancier.</td></tr>';
+        });
+}
+function renderEcheancier() {
+    if (!calData) return;
+    var body = document.getElementById('calBody');
+    var icons = { fiscal: 'bi-bank', comptable: 'bi-journal-check', social: 'bi-people' };
+    var html = '';
+    calData.lignes.forEach(function(l) {
+        if (calMod !== 'tous' && l.module !== calMod) return;
+        html += '<tr data-mod="' + l.module + '" onclick="location.href=\'{{ url_for("taches") }}\'">'
+            + '<td><span class="cal-mod-ico cal-mod-' + l.module + '"><i class="bi ' + (icons[l.module] || 'bi-tag') + '"></i></span><strong>' + l.label + '</strong></td>'
+            + '<td>' + (l.reste ? '<span class="badge cal-badge-reste">' + l.reste + '</span>' : '<span class="text-tertiary">—</span>') + '</td>'
+            + '<td>' + (l.fait ? '<span class="badge cal-badge-fait">' + l.fait + '</span>' : '<span class="text-tertiary">—</span>') + '</td>'
+            + '<td>' + (l.prochaine !== '—' ? '<i class="bi bi-calendar-event me-1 text-tertiary"></i>' + l.prochaine : '<span class="text-tertiary">—</span>') + '</td>'
+            + '<td class="text-tertiary">' + l.total + '</td>'
+            + '</tr>';
+    });
+    body.innerHTML = html || '<tr><td colspan="5" class="text-center text-tertiary py-4">Aucune obligation en ' + calData.annee + '</td></tr>';
+}
+document.querySelectorAll('#calTabs .cal-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('#calTabs .cal-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        calMod = btn.dataset.mod;
+        renderEcheancier();
+    });
+});
 </script>
 {% endblock %}

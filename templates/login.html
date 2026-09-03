@@ -152,6 +152,38 @@
         }
         .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,140,0,0.3); }
         .btn-login:active { transform: translateY(0); }
+        /* Shine effect premium */
+        .btn-login::after {
+            content: '';
+            position: absolute; top: 0; left: -80%;
+            width: 50%; height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.6s ease;
+        }
+        .btn-login:hover::after { left: 130%; }
+
+        /* Inputs avec icône */
+        .input-wrap { position: relative; }
+        .input-wrap > i {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: #555; font-size: 0.95rem; pointer-events: none; transition: color 0.25s ease;
+        }
+        .input-wrap:focus-within > i { color: #FF8C00; }
+        .input-custom.with-icon { padding-left: 42px; }
+        /* Toggle mot de passe */
+        .pw-toggle {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #555; cursor: pointer; font-size: 0.95rem;
+            transition: color 0.2s ease; padding: 4px;
+        }
+        .pw-toggle:hover { color: #FF8C00; }
+        /* Badge sécurité discrète */
+        .login-security { text-align: center; margin-top: 1.25rem; }
+        .login-security span {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #444; font-size: 0.72rem; letter-spacing: 0.04em;
+        }
 
         .login-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 1.25rem 0; }
         .login-footer { text-align: center; }
@@ -266,11 +298,20 @@
             <form method="POST" id="loginForm">
                 <div class="form-group">
                     <label class="form-label">Adresse email</label>
-                    <input type="email" name="email" class="input-custom" required autofocus placeholder="vous@cabinet-jmh.com">
+                    <div class="input-wrap">
+                        <i class="bi bi-envelope"></i>
+                        <input type="email" name="email" class="input-custom with-icon" required autofocus placeholder="vous@cabinet-jmh.com">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Mot de passe</label>
-                    <input type="password" name="password" class="input-custom" required placeholder="••••••••">
+                    <div class="input-wrap">
+                        <i class="bi bi-shield-lock"></i>
+                        <input type="password" name="password" class="input-custom with-icon" id="pwInput" required placeholder="••••••••">
+                        <button type="button" class="pw-toggle" id="pwToggle" tabindex="-1" title="Afficher / masquer">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn-login" id="loginBtn">
                     Se connecter <i class="bi bi-arrow-right ms-1"></i>
@@ -282,10 +323,22 @@
             <div class="login-footer">
                 <a href="{{ url_for('team_select') }}"><i class="bi bi-arrow-left me-1"></i>Choisir une équipe</a>
             </div>
+            <div class="login-security">
+                <span><i class="bi bi-lock-fill"></i> CONNEXION SÉCURISÉE · CABINET JMH</span>
+            </div>
         </div>
     </div>
 
     <script>
+        // Toggle affichage mot de passe
+        document.getElementById('pwToggle').addEventListener('click', function() {
+            const inp = document.getElementById('pwInput');
+            const ico = this.querySelector('i');
+            const show = inp.type === 'password';
+            inp.type = show ? 'text' : 'password';
+            ico.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+        });
+
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const card = document.getElementById('loginCard');
