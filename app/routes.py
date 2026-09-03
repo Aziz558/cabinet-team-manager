@@ -2925,6 +2925,49 @@ def configurer_email_equipe():
     return redirect(url_for('equipes'))
 
 # ==========================
+# Pennylane — déclarations TVA (session web)
+# ==========================
+@app.route('/pennylane/tva_session', methods=['POST'])
+@login_required
+def pennylane_tva_session():
+    """Enregistre (en mémoire uniquement) les cookies de session web Pennylane."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
+    payload = request.get_json(silent=True) or request.form
+    cookies = (payload.get('cookies') or '').strip()
+    firm_id = payload.get('firm_id') or 76917
+    from app.integrations.pennylane_web import set_web_session, test_web_session
+    set_web_session(cookies, firm_id)
+    res = test_web_session()
+    return jsonify(res)
+
+
+@app.route('/pennylane/tva_session_status')
+@login_required
+def pennylane_tva_session_status():
+    """Statut de la session web (pour l'UI)."""
+    from app.integrations.pennylane_web import has_web_session, test_web_session
+    if not has_web_session():
+        return jsonify({'ok': False, 'configured': False, 'message': 'Session non configurée.'})
+    if current_user.role != 'admin':
+        return jsonify({'ok': True, 'configured': True, 'message': 'Session active.'})
+    res = test_web_session()
+    res['configured'] = True
+    return jsonify(res)
+
+
+@app.route('/pennylane/tva_sync', methods=['POST'])
+@login_required
+def pennylane_tva_sync():
+    """Synchronise les statuts de déclaration TVA depuis l'espace web Pennylane."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
+    from app.integrations.pennylane_web import sync_checklist_tva
+    res = sync_checklist_tva()
+    return jsonify(res)
+
+
+# ==========================
 # Error handlers
 # ==========================
 def not_found(error):

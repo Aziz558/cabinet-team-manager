@@ -60,6 +60,37 @@
 </div>
 {% endif %}
 
+{% if is_admin %}
+<div class="card-premium mb-4 animate-fade-in-up stagger-2">
+    <div class="card-body-premium">
+        <h4 class="fw-semibold mb-3">📊 Déclarations TVA (session web)</h4>
+        <p class="text-tertiary small mb-3">
+            Lit les statuts des déclarations de TVA dans l'espace comptable Pennylane (page
+            <em>Fiscalité → Déclarations</em>) pour <strong>tous</strong> les dossiers reliés,
+            et remplit la grille Avancement.
+            <br><strong class="text-warning">Important :</strong> les déclarations faites via
+            impots.gouv (ACD) n'apparaissent pas dans Pennylane — marquez-les manuellement dans
+            la grille Avancement (clic sur la case), vos corrections manuelles ne sont jamais écrasées.
+        </p>
+        <div id="plTvaStatus" class="mb-3"></div>
+        <div class="mb-3">
+            <label class="form-label-premium">Cookies de session Pennylane</label>
+            <textarea id="plCookies" class="form-control" rows="3" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border-color);"
+                      placeholder="Collez ici le header -b '...' du cURL (DevTools → Réseau → Copier comme cURL)"></textarea>
+            <small class="text-tertiary">Gardez la session en mémoire tant que l'app tourne. Si elle expire, recollez.</small>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn-premium btn-premium-primary btn-press" onclick="savePlTvaSession()">
+                <i class="bi bi-shield-check me-1"></i>Enregistrer la session
+            </button>
+            <button type="button" class="btn-premium btn-premium-secondary btn-press" onclick="syncPlTva()">
+                <i class="bi bi-cloud-download me-1"></i>Synchroniser les statuts TVA
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Vue des dossiers par équipe (scoping manager/admin) -->
 <div class="card-premium animate-fade-in-up stagger-2">
     <div class="card-body-premium">
@@ -143,6 +174,41 @@ function savePlConfig(e) {
         .then(d => showPl(d.message || 'OK', d.ok))
         .catch(err => showPl('Erreur réseau: ' + err.message, false))
         .finally(function() { btn.innerHTML = original; btn.disabled = false; });
+}
+function savePlTvaSession() {
+    var cookies = (document.getElementById('plCookies').value || '').trim();
+    if (!cookies) { showPlTva('Collez d\'abord les cookies de session.', false); return; }
+    fetch('/pennylane/tva_session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cookies: cookies, firm_id: 76917})
+    })
+    .then(r => r.json())
+    .then(d => showPlTva(d.message || 'OK', d.ok))
+    .catch(err => showPlTva('Erreur réseau: ' + err.message, false));
+}
+function syncPlTva() {
+    var btns = document.querySelectorAll("button[onclick='syncPlTva()']");
+    if (btns.length) { btns[0].innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Synchro...'; btns[0].disabled = true; }
+    fetch('/pennylane/tva_sync', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            var extra = (d.erreurs && d.erreurs.length) ? (' — ' + d.erreurs.join(' ; ')) : '';
+            showPlTva((d.message || 'OK') + extra, d.ok);
+        })
+        .catch(err => showPlTva('Erreur réseau: ' + err.message, false))
+        .finally(function() {
+            if (btns.length) { btns[0].innerHTML = '<i class="bi bi-cloud-download me-1"></i>Synchroniser les statuts TVA'; btns[0].disabled = false; }
+        });
+}
+function showPlTva(msg, ok) {
+    var el = document.getElementById('plTvaStatus');
+    if (!el) return;
+    el.innerHTML = ok
+        ? '<div class="p-3 rounded-3" style="background:var(--success-bg);border:1px solid var(--success);">' +
+          '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + msg + '</div>'
+        : '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);">' +
+          '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + msg + '</div>';
 }
 function syncPl() {
     if (!confirm('Lancer la synchronisation des dossiers avec Pennylane ?')) return;
