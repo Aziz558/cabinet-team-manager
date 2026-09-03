@@ -725,9 +725,6 @@ def calendrier_data():
             'social': compteurs_modules['social'],
         },
     }
-    if request.args.get('format') == 'json':
-        from flask import jsonify
-        return jsonify(data)
     return jsonify(data)
 
 
