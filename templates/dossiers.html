@@ -66,7 +66,45 @@
     </div>
 </div>
 
-<!-- Filtres avancés à icônes dépliables -->
+<!-- KPI band Dossiers -->
+    {% set ns = namespace(total=0, ca3=0, ca12=0, exo=0, proche=0) %}
+    {% for d in dossiers %}
+        {% set ns.total = ns.total + 1 %}
+        {% if d.regime_tva == 'ca3' %}{% set ns.ca3 = ns.ca3 + 1 %}
+        {% elif d.regime_tva == 'ca12' %}{% set ns.ca12 = ns.ca12 + 1 %}
+        {% elif d.regime_tva == 'exonere' %}{% set ns.exo = ns.exo + 1 %}
+        {% endif %}
+        {% if d._delai_label and 'J-' in d._delai_label and d._delai_label|replace('J-','')|int >= 0 and d._delai_label|replace('J-','')|int < 30 %}{% set ns.proche = ns.proche + 1 %}{% endif %}
+    {% endfor %}
+    <div class="kpi-band animate-fade-in-up">
+        <div class="kpi-chip" style="--accent: var(--info);">
+            <div class="kpi-label"><i class="bi bi-stack"></i> Dossiers total</div>
+            <div class="kpi-value">{{ ns.total }}</div>
+            <div class="kpi-sub">dont {{ dossiers_par_collab.values()|list|length }} collaborateurs</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--orange-primary);">
+            <div class="kpi-label"><i class="bi bi-cash-stack"></i> CA3</div>
+            <div class="kpi-value">{{ ns.ca3 }}</div>
+            <div class="kpi-sub">{{ (ns.ca3 / ns.total * 100)|round(1) if ns.total else 0 }}% des dossiers</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--warning);">
+            <div class="kpi-label"><i class="bi bi-cash"></i> CA12</div>
+            <div class="kpi-value">{{ ns.ca12 }}</div>
+            <div class="kpi-sub">{{ (ns.ca12 / ns.total * 100)|round(1) if ns.total else 0 }}% des dossiers</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--success);">
+            <div class="kpi-label"><i class="bi bi-layers"></i> Autres</div>
+            <div class="kpi-value">{{ ns.exo + (ns.total - ns.ca3 - ns.ca12 - ns.exo) }}</div>
+            <div class="kpi-sub">exonéré + non renseigné</div>
+        </div>
+        <div class="kpi-chip" style="--accent: var(--danger);">
+            <div class="kpi-label"><i class="bi bi-exclamation-triangle"></i> Échéance proche</div>
+            <div class="kpi-value">{{ ns.proche }}</div>
+            <div class="kpi-sub">dans les 30 jours</div>
+        </div>
+    </div>
+
+    <!-- Filtres avancés à icônes dépliables -->
 <div class="card-premium mb-4 animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
     <div class="card-body-premium px-4 py-3">
         <div class="d-flex flex-wrap gap-2 align-items-center">

@@ -61,6 +61,44 @@
     </div>
 </div>
 
+<!-- KPI band Tâches -->
+{% set tns = namespace(total=0, af=0, ec=0, done=0, retard=0) %}
+{% for t in taches %}
+    {% set tns.total = tns.total + 1 %}
+    {% if t.statut == 'a_faire' %}{% set tns.af = tns.af + 1 %}
+    {% elif t.statut == 'en_cours' %}{% set tns.ec = tns.ec + 1 %}
+    {% elif t.statut in ('terminee', 'terminée') %}{% set tns.done = tns.done + 1 %}
+    {% endif %}
+    {% if t.est_en_retard() %}{% set tns.retard = tns.retard + 1 %}{% endif %}
+{% endfor %}
+<div class="kpi-band animate-fade-in-up">
+    <div class="kpi-chip" style="--accent: var(--info);">
+        <div class="kpi-label"><i class="bi bi-stack"></i> Tâches total</div>
+        <div class="kpi-value">{{ tns.total }}</div>
+        <div class="kpi-sub">{{ membres|length }} membres</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--danger);">
+        <div class="kpi-label"><i class="bi bi-exclamation-triangle"></i> En retard</div>
+        <div class="kpi-value">{{ tns.retard }}</div>
+        <div class="kpi-sub">{{ (tns.retard / tns.total * 100)|round(1) if tns.total else 0 }}% du total</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--warning);">
+        <div class="kpi-label"><i class="bi bi-hourglass-split"></i> À faire</div>
+        <div class="kpi-value">{{ tns.af }}</div>
+        <div class="kpi-sub">en attente</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--orange-primary);">
+        <div class="kpi-label"><i class="bi bi-arrow-repeat"></i> En cours</div>
+        <div class="kpi-value">{{ tns.ec }}</div>
+        <div class="kpi-sub">travaux actifs</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--success);">
+        <div class="kpi-label"><i class="bi bi-check2-circle"></i> Terminées</div>
+        <div class="kpi-value">{{ tns.done }}</div>
+        <div class="kpi-sub">{{ (tns.done / tns.total * 100)|round(1) if tns.total else 0 }}% réalisé</div>
+    </div>
+</div>
+
 <!-- Task Board -->
 <div class="task-board" id="taskBoard">
     {% set fiscal_keywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'] %}
