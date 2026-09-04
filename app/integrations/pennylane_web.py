@@ -1,45 +1,93 @@
 # -*- coding: utf-8 -*-
-"""Synchronisation des déclarations de TVA depuis l'espace web Pennylane (interface comptable).
+"""Synchronisation des declarations de TVA depuis l'espace web Pennylane (interface comptable).
 
-Utilise l'endpoint interne du front-end (vat_forms) appelé par la page
+Utilise l'endpoint interne du front-end (vat_forms) appele par la page
 /companies/<id>/accountants/declarations/vat_returns avec les cookies de session
-de l'utilisateur connecté (capturés via DevTools → Copier comme cURL).
+de l'utilisateur connecte (capturés via DevTools -> Copier comme cURL).
 
-Réponse vat_forms : {"vat_returns": [...], "future_vat_returns": [...], "vat_settings": {...}}
-  - vat_returns        : déclarations déjà créées dans Pennylane (avec status: 'filed', 'sent'...)
-  - future_vat_returns : périodes à venir (status 'to_do', deadline, payable)
-Les déclarations faites via impots.gouv (ACD) n'apparaissent PAS ici => elles restent
-'to_do' dans Pennylane. L'app permet de les marquer manuellement (ChecklistEntry).
+Réponse vat_forms : {"vat_returns": [...], "future_vat_returns": [...]}
+  - vat_returns        : déclarations créées dans Pennylane (status: filed, sent, paid...)
+  - future_vat_returns : périodes pas encore déclarées dans PL (status 'to_do', deadline, payable)
+
+Les déclarations faites via impots.gouv (ACD) n'apparaissent PAS dans PL => 'to_do'.
+Elles sont marquées manuellement dans l'app (ChecklistEntry) et ne sont jamais écrasées.
+
+Persistance : les cookies sont stockés en BDD (AppSetting.PENNYLANE_WEB_COOKIES)
+pour survivre aux redéploiements Render, + cache mémoire du process.
 """
 
-import json
 import re
 import threading
-import time
 from datetime import datetime, date
 
 import requests
 
-# Stockage en mémoire des cookies de session Pennylane (session web, jamais persistés en BDD)
+# Cache mémoire des cookies (lazy-load depuis AppSetting au premier accès)
 _pl_session_lock = threading.Lock()
 _pl_session_cookies = ''
-_pl_session_firm_id = None  # FirmContext : 76917 pour JMH
+_pl_session_loaded = False
+
+COOKIE_KEY = 'PENNYLANE_WEB_COOKIES'
+
+# Statuts Pennylane considérés comme "déclarée"
+FILED_STATUSES = {'filed', 'sent', 'paid', 'partially_paid'}
+# Statut brut -> libellé FR
+STATUT_FR = {
+    'to_do': 'À déclarer',
+    'in_progress': 'En cours',
+    'filed': 'Télédéclarée',
+    'sent': 'Télédéclarée',
+    'paid': 'Payée',
+    'partially_paid': 'Partiellement payée',
+    'rejected': 'Rejetée',
+    'cancelled': 'Annulée',
+}
 
 
-def set_web_session(cookies: str, firm_id: int = 76917):
-    """Stocke les cookies de session Pennylane (colle le header -b du cURL)."""
-    global _pl_session_cookies, _pl_session_firm_id
+def _load_from_db():
+    """Charge les cookies depuis AppSetting (une fois par process)."""
+    global _pl_session_cookies, _pl_session_loaded
+    if _pl_session_loaded:
+        return
+    try:
+        from app.models import AppSetting
+        s = AppSetting.query.filter_by(cle=COOKIE_KEY).first()
+        if s and (s.valeur or '').strip():
+            _pl_session_cookies = s.valeur.strip()
+    except Exception:
+        pass
+    _pl_session_loaded = True
+
+
+def set_web_session(cookies: str, firm_id: int = None):
+    """Stocke les cookies de session Pennylane (colle le header -b du cURL) et persiste en BDD."""
+    global _pl_session_cookies, _pl_session_loaded
     cookies = (cookies or '').strip()
-    # Enlever un éventuel "-b '...'" ou -b "..." collé par erreur
+    # Enlever un éventuel "-b '...'" collé par erreur
     m = re.search(r"""-b\s+['"](.+?)['"]""", cookies)
     if m:
         cookies = m.group(1)
     with _pl_session_lock:
         _pl_session_cookies = cookies
-        _pl_session_firm_id = int(firm_id) if firm_id else 76917
+        _pl_session_loaded = True
+    # Persister en BDD pour survivre aux redéploiements
+    try:
+        from app.models import AppSetting
+        from app import db
+        s = AppSetting.query.filter_by(cle=COOKIE_KEY).first()
+        if not s:
+            s = AppSetting(cle=COOKIE_KEY, valeur=cookies, type_valeur='password',
+                           service='pennylane', masque=True)
+            db.session.add(s)
+        else:
+            s.valeur = cookies
+        db.session.commit()
+    except Exception:
+        pass
 
 
 def has_web_session() -> bool:
+    _load_from_db()
     return bool(_pl_session_cookies)
 
 
@@ -47,6 +95,15 @@ def clear_web_session():
     global _pl_session_cookies
     with _pl_session_lock:
         _pl_session_cookies = ''
+    try:
+        from app.models import AppSetting
+        from app import db
+        s = AppSetting.query.filter_by(cle=COOKIE_KEY).first()
+        if s:
+            db.session.delete(s)
+            db.session.commit()
+    except Exception:
+        pass
 
 
 def _headers():
@@ -59,12 +116,23 @@ def _headers():
     }
 
 
-def fetch_vat_forms(customer_id: str, period_start: str = None, period_end: str = None) -> dict:
+def _parse_cookie_header(header: str) -> dict:
+    out = {}
+    for part in (header or '').split(';'):
+        part = part.strip()
+        if '=' in part:
+            k, _, v = part.partition('=')
+            out[k.strip()] = v.strip()
+    return out
+
+
+def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = None) -> dict:
     """Récupère les déclarations TVA d'une company Pennylane via l'endpoint interne.
 
     Retourne {'ok': bool, 'vat_returns': [...], 'future_vat_returns': [...], 'message': str}
     """
-    if not has_web_session():
+    _load_from_db()
+    if not _pl_session_cookies:
         return {'ok': False, 'message': 'Session web Pennylane non configurée.',
                 'vat_returns': [], 'future_vat_returns': []}
     if not customer_id:
@@ -103,50 +171,50 @@ def fetch_vat_forms(customer_id: str, period_start: str = None, period_end: str 
             'future_vat_returns': data.get('future_vat_returns') or []}
 
 
-def _parse_cookie_header(header: str) -> dict:
-    out = {}
-    for part in (header or '').split(';'):
-        part = part.strip()
-        if '=' in part:
-            k, _, v = part.partition('=')
-            out[k.strip()] = v.strip()
-    return out
-
-
 def traduire_statut(statut: str) -> str:
     """Statut Pennylane brut -> libellé FR pour l'affichage."""
-    s = (statut or '').lower()
-    return {
-        'to_do': 'À déclarer',
-        'in_progress': 'En cours',
-        'filed': 'Télédéclarée',
-        'sent': 'Télédéclarée',
-        'paid': 'Payée',
-        'partially_paid': 'Partiellement payée',
-        'rejected': 'Rejetée',
-        'cancelled': 'Annulée',
-    }.get(s, statut or '')
+    return STATUT_FR.get((statut or '').lower(), statut or '')
+
+
+def _extract_period(vr: dict):
+    """Extrait (annee, mois) d'un objet vat_return (period='2026-01' ou '2026-01-01')."""
+    period = vr.get('period') or vr.get('label') or ''
+    m = re.match(r'(\d{4})-(\d{2})', str(period))
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2))
+
+
+def _vat_taxe_for(dossier) -> str:
+    """taxe ChecklistEntry selon le régime TVA du dossier."""
+    regime = (dossier.regime_tva or '').lower().strip()
+    if regime in ('trimestriel', 'trimestrielle'):
+        return 'tva_trimestriel'
+    return 'tva_mensuel'
 
 
 def sync_checklist_tva() -> dict:
-    """Boucle sur tous les dossiers reliés à Pennylane et synchronise les statuts
-    de déclaration TVA dans ChecklistEntry (kind='depot').
+    """Boucle sur tous les dossiers reliés à Pennylane :
+    1. stocke le statut PL brut dans TvaStatutPennylane (tableau de suivi, affichage grille)
+    2. remplit ChecklistEntry pour les déclarations faites DANS Pennylane
+       (vat_returns avec statut filed/paid) — jamais les périodes 'to_do'.
 
     Priorité : les entrées MANUELLES (updated_by_id renseigné) ne sont jamais écrasées.
-    Les statuts Pennylane ne remplissent que les cases vides.
 
-    Retour : {'ok', 'synces': n, 'erreurs': [...], 'message'}
+    Retour : {'ok', 'synces', 'dossiers_ok', 'erreurs': [...], 'message'}
     """
     from app import db
-    from app.models import Dossier, ChecklistEntry
+    from app.models import Dossier, ChecklistEntry, TvaStatutPennylane
 
     dossiers = Dossier.query.filter(Dossier.pennylane_customer_id.isnot(None),
                                     Dossier.pennylane_customer_id != '').all()
     if not dossiers:
-        return {'ok': False, 'message': 'Aucun dossier relié à Pennylane.', 'synces': 0, 'erreurs': []}
+        return {'ok': False, 'message': 'Aucun dossier relié à Pennylane.',
+                'synces': 0, 'dossiers_ok': 0, 'erreurs': []}
 
     annee_courante = date.today().year
     synced = 0
+    dossiers_ok = 0
     erreurs = []
 
     for d in dossiers:
@@ -157,56 +225,75 @@ def sync_checklist_tva() -> dict:
                 break  # inutile de continuer, tout va échouer
             continue
 
-        # vat_returns : déclarations créées dans Pennylane (télédéclarées via PL)
+        dossiers_ok += 1
+        taxe = _vat_taxe_for(d)
+
+        # --- 1. Miroir brut dans TvaStatutPennylane (toutes périodes, tout statut) ---
+        for vr in (res['vat_returns'] + res['future_vat_returns']):
+            per = _extract_period(vr)
+            if not per:
+                continue
+            y, mo = per
+            if taxe == 'tva_trimestriel':
+                mo = ((mo - 1) // 3) * 3 + 1
+            st = (vr.get('status') or '').lower()
+            st_row = TvaStatutPennylane.query.filter_by(
+                dossier_id=d.id, annee=y, mois=mo).first()
+            if not st_row:
+                st_row = TvaStatutPennylane(dossier_id=d.id, annee=y, mois=mo)
+                db.session.add(st_row)
+            st_row.statut = st or 'unknown'
+            st_row.deadline = vr.get('deadline') or None
+            payable = vr.get('payable') or vr.get('amount_due') or vr.get('total_amount')
+            try:
+                st_row.montant = float(payable) if payable is not None else None
+            except (TypeError, ValueError):
+                st_row.montant = None
+            st_row.date_sync = datetime.utcnow()
+
+        # --- 2. ChecklistEntry : seulement les déclarations réellement faites dans PL ---
         for vr in res['vat_returns']:
-            _apply_statut(d, vr, annee_courante, declare=True, paye=None)
+            st = (vr.get('status') or '').lower()
+            if st not in FILED_STATUSES:
+                continue  # créée mais pas télédéclarée -> on ne coche pas
+            per = _extract_period(vr)
+            if not per:
+                continue
+            y, mo = per
+            if taxe == 'tva_trimestriel':
+                mo = ((mo - 1) // 3) * 3 + 1
+            if y != annee_courante:
+                continue
+            e = ChecklistEntry.query.filter_by(dossier_id=d.id, taxe=taxe,
+                                               annee=y, mois=mo, kind='depot').first()
+            if not e:
+                e = ChecklistEntry(dossier_id=d.id, taxe=taxe, annee=y, mois=mo, kind='depot')
+                db.session.add(e)
+            if e.updated_by_id:
+                continue  # ne jamais écraser une entrée saisie manuellement
+            e.declare = True
+            if st == 'paid':
+                e.paye = True
             synced += 1
 
-        # future_vat_returns : périodes non déclarées dans PL ('to_do')
-        # => on ne touche PAS : la déclaration peut avoir été faite via impots.gouv (ACD).
-        #    L'utilisateur peut les marquer manuellement dans l'app.
-
     db.session.commit()
-    msg = f'{synced} statut(s) synchronisé(s) sur {len(dossiers)} dossier(s).'
+    msg = (f"{dossiers_ok}/{len(dossiers)} dossier(s) synchronisé(s), "
+           f"{synced} case(s) déclarée mise(s) à jour.")
     if erreurs:
-        msg += f' {len(erreurs)} erreur(s).'
-    return {'ok': True, 'synces': synced, 'erreurs': erreurs[:10], 'message': msg}
+        msg += f" {len(erreurs)} erreur(s)."
+    return {'ok': True, 'synces': synced, 'dossiers_ok': dossiers_ok,
+            'erreurs': erreurs[:10], 'message': msg}
 
 
-def _apply_statut(dossier, vat_return: dict, annee: int, declare: bool, paye):
-    """Applique un statut Pennylane à une ChecklistEntry sans écraser une entrée manuelle."""
-    from app.models import ChecklistEntry, User
-
-    period = vat_return.get('period') or vat_return.get('label') or ''
-    # format '2026-01' ou '2026-01-01'
-    m = re.match(r'(\d{4})-(\d{2})', str(period))
-    if not m:
-        return
-    y, mo = int(m.group(1)), int(m.group(2))
-
-    kind = 'depot'
-    regime = (dossier.regime_tva or '').lower().strip()
-    if regime in ('trimestriel', 'trimestrielle'):
-        # aligner sur le 1er mois du trimestre
-        mo = ((mo - 1) // 3) * 3 + 1
-
-    if y != annee:
-        return
-
-    e = ChecklistEntry.query.filter_by(dossier_id=dossier.id, taxe='tva_mensuel' if regime in ('ca3', 'mensuel', 'mensuelle') else 'tva_trimestriel',
-                                       annee=y, mois=mo, kind=kind).first()
-    if not e:
-        taxe = 'tva_mensuel' if regime in ('ca3', 'mensuel', 'mensuelle') else 'tva_trimestriel'
-        e = ChecklistEntry(dossier_id=dossier.id, taxe=taxe, annee=y, mois=mo, kind=kind)
-        from app import db
-        db.session.add(e)
-    if e.updated_by_id:
-        return  # jamais écraser une entrée saisie manuellement
-
-    if declare:
-        e.declare = True
-    if paye is not None:
-        e.paye = bool(paye)
+def statuts_pour_grille(dossiers_ids, annee: int) -> dict:
+    """Retourne {(dossier_id, mois): TvaStatutPennylane} pour l'affichage grille."""
+    from app.models import TvaStatutPennylane
+    if not dossiers_ids:
+        return {}
+    rows = TvaStatutPennylane.query.filter(
+        TvaStatutPennylane.dossier_id.in_(dossiers_ids),
+        TvaStatutPennylane.annee == annee).all()
+    return {(r.dossier_id, r.mois): r for r in rows}
 
 
 def test_web_session(customer_id: str = None) -> dict:

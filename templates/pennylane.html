@@ -66,18 +66,20 @@
         <h4 class="fw-semibold mb-3">📊 Déclarations TVA (session web)</h4>
         <p class="text-tertiary small mb-3">
             Lit les statuts des déclarations de TVA dans l'espace comptable Pennylane (page
-            <em>Fiscalité → Déclarations</em>) pour <strong>tous</strong> les dossiers reliés,
-            et remplit la grille Avancement.
+            <em>Fiscalité → Déclarations</em>) pour <strong>tous</strong> les dossiers reliés.
+            Les statuts s'affichent ensuite dans la <strong>grille checklist</strong>
+            (Checklist → Fiscale → Déclarations récurrentes → CA3 Mensuelle) : pastille bleue
+            = statut lu dans Pennylane, au survol : statut, échéance, montant.
             <br><strong class="text-warning">Important :</strong> les déclarations faites via
             impots.gouv (ACD) n'apparaissent pas dans Pennylane — marquez-les manuellement dans
-            la grille Avancement (clic sur la case), vos corrections manuelles ne sont jamais écrasées.
+            la grille (clic sur la case), vos corrections manuelles ne sont jamais écrasées.
         </p>
         <div id="plTvaStatus" class="mb-3"></div>
         <div class="mb-3">
             <label class="form-label-premium">Cookies de session Pennylane</label>
             <textarea id="plCookies" class="form-control" rows="3" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border-color);"
                       placeholder="Collez ici le header -b '...' du cURL (DevTools → Réseau → Copier comme cURL)"></textarea>
-            <small class="text-tertiary">Gardez la session en mémoire tant que l'app tourne. Si elle expire, recollez.</small>
+            <small class="text-tertiary">Les cookies sont enregistrés en base (chiffrés côté serveur, jamais affichés) et survivent aux redéploiements. Si la session expire, recollez-les simplement.</small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <button type="button" class="btn-premium btn-premium-primary btn-press" onclick="savePlTvaSession()">
@@ -210,6 +212,11 @@ function showPlTva(msg, ok) {
         : '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);">' +
           '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + msg + '</div>';
 }
+// Statut de la session au chargement de la page (cookies persistés en BDD)
+fetch('/pennylane/tva_session_status').then(r => r.json()).then(d => {
+    if (d.configured) showPlTva(d.message || 'Session Pennylane configurée.', true);
+    else showPlTva('Session web non configurée — collez les cookies ci-dessous.', false);
+}).catch(function() {});
 function syncPl() {
     if (!confirm('Lancer la synchronisation des dossiers avec Pennylane ?')) return;
     fetch('/pennylane/sync', { method: 'POST' })

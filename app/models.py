@@ -261,6 +261,35 @@ class ChecklistEntry(db.Model):
         return f'<ChecklistEntry d={self.dossier_id} {self.taxe} {self.annee}-{self.mois} {self.kind}>'
 
 
+class TvaStatutPennylane(db.Model):
+    """Miroir brut des statuts de déclarations TVA lus dans l'espace web Pennylane
+    (endpoint interne vat_forms, synchro session web).
+    Une ligne par (dossier, année, mois) — reflète ce que Pennylane affiche :
+    'to_do' (pas encore traité dans PL, possiblement fait via impots.gouv),
+    'filed'/'paid' (fait dans PL), deadline et montant payable."""
+    __tablename__ = 'tva_statuts_pennylane'
+    id = db.Column(db.Integer, primary_key=True)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=False, index=True)
+    annee = db.Column(db.Integer, nullable=False, index=True)
+    mois = db.Column(db.Integer, nullable=False)  # 1..12 (1er mois du trimestre si CA3 trim.)
+    statut = db.Column(db.String(30), default='to_do')  # brut Pennylane
+    deadline = db.Column(db.String(20), nullable=True)   # '2026-09-24'
+    montant = db.Column(db.Float, nullable=True)         # payable
+    date_sync = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('dossier_id', 'annee', 'mois', name='uq_tva_statut_pl'),
+    )
+
+    @property
+    def statut_fr(self):
+        from app.integrations.pennylane_web import traduire_statut
+        return traduire_statut(self.statut)
+
+    def __repr__(self):
+        return f'<TvaStatutPennylane d={self.dossier_id} {self.annee}-{self.mois} {self.statut}>'
+
+
 class Equipe(db.Model):
     __tablename__ = 'equipes'
     id = db.Column(db.Integer, primary_key=True)

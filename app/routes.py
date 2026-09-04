@@ -554,6 +554,21 @@ def checklist():
     meta = TAXE_META.get(taxe)
     data = {'annee': annee, 'etape': etape, 'taxe': taxe, 'meta': meta, 'grille': grille,
             'type': type_sel, 'freq': freq_sel, 'taxes_dispo': taxes_dispo}
+
+    # --- Statuts Pennylane (session web) pour affichage dans la grille TVA ---
+    if taxe in ('tva_mensuel', 'tva_trimestriel') and grille:
+        from app.integrations.pennylane_web import statuts_pour_grille
+        _pl_statuts = statuts_pour_grille([g['dossier'].id for g in grille], annee)
+        for g in grille:
+            for c in g['cols']:
+                st = _pl_statuts.get((g['dossier'].id, c['mois']))
+                if st:
+                    c['pl_statut'] = st.statut
+                    c['pl_statut_fr'] = st.statut_fr
+                    c['pl_deadline'] = st.deadline
+                    c['pl_montant'] = st.montant
+                    c['pl_sync'] = st.date_sync.strftime('%d/%m %H:%M') if st.date_sync else ''
+
     if request.args.get('format') == 'json':
         from flask import jsonify
         return jsonify({'annee': annee, 'taxe': taxe,

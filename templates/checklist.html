@@ -218,17 +218,25 @@
                         {% for c in g.cols %}
                         <td data-mois="{{ c.mois }}" data-kind="{{ c.kind }}">
                             {% if c.state == 'na' %}
+                                {% if c.pl_statut is defined and c.pl_statut %}
+                                <span class="sym sym-pl-{{ c.pl_statut }}" title="Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} · {{ '%.0f'|format(c.pl_montant) }} €{% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}"
+                                      style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--tertiary,#8b93a7);vertical-align:middle;"></span>
+                                {% else %}
                                 <span class="sym sym-st-na" title="Aucune obligation ce mois">·</span>
+                                {% endif %}
                             {% else %}
                                 <span class="sym sym-st-{{ c.state }}" data-field
                                       data-dossier="{{ g.dossier.id }}" data-mois="{{ c.mois }}" data-kind="{{ c.kind }}"
                                       data-state="{{ c.state }}" data-declare="{{ 1 if c.declare else 0 }}" data-paye="{{ 1 if c.paye else 0 }}"
                                       data-jour="{{ c.jour }}"
-                                      title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][c.mois-1] }} — clic pour changer le statut">
+                                      title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][c.mois-1] }} — clic pour changer le statut{% if c.pl_statut is defined and c.pl_statut %} · Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} ({{ '%.0f'|format(c.pl_montant) }} €){% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}{% endif %}">
                                     {% if c.state == 'solde' %}<i class="bi bi-check-lg"></i>
                                     {% elif c.state == 'declare' %}<i class="bi bi-circle-half"></i>
                                     {% elif c.state == 'retard' %}<i class="bi bi-x-lg"></i>
                                     {% else %}<i class="bi bi-circle" style="font-size:0.7rem;"></i>{% endif %}
+                                    {% if c.pl_statut is defined and c.pl_statut %}
+                                    <span style="position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--info,#5b8def);"></span>
+                                    {% endif %}
                                 </span>
                             {% endif %}
                         </td>
@@ -242,7 +250,7 @@
         </div>
     </div>
     <div class="px-3 pb-2">
-        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application (source par défaut). La connexion à l'API Pennylane sera ajoutée dès réception de la clé.</small>
+        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--info,#5b8def);"></span> = statut lu dans Pennylane (survol pour le détail) · les corrections manuelles ne sont jamais écrasées.</small>
     </div>
 </div>
 {% endif %}
