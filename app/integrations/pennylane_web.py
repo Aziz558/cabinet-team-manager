@@ -214,6 +214,7 @@ def sync_checklist_tva() -> dict:
 
     annee_courante = date.today().year
     synced = 0
+    statuts_ecrits = 0
     dossiers_ok = 0
     erreurs = []
 
@@ -250,6 +251,7 @@ def sync_checklist_tva() -> dict:
             except (TypeError, ValueError):
                 st_row.montant = None
             st_row.date_sync = datetime.utcnow()
+            statuts_ecrits += 1
 
         # --- 2. ChecklistEntry : seulement les déclarations réellement faites dans PL ---
         for vr in res['vat_returns']:
@@ -269,20 +271,22 @@ def sync_checklist_tva() -> dict:
             if not e:
                 e = ChecklistEntry(dossier_id=d.id, taxe=taxe, annee=y, mois=mo, kind='depot')
                 db.session.add(e)
-            if e.updated_by_id:
-                continue  # ne jamais écraser une entrée saisie manuellement
+            # Priorité à la SYNCHRO Pennylane sur les dossiers reliés :
+            # PL dit filed/paid -> la déclaration est réellement faite dans Pennylane,
+            # on écrase même une saisie manuelle antérieure.
             e.declare = True
-            if st == 'paid':
-                e.paye = True
+            e.paye = (st == 'paid')
             synced += 1
 
     db.session.commit()
-    msg = (f"{dossiers_ok}/{len(dossiers)} dossier(s) synchronisé(s), "
-           f"{synced} case(s) déclarée mise(s) à jour.")
+    msg = (f"{dossiers_ok}/{len(dossiers)} dossier(s) synchronisé(s) — "
+           f"{statuts_ecrits} statut(s) Pennylane enregistré(s) "
+           f"(visibles dans la grille : pastille bleue au coin des cases), "
+           f"{synced} case(s) marquée(s) déclarée(s) (déclarations faites dans Pennylane).")
     if erreurs:
         msg += f" {len(erreurs)} erreur(s)."
-    return {'ok': True, 'synces': synced, 'dossiers_ok': dossiers_ok,
-            'erreurs': erreurs[:10], 'message': msg}
+    return {'ok': True, 'synces': synced, 'statuts': statuts_ecrits,
+            'dossiers_ok': dossiers_ok, 'erreurs': erreurs[:10], 'message': msg}
 
 
 def statuts_pour_grille(dossiers_ids, annee: int) -> dict:

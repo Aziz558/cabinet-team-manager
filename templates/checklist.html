@@ -44,6 +44,11 @@
     .sym-st-venir   { border: 2px dashed var(--border-color); color: var(--text-tertiary); background: transparent; }
     .sym-st-na      { border: none; background: transparent; color: var(--text-tertiary); opacity: 0.45;
         cursor: default; font-size: 1.1rem; }
+    /* Pastille info Pennylane (dossier relié) : coin de la case */
+    .sym-pl { position: absolute; top: -4px; right: -4px; width: 10px; height: 10px;
+        border-radius: 50%; background: var(--info); border: 1.5px solid var(--bg-card);
+        box-shadow: 0 0 6px rgba(66, 165, 245, 0.55); }
+    td[data-kind] { position: relative; }
     .cl-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--text-tertiary); }
     .cl-legend .sym { cursor: default; transform: scale(0.85); }
 </style>
@@ -217,10 +222,10 @@
                         </td>
                         {% for c in g.cols %}
                         <td data-mois="{{ c.mois }}" data-kind="{{ c.kind }}">
+                            {% set pl_here = c.pl_statut is defined and c.pl_statut %}
                             {% if c.state == 'na' %}
-                                {% if c.pl_statut is defined and c.pl_statut %}
-                                <span class="sym sym-pl-{{ c.pl_statut }}" title="Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} · {{ '%.0f'|format(c.pl_montant) }} €{% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}"
-                                      style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--tertiary,#8b93a7);vertical-align:middle;"></span>
+                                {% if pl_here %}
+                                <span class="sym sym-st-na" title="Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} · {{ '%.0f'|format(c.pl_montant) }} €{% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}">·<span class="sym-pl"></span></span>
                                 {% else %}
                                 <span class="sym sym-st-na" title="Aucune obligation ce mois">·</span>
                                 {% endif %}
@@ -229,14 +234,12 @@
                                       data-dossier="{{ g.dossier.id }}" data-mois="{{ c.mois }}" data-kind="{{ c.kind }}"
                                       data-state="{{ c.state }}" data-declare="{{ 1 if c.declare else 0 }}" data-paye="{{ 1 if c.paye else 0 }}"
                                       data-jour="{{ c.jour }}"
-                                      title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][c.mois-1] }} — clic pour changer le statut{% if c.pl_statut is defined and c.pl_statut %} · Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} ({{ '%.0f'|format(c.pl_montant) }} €){% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}{% endif %}">
+                                      title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][c.mois-1] }} — clic pour changer le statut{% if pl_here %} · Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} ({{ '%.0f'|format(c.pl_montant) }} €){% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}{% endif %}">
                                     {% if c.state == 'solde' %}<i class="bi bi-check-lg"></i>
                                     {% elif c.state == 'declare' %}<i class="bi bi-circle-half"></i>
                                     {% elif c.state == 'retard' %}<i class="bi bi-x-lg"></i>
                                     {% else %}<i class="bi bi-circle" style="font-size:0.7rem;"></i>{% endif %}
-                                    {% if c.pl_statut is defined and c.pl_statut %}
-                                    <span style="position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--info,#5b8def);"></span>
-                                    {% endif %}
+                                    {% if pl_here %}<span class="sym-pl"></span>{% endif %}
                                 </span>
                             {% endif %}
                         </td>
@@ -250,7 +253,7 @@
         </div>
     </div>
     <div class="px-3 pb-2">
-        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--info,#5b8def);"></span> = statut lu dans Pennylane (survol pour le détail) · les corrections manuelles ne sont jamais écrasées.</small>
+        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--info);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(66,165,245,.5);"></span> = statut lu dans Pennylane (survol : statut, échéance, montant). Dossiers reliés : la synchro Pennylane fait foi et met à jour la case — un clic manuel reste ensuite prioritaire jusqu'à la prochaine synchro.</small>
     </div>
 </div>
 {% endif %}

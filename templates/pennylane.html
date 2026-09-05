@@ -67,12 +67,18 @@
         <p class="text-tertiary small mb-3">
             Lit les statuts des déclarations de TVA dans l'espace comptable Pennylane (page
             <em>Fiscalité → Déclarations</em>) pour <strong>tous</strong> les dossiers reliés.
+            <strong>Une seule session suffit</strong> : c'est la session de TON compte comptable
+            Pennylane, qui a accès à tous les dossiers du cabinet. Pas besoin de coller des cookies
+            dossier par dossier — tu les colles une fois ici, et la synchro boucle automatiquement
+            sur les {{ dossiers_associes|length }} dossiers reliés.
             Les statuts s'affichent ensuite dans la <strong>grille checklist</strong>
             (Checklist → Fiscale → Déclarations récurrentes → CA3 Mensuelle) : pastille bleue
             = statut lu dans Pennylane, au survol : statut, échéance, montant.
             <br><strong class="text-warning">Important :</strong> les déclarations faites via
-            impots.gouv (ACD) n'apparaissent pas dans Pennylane — marquez-les manuellement dans
-            la grille (clic sur la case), vos corrections manuelles ne sont jamais écrasées.
+            impots.gouv (ACD) n'apparaissent pas comme « faites » dans Pennylane — la pastille
+            bleue te montre quand même ce que PL en sait (statut, échéance, montant saisi).
+            Pour les dossiers reliés, la synchro Pennylane fait foi sur les cases
+            (déclarée/payée) ; ton clic manuel reste pris en compte jusqu'à la prochaine synchro.
         </p>
         <div id="plTvaStatus" class="mb-3"></div>
         <div class="mb-3">
