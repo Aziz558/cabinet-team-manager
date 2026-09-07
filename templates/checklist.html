@@ -52,6 +52,15 @@
     td[data-kind] { position: relative; }
     .cl-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--text-tertiary); }
     .cl-legend .sym { cursor: default; transform: scale(0.85); }
+    .btn-pl-sync {
+        width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border-color);
+        background: var(--bg-card-hover); color: var(--text-tertiary); font-size: 0.68rem;
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; flex-shrink: 0; padding: 0; transition: all .15s ease;
+    }
+    .btn-pl-sync:hover { color: var(--info); border-color: var(--info); background: rgba(66,165,245,.08); }
+    .btn-pl-sync.spinning i { display: inline-block; animation: plspin 1s linear infinite; }
+    @keyframes plspin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
 {% endblock %}
 
@@ -165,6 +174,26 @@
 </div>
 
 <div class="card-premium">
+{% if data.taxe in ('tva_mensuel', 'tva_trimestriel') %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2 mb-2 rounded-3" style="background:var(--bg-card-hover);border:1px solid var(--border-color);font-size:0.76rem;">
+    <span id="plSyncBannerText">
+        {% if pl_last_sync is defined and pl_last_sync and pl_last_sync.quand %}
+        <i class="bi bi-cloud-check me-1" style="color:var(--info);"></i>
+        Dernière synchro Pennylane : <strong>{{ pl_last_sync.quand }} UTC</strong> —
+        {% if pl_last_sync.ok %}<span style="color:var(--success);">{{ pl_last_sync.message }}</span>
+        {% else %}<span style="color:var(--danger);">⚠️ {{ pl_last_sync.message }}</span>{% endif %}
+        {% else %}
+        <i class="bi bi-cloud-check me-1" style="color:var(--info);"></i>
+        Aucune synchro Pennylane enregistrée — automatique chaque heure à :10 (UTC).
+        {% endif %}
+    </span>
+    {% if current_user.role in ('admin', 'manager') %}
+    <button type="button" class="btn-premium btn-premium-secondary btn-press py-1 px-2" style="font-size:0.7rem;" onclick="plVerifyNow(this)">
+        <i class="bi bi-arrow-repeat me-1"></i>Vérifier maintenant
+    </button>
+    {% endif %}
+</div>
+{% endif %}
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — chaque colonne = la période déclarée (ex. juillet → dépôt 24 août) · cliquez sur un symbole pour changer son statut</h6>
         <div class="cl-legend">
@@ -198,6 +227,10 @@
                                     <strong>{{ g.dossier.numero_dossier }}</strong>
                                     <small>{{ g.dossier.intitule }}</small>
                                 </div>
+                                {% if current_user.role in ('admin', 'manager') and g.dossier.pennylane_customer_id %}
+                                <button type="button" class="btn-pl-sync" title="Re-synchroniser ce dossier depuis Pennylane"
+                                        onclick="plSyncDossier({{ g.dossier.id }}, this)"><i class="bi bi-arrow-repeat"></i></button>
+                                {% endif %}
                             </div>
                         </td>
                         <td class="text-tertiary" style="font-size:0.72rem;">{{ g.regime | upper }}</td>
@@ -306,6 +339,47 @@
         sym.className = 'sym sym-st-' + st;
         sym.innerHTML = ICONS[st];
     }
+
+    function plSyncDossier(dossierId, btn) {
+        // Re-synchronise UN dossier depuis Pennylane (bouton ⟳ à côté du nom)
+        btn.classList.add('spinning');
+        fetch('/checklist/pl_sync_dossier/' + dossierId, { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+                btn.classList.remove('spinning');
+                var okMsg = (j.message || (j.ok ? 'Synchronisé.' : 'Erreur inconnue.'));
+                if (j.ok) { showToast(okMsg, 'success'); setTimeout(function() { location.reload(); }, 900); }
+                else { showToast('Pennylane : ' + okMsg, 'danger'); }
+            })
+            .catch(function() {
+                btn.classList.remove('spinning');
+                showToast('Erreur réseau', 'danger');
+            });
+    }
+    function plVerifyNow(btn) {
+        // Teste la session + resynchronise TOUS les dossiers (comme le passage horaire)
+        var original = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Vérification...';
+        btn.disabled = true;
+        fetch('/pennylane/tva_session_status').then(function(r) { return r.json(); }).then(function(st) {
+            if (!st.configured) {
+                btn.innerHTML = original; btn.disabled = false;
+                showToast('Session Pennylane non configurée (page Intégration).', 'danger');
+                return null;
+            }
+            return fetch('/checklist/pl_sync_all', { method: 'POST' }).then(function(r) { return r.json(); });
+        }).then(function(j) {
+            btn.innerHTML = original; btn.disabled = false;
+            if (!j) return;
+            if (j.ok) { showToast(j.message || 'Synchro terminée.', 'success'); setTimeout(function() { location.reload(); }, 900); }
+            else { showToast('Pennylane : ' + (j.message || 'échec'), 'danger'); }
+        }).catch(function() {
+            btn.innerHTML = original; btn.disabled = false;
+            showToast('Erreur réseau', 'danger');
+        });
+    }
+    window.plSyncDossier = plSyncDossier;
+    window.plVerifyNow = plVerifyNow;
 
     grid.addEventListener('click', function(ev) {
         var sym = ev.target.closest('.sym[data-field]');

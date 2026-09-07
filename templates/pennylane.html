@@ -112,6 +112,9 @@
             <button type="button" class="btn-premium btn-premium-secondary btn-press" onclick="syncPlTva()">
                 <i class="bi bi-cloud-download me-1"></i>Synchroniser les statuts TVA
             </button>
+            <button type="button" class="btn-premium btn-premium-secondary btn-press" onclick="verifyPlTva(this)">
+                <i class="bi bi-arrow-repeat me-1"></i>Vérifier maintenant
+            </button>
         </div>
     </div>
 </div>
@@ -235,6 +238,28 @@ function showPlTva(msg, ok) {
           '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + msg + '</div>'
         : '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);">' +
           '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + msg + '</div>';
+}
+function verifyPlTva(btn) {
+    // Teste la session puis lance une synchro immédiate de tous les dossiers
+    var original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Vérification...';
+    btn.disabled = true;
+    fetch('/pennylane/tva_session_status').then(function(r) { return r.json(); }).then(function(st) {
+        if (!st.configured) {
+            showPlTva('Session web non configurée — collez les cookies ci-dessous.', false);
+            return null;
+        }
+        showPlTva(st.message || 'Session active — synchro en cours...', true);
+        return fetch('/checklist/pl_sync_all', { method: 'POST' }).then(function(r) { return r.json(); });
+    }).then(function(j) {
+        btn.innerHTML = original; btn.disabled = false;
+        if (!j) return;
+        var extra = (j.erreurs && j.erreurs.length) ? (' — ' + j.erreurs.join(' ; ')) : '';
+        showPlTva((j.message || 'OK') + extra, j.ok);
+    }).catch(function(err) {
+        btn.innerHTML = original; btn.disabled = false;
+        showPlTva('Erreur réseau: ' + err.message, false);
+    });
 }
 // Statut de la session au chargement de la page (cookies persistés en BDD)
 fetch('/pennylane/tva_session_status').then(r => r.json()).then(d => {

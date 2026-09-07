@@ -114,6 +114,12 @@ with app.app_context():
                 if 'pennylane_customer_id' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN pennylane_customer_id VARCHAR(64)"))
                     app.logger.info("Added pennylane_customer_id column to dossiers")
+                # Checklist : mode synchro Pennylane (True = état imposé par la synchro)
+                cl_cols = [c['name'] for c in inspector.get_columns('checklist_entries')] \
+                    if 'checklist_entries' in inspector.get_table_names() else []
+                if cl_cols and 'pl_mode' not in cl_cols:
+                    conn.execute(db.text("ALTER TABLE checklist_entries ADD COLUMN pl_mode BOOLEAN DEFAULT FALSE"))
+                    app.logger.info("Added pl_mode column to checklist_entries")
                 if 'pennylane_api_token' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN pennylane_api_token VARCHAR(256)"))
                 if 'forme_juridique' not in dossiers_cols:

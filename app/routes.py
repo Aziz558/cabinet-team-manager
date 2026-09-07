@@ -556,18 +556,21 @@ def checklist():
             'type': type_sel, 'freq': freq_sel, 'taxes_dispo': taxes_dispo}
 
     # --- Statuts Pennylane (session web) pour affichage dans la grille TVA ---
-    if taxe in ('tva_mensuel', 'tva_trimestriel') and grille:
-        from app.integrations.pennylane_web import statuts_pour_grille
-        _pl_statuts = statuts_pour_grille([g['dossier'].id for g in grille], annee)
-        for g in grille:
-            for c in g['cols']:
-                st = _pl_statuts.get((g['dossier'].id, c['mois']))
-                if st:
-                    c['pl_statut'] = st.statut
-                    c['pl_statut_fr'] = st.statut_affiche
-                    c['pl_deadline'] = st.deadline
-                    c['pl_montant'] = st.montant
-                    c['pl_sync'] = st.date_sync.strftime('%d/%m %H:%M') if st.date_sync else ''
+    pl_last_sync = {}
+    if taxe in ('tva_mensuel', 'tva_trimestriel'):
+        from app.integrations.pennylane_web import statuts_pour_grille, get_last_sync
+        if grille:
+            _pl_statuts = statuts_pour_grille([g['dossier'].id for g in grille], annee)
+            for g in grille:
+                for c in g['cols']:
+                    st = _pl_statuts.get((g['dossier'].id, c['mois']))
+                    if st:
+                        c['pl_statut'] = st.statut
+                        c['pl_statut_fr'] = st.statut_affiche
+                        c['pl_deadline'] = st.deadline
+                        c['pl_montant'] = st.montant
+                        c['pl_sync'] = st.date_sync.strftime('%d/%m %H:%M') if st.date_sync else ''
+        pl_last_sync = get_last_sync()
 
     if request.args.get('format') == 'json':
         from flask import jsonify
@@ -632,6 +635,7 @@ def checklist_toggle():
     else:
         # tout désactivé -> supprimer la ligne (retour à l'état calculé : à venir / retard / seed)
         db.session.delete(e)
+    e.pl_mode = False  # saisie manuelle : la prochaine synchro fera foi sur les périodes connues de PL
     e.updated_by_id = current_user.id
     e.date_modif = datetime.utcnow()
     db.session.commit()
@@ -2978,6 +2982,108 @@ def pennylane_tva_sync():
     if current_user.role != 'admin':
         return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
     from app.integrations.pennylane_web import sync_checklist_tva
+    res = sync_checklist_tva()
+    return jsonify(res)
+
+
+@app.route('/checklist/pl_sync_dossier/<int:dossier_id>', methods=['POST'])
+@login_required
+def checklist_pl_sync_dossier(dossier_id):
+    """Re-synchronise UN dossier depuis l'espace web Pennylane (bouton ⟳ de la grille).
+    Accessible aux managers et admins (hamza peut relancer sans attendre l'heure :10)."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès réservé aux managers.'}), 403
+    from app.models import Dossier
+    d = Dossier.query.get_or_404(dossier_id)
+    if not (d.pennylane_customer_id or '').strip():
+        return jsonify({'ok': False, 'message': 'Dossier non relié à Pennylane.'}), 400
+    from app.integrations.pennylane_web import has_web_session
+    if not has_web_session():
+        return jsonify({'ok': False, 'message': 'Session web Pennylane non configurée (page Intégration).'}), 400
+
+    from app.integrations.pennylane_web import (fetch_vat_forms, _vat_taxe_for,
+                                                _extract_period, _save_last_sync,
+                                                FILED_STATUSES)
+    from app.models import ChecklistEntry, TvaStatutPennylane
+    from datetime import date as _date, datetime as _dt
+
+    res = fetch_vat_forms(d.pennylane_customer_id)
+    if not res['ok']:
+        _save_last_sync(ok=False, message=f"{d.numero_dossier}: {res['message']}")
+        return jsonify(res)
+
+    taxe = _vat_taxe_for(d)
+    statuts = 0
+    forces_annules = 0
+    synced = 0
+
+    # Miroir + neutralisation des forçages manuels sur périodes connues de PL
+    for vr in (res['vat_returns'] + res['future_vat_returns']):
+        per = _extract_period(vr)
+        if not per:
+            continue
+        y, mo = per
+        if taxe == 'tva_trimestriel':
+            mo = ((mo - 1) // 3) * 3 + 1
+        st = (vr.get('status') or '').lower()
+        st_row = TvaStatutPennylane.query.filter_by(dossier_id=d.id, annee=y, mois=mo).first()
+        if not st_row:
+            st_row = TvaStatutPennylane(dossier_id=d.id, annee=y, mois=mo)
+            db.session.add(st_row)
+        st_row.statut = st or 'unknown'
+        st_row.deadline = vr.get('deadline') or None
+        payable = vr.get('payable') or vr.get('amount_due') or vr.get('total_amount')
+        try:
+            st_row.montant = float(payable) if payable is not None else None
+        except (TypeError, ValueError):
+            st_row.montant = None
+        st_row.date_sync = _dt.utcnow()
+        statuts += 1
+        old = ChecklistEntry.query.filter_by(dossier_id=d.id, taxe=taxe,
+                                             annee=y, mois=mo, kind='depot').first()
+        if old and old.pl_mode and not (old.declare or old.paye):
+            db.session.delete(old)
+            forces_annules += 1
+
+    # Cases cochées : déclarations réellement faites dans PL
+    for vr in res['vat_returns']:
+        st = (vr.get('status') or '').lower()
+        if st not in FILED_STATUSES:
+            continue
+        per = _extract_period(vr)
+        if not per:
+            continue
+        y, mo = per
+        if taxe == 'tva_trimestriel':
+            mo = ((mo - 1) // 3) * 3 + 1
+        e = ChecklistEntry.query.filter_by(dossier_id=d.id, taxe=taxe,
+                                           annee=y, mois=mo, kind='depot').first()
+        if not e:
+            e = ChecklistEntry(dossier_id=d.id, taxe=taxe, annee=y, mois=mo, kind='depot')
+            db.session.add(e)
+        e.declare = True
+        e.paye = (st == 'paid')
+        e.pl_mode = True
+        synced += 1
+
+    db.session.commit()
+    msg = (f"{d.numero_dossier} : {statuts} statut(s) Pennylane enregistré(s), "
+           f"{synced} case(s) cochée(s), {forces_annules} forçage(s) manuel(s) annulé(s).")
+    _save_last_sync(ok=True, message=msg)
+    return jsonify({'ok': True, 'message': msg, 'statuts': statuts,
+                    'synced': synced, 'forces_annules': forces_annules})
+
+
+@app.route('/checklist/pl_sync_all', methods=['POST'])
+@login_required
+def checklist_pl_sync_all():
+    """Resynchronise TOUS les dossiers reliés (bouton « Vérifier maintenant » de la grille).
+    Accessible managers + admins — même logique que le passage automatique horaire."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès réservé aux managers.'}), 403
+    from app.integrations.pennylane_web import has_web_session, sync_checklist_tva
+    if not has_web_session():
+        return jsonify({'ok': False, 'message': 'Session web Pennylane non configurée (page Intégration).'}), 400
     res = sync_checklist_tva()
     return jsonify(res)
 

@@ -9,8 +9,11 @@ Réponse vat_forms : {"vat_returns": [...], "future_vat_returns": [...]}
   - vat_returns        : déclarations créées dans Pennylane (status: filed, sent, paid...)
   - future_vat_returns : périodes pas encore déclarées dans PL (status 'to_do', deadline, payable)
 
-Les déclarations faites via impots.gouv (ACD) n'apparaissent PAS dans PL => 'to_do'.
-Elles sont marquées manuellement dans l'app (ChecklistEntry) et ne sont jamais écrasées.
+Règle : sur les dossiers reliés, la SYNCHRO fait foi sur les périodes qui existent dans
+Pennylane (vat_returns + future_vat_returns) — elle réécrit/neutralise les cases
+manuelles (ChecklistEntry.pl_mode) : declare/paye imposés pour les périodes faites
+dans PL, forçages manuels annulés pour les périodes connues de PL. Les mois hors
+périmètre PL restent 100 % manuels.
 
 Persistance : les cookies sont stockés en BDD (AppSetting.PENNYLANE_WEB_COOKIES)
 pour survivre aux redéploiements Render, + cache mémoire du process.
@@ -201,7 +204,7 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
 
     today = date.today()
     if not period_start:
-        period_start = f'{today.year}-01-01'
+        period_start = f'{today.year - 1}-12-01'  # marge : CA3 de déc. N-1 déposée en janv. N
     if not period_end:
         period_end = f'{today.year}-12-31'
 
@@ -217,10 +220,17 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
         return {'ok': False, 'message': f'Erreur réseau: {e}',
                 'vat_returns': [], 'future_vat_returns': []}
     if r.status_code == 401:
-        return {'ok': False, 'message': 'Session expirée — recolle les cookies Pennylane.',
+        _msg = 'Session expirée — recolle les cookies Pennylane (page Intégration).'
+        _save_last_sync(ok=False, message=_msg)
+        _alerter_session(_msg)
+        return {'ok': False, 'message': _msg,
                 'vat_returns': [], 'future_vat_returns': []}
     if r.status_code != 200:
-        return {'ok': False, 'message': f'HTTP {r.status_code}',
+        _msg = f'HTTP {r.status_code} sur vat_forms (company {customer_id}).'
+        if r.status_code in (401, 403):
+            _save_last_sync(ok=False, message='Session Pennylane invalide (HTTP %d).' % r.status_code)
+            _alerter_session('Session Pennylane invalide (HTTP %d).' % r.status_code)
+        return {'ok': False, 'message': _msg,
                 'vat_returns': [], 'future_vat_returns': []}
     try:
         data = r.json()
@@ -284,6 +294,19 @@ def _save_last_sync(ok: bool, message: str):
             pass
 
 
+def get_last_sync() -> dict:
+    """Dernier passage de synchro (auto ou manuel) — lisible par tous les rôles."""
+    try:
+        import json as _json
+        from app.models import AppSetting
+        s = AppSetting.query.filter_by(cle=LAST_SYNC_KEY).first()
+        if s and s.valeur:
+            return _json.loads(s.valeur)
+    except Exception:
+        pass
+    return {}
+
+
 _last_alert = {'ts': 0.0, 'msg': ''}
 
 
@@ -316,7 +339,8 @@ def sync_checklist_tva() -> dict:
     """Boucle sur tous les dossiers reliés à Pennylane :
     1. stocke le statut PL brut dans TvaStatutPennylane (tableau de suivi, affichage grille)
     2. remplit ChecklistEntry pour les déclarations faites DANS Pennylane
-       (vat_returns avec statut filed/paid) — jamais les périodes 'to_do'.
+       (vat_returns avec statut filed/paid) — jamais les périodes 'to_do' ;
+    3. neutralise les forçages manuels sur les périodes connues de PL (la synchro fait foi).
 
     Priorité : la SYNCHRO fait foi sur les dossiers reliés (écrase les saisies manuelles
     antérieures — cf. demande utilisateur).
@@ -336,6 +360,7 @@ def sync_checklist_tva() -> dict:
     synced = 0
     statuts_ecrits = 0
     en_retard = 0
+    forces_annules = 0
     dossiers_ok = 0
     erreurs = []
 
@@ -351,6 +376,7 @@ def sync_checklist_tva() -> dict:
         taxe = _vat_taxe_for(d)
 
         # --- 1. Miroir brut dans TvaStatutPennylane (toutes périodes, tout statut) ---
+        per_connues = set()
         for vr in (res['vat_returns'] + res['future_vat_returns']):
             per = _extract_period(vr)
             if not per:
@@ -358,6 +384,7 @@ def sync_checklist_tva() -> dict:
             y, mo = per
             if taxe == 'tva_trimestriel':
                 mo = ((mo - 1) // 3) * 3 + 1
+            per_connues.add((y, mo))
             st = (vr.get('status') or '').lower()
             st_row = TvaStatutPennylane.query.filter_by(
                 dossier_id=d.id, annee=y, mois=mo).first()
@@ -381,8 +408,15 @@ def sync_checklist_tva() -> dict:
                 st_row.montant = None
             st_row.date_sync = datetime.utcnow()
             statuts_ecrits += 1
+            # --- 1b. La synchro fait foi : annule un forçage manuel antérieur sur une
+            #         période que Pennylane connaît (to_do/filed...) — cf. demande utilisateur ---
+            old = ChecklistEntry.query.filter_by(dossier_id=d.id, taxe=taxe,
+                                                 annee=y, mois=mo, kind='depot').first()
+            if old and old.pl_mode and not (old.declare or old.paye):
+                db.session.delete(old)
+                forces_annules += 1
 
-        # --- 2. ChecklistEntry : seulement les déclarations réellement faites dans PL ---
+        # --- 2. ChecklistEntry : déclarations réellement faites DANS Pennylane ---
         for vr in res['vat_returns']:
             st = (vr.get('status') or '').lower()
             if st not in FILED_STATUSES:
@@ -393,8 +427,6 @@ def sync_checklist_tva() -> dict:
             y, mo = per
             if taxe == 'tva_trimestriel':
                 mo = ((mo - 1) // 3) * 3 + 1
-            if y != annee_courante:
-                continue
             e = ChecklistEntry.query.filter_by(dossier_id=d.id, taxe=taxe,
                                                annee=y, mois=mo, kind='depot').first()
             if not e:
@@ -402,16 +434,18 @@ def sync_checklist_tva() -> dict:
                 db.session.add(e)
             # Priorité à la SYNCHRO Pennylane sur les dossiers reliés :
             # PL dit filed/paid -> la déclaration est réellement faite dans Pennylane,
-            # on écrase même une saisie manuelle antérieure.
+            # on écrase même une saisie manuelle antérieure (pl_mode=True).
             e.declare = True
             e.paye = (st == 'paid')
+            e.pl_mode = True
             synced += 1
 
     db.session.commit()
     msg = (f"{dossiers_ok}/{len(dossiers)} dossier(s) synchronisé(s) — "
            f"{statuts_ecrits} statut(s) Pennylane enregistré(s) "
            f"(visibles dans la grille : pastille bleue au coin des cases), "
-           f"{synced} case(s) marquée(s) déclarée(s) (déclarations faites dans Pennylane).")
+           f"{synced} case(s) marquée(s) déclarée(s) (déclarations faites dans Pennylane), "
+           f"{forces_annules} forçage(s) manuel(s) annulé(s) sur des périodes connues de Pennylane.")
     if erreurs:
         msg += f" {len(erreurs)} erreur(s)."
     if en_retard:
