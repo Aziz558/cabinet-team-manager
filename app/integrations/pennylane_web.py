@@ -256,6 +256,32 @@ def traduire_statut(statut: str) -> str:
     return STATUT_FR.get((statut or '').lower(), statut or '')
 
 
+# Couleurs des pastilles Pennylane (demande utilisateur) :
+# vert = acceptée/déclarée, orangé = en cours (à déclarer), rouge = en retard.
+PILL_OK = {'accepted', 'validated', 'filed', 'sent', 'completed', 'done', 'transmitted',
+           'accounted', 'paid', 'partially_paid'}
+PILL_PROGRESS = {'to_do', 'in_progress', 'draft', 'to_send'}
+
+
+def pill_class(statut: str, affiche: str = '') -> str:
+    """Classe CSS de la pastille Pennylane pour la grille checklist.
+
+    Retourne '' (bleu par défaut) si le statut n'est pas mappé.
+    """
+    s = (statut or '').lower()
+    aff = (affiche or traduire_statut(s) or '').strip().lower()
+    if s in ('late', 'late_to_do', 'overdue') or aff == 'en retard':
+        return ' sym-pl-late'
+    if s in PILL_OK or aff in ('acceptée', 'acceptee', 'validée', 'validee', 'télédéclarée',
+                               'telegedeclaree', 'terminée', 'terminee', 'payée', 'payee',
+                               'comptabilisée', 'comptabilisee', 'transmise'):
+        return ' sym-pl-ok'
+    if s in PILL_PROGRESS or aff in ('à déclarer', 'a declarer', 'en cours', 'brouillon',
+                                     'à envoyer', 'a envoyer'):
+        return ' sym-pl-progress'
+    return ''
+
+
 def _extract_period(vr: dict):
     """Extrait (annee, mois) d'un objet vat_return.
 
