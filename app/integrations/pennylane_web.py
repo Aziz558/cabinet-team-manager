@@ -48,7 +48,7 @@ STATUT_FR = {
     'completed': 'Terminée',
     'done': 'Terminée',
     'validated': 'Validée',
-    'accepted': 'Validée',
+    'accepted': 'Acceptée',
     'transmitted': 'Transmise',
     'accounted': 'Comptabilisée',
     'paid': 'Payée',
@@ -204,7 +204,9 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
 
     today = date.today()
     if not period_start:
-        period_start = f'{today.year}-01-01'
+        # Fenêtre [1er déc N-1 -> déc N] : couvre la CA3 de décembre N-1 (déposée en
+        # janvier N) même quand les périodes de N existent déjà dans vat_returns.
+        period_start = f'{today.year - 1}-12-01'
     if not period_end:
         period_end = f'{today.year}-12-31'
 
@@ -255,12 +257,29 @@ def traduire_statut(statut: str) -> str:
 
 
 def _extract_period(vr: dict):
-    """Extrait (annee, mois) d'un objet vat_return (period='2026-01' ou '2026-01-01')."""
-    period = vr.get('period') or vr.get('label') or ''
-    m = re.match(r'(\d{4})-(\d{2})', str(period))
-    if not m:
-        return None
-    return int(m.group(1)), int(m.group(2))
+    """Extrait (annee, mois) d'un objet vat_return.
+
+    L'API vat_forms renvoie period_start/period_end ('2026-01-01'), pas 'period'.
+    Repli historique : period ('2026-01') ou label ('TVA janvier 2026').
+    """
+    for key in ('period_start', 'period', 'period_end'):
+        raw = vr.get(key)
+        if raw:
+            m = re.match(r'(\d{4})-(\d{2})', str(raw))
+            if m:
+                return int(m.group(1)), int(m.group(2))
+    # Repli : label du type 'TVA janvier 2026' / 'TVA 1er trimestre 2026'
+    label = str(vr.get('label') or '')
+    mois_fr = {'janvier': 1, 'fevrier': 2, 'février': 2, 'mars': 3, 'avril': 4,
+               'mai': 5, 'juin': 6, 'juillet': 7, 'aout': 8, 'août': 8,
+               'septembre': 9, 'octobre': 10, 'novembre': 11, 'decembre': 12, 'décembre': 12}
+    low = label.lower()
+    m_annee = re.search(r'(\d{4})', low)
+    annee = int(m_annee.group(1)) if m_annee else None
+    for nom, num in mois_fr.items():
+        if nom in low and annee:
+            return annee, num
+    return None
 
 
 def _vat_taxe_for(dossier) -> str:

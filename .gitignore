@@ -26,3 +26,18 @@ __pycache__/
 .venv/
 venv/
 .env
+
+
+# --- Diagnostics locaux (a ne jamais committer) ---
+_diag_*.py
+_verif_*.py
+_parse_rows*.py
+_dump_pages.py
+_analyse_pages.py
+_find_route.py
+_poll_deploy.py
+_read_flux.py
+_page_*.html
+_vat_*.json
+cookies*.txt
+response.json
