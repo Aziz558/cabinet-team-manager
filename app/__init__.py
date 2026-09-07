@@ -468,12 +468,30 @@ try:
             except Exception as e:
                 app.logger.error(f"Pennylane check global error: {e}")
 
+    def synchroniser_tva_automatique():
+        """Synchro AUTOMATIQUE des statuts TVA Pennylane (vat_forms, session web).
+        Tourne toutes les heures — zéro intervention utilisateur.
+        Garde la session vivante (auto-refresh des cookies) et alerte par email si elle meurt."""
+        with app.app_context():
+            try:
+                from app.integrations.pennylane_web import has_web_session, sync_checklist_tva
+                if not has_web_session():
+                    return  # session jamais configurée : rien à faire
+                res = sync_checklist_tva()
+                if res.get('ok'):
+                    app.logger.info(f"TVA auto-sync OK: {res.get('message', '')[:200]}")
+                else:
+                    app.logger.warning(f"TVA auto-sync KO: {res.get('message', '')[:200]}")
+            except Exception as e:
+                app.logger.error(f"TVA auto-sync error: {e}")
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
     scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)
     scheduler.add_job(regenerer_taches_fiscales, 'cron', day=1, hour=6, minute=0)  # 1er du mois à 06:00
     scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0)  # toutes les heures
+    scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10)  # toutes les heures (:10)
     scheduler.start()
-    app.logger.info("APScheduler started: daily 08:00, recurring 07:00, fiscal 1st 06:00, pennylane hourly")
+    app.logger.info("APScheduler started: daily 08:00, recurring 07:00, fiscal 1st 06:00, pennylane hourly, TVA hourly (:10)")
 except Exception as e:
     app.logger.warning(f"APScheduler not available: {e}")

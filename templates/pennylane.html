@@ -64,6 +64,24 @@
 <div class="card-premium mb-4 animate-fade-in-up stagger-2">
     <div class="card-body-premium">
         <h4 class="fw-semibold mb-3">📊 Déclarations TVA (session web)</h4>
+        {% if pl_last_sync %}
+        <div class="p-2 rounded-3 mb-3 small" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
+            <i class="bi bi-clock-history me-1" style="color:var(--orange-primary);"></i>
+            <strong>Synchro automatique active</strong> (toutes les heures) — dernier passage :
+            {{ pl_last_sync.quand }} UTC
+            {% if pl_last_sync.ok %}
+            <span class="badge badge-success ms-1">OK</span>
+            {% else %}
+            <span class="badge badge-danger ms-1">Échec</span>
+            {% endif %}
+            <div class="text-tertiary" style="font-size:0.72rem;">{{ pl_last_sync.message }}</div>
+        </div>
+        {% else %}
+        <div class="p-2 rounded-3 mb-3 small" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
+            <i class="bi bi-clock-history me-1 text-tertiary"></i>
+            <strong>Synchro automatique active</strong> (toutes les heures) — aucun passage enregistré pour le moment.
+        </div>
+        {% endif %}
         <p class="text-tertiary small mb-3">
             Lit les statuts des déclarations de TVA dans l'espace comptable Pennylane (page
             <em>Fiscalité → Déclarations</em>) pour <strong>tous</strong> les dossiers reliés.

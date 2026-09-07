@@ -564,7 +564,7 @@ def checklist():
                 st = _pl_statuts.get((g['dossier'].id, c['mois']))
                 if st:
                     c['pl_statut'] = st.statut
-                    c['pl_statut_fr'] = st.statut_fr
+                    c['pl_statut_fr'] = st.statut_affiche
                     c['pl_deadline'] = st.deadline
                     c['pl_montant'] = st.montant
                     c['pl_sync'] = st.date_sync.strftime('%d/%m %H:%M') if st.date_sync else ''
@@ -3028,7 +3028,19 @@ def pennylane_page():
             test_result = test_connexion()
         except Exception:
             test_result = {'ok': False, 'message': 'Erreur lors du test de connexion.'}
+    # Dernier passage de la synchro TVA (auto ou manuel) — carte admin
+    pl_last_sync = None
+    if is_admin:
+        try:
+            import json as _json
+            from app.models import AppSetting as _AppSetting
+            _ls = _AppSetting.query.filter_by(cle='PENNYLANE_WEB_LAST_SYNC').first()
+            if _ls and _ls.valeur:
+                pl_last_sync = _json.loads(_ls.valeur)
+        except Exception:
+            pl_last_sync = None
     return render_template('pennylane.html', configured=configured, test_result=test_result,
+                           pl_last_sync=pl_last_sync,
                            is_admin=is_admin,
                            dossiers_associes=dossiers_associes, dossiers_non_associes=dossiers_non_associes,
                            par_equipe=par_equipe, equipes_list=equipes_list,

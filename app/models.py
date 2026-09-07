@@ -286,6 +286,18 @@ class TvaStatutPennylane(db.Model):
         from app.integrations.pennylane_web import traduire_statut
         return traduire_statut(self.statut)
 
+    @property
+    def statut_affiche(self):
+        """Statut affiché : to_do avec deadline dépassée => 'En retard' (calcul auto)."""
+        if (self.statut or '') in ('to_do', 'unknown', '') and self.deadline:
+            try:
+                dd = datetime.strptime(str(self.deadline)[:10], '%Y-%m-%d').date()
+                if dd < date.today():
+                    return 'En retard'
+            except Exception:
+                pass
+        return self.statut_fr
+
     def __repr__(self):
         return f'<TvaStatutPennylane d={self.dossier_id} {self.annee}-{self.mois} {self.statut}>'
 

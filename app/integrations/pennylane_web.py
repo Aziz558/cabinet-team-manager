@@ -29,16 +29,30 @@ _pl_session_loaded = False
 
 COOKIE_KEY = 'PENNYLANE_WEB_COOKIES'
 
-# Statuts Pennylane considérés comme "déclarée"
-FILED_STATUSES = {'filed', 'sent', 'paid', 'partially_paid'}
+# Statuts Pennylane considérés comme "déclarée / terminée"
+FILED_STATUSES = {'filed', 'sent', 'paid', 'partially_paid', 'completed', 'done',
+                  'validated', 'accepted', 'transmitted', 'accounted', 'teletedeclaree'}
+# Statuts "en retard" selon Pennylane
+LATE_STATUSES = {'late', 'late_to_do', 'overdue', 'en_retard', 'retard'}
 # Statut brut -> libellé FR
 STATUT_FR = {
     'to_do': 'À déclarer',
     'in_progress': 'En cours',
+    'draft': 'Brouillon',
+    'to_send': 'À envoyer',
     'filed': 'Télédéclarée',
     'sent': 'Télédéclarée',
+    'completed': 'Terminée',
+    'done': 'Terminée',
+    'validated': 'Validée',
+    'accepted': 'Validée',
+    'transmitted': 'Transmise',
+    'accounted': 'Comptabilisée',
     'paid': 'Payée',
     'partially_paid': 'Partiellement payée',
+    'late': 'En retard',
+    'late_to_do': 'En retard',
+    'overdue': 'En retard',
     'rejected': 'Rejetée',
     'cancelled': 'Annulée',
 }
@@ -61,27 +75,73 @@ def _load_from_db():
 
 def set_web_session(cookies: str, firm_id: int = None):
     """Stocke les cookies de session Pennylane (colle le header -b du cURL) et persiste en BDD."""
-    global _pl_session_cookies, _pl_session_loaded
     cookies = (cookies or '').strip()
     # Enlever un éventuel "-b '...'" collé par erreur
     m = re.search(r"""-b\s+['"](.+?)['"]""", cookies)
     if m:
         cookies = m.group(1)
+    _store_cookies(cookies)
+
+
+def _store_cookies(header: str):
+    """Met à jour le cache mémoire + persiste en BDD (survit aux redéploiements)."""
+    global _pl_session_cookies, _pl_session_loaded
     with _pl_session_lock:
-        _pl_session_cookies = cookies
+        _pl_session_cookies = header
         _pl_session_loaded = True
-    # Persister en BDD pour survivre aux redéploiements
     try:
         from app.models import AppSetting
         from app import db
         s = AppSetting.query.filter_by(cle=COOKIE_KEY).first()
         if not s:
-            s = AppSetting(cle=COOKIE_KEY, valeur=cookies, type_valeur='password',
+            s = AppSetting(cle=COOKIE_KEY, valeur=header, type_valeur='password',
                            service='pennylane', masque=True)
             db.session.add(s)
         else:
-            s.valeur = cookies
+            s.valeur = header
         db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def _merge_cookie_headers(base: str, updates: dict) -> str:
+    """Fusionne des cookies (Set-Cookie de la réponse) dans le header existant."""
+    current = _parse_cookie_header(base)
+    for k, v in (updates or {}).items():
+        if v:
+            current[k] = v
+    return '; '.join(f'{k}={v}' for k, v in current.items())
+
+
+_cookie_last_persist = [0.0]  # throttle persist BDD : max 1x / 10 min
+
+
+def _refresh_session_cookies(r):
+    """Pennylane renvoie régulièrement des cookies de session frais (Set-Cookie).
+    On les réinjecte automatiquement pour garder la session vivante sans intervention."""
+    import time as _time
+    try:
+        updates = {}
+        for c in getattr(r, 'cookies', None) or []:
+            if getattr(c, 'value', None):
+                updates[c.name] = c.value
+        if not updates:
+            return
+        with _pl_session_lock:
+            current = _pl_session_cookies
+        merged = _merge_cookie_headers(current, updates)
+        if merged == current:
+            return
+        with _pl_session_lock:
+            _pl_session_cookies = merged
+            _pl_session_loaded = True
+        now = _time.time()
+        if now - _cookie_last_persist[0] >= 600:
+            _cookie_last_persist[0] = now
+            _store_cookies(merged)
     except Exception:
         pass
 
@@ -167,6 +227,8 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
     except Exception:
         return {'ok': False, 'message': 'Réponse non JSON',
                 'vat_returns': [], 'future_vat_returns': []}
+    # Auto-refresh de la session : réutiliser les cookies frais renvoyés par PL
+    _refresh_session_cookies(r)
     return {'ok': True, 'vat_returns': data.get('vat_returns') or [],
             'future_vat_returns': data.get('future_vat_returns') or []}
 
@@ -193,13 +255,71 @@ def _vat_taxe_for(dossier) -> str:
     return 'tva_mensuel'
 
 
+LAST_SYNC_KEY = 'PENNYLANE_WEB_LAST_SYNC'
+
+
+def _save_last_sync(ok: bool, message: str):
+    """Trace du dernier passage de la synchro (auto ou manuel) — affichée sur la carte admin."""
+    try:
+        import json as _json
+        from app.models import AppSetting
+        from app import db
+        payload = _json.dumps({
+            'quand': datetime.utcnow().strftime('%d/%m/%Y %H:%M'),
+            'ok': bool(ok),
+            'message': message,
+        }, ensure_ascii=False)
+        s = AppSetting.query.filter_by(cle=LAST_SYNC_KEY).first()
+        if not s:
+            s = AppSetting(cle=LAST_SYNC_KEY, valeur=payload, type_valeur='json',
+                           service='pennylane')
+            db.session.add(s)
+        else:
+            s.valeur = payload
+        db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+_last_alert = {'ts': 0.0, 'msg': ''}
+
+
+def _alerter_session(message: str):
+    """Alerte email des admins si la synchro échoue (session expirée, réseau...).
+    Max 1 alerte / 6 h par message identique pour éviter le spam."""
+    import time as _time
+    try:
+        now = _time.time()
+        if _last_alert['msg'] == message and now - _last_alert['ts'] < 6 * 3600:
+            return
+        _last_alert.update(ts=now, msg=message)
+        from app.models import User
+        from app.integrations.brevo import send_email_via_brevo_api
+        for u in User.query.filter_by(role='admin').all():
+            if not u.email:
+                continue
+            send_email_via_brevo_api(
+                u.email,
+                '⚠️ Pennylane TVA — synchro en échec',
+                "La synchro automatique des statuts TVA Pennylane a rencontré un problème :\n\n"
+                f"{message}\n\n"
+                "Si la session est expirée, recolle les cookies sur la page Intégration Pennylane.",
+            )
+    except Exception:
+        pass
+
+
 def sync_checklist_tva() -> dict:
     """Boucle sur tous les dossiers reliés à Pennylane :
     1. stocke le statut PL brut dans TvaStatutPennylane (tableau de suivi, affichage grille)
     2. remplit ChecklistEntry pour les déclarations faites DANS Pennylane
        (vat_returns avec statut filed/paid) — jamais les périodes 'to_do'.
 
-    Priorité : les entrées MANUELLES (updated_by_id renseigné) ne sont jamais écrasées.
+    Priorité : la SYNCHRO fait foi sur les dossiers reliés (écrase les saisies manuelles
+    antérieures — cf. demande utilisateur).
 
     Retour : {'ok', 'synces', 'dossiers_ok', 'erreurs': [...], 'message'}
     """
@@ -215,6 +335,7 @@ def sync_checklist_tva() -> dict:
     annee_courante = date.today().year
     synced = 0
     statuts_ecrits = 0
+    en_retard = 0
     dossiers_ok = 0
     erreurs = []
 
@@ -245,6 +366,14 @@ def sync_checklist_tva() -> dict:
                 db.session.add(st_row)
             st_row.statut = st or 'unknown'
             st_row.deadline = vr.get('deadline') or None
+            # Comptage des déclarations en retard (pas saisies dans PL + échéance dépassée)
+            try:
+                if (st or 'to_do') in ('to_do', 'unknown') and st_row.deadline:
+                    dd = datetime.strptime(str(st_row.deadline)[:10], '%Y-%m-%d').date()
+                    if dd < date.today():
+                        en_retard += 1
+            except Exception:
+                pass
             payable = vr.get('payable') or vr.get('amount_due') or vr.get('total_amount')
             try:
                 st_row.montant = float(payable) if payable is not None else None
@@ -285,8 +414,17 @@ def sync_checklist_tva() -> dict:
            f"{synced} case(s) marquée(s) déclarée(s) (déclarations faites dans Pennylane).")
     if erreurs:
         msg += f" {len(erreurs)} erreur(s)."
+    if en_retard:
+        msg += f" ⚠️ {en_retard} déclaration(s) EN RETARD (non saisie(s) dans Pennylane, échéance dépassée)."
+
+    # Trace du dernier passage (carte admin) + alerte email si problème
+    _save_last_sync(ok=(not erreurs), message=msg)
+    if erreurs:
+        _alerter_session(msg)
+
     return {'ok': True, 'synces': synced, 'statuts': statuts_ecrits,
-            'dossiers_ok': dossiers_ok, 'erreurs': erreurs[:10], 'message': msg}
+            'en_retard': en_retard, 'dossiers_ok': dossiers_ok,
+            'erreurs': erreurs[:10], 'message': msg}
 
 
 def statuts_pour_grille(dossiers_ids, annee: int) -> dict:
@@ -306,6 +444,10 @@ def test_web_session(customer_id: str = None) -> dict:
     res = fetch_vat_forms(cid, period_start=f'{date.today().year}-01-01',
                           period_end=f'{date.today().year}-12-31')
     if res['ok']:
-        n = len(res['vat_returns']) + len(res['future_vat_returns'])
-        return {'ok': True, 'message': f'Session OK — {n} période(s) TVA lue(s) sur company {cid}.'}
+        all_vr = res['vat_returns'] + res['future_vat_returns']
+        n = len(all_vr)
+        from collections import Counter
+        cnt = Counter(((v.get('status') or '?').lower() or '?') for v in all_vr)
+        detail = ', '.join(f'{k}:{v}' for k, v in sorted(cnt.items()))
+        return {'ok': True, 'message': f'Session OK — {n} période(s) TVA lue(s) sur company {cid} ({detail}).'}
     return {'ok': False, 'message': res['message']}

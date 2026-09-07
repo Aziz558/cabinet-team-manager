@@ -48,6 +48,7 @@
     .sym-pl { position: absolute; top: -4px; right: -4px; width: 10px; height: 10px;
         border-radius: 50%; background: var(--info); border: 1.5px solid var(--bg-card);
         box-shadow: 0 0 6px rgba(66, 165, 245, 0.55); }
+    .sym-pl-late { background: #ef5350; box-shadow: 0 0 6px rgba(239, 83, 80, 0.6); }
     td[data-kind] { position: relative; }
     .cl-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--text-tertiary); }
     .cl-legend .sym { cursor: default; transform: scale(0.85); }
@@ -225,7 +226,8 @@
                             {% set pl_here = c.pl_statut is defined and c.pl_statut %}
                             {% if c.state == 'na' %}
                                 {% if pl_here %}
-                                <span class="sym sym-st-na" title="Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} · {{ '%.0f'|format(c.pl_montant) }} €{% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}">·<span class="sym-pl"></span></span>
+                                {% set pl_late = (c.pl_statut_fr == 'En retard') %}
+                                <span class="sym sym-st-na" title="Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} · {{ '%.0f'|format(c.pl_montant) }} €{% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}">·<span class="sym-pl{% if pl_late %} sym-pl-late{% endif %}"></span></span>
                                 {% else %}
                                 <span class="sym sym-st-na" title="Aucune obligation ce mois">·</span>
                                 {% endif %}
@@ -239,7 +241,7 @@
                                     {% elif c.state == 'declare' %}<i class="bi bi-circle-half"></i>
                                     {% elif c.state == 'retard' %}<i class="bi bi-x-lg"></i>
                                     {% else %}<i class="bi bi-circle" style="font-size:0.7rem;"></i>{% endif %}
-                                    {% if pl_here %}<span class="sym-pl"></span>{% endif %}
+                                    {% if pl_here %}<span class="sym-pl{% if c.pl_statut_fr == 'En retard' %} sym-pl-late{% endif %}"></span>{% endif %}
                                 </span>
                             {% endif %}
                         </td>
