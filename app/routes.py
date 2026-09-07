@@ -3011,6 +3011,11 @@ def checklist_pl_sync_dossier(dossier_id):
     if not res['ok']:
         _save_last_sync(ok=False, message=f"{d.numero_dossier}: {res['message']}")
         return jsonify(res)
+    if not (res['vat_returns'] or res['future_vat_returns']):
+        _msg = (f"{d.numero_dossier} : Pennylane a répondu OK mais n'a retourné AUCUNE période "
+                f"TVA — session à revérifier (page Intégration).")
+        _save_last_sync(ok=False, message=_msg)
+        return jsonify({'ok': False, 'message': _msg})
 
     taxe = _vat_taxe_for(d)
     statuts = 0

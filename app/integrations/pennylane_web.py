@@ -204,7 +204,7 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
 
     today = date.today()
     if not period_start:
-        period_start = f'{today.year - 1}-12-01'  # marge : CA3 de déc. N-1 déposée en janv. N
+        period_start = f'{today.year}-01-01'
     if not period_end:
         period_end = f'{today.year}-12-31'
 
@@ -237,10 +237,16 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
     except Exception:
         return {'ok': False, 'message': 'Réponse non JSON',
                 'vat_returns': [], 'future_vat_returns': []}
+    vat = data.get('vat_returns') or []
+    future = data.get('future_vat_returns') or []
+    # Repli : Pennylane renvoie parfois vide pour une plage trop large — on retente
+    # sur [déc N-1 → déc N] qui couvre aussi la CA3 de décembre déposée en janvier.
+    if not vat and not future and period_start == f'{today.year}-01-01':
+        return fetch_vat_forms(customer_id, period_start=f'{today.year - 1}-12-01',
+                               period_end=period_end)
     # Auto-refresh de la session : réutiliser les cookies frais renvoyés par PL
     _refresh_session_cookies(r)
-    return {'ok': True, 'vat_returns': data.get('vat_returns') or [],
-            'future_vat_returns': data.get('future_vat_returns') or []}
+    return {'ok': True, 'vat_returns': vat, 'future_vat_returns': future}
 
 
 def traduire_statut(statut: str) -> str:
@@ -269,27 +275,40 @@ LAST_SYNC_KEY = 'PENNYLANE_WEB_LAST_SYNC'
 
 
 def _save_last_sync(ok: bool, message: str):
-    """Trace du dernier passage de la synchro (auto ou manuel) — affichée sur la carte admin."""
+    """Trace du dernier passage de la synchro (auto ou manuel) — affichée sur la carte admin.
+    Upsert SQL brut + relecture immédiate : toute anomalie est logguée (visible Render)."""
     try:
         import json as _json
-        from app.models import AppSetting
+        from sqlalchemy import text as _text
         from app import db
         payload = _json.dumps({
             'quand': datetime.utcnow().strftime('%d/%m/%Y %H:%M'),
             'ok': bool(ok),
-            'message': message,
+            'message': (message or '')[:1000],
         }, ensure_ascii=False)
-        s = AppSetting.query.filter_by(cle=LAST_SYNC_KEY).first()
-        if not s:
-            s = AppSetting(cle=LAST_SYNC_KEY, valeur=payload, type_valeur='json',
-                           service='pennylane')
-            db.session.add(s)
-        else:
-            s.valeur = payload
-        db.session.commit()
-    except Exception:
+        with db.engine.begin() as conn:
+            conn.execute(_text(
+                "UPDATE app_settings SET valeur = :v, type_valeur = 'json', service = 'pennylane', "
+                "date_modification = NOW() WHERE cle = :k"), {'v': payload, 'k': LAST_SYNC_KEY})
+            conn.execute(_text(
+                "INSERT INTO app_settings (cle, valeur, type_valeur, service, masque) "
+                "SELECT :k, :v, 'json', 'pennylane', FALSE "
+                "WHERE NOT EXISTS (SELECT 1 FROM app_settings WHERE cle = :k)"),
+                {'v': payload, 'k': LAST_SYNC_KEY})
+        # Vérification immédiate (doit TOUJOURS trouver la ligne)
+        with db.engine.connect() as conn:
+            row = conn.execute(_text("SELECT valeur FROM app_settings WHERE cle = :k"),
+                               {'k': LAST_SYNC_KEY}).fetchone()
+        if not row or not row[0]:
+            try:
+                from flask import current_app
+                current_app.logger.error("PENNYLANE LAST_SYNC: trace NON persistée (upsert sans effet) !")
+            except Exception:
+                pass
+    except Exception as e:
         try:
-            db.session.rollback()
+            from flask import current_app
+            current_app.logger.error(f"PENNYLANE LAST_SYNC error: {e}")
         except Exception:
             pass
 
@@ -362,6 +381,7 @@ def sync_checklist_tva() -> dict:
     en_retard = 0
     forces_annules = 0
     dossiers_ok = 0
+    dossiers_vides = 0
     erreurs = []
 
     for d in dossiers:
@@ -374,6 +394,9 @@ def sync_checklist_tva() -> dict:
 
         dossiers_ok += 1
         taxe = _vat_taxe_for(d)
+        if not (res['vat_returns'] or res['future_vat_returns']):
+            dossiers_vides += 1
+            continue  # rien à écrire, mais l'appel a réussi
 
         # --- 1. Miroir brut dans TvaStatutPennylane (toutes périodes, tout statut) ---
         per_connues = set()
@@ -448,6 +471,9 @@ def sync_checklist_tva() -> dict:
            f"{forces_annules} forçage(s) manuel(s) annulé(s) sur des périodes connues de Pennylane.")
     if erreurs:
         msg += f" {len(erreurs)} erreur(s)."
+    if dossiers_vides:
+        msg += (f" ⚠️ {dossiers_vides} dossier(s) : Pennylane a répondu mais n'a retourné "
+                f"AUCUNE période TVA — session à revérifier (page Intégration).")
     if en_retard:
         msg += f" ⚠️ {en_retard} déclaration(s) EN RETARD (non saisie(s) dans Pennylane, échéance dépassée)."
 
