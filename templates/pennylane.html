@@ -168,13 +168,35 @@
         {% if dossiers_non_associes and is_admin %}
         <div class="mt-4 pt-3" style="border-top:1px solid var(--border-color);">
             <h6 class="text-tertiary fw-semibold mb-2">Dossiers non associés ({{ dossiers_non_associes|length }})</h6>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2 mb-3">
                 {% for d in dossiers_non_associes[:15] %}
                 <span class="badge badge-tertiary">{{ d.numero_dossier }} — {{ d.intitule[:22] }}</span>
                 {% endfor %}
                 {% if dossiers_non_associes|length > 15 %}
                 <span class="badge badge-tertiary">+{{ dossiers_non_associes|length - 15 }}…</span>
                 {% endif %}
+            </div>
+            <div class="p-3 rounded-3" style="background:var(--bg-secondary, #1a1a1a); border:1px solid var(--border-color);">
+                <h6 class="fw-semibold mb-2" style="font-size:0.85rem;">
+                    <i class="bi bi-link-45deg me-1"></i>Associer manuellement un dossier à une company Pennylane
+                </h6>
+                <p class="text-tertiary small mb-2">
+                    À utiliser quand l'association automatique (nom/SIRET) échoue.
+                    Le company ID se trouve dans l'URL Pennylane :
+                    <code>app.pennylane.com/companies/<b>23281030</b>/…</code>
+                </p>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <select id="plAssocDossier" class="form-select form-select-sm" style="max-width:260px;">
+                        <option value="">— Choisir un dossier —</option>
+                        {% for d in dossiers_non_associes %}
+                        <option value="{{ d.id }}">{{ d.numero_dossier }} — {{ d.intitule[:30] }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" id="plAssocCompany" class="form-control form-control-sm" placeholder="Company ID (ex. 23281030)" style="max-width:200px;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="plAssocier()">
+                        <i class="bi bi-check2 me-1"></i>Relier
+                    </button>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -190,6 +212,22 @@ function showPl(msg, ok) {
           '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + msg + '</div>'
         : '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);">' +
           '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + msg + '</div>';
+}
+
+function plAssocier() {
+    var dossierId = document.getElementById('plAssocDossier').value;
+    var companyId = document.getElementById('plAssocCompany').value.trim();
+    if (!dossierId || !companyId) { showPl('Choisis un dossier et saisis le company ID Pennylane.', false); return; }
+    var fd = new FormData();
+    fd.append('dossier_id', dossierId);
+    fd.append('company_id', companyId);
+    fetch('{{ url_for("pennylane_associer_dossier") }}', { method: 'POST', body: fd })
+        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+        .then(function (res) {
+            showPl(res.j.message || 'Erreur inconnue.', res.j.ok);
+            if (res.j.ok) { setTimeout(function () { location.reload(); }, 1800); }
+        })
+        .catch(function (e) { showPl('Erreur réseau : ' + e, false); });
 }
 function savePlConfig(e) {
     e.preventDefault();

@@ -120,6 +120,17 @@ with app.app_context():
                 if cl_cols and 'pl_mode' not in cl_cols:
                     conn.execute(db.text("ALTER TABLE checklist_entries ADD COLUMN pl_mode BOOLEAN DEFAULT FALSE"))
                     app.logger.info("Added pl_mode column to checklist_entries")
+                # Seed de reliage Pennylane (idempotent) : matching nom/SIRET auto a
+                # deja echoue pour Pro Store (nom client PL different) — on force le lien.
+                try:
+                    if 'pennylane_customer_id' in dossiers_cols:
+                        conn.execute(db.text(
+                            "UPDATE dossiers SET pennylane_customer_id = '23281030' "
+                            "WHERE (pennylane_customer_id IS NULL OR pennylane_customer_id = '') "
+                            "AND LOWER(REPLACE(intitule, ' ', '')) LIKE '%prostore%'"))
+                        app.logger.info("Pennylane seed: dossiers 'Pro Store' relies a company 23281030")
+                except Exception as _seed_e:
+                    app.logger.warning(f"Pennylane seed Pro Store: {_seed_e}")
                 if 'pennylane_api_token' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN pennylane_api_token VARCHAR(256)"))
                 if 'forme_juridique' not in dossiers_cols:

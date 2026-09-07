@@ -3093,6 +3093,33 @@ def checklist_pl_sync_all():
     return jsonify(res)
 
 
+@app.route('/pennylane/associer_dossier', methods=['POST'])
+@login_required
+def pennylane_associer_dossier():
+    """Relie manuellement un dossier à une company Pennylane (admin).
+    Nécessaire quand le matching automatique par nom/SIRET échoue
+    (ex. Pro Store : nom client PL différent de l'intitulé du dossier)."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
+    from app.models import Dossier
+    try:
+        dossier_id = int(request.form.get('dossier_id') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'message': 'Dossier invalide.'}), 400
+    company_id = (request.form.get('company_id') or '').strip()
+    if not dossier_id or not company_id:
+        return jsonify({'ok': False, 'message': 'Dossier et company ID requis.'}), 400
+    d = Dossier.query.get(dossier_id)
+    if not d:
+        return jsonify({'ok': False, 'message': 'Dossier introuvable.'}), 404
+    d.pennylane_customer_id = company_id
+    db.session.commit()
+    app.logger.info(f"Pennylane: dossier {d.numero_dossier} (id {d.id}) relié manuellement à company {company_id}")
+    return jsonify({'ok': True,
+                    'message': f"Dossier {d.numero_dossier} relié à la company Pennylane {company_id}. "
+                               f"Lance une synchro TVA pour récupérer les périodes."})
+
+
 # ==========================
 # Error handlers
 # ==========================
