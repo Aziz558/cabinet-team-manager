@@ -282,6 +282,22 @@ def pill_class(statut: str, affiche: str = '') -> str:
     return ''
 
 
+def pill_icon(statut: str, affiche: str = '') -> str:
+    """Icône Bootstrap affichée DANS la case colorée de la grille checklist.
+
+    Case entière colorée (demande Aziz) : vert = acceptée (✓), orangé = en cours
+    (⏳), rouge = en retard (✗). Chaîne vide = statut non mappé (affichage neutre).
+    """
+    cls = pill_class(statut, affiche).strip()
+    if cls == 'sym-pl-ok':
+        return '<i class="bi bi-check-lg"></i>'
+    if cls == 'sym-pl-progress':
+        return '<i class="bi bi-hourglass-split"></i>'
+    if cls == 'sym-pl-late':
+        return '<i class="bi bi-x-lg"></i>'
+    return ''
+
+
 def _extract_period(vr: dict):
     """Extrait (annee, mois) d'un objet vat_return.
 

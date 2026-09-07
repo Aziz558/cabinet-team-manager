@@ -49,9 +49,12 @@
     .sym-pl { position: absolute; top: -4px; right: -4px; width: 10px; height: 10px;
         border-radius: 50%; background: var(--info); border: 1.5px solid var(--bg-card);
         box-shadow: 0 0 6px rgba(66, 165, 245, 0.55); }
-    .sym-pl-ok { background: var(--success); box-shadow: 0 0 6px rgba(76, 175, 80, 0.6); }
-    .sym-pl-progress { background: var(--warning); box-shadow: 0 0 6px rgba(255, 152, 0, 0.6); }
-    .sym-pl-late { background: var(--danger); box-shadow: 0 0 6px rgba(239, 83, 80, 0.6); }
+    /* Case entière colorée (demande) : le symbole LUI-MÊME devient vert/orangé/rouge selon le statut Pennylane */
+    .sym-pl-static { background: var(--info); color: #fff; cursor: default; }
+    .sym-pl-static:hover { transform: none; }
+    .sym-pl-ok { background: var(--success); box-shadow: 0 0 6px rgba(76, 175, 80, 0.6); color: #fff; }
+    .sym-pl-progress { background: var(--warning); box-shadow: 0 0 6px rgba(255, 152, 0, 0.6); color: #fff; }
+    .sym-pl-late { background: var(--danger); box-shadow: 0 0 6px rgba(239, 83, 80, 0.6); color: #fff; }
     td[data-kind] { position: relative; }
     .cl-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--text-tertiary); }
     .cl-legend .sym { cursor: default; transform: scale(0.85); }
@@ -262,21 +265,23 @@
                             {% set pl_here = c.pl_statut is defined and c.pl_statut %}
                             {% if c.state == 'na' %}
                                 {% if pl_here %}
-                                <span class="sym sym-st-na" title="Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} · {{ '%.0f'|format(c.pl_montant) }} €{% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}">·<span class="sym-pl{{ c.pl_pill|default('', true) }}"></span></span>
+                                <span class="sym sym-pl-static{{ c.pl_pill|default('', true) }}" title="Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} · {{ '%.0f'|format(c.pl_montant) }} €{% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}">{{ c.pl_icon|default('', true)|safe }}</span>
                                 {% else %}
                                 <span class="sym sym-st-na" title="Aucune obligation ce mois">·</span>
                                 {% endif %}
                             {% else %}
-                                <span class="sym sym-st-{{ c.state }}" data-field
-                                      data-dossier="{{ g.dossier.id }}" data-mois="{{ c.mois }}" data-kind="{{ c.kind }}"
+                                {% set use_pl = pl_here and c.pl_pill|default('', true) %}
+                                {% set sym_cls = c.pl_pill|default('', true) if use_pl else (' sym-st-' + c.state) %}
+                                <span class="sym{{ sym_cls }}" data-field
+                                      {% if use_pl %}data-pl="1" {% endif %}data-dossier="{{ g.dossier.id }}" data-mois="{{ c.mois }}" data-kind="{{ c.kind }}"
                                       data-state="{{ c.state }}" data-declare="{{ 1 if c.declare else 0 }}" data-paye="{{ 1 if c.paye else 0 }}"
                                       data-jour="{{ c.jour }}"
                                       title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][c.mois-1] }} — clic pour changer le statut{% if pl_here %} · Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} ({{ '%.0f'|format(c.pl_montant) }} €){% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}{% endif %}">
-                                    {% if c.state == 'solde' %}<i class="bi bi-check-lg"></i>
+                                    {% if use_pl %}{{ c.pl_icon|default('', true)|safe }}
+                                    {% elif c.state == 'solde' %}<i class="bi bi-check-lg"></i>
                                     {% elif c.state == 'declare' %}<i class="bi bi-circle-half"></i>
                                     {% elif c.state == 'retard' %}<i class="bi bi-x-lg"></i>
                                     {% else %}<i class="bi bi-circle" style="font-size:0.7rem;"></i>{% endif %}
-                                    {% if pl_here %}<span class="sym-pl{{ c.pl_pill|default('', true) }}"></span>{% endif %}
                                 </span>
                             {% endif %}
                         </td>
@@ -290,7 +295,7 @@
         </div>
     </div>
     <div class="px-3 pb-2">
-        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(76,175,80,.5);"></span> = acceptée/déclarée &nbsp; <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warning);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(255,152,0,.5);"></span> = en cours (à déclarer) &nbsp; <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(239,83,80,.5);"></span> = en retard — statut lu dans Pennylane (survol : statut, échéance, montant). Dossiers reliés : la synchro Pennylane fait foi et met à jour la case — un clic manuel reste ensuite prioritaire jusqu'à la prochaine synchro.</small>
+        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). Dans la grille, la case entière prend la couleur du statut Pennylane : <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(76,175,80,.5);"></span> = acceptée/déclarée · <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warning);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(255,152,0,.5);"></span> = en cours (à déclarer) · <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(239,83,80,.5);"></span> = en retard (survol : statut, échéance, montant). Dossiers reliés : la synchro Pennylane fait foi et met à jour la case — un clic manuel reste ensuite prioritaire jusqu'à la prochaine synchro.</small>
     </div>
 </div>
 {% endif %}
@@ -320,7 +325,7 @@
                 if (td.dataset.kind === 'na') return;
                 var m = parseInt(td.dataset.mois, 10);
                 var sym = td.querySelector('.sym[data-field]');
-                if (!sym) return;
+                if (!sym || sym.dataset.pl === '1') return;
                 var st = sym.dataset.state;
                 if (st === 'solde' || st === 'declare') return;
                 var newState = (m < moisCour) ? 'retard' : 'venir';
@@ -339,6 +344,7 @@
         sym.dataset.declare = dec ? '1' : '0';
         sym.dataset.paye = pay ? '1' : '0';
         sym.className = 'sym sym-st-' + st;
+        sym.removeAttribute('data-pl');
         sym.innerHTML = ICONS[st];
     }
 

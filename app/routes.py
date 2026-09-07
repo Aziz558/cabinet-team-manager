@@ -558,7 +558,7 @@ def checklist():
     # --- Statuts Pennylane (session web) pour affichage dans la grille TVA ---
     pl_last_sync = {}
     if taxe in ('tva_mensuel', 'tva_trimestriel'):
-        from app.integrations.pennylane_web import statuts_pour_grille, get_last_sync, pill_class
+        from app.integrations.pennylane_web import statuts_pour_grille, get_last_sync, pill_class, pill_icon
         if grille:
             _pl_statuts = statuts_pour_grille([g['dossier'].id for g in grille], annee)
             for g in grille:
@@ -571,6 +571,7 @@ def checklist():
                         c['pl_montant'] = st.montant
                         c['pl_sync'] = st.date_sync.strftime('%d/%m %H:%M') if st.date_sync else ''
                         c['pl_pill'] = pill_class(st.statut, st.statut_affiche)
+                        c['pl_icon'] = pill_icon(st.statut, st.statut_affiche)
         pl_last_sync = get_last_sync()
 
     if request.args.get('format') == 'json':
