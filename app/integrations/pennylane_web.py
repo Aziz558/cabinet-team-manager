@@ -430,8 +430,13 @@ def sync_checklist_tva() -> dict:
     from app import db
     from app.models import Dossier, ChecklistEntry, TvaStatutPennylane
 
-    dossiers = Dossier.query.filter(Dossier.pennylane_customer_id.isnot(None),
-                                    Dossier.pennylane_customer_id != '').all()
+    # Dossiers reliés (customer_id) OU auto-associables (token API dédié -> ID
+    # retrouvé automatiquement via l'API Company, cf. resolve_company_for_dossier)
+    dossiers = Dossier.query.filter(
+        db.or_(
+            db.and_(Dossier.pennylane_customer_id.isnot(None), Dossier.pennylane_customer_id != ''),
+            db.and_(Dossier.pennylane_api_token.isnot(None), Dossier.pennylane_api_token != '')
+        )).all()
     if not dossiers:
         return {'ok': False, 'message': 'Aucun dossier relié à Pennylane.',
                 'synces': 0, 'dossiers_ok': 0, 'erreurs': []}
@@ -444,8 +449,21 @@ def sync_checklist_tva() -> dict:
     dossiers_ok = 0
     dossiers_vides = 0
     erreurs = []
+    auto_associes = 0
 
     for d in dossiers:
+        if not (d.pennylane_customer_id or '').strip():
+            # Auto-association : le dossier a un token API dédié, on retrouve
+            # le company ID tout seul (match par nom, fallback /me).
+            from app.integrations.pennylane import resolve_company_for_dossier
+            res_auto = resolve_company_for_dossier(d)
+            if res_auto.get('ok'):
+                d.pennylane_customer_id = res_auto['company_id']
+                db.session.commit()
+                auto_associes += 1
+            else:
+                erreurs.append(f"{d.numero_dossier}: auto-association échouée — {res_auto.get('message')}")
+                continue
         res = fetch_vat_forms(d.pennylane_customer_id)
         if not res['ok']:
             erreurs.append(f"{d.numero_dossier}: {res['message']}")
@@ -538,6 +556,9 @@ def sync_checklist_tva() -> dict:
     if en_retard:
         msg += f" ⚠️ {en_retard} déclaration(s) EN RETARD (non saisie(s) dans Pennylane, échéance dépassée)."
 
+    if auto_associes:
+        msg += f" 🔗 {auto_associes} dossier(s) auto-associé(s) via API Company (token du dossier)."
+
     # Trace du dernier passage (carte admin) + alerte email si problème
     _save_last_sync(ok=(not erreurs), message=msg)
     if erreurs:
@@ -545,6 +566,7 @@ def sync_checklist_tva() -> dict:
 
     return {'ok': True, 'synces': synced, 'statuts': statuts_ecrits,
             'en_retard': en_retard, 'dossiers_ok': dossiers_ok,
+            'auto_associes': auto_associes,
             'erreurs': erreurs[:10], 'message': msg}
 
 

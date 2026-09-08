@@ -291,6 +291,98 @@ def get_transactions(token: str = None, limit: int = 50) -> list:
     } for t in txs]
 
 
+def list_companies(token: str = None) -> list:
+    """Liste les companies (dossiers) visibles par ce token via l'API externe v2."""
+    return _paginated_get('companies', params={'limit': 100}, token=token)
+
+
+def _norm_name(s) -> str:
+    """Normalise un nom pour le matching : minuscules, sans accents/ponctuation."""
+    import re as _re
+    import unicodedata as _ud
+    s = (s or '').strip().lower()
+    s = _ud.normalize('NFKD', s)
+    s = ''.join(c for c in s if not _ud.combining(c))
+    s = _re.sub(r'[^a-z0-9]+', ' ', s).strip()
+    return s
+
+
+def resolve_company_for_dossier(dossier, token: str = None) -> dict:
+    """Retrouve AUTOMATIQUEMENT le company ID Pennylane d'un dossier.
+
+    Ordre de résolution :
+      1. token du dossier -> GET /companies -> match par nom (exact puis inclusif)
+      2. token du dossier -> si /companies renvoie UNE seule company -> la prendre
+         (token dédié au dossier = cette company)
+      3. token du dossier -> GET /me -> company.id (token rattaché à une company)
+      4. token global du cabinet -> GET /companies -> match par nom
+    Ne logge JAMAIS le token.
+    Retour : {'ok', 'company_id', 'company_name', 'via', 'message'}
+    """
+    tok_dossier = (getattr(dossier, 'pennylane_api_token', None) or '').strip()
+    token = (token or tok_dossier or get_pennylane_token()).strip()
+    if not token:
+        return {'ok': False, 'message': 'Aucun token API (ni sur le dossier, ni global).'}
+
+    nom_d = _norm_name(getattr(dossier, 'intitule', ''))
+    num_d = _norm_name(getattr(dossier, 'numero_dossier', ''))
+
+    def _match(companies):
+        for c in companies:  # 1. match exact sur l'intitulé
+            if nom_d and _norm_name(c.get('name')) == nom_d:
+                return c
+        for c in companies:  # 2. inclusion : "dms permis" dans "dms permis sarl"
+            cn = _norm_name(c.get('name'))
+            if nom_d and (nom_d in cn or cn in nom_d):
+                return c
+        for c in companies:  # 3. numéro de dossier (ex. "DMS PERMIS")
+            cn = _norm_name(c.get('name'))
+            if num_d and (cn == num_d or num_d in cn):
+                return c
+        return None
+
+    dedicated = bool(tok_dossier) and token == tok_dossier
+    companies = []
+    try:
+        companies = list_companies(token=token)
+    except Exception as e:
+        logger.warning(f'list_companies failed: {e}')
+
+    if companies:
+        c = _match(companies)
+        if c:
+            return {'ok': True, 'company_id': str(c.get('id')), 'company_name': c.get('name'),
+                    'via': 'companies:match'}
+        if dedicated and len(companies) == 1:
+            c = companies[0]
+            return {'ok': True, 'company_id': str(c.get('id')), 'company_name': c.get('name'),
+                    'via': 'companies:unique'}
+
+    # Fallback GET /me : token rattaché à une seule company
+    try:
+        resp = requests.get(_api_url('me'), headers=_headers(token), timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            comp = data.get('company', {}) if isinstance(data, dict) else {}
+            cid = comp.get('id')
+            if cid:
+                return {'ok': True, 'company_id': str(cid), 'company_name': comp.get('name'),
+                        'via': 'me'}
+            u = data.get('user') or {}
+            if u.get('company_id'):
+                return {'ok': True, 'company_id': str(u['company_id']),
+                        'company_name': u.get('company_name'), 'via': 'me:user'}
+        elif resp.status_code == 401:
+            return {'ok': False, 'message': 'Token invalide (401 Unauthorized).'}
+    except Exception as e:
+        logger.warning(f'/me fallback failed: {e}')
+
+    if companies:
+        return {'ok': False,
+                'message': f'Company introuvable parmi {len(companies)} (match par nom échoué).'}
+    return {'ok': False, 'message': 'Aucune company accessible avec ce token (vérifiez le token et ses scopes).'}
+
+
 def get_customers(token: str = None, limit: int = 200) -> list:
     return _paginated_get('customers', params={'limit': limit}, token=token)
 

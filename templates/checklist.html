@@ -233,7 +233,7 @@
                                     <strong>{{ g.dossier.numero_dossier }}</strong>
                                     <small>{{ g.dossier.intitule }}</small>
                                 </div>
-                                {% if current_user.role in ('admin', 'manager') and g.dossier.pennylane_customer_id %}
+                                {% if current_user.role in ('admin', 'manager') and (g.dossier.pennylane_customer_id or g.dossier.pennylane_api_token) %}
                                 <button type="button" class="btn-pl-sync" title="Re-synchroniser ce dossier depuis Pennylane"
                                         onclick="plSyncDossier({{ g.dossier.id }}, this)"><i class="bi bi-arrow-repeat"></i></button>
                                 {% endif %}

@@ -2998,7 +2998,20 @@ def checklist_pl_sync_dossier(dossier_id):
     from app.models import Dossier
     d = Dossier.query.get_or_404(dossier_id)
     if not (d.pennylane_customer_id or '').strip():
-        return jsonify({'ok': False, 'message': 'Dossier non relié à Pennylane.'}), 400
+        # Auto-association via l'API Company (token du dossier puis global) :
+        # le dossier a un token API dédié -> on retrouve le company ID tout seul.
+        from app.integrations.pennylane import resolve_company_for_dossier
+        res_auto = resolve_company_for_dossier(d)
+        if res_auto.get('ok'):
+            d.pennylane_customer_id = res_auto['company_id']
+            db.session.commit()
+            app.logger.info(f"Pennylane: dossier {d.numero_dossier} relié AUTO à company "
+                            f"{res_auto['company_id']} via {res_auto.get('via')} (sync ⟳)")
+        else:
+            return jsonify({'ok': False,
+                            'message': f"Dossier non relié et auto-association impossible : "
+                                       f"{res_auto.get('message')}. Vérifiez le token API du dossier "
+                                       f"ou faites l'association manuelle (admin)."}), 400
     from app.integrations.pennylane_web import has_web_session
     if not has_web_session():
         return jsonify({'ok': False, 'message': 'Session web Pennylane non configurée (page Intégration).'}), 400
@@ -3120,6 +3133,48 @@ def pennylane_associer_dossier():
     return jsonify({'ok': True,
                     'message': f"Dossier {d.numero_dossier} relié à la company Pennylane {company_id}. "
                                f"Lance une synchro TVA pour récupérer les périodes."})
+
+
+@app.route('/pennylane/auto_associer_dossier', methods=['POST'])
+@login_required
+def pennylane_auto_associer_dossier():
+    """Retrouve AUTOMATIQUEMENT le company ID d'un dossier via l'API Company
+    Pennylane (token du dossier en priorité, sinon token global du cabinet,
+    match par nom normalisé + fallback /me) puis relie le dossier.
+    Admin uniquement, comme l'association manuelle."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
+    from app.models import Dossier
+    try:
+        dossier_id = int(request.form.get('dossier_id') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'message': 'Dossier invalide.'}), 400
+    if not dossier_id:
+        return jsonify({'ok': False, 'message': 'Dossier requis.'}), 400
+    d = Dossier.query.get(dossier_id)
+    if not d:
+        return jsonify({'ok': False, 'message': 'Dossier introuvable.'}), 404
+    from app.integrations.pennylane import resolve_company_for_dossier
+    from app.integrations.pennylane_web import _save_last_sync
+    res = resolve_company_for_dossier(d)
+    if not res.get('ok'):
+        msg = res.get('message') or 'Company introuvable.'
+        _save_last_sync(ok=False, message=f"{d.numero_dossier}: auto-association échouée — {msg}")
+        return jsonify({'ok': False, 'message': f"{d.numero_dossier} : {msg}"}), 400
+    cid = res['company_id']
+    if (d.pennylane_customer_id or '').strip() == cid:
+        return jsonify({'ok': True,
+                        'message': f"Dossier {d.numero_dossier} déjà relié à la company {cid}"
+                                   f" ({res.get('company_name') or '?'})."})
+    d.pennylane_customer_id = cid
+    db.session.commit()
+    app.logger.info(f"Pennylane: dossier {d.numero_dossier} (id {d.id}) relié AUTO à company {cid} via {res.get('via')}")
+    _save_last_sync(ok=True,
+                    message=f"{d.numero_dossier}: auto-association réussie → company {cid} "
+                            f"({res.get('company_name') or '?'}, via {res.get('via')})")
+    return jsonify({'ok': True,
+                    'message': f"Dossier {d.numero_dossier} relié automatiquement à la company {cid}"
+                               f" ({res.get('company_name') or '?'}). Lance une synchro TVA pour récupérer les périodes."})
 
 
 # ==========================
