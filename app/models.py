@@ -265,9 +265,11 @@ class ChecklistEntry(db.Model):
 class TvaStatutPennylane(db.Model):
     """Miroir brut des statuts de déclarations TVA lus dans l'espace web Pennylane
     (endpoint interne vat_forms, synchro session web).
-    Une ligne par (dossier, année, mois) — reflète ce que Pennylane affiche :
-    'to_do' (pas encore traité dans PL, possiblement fait via impots.gouv),
-    'filed'/'paid' (fait dans PL), deadline et montant payable."""
+    Une ligne par (dossier, année, mois) — reflète ce que Pennylane affiche.
+    Statuts bruts réels observés : 'to_do' (à déclarer), 'ready' (prêt),
+    'ongoing' (envoyée, pas encore acceptée), 'accepted' (acceptée),
+    'filed'/'paid' (faite/payée dans PL) + deadline et montant payable.
+    'En retard' = calcul auto (to_do + deadline dépassée)."""
     __tablename__ = 'tva_statuts_pennylane'
     id = db.Column(db.Integer, primary_key=True)
     dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=False, index=True)

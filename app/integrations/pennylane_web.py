@@ -33,16 +33,20 @@ _pl_session_loaded = False
 COOKIE_KEY = 'PENNYLANE_WEB_COOKIES'
 
 # Statuts Pennylane considérés comme "déclarée / terminée"
+# NB : 'ongoing' = envoyée mais pas encore acceptée -> la déclaration EST partie.
 FILED_STATUSES = {'filed', 'sent', 'paid', 'partially_paid', 'completed', 'done',
-                  'validated', 'accepted', 'transmitted', 'accounted', 'teletedeclaree'}
+                  'validated', 'accepted', 'transmitted', 'accounted', 'teletedeclaree',
+                  'ongoing'}
 # Statuts "en retard" selon Pennylane
 LATE_STATUSES = {'late', 'late_to_do', 'overdue', 'en_retard', 'retard'}
 # Statut brut -> libellé FR
 STATUT_FR = {
     'to_do': 'À déclarer',
+    'ready': 'Prêt',
+    'ongoing': 'En cours',
     'in_progress': 'En cours',
-    'draft': 'Brouillon',
-    'to_send': 'À envoyer',
+    'draft': 'Prêt',
+    'to_send': 'Prêt',
     'filed': 'Télédéclarée',
     'sent': 'Télédéclarée',
     'completed': 'Terminée',
@@ -256,43 +260,59 @@ def traduire_statut(statut: str) -> str:
     return STATUT_FR.get((statut or '').lower(), statut or '')
 
 
-# Couleurs des pastilles Pennylane (demande utilisateur) :
-# vert = acceptée/déclarée, orangé = en cours (à déclarer), rouge = en retard.
+# Couleurs des pastilles Pennylane (demande Aziz — sémantique Pennylane réelle) :
+# vert = ACCEPTÉE (envoyée ET acceptée par le service d'impôt) ;
+# orange = EN COURS (envoyée mais pas encore acceptée) ;
+# bleu = PRÊT (préparée mais pas encore envoyée) ;
+# gris = À DÉCLARER (ni préparée ni envoyée, échéance à venir) ;
+# rouge = EN RETARD (échéance dépassée, ni préparée ni envoyée ni acceptée).
 PILL_OK = {'accepted', 'validated', 'filed', 'sent', 'completed', 'done', 'transmitted',
            'accounted', 'paid', 'partially_paid'}
-PILL_PROGRESS = {'to_do', 'in_progress', 'draft', 'to_send'}
+PILL_READY = {'ready', 'draft', 'to_send', 'prepared'}          # bleu
+PILL_PROGRESS = {'ongoing', 'in_progress', 'pending', 'processing'}  # orange
+PILL_TODO = {'to_do', 'unknown', ''}                            # gris
 
 
 def pill_class(statut: str, affiche: str = '') -> str:
     """Classe CSS de la pastille Pennylane pour la grille checklist.
 
     Retourne '' (bleu par défaut) si le statut n'est pas mappé.
+    Ordre de priorité : retard > acceptée > prêt > en cours > à déclarer.
     """
     s = (statut or '').lower()
     aff = (affiche or traduire_statut(s) or '').strip().lower()
-    if s in ('late', 'late_to_do', 'overdue') or aff == 'en retard':
+    # En retard : statut brut OU 'to_do' avec échéance dépassée (statut_affiche)
+    if s in LATE_STATUSES or aff == 'en retard':
         return ' sym-pl-late'
     if s in PILL_OK or aff in ('acceptée', 'acceptee', 'validée', 'validee', 'télédéclarée',
                                'telegedeclaree', 'terminée', 'terminee', 'payée', 'payee',
                                'comptabilisée', 'comptabilisee', 'transmise'):
         return ' sym-pl-ok'
-    if s in PILL_PROGRESS or aff in ('à déclarer', 'a declarer', 'en cours', 'brouillon',
-                                     'à envoyer', 'a envoyer'):
+    if s in PILL_READY or aff in ('prêt', 'pret', 'brouillon', 'à envoyer', 'a envoyer'):
+        return ' sym-pl-ready'
+    if s in PILL_PROGRESS or aff == 'en cours':
         return ' sym-pl-progress'
+    if s in PILL_TODO or aff in ('à déclarer', 'a declarer'):
+        return ' sym-pl-todo'
     return ''
 
 
 def pill_icon(statut: str, affiche: str = '') -> str:
     """Icône Bootstrap affichée DANS la case colorée de la grille checklist.
 
-    Case entière colorée (demande Aziz) : vert = acceptée (✓), orangé = en cours
-    (⏳), rouge = en retard (✗). Chaîne vide = statut non mappé (affichage neutre).
+    Case entière colorée (demande Aziz) : vert = acceptée (✓), orange = en cours
+    (⏳), bleu = prêt (🛠), gris = à déclarer (…), rouge = en retard (✗).
+    Chaîne vide = statut non mappé (affichage neutre).
     """
     cls = pill_class(statut, affiche).strip()
     if cls == 'sym-pl-ok':
         return '<i class="bi bi-check-lg"></i>'
     if cls == 'sym-pl-progress':
         return '<i class="bi bi-hourglass-split"></i>'
+    if cls == 'sym-pl-ready':
+        return '<i class="bi bi-tools"></i>'
+    if cls == 'sym-pl-todo':
+        return '<i class="bi bi-three-dots"></i>'
     if cls == 'sym-pl-late':
         return '<i class="bi bi-x-lg"></i>'
     return ''

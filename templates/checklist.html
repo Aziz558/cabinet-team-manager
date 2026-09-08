@@ -49,11 +49,13 @@
     .sym-pl { position: absolute; top: -4px; right: -4px; width: 10px; height: 10px;
         border-radius: 50%; background: var(--info); border: 1.5px solid var(--bg-card);
         box-shadow: 0 0 6px rgba(66, 165, 245, 0.55); }
-    /* Case entière colorée (demande) : le symbole LUI-MÊME devient vert/orangé/rouge selon le statut Pennylane */
+    /* Case entière colorée (demande) : le symbole LUI-MÊME devient vert/orange/bleu/gris/rouge selon le statut Pennylane */
     .sym-pl-static { background: var(--info); color: #fff; cursor: default; }
     .sym-pl-static:hover { transform: none; }
     .sym-pl-ok { background: var(--success); box-shadow: 0 0 6px rgba(76, 175, 80, 0.6); color: #fff; }
     .sym-pl-progress { background: var(--warning); box-shadow: 0 0 6px rgba(255, 152, 0, 0.6); color: #fff; }
+    .sym-pl-ready { background: var(--info); box-shadow: 0 0 6px rgba(66, 165, 245, 0.6); color: #fff; }
+    .sym-pl-todo { background: #757575; box-shadow: 0 0 6px rgba(117, 117, 117, 0.5); color: #fff; }
     .sym-pl-late { background: var(--danger); box-shadow: 0 0 6px rgba(239, 83, 80, 0.6); color: #fff; }
     td[data-kind] { position: relative; }
     .cl-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--text-tertiary); }
@@ -208,6 +210,7 @@
             <span><span class="sym sym-st-retard"><i class="bi bi-x-lg"></i></span> en retard</span>
             <span><span class="sym sym-st-venir"><i class="bi bi-circle" style="font-size:0.7rem;"></i></span> à venir</span>
             <span><span class="sym sym-st-na">·</span> rien à signaler</span>
+            <span class="ms-2"><span class="sym sym-pl-static sym-pl-ok"><i class="bi bi-check-lg"></i></span> <b>PL</b> acceptée (vert) · <span class="sym sym-pl-static sym-pl-progress"><i class="bi bi-hourglass-split"></i></span> en cours (orange) · <span class="sym sym-pl-static sym-pl-ready"><i class="bi bi-tools"></i></span> prêt (bleu) · <span class="sym sym-pl-static sym-pl-todo"><i class="bi bi-three-dots"></i></span> à déclarer (gris) · <span class="sym sym-pl-static sym-pl-late"><i class="bi bi-x-lg"></i></span> en retard (rouge)</span>
         </div>
     </div>
     <div class="card-body-premium p-0">
@@ -295,7 +298,7 @@
         </div>
     </div>
     <div class="px-3 pb-2">
-        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). Dans la grille, la case entière prend la couleur du statut Pennylane : <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(76,175,80,.5);"></span> = acceptée/déclarée · <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warning);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(255,152,0,.5);"></span> = en cours (à déclarer) · <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);border:1px solid var(--bg-card);box-shadow:0 0 5px rgba(239,83,80,.5);"></span> = en retard (survol : statut, échéance, montant). Dossiers reliés : la synchro Pennylane fait foi et met à jour la case — un clic manuel reste ensuite prioritaire jusqu'à la prochaine synchro.</small>
+        <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). Statuts Pennylane (survol d'une case : statut, échéance, montant) : <b style="color:var(--success);">Acceptée</b> = envoyée et acceptée par le service d'impôt · <b style="color:var(--warning);">En cours</b> = envoyée mais pas encore acceptée · <b style="color:var(--info);">Prêt</b> = préparée mais pas encore envoyée · <b style="color:#BDBDBD;">À déclarer</b> = ni préparée ni envoyée (échéance à venir) · <b style="color:var(--danger);">En retard</b> = échéance dépassée sans préparation ni envoi. Dossiers reliés : la synchro Pennylane fait foi et met à jour la case — un clic manuel reste ensuite prioritaire jusqu'à la prochaine synchro.</small>
     </div>
 </div>
 {% endif %}
