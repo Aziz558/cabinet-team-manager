@@ -3128,6 +3128,34 @@ def pennylane_associer_dossier():
 def not_found(error):
     return render_template('error.html', code=404, message="Page non trouv\u00e9e."), 404
 
+@app.route('/pennylane/delier_dossier', methods=['POST'])
+@login_required
+def pennylane_delier_dossier():
+    """Délie un dossier de sa company Pennylane (admin) et nettoie les traces
+    de synchro : statuts TvaStatutPennylane + cases ChecklistEntry posées par la
+    synchro (pl_mode=True). Les saisies 100% manuelles sont conservées.
+    Utilisé pour tester l'affichage PL sur un autre dossier puis restaurer l'état."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
+    from app.models import Dossier, TvaStatutPennylane, ChecklistEntry
+    try:
+        dossier_id = int(request.form.get('dossier_id') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'message': 'Dossier invalide.'}), 400
+    d = Dossier.query.get(dossier_id)
+    if not d:
+        return jsonify({'ok': False, 'message': 'Dossier introuvable.'}), 404
+    if not (d.pennylane_customer_id or '').strip():
+        return jsonify({'ok': False, 'message': f'{d.numero_dossier} n\'est relié à aucune company.'}), 400
+    n_st = TvaStatutPennylane.query.filter_by(dossier_id=d.id).delete()
+    n_ce = ChecklistEntry.query.filter_by(dossier_id=d.id, pl_mode=True).delete()
+    d.pennylane_customer_id = None
+    db.session.commit()
+    app.logger.info(f"Pennylane: dossier {d.numero_dossier} (id {d.id}) délié — {n_st} statut(s), {n_ce} case(s) synchro supprimée(s)")
+    return jsonify({'ok': True,
+                    'message': f"Dossier {d.numero_dossier} délié ({n_st} statut(s) PL, {n_ce} case(s) synchro supprimée(s))."})
+
+
 @app.route('/pennylane')
 @login_required
 def pennylane_page():

@@ -149,9 +149,17 @@
                                 {% if d.pennylane_api_token and not d.pennylane_customer_id %}<span class="badge badge-success ms-1" style="font-size:0.55rem;">Token</span>{% endif %}
                                 <div class="small text-tertiary">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</div>
                             </div>
-                            <a href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}" class="btn-premium btn-premium-secondary btn-press" title="Voir les données Pennylane">
-                                <i class="bi bi-box-arrow-up-right"></i>
-                            </a>
+                            <div class="d-flex gap-1">
+                                {% if is_admin %}
+                                <button type="button" class="btn-premium btn-premium-secondary btn-press" title="Délier ce dossier de Pennylane (nettoie statuts + cases synchro)"
+                                        onclick="if(confirm('Délier {{ d.numero_dossier }} de Pennylane ? Les statuts et cases posés par la synchro seront supprimés.')) plDelier({{ d.id }});">
+                                    <i class="bi bi-link-slash"></i>
+                                </button>
+                                {% endif %}
+                                <a href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}" class="btn-premium btn-premium-secondary btn-press" title="Voir les données Pennylane">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -222,6 +230,17 @@ function plAssocier() {
     fd.append('dossier_id', dossierId);
     fd.append('company_id', companyId);
     fetch('{{ url_for("pennylane_associer_dossier") }}', { method: 'POST', body: fd })
+        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+        .then(function (res) {
+            showPl(res.j.message || 'Erreur inconnue.', res.j.ok);
+            if (res.j.ok) { setTimeout(function () { location.reload(); }, 1800); }
+        })
+        .catch(function (e) { showPl('Erreur réseau : ' + e, false); });
+}
+function plDelier(dossierId) {
+    var fd = new FormData();
+    fd.append('dossier_id', dossierId);
+    fetch('/pennylane/delier_dossier', { method: 'POST', body: fd })
         .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
         .then(function (res) {
             showPl(res.j.message || 'Erreur inconnue.', res.j.ok);
