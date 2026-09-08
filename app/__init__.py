@@ -81,6 +81,29 @@ with app.app_context():
         db.create_all()
     except Exception as e:
         app.logger.warning(f"db.create_all failed: {e}")
+
+    # 🆘 Bootstrap admin de secours : si AUCUN utilisateur dans la base (ex: base
+    # Render expirée/recréée), on crée automatiquement un compte admin pour
+    # permettre le login et la recréation des équipes/dossiers.
+    try:
+        if db.session.query(User).count() == 0:
+            admin = User(
+                email='admin@cabinet-jmh.com',
+                nom='JMH', prenom='Admin',
+                role='admin', actif=True,
+            )
+            admin.set_password('Admin2026!')
+            db.session.add(admin)
+            db.session.commit()
+            print("🆘 Base vide -> admin de secours créé : admin@cabinet-jmh.com / Admin2026!")
+            app.logger.info("Bootstrap admin créé (base vide)")
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        app.logger.warning(f"Bootstrap admin failed: {e}")
+
     # Migrate team email column if missing (Cloudflare Email Routing only)
     try:
         inspector = db.inspect(db.engine)
