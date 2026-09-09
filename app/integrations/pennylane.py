@@ -190,7 +190,7 @@ def test_connexion(token: str = None) -> dict:
         return {'ok': False, 'message': f'Erreur: {str(e)}'}
 
 
-def _paginated_get(path: str, params: dict = None, token: str = None, max_pages: int = 20) -> list:
+def _paginated_get(path: str, params: dict = None, token: str = None, max_pages: int = 60) -> list:
     """Récupère tous les éléments d'un endpoint paginé (cursor-based)."""
     token = token or get_pennylane_token()
     if not token:
@@ -719,9 +719,16 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             result['transactions'] = [{
                 'id': t.get('id'), 'date': t.get('transaction_date') or t.get('date'),
                 'libelle': t.get('label') or '', 'montant': _pl_montant(t, 'amount', 'amount_with_tax', 'value'),
-                'statut': 'unaffected' if t.get('attachment_required') in (True, 'true') else 'affected',
+                # Statut Pennylane réel : une transaction est TRAITÉE quand elle est
+                # catégorisée/comptabilisée (liste `categories` non vide), À TRAITER
+                # sinon. NB: `matched_invoices` est toujours {'url': ...} (même sans
+                # rapprochement) -> inutilisable ; `attachment_required` (justificatif)
+                # n'est PAS un critère de traitement — source : comparaison compteurs
+                # UI Pennylane vs app (Pro Store : 152 à traiter / 999+ traitées).
+                'statut': 'affected' if (t.get('categories') or []) else 'unaffected',
                 'statut_fr': traduire_statut_pl(
-                    'unaffected' if t.get('attachment_required') in (True, 'true') else 'affected', 'transaction'),
+                    'affected' if (t.get('categories') or []) else 'unaffected',
+                    'transaction'),
             } for t in txs]
         except Exception as e:
             logger.warning(f'transactions: {e}')
