@@ -3918,6 +3918,78 @@ def pennylane_probe():
                 jan = sorted(it.get('invoice_number') for it in allinv
                              if (it.get('date') or '')[:7] == '2026-01')[:15]
                 out['jan_2026_nums'] = jan
+        elif probe_name == 'v16':
+            import json as _jj
+            from app.integrations.pennylane import _paginated_get, get_pennylane_token
+            # 1) EXTERNE (token, complet)
+            ext = _paginated_get('customer_invoices',
+                                 params={'limit': 100, 'company_id': customer_id},
+                                 token=get_pennylane_token())
+            ext_nums = {str(i.get('invoice_number') or i.get('invoice_number_formatted') or '').strip()
+                        for i in ext}
+            # 2) INTERNE clients/customer_invoices/list (complet)
+            cli = []
+            pg = 1
+            while pg <= 15:
+                rr = _g(f'/companies/{customer_id}/clients/'
+                        f'customer_invoices/list?page={pg}&per_page=100')
+                if rr.status_code != 200:
+                    break
+                dd = rr.json() or {}
+                lst = dd.get('invoices') or []
+                cli.extend(lst)
+                if not (dd.get('pagination') or {}).get('hasNextPage', len(lst) >= 100):
+                    break
+                pg += 1
+            cli_nums = {str(i.get('invoice_number') or '').strip() for i in cli}
+            # 3) INTERNE accountants/customer_invoices (complet)
+            acc = []
+            pg = 1
+            while pg <= 15:
+                rr = _g(f'/companies/{customer_id}/accountants/'
+                        f'customer_invoices?page={pg}&per_page=100')
+                if rr.status_code != 200:
+                    out['acc_http'] = rr.status_code
+                    break
+                dd = rr.json() or {}
+                lk = None
+                for k, v in dd.items():
+                    if isinstance(v, list):
+                        lk = k
+                        break
+                lst = (dd.get(lk) or []) if lk else []
+                acc.extend(lst)
+                pag = dd.get('pagination') or dd.get('meta') or {}
+                hn = pag.get('hasNextPage',
+                             pag.get('has_more', len(lst) >= 100))
+                if not lst or not hn:
+                    break
+                pg += 1
+            acc_nums = {str(i.get('invoice_number') or '').strip() for i in acc}
+            out['ext_n'] = len(ext)
+            out['cli_n'] = len(cli)
+            out['acc_n'] = len(acc)
+            out['acc_list_key'] = lk
+            out['acc_keys'] = sorted(acc[0].keys())[:30] if acc else []
+            def _yr(items, dk):
+                d = {}
+                for i in items:
+                    y = (str(i.get(dk) or '????'))[:4]
+                    d[y] = d.get(y, 0) + 1
+                return dict(sorted(d.items()))
+            out['ext_years'] = _yr(ext, 'date')
+            out['cli_years'] = _yr(cli, 'date')
+            out['acc_years'] = _yr(acc, 'date')
+            u_ec = ext_nums | cli_nums
+            u_all = u_ec | acc_nums
+            out['union_ext_cli'] = len(u_ec)
+            out['union_all'] = len(u_all)
+            out['cli_only_vs_ext'] = len(cli_nums - ext_nums)
+            out['acc_only_vs_union'] = len(acc_nums - u_ec)
+            out['has_1952_acc'] = 'FAC202601952' in acc_nums
+            out['cli_src'] = _cnt(cli, 'source')
+            if acc:
+                out['acc_sample'] = _jj.dumps(acc[0], ensure_ascii=False)[:900]
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
