@@ -749,34 +749,65 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
         nouveaux = _detecter_nouveaux_items(dossier, invs, sinvs, txs)
         # SONDE TEMPORAIRE (diagnostic compteurs) — à retirer après diagnostic
         try:
-            def _cross(items, keys):
-                from collections import Counter
-                c = Counter()
-                for it in items:
-                    sig = []
-                    for k in keys:
-                        v = it.get(k)
-                        if v in (None, [], {}, ''):
-                            sig.append(f'{k}=0')
-                        else:
-                            sig.append(f'{k}=1')
-                    c[' '.join(sig)] += 1
-                return c.most_common(12)
-
-            pages_info = {}
-            txs_keys = ['categories', 'matched_invoices', 'payment', 'attachment_required',
-                        'archived_at', 'outstanding_balance', 'pro_account_expense']
-            inv_keys = ['ledger_entry', 'draft', 'archived_at', 'status', 'paid']
+            # --- txs : distribution des valeurs BRUTES des champs candidats ---
+            def _zero(v):
+                try:
+                    return abs(float(v)) < 0.005
+                except (TypeError, ValueError):
+                    return False
+            from collections import Counter as _C
+            txs_stat = {
+                'total': len(txs),
+                'cat_nonvide': sum(1 for t in txs if (t.get('categories') or [])),
+                'uncat_outstanding_zero': sum(1 for t in txs
+                                              if not (t.get('categories') or [])
+                                              and _zero(t.get('outstanding_balance'))),
+                'uncat_outstanding_nz': sum(1 for t in txs
+                                            if not (t.get('categories') or [])
+                                            and not _zero(t.get('outstanding_balance'))),
+                'cat_outstanding_zero': sum(1 for t in txs
+                                            if (t.get('categories') or [])
+                                            and _zero(t.get('outstanding_balance'))),
+                'att_true': sum(1 for t in txs if t.get('attachment_required') is True),
+                'att_false': sum(1 for t in txs if t.get('attachment_required') is False),
+            }
+            # --- ventes : années + statuts, + marche pagination brute (meta) ---
+            ventes_par_an = _C((i.get('date') or '????')[:4] for i in invs)
+            ventes_draft = sum(1 for i in invs if i.get('draft') is True)
+            pages_meta = []
+            try:
+                tok2 = token
+                p2 = {'limit': 100}
+                if customer_id:
+                    p2['company_id'] = customer_id
+                for _p in range(12):
+                    rr = requests.get(_api_url('customer_invoices'),
+                                      headers=_headers(tok2), params=p2, timeout=20)
+                    if rr.status_code != 200:
+                        pages_meta.append(f'HTTP{rr.status_code}')
+                        break
+                    dd = rr.json()
+                    kk = next((k for k, v in dd.items() if isinstance(v, list)), None)
+                    pages_meta.append(len(dd.get(kk) or []))
+                    pg = dd.get('pagination') or {}
+                    nc = pg.get('next_cursor') or dd.get('next_cursor')
+                    if dd.get('has_more') is False:
+                        pages_meta.append(f'has_more=False meta={json.dumps(pg)[:120]}')
+                        break
+                    if not nc:
+                        pages_meta.append(f'no_cursor meta={json.dumps(pg)[:120]}')
+                        break
+                    p2['cursor'] = nc
+            except Exception as _e:
+                pages_meta.append(f'ERR {_e}')
             result['debug_probe'] = {
                 'counts': {'ventes': len(invs), 'achats': len(sinvs), 'txs': len(txs)},
-                'txs_cross': _cross(txs, txs_keys),
-                'ventes_cross': _cross(invs, inv_keys),
-                'ventes_status': {},
-                'ventes_ledger': sum(1 for i in invs if i.get('ledger_entry')),
+                'txs_stat': txs_stat,
+                'ventes_par_an': dict(ventes_par_an),
+                'ventes_draft_true': ventes_draft,
+                'ventes_ledger_nonnull': sum(1 for i in invs if i.get('ledger_entry')),
+                'pages_meta': pages_meta,
             }
-            from collections import Counter as _C
-            result['debug_probe']['ventes_status'] = dict(_C(
-                (i.get('status') or 'NONE') for i in invs).most_common(15))
         except Exception as e:
             result['debug_probe'] = {'err': f'probe failed: {e}'}
         if nouveaux:
