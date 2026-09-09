@@ -1018,6 +1018,102 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             except Exception as _e:
                 v9['err'] = str(_e)[:150]
             result['debug_probe']['v9'] = v9
+            # --- v10 : download COMPLET tx + inv accountants, comptages croises ---
+            v10 = {}
+            try:
+                from app.integrations import pennylane_web as _plw
+                _plw._load_from_db()
+                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+                _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
+                       'x-reseller': 'pennylane'}
+
+                def _g(path):
+                    return requests.get('https://app.pennylane.com' + path,
+                                        headers=_hj, cookies=_ck, timeout=30)
+
+                # TRANSACTIONS : toutes les pages per_page=500
+                txs = {}
+                for pg in range(1, 6):
+                    rr = _g(f'/companies/{customer_id}/accountants/transactions'
+                            f'?page={pg}&per_page=500')
+                    try:
+                        lst = rr.json().get('transactions') or []
+                    except Exception:
+                        lst = []
+                    for t in lst:
+                        txs[t['id']] = t
+                    if len(lst) < 500:
+                        break
+                v10['tx_total'] = len(txs)
+                def _cnt(items, key):
+                    c = {}
+                    for it in items:
+                        k = it.get(key)
+                        k = 'NULL' if k is None else str(k)[:24]
+                        c[k] = c.get(k, 0) + 1
+                    return dict(sorted(c.items(), key=lambda x: -x[1])[:12])
+                alltx = list(txs.values())
+                v10['tx_status'] = _cnt(alltx, 'status')
+                v10['tx_validated_at'] = {'null': sum(1 for t in alltx if not t.get('validated_at')),
+                                          'set': sum(1 for t in alltx if t.get('validated_at'))}
+                v10['tx_pending'] = _cnt(alltx, 'pending')
+                v10['tx_validation_method'] = _cnt(alltx, 'validation_method')
+                v10['tx_archived'] = {'null': sum(1 for t in alltx if not t.get('archived_at')),
+                                      'set': sum(1 for t in alltx if t.get('archived_at'))}
+                v10['tx_files_count'] = _cnt(alltx, 'files_count')
+                v10['tx_attachment_required'] = {'true': sum(1 for t in alltx if t.get('attachment_required')),
+                                                 'false': sum(1 for t in alltx if not t.get('attachment_required'))}
+
+                # VENTES accountants : toutes les pages per_page=100
+                invs = {}
+                for pg in range(1, 4):
+                    rr = _g(f'/companies/{customer_id}/accountants/customer_invoices'
+                            f'?page={pg}&per_page=100')
+                    try:
+                        lst = rr.json().get('invoices') or []
+                    except Exception:
+                        lst = []
+                    for i2 in lst:
+                        invs[i2['id']] = i2
+                    if len(lst) < 100:
+                        break
+                allinv = list(invs.values())
+                v10['inv_total'] = len(invs)
+                v10['inv_status'] = _cnt(allinv, 'status')
+                v10['inv_source'] = _cnt(allinv, 'source')
+                v10['inv_validation_needed'] = {'true': sum(1 for i2 in allinv if i2.get('validation_needed')),
+                                                'false': sum(1 for i2 in allinv if not i2.get('validation_needed'))}
+                v10['inv_archived'] = {'true': sum(1 for i2 in allinv if i2.get('archived')),
+                                       'false': sum(1 for i2 in allinv if not i2.get('archived'))}
+                nums = {i2.get('invoice_number') for i2 in allinv}
+                v10['inv_has_fac202601952'] = 'FAC202601952' in nums
+                v10['inv_sample_nums'] = sorted(n for n in nums if n)[:15]
+
+                # CANDIDATS ventes comptabilisees
+                cand = {}
+                for pth in (f'/companies/{customer_id}/accountants/customer_invoices?status=complete',
+                            f'/companies/{customer_id}/accountants/customer_invoices?validation_needed=false',
+                            f'/companies/{customer_id}/accountants/ledger_entries',
+                            f'/companies/{customer_id}/accountants/journal_entries',
+                            f'/companies/{customer_id}/accountants/accounting_entries',
+                            f'/companies/{customer_id}/accountants/customer_entries',
+                            f'/companies/{customer_id}/accountant/customer_invoices',
+                            f'/companies/{customer_id}/accountants/entries'):
+                    try:
+                        rr = _g(pth)
+                        try:
+                            jj = rr.json()
+                            nk = sorted(jj.keys())[:6]
+                            n = sum(len(v) for v in jj.values() if isinstance(v, list))
+                        except Exception:
+                            nk, n = [], -1
+                        cand[pth.split('?')[-1].split('/')[-1]] = f"{rr.status_code} n={n} keys={nk}"
+                    except Exception as _e2:
+                        cand[pth.split('?')[-1].split('/')[-1]] = f'ERR {str(_e2)[:60]}'
+                v10['cand'] = cand
+            except Exception as _e:
+                v10['err'] = str(_e)[:150]
+            result['debug_probe']['v10'] = v10
             # --- SCRAPING UI PENNYLANE (memes cookies que vat_forms) ---
             ui = {}
             try:
