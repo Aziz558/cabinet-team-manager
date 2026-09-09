@@ -563,13 +563,20 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
         _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
                'x-reseller': 'pennylane'}
         _year = str(datetime.utcnow().year)
+        # Filtre dates au FORMAT UI (JSON, cf. referer page accountants/invoices) :
+        # sans lui, l'endpoint ne renvoie que les 47 items hors période (liasse 2025).
+        _fltr = json.dumps(
+            [{'field': 'date', 'operator': 'between',
+              'value': [f'{_year}-01-01', f'{_year}-12-31']}],
+            separators=(',', ':'))
         seen_nums = set()
         seen_ids = set()
         for pg in range(1, max_pages + 1):
             rr = requests.get(
                 f'https://app.pennylane.com/companies/{company_id}/'
-                f'accountants/customer_invoices'
-                f'?page={pg}&per_page={per_page}&sort=-date',
+                f'accountants/customer_invoices',
+                params={'page': pg, 'per_page': per_page, 'sort': '-date',
+                        'filter': _fltr},
                 headers=_hj, cookies=_ck, timeout=30)
             if rr.status_code != 200:
                 break
