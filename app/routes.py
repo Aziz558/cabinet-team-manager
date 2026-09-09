@@ -4158,6 +4158,18 @@ def pennylane_probe():
                 out['diag_http'] = rr2.status_code
                 out['diag_keys'] = list((rr2.json() or {}).keys())[:8] if rr2.status_code == 200 else rr2.text[:200]
                 out['diag_n'] = len((rr2.json() or {}).get('invoices') or []) if rr2.status_code == 200 else None
+                # test per_page=300 vs 100 (helper utilise 300)
+                rr3 = _rq2.get(
+                    f'https://app.pennylane.com/companies/{customer_id}/accountants/customer_invoices?page=1&per_page=300&sort=-date',
+                    headers={'accept': 'application/json', 'user-agent': 'Mozilla/5.0', 'x-reseller': 'pennylane'},
+                    cookies=_ck2, timeout=30)
+                out['pp300_http'] = rr3.status_code
+                try:
+                    j3 = rr3.json() or {}
+                    out['pp300_n'] = len(j3.get('invoices') or [])
+                    out['pp300_pag'] = _jj.dumps(j3.get('pagination') or {})[:200]
+                except Exception:
+                    out['pp300_body'] = rr3.text[:200]
             except Exception as _e:
                 out['acct_err'] = repr(_e)[:300]
         return out
