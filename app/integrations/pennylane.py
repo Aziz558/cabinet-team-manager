@@ -198,13 +198,23 @@ def _paginated_get(path: str, params: dict = None, token: str = None, max_pages:
     params = dict(params or {})
     results = []
     for _ in range(max_pages):
-        try:
-            resp = requests.get(_api_url(path), headers=_headers(token), params=params, timeout=20)
-        except Exception as e:
-            logger.error(f'Pennylane GET {path}: {e}')
+        resp = None
+        for attempt in range(3):  # retry sur 429/5xx (erreur silencieuse = données tronquées)
+            try:
+                resp = requests.get(_api_url(path), headers=_headers(token), params=params, timeout=20)
+            except Exception as e:
+                logger.error(f'Pennylane GET {path}: {e}')
+                break
+            if resp.status_code == 200:
+                break
+            if resp.status_code == 429 or resp.status_code >= 500:
+                import time as _time
+                _time.sleep(2 * (attempt + 1))
+                continue
             break
-        if resp.status_code != 200:
-            logger.warning(f'Pennylane GET {path} -> {resp.status_code}: {resp.text[:200]}')
+        if resp is None or resp.status_code != 200:
+            logger.warning(f'Pennylane GET {path} -> {getattr(resp, "status_code", "?")}: '
+                           f'{getattr(resp, "text", "")[:200]}')
             break
         data = resp.json()
         key = None
@@ -739,13 +749,36 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
         nouveaux = _detecter_nouveaux_items(dossier, invs, sinvs, txs)
         # SONDE TEMPORAIRE (diagnostic compteurs) — à retirer après diagnostic
         try:
+            def _cross(items, keys):
+                from collections import Counter
+                c = Counter()
+                for it in items:
+                    sig = []
+                    for k in keys:
+                        v = it.get(k)
+                        if v in (None, [], {}, ''):
+                            sig.append(f'{k}=0')
+                        else:
+                            sig.append(f'{k}=1')
+                    c[' '.join(sig)] += 1
+                return c.most_common(12)
+
+            pages_info = {}
+            txs_keys = ['categories', 'matched_invoices', 'payment', 'attachment_required',
+                        'archived_at', 'outstanding_balance', 'pro_account_expense']
+            inv_keys = ['ledger_entry', 'draft', 'archived_at', 'status', 'paid']
             result['debug_probe'] = {
                 'counts': {'ventes': len(invs), 'achats': len(sinvs), 'txs': len(txs)},
-                'sample_tx': (txs[:2] if txs else []),
-                'sample_vente': (invs[:2] if invs else []),
+                'txs_cross': _cross(txs, txs_keys),
+                'ventes_cross': _cross(invs, inv_keys),
+                'ventes_status': {},
+                'ventes_ledger': sum(1 for i in invs if i.get('ledger_entry')),
             }
-        except Exception:
-            result['debug_probe'] = {'err': 'probe failed'}
+            from collections import Counter as _C
+            result['debug_probe']['ventes_status'] = dict(_C(
+                (i.get('status') or 'NONE') for i in invs).most_common(15))
+        except Exception as e:
+            result['debug_probe'] = {'err': f'probe failed: {e}'}
         if nouveaux:
             _notifier_nouveaux_items(dossier, nouveaux)
             result['nouveaux'] = nouveaux
