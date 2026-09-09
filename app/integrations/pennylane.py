@@ -549,8 +549,9 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
     statuts officiels UI : complete / archived / validation_needed / entry.
     C'est LA source unifiée : contient TOUT (externe + imports FEC),
     dont FAC202601952. Compteur UI = count_summary?period=2026 → 776.
-    Dédup par invoice_number (l'UI compte une seule fois les doublons
-    fec/créés) + filtre année civile courante (= période UI 2026).
+    PAS de dédup : l'UI compte brut (776 = total liste 2026).
+    Filtre année civile courante (= période UI 2026) + mapping statuts
+    calé sur les buckets UI réels : 559 Traité / 217 À traiter.
     Retourne [] si les cookies ne sont pas disponibles.
     """
     out = []
@@ -569,7 +570,6 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
             [{'field': 'date', 'operator': 'between',
               'value': [f'{_year}-01-01', f'{_year}-12-31']}],
             separators=(',', ':'))
-        seen_nums = set()
         seen_ids = set()
         for pg in range(1, max_pages + 1):
             rr = requests.get(
@@ -581,27 +581,31 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
             if rr.status_code != 200:
                 break
             data = rr.json() or {}
-            lst = data.get('customer_invoices') or data.get('invoices') or []
+            lst = data.get('invoices') or data.get('customer_invoices') or []
             for t in lst:
                 _tid = t.get('id')
                 if _tid is not None:
                     if _tid in seen_ids:
                         continue
                     seen_ids.add(_tid)
-                _num = (str(t.get('invoice_number') or '').strip())
-                if _num and _num in seen_nums:
-                    continue  # doublon fec/créé : l'UI ne compte qu'une fois
-                if _num:
-                    seen_nums.add(_num)
                 # filtre période = année civile courante (période UI)
                 _d = str(t.get('date') or '')
                 if _d and not _d.startswith(_year):
                     continue
-                # statut : 'complete' (comptable) → 'completed' (cycle de vie,
-                # mappé 'Traité' par traduire_statut_pl) ; archived/entry/
-                # validation_needed laissés tels quels
-                if (t.get('status') or '') == 'complete':
+                # MAPPING UI EXACT (buckets réels 2026 : 559 Traité / 217 À traiter) :
+                #   complete                → completed (Traité)          553
+                #   archived + paid_offline → completed (Traité)            4
+                #   archived + not_duplicate→ completed (Traité)            2
+                #   archived (le reste)     → pending (À traiter)         219
+                #   validation_needed/entry → tels quels (À traiter)       (2025)
+                _st = t.get('status') or ''
+                if _st == 'complete':
                     t['status'] = 'completed'
+                elif _st == 'archived':
+                    if t.get('payment_status') == 'paid_offline' or t.get('not_duplicate'):
+                        t['status'] = 'completed'
+                    else:
+                        t['status'] = 'pending'
                 # montants : aligner sur les clés attendues par _pl_montant
                 if t.get('total_with_tax') is None and t.get('amount') is not None:
                     t['total_with_tax'] = t['amount']
