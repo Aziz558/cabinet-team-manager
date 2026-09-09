@@ -730,6 +730,15 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
 
         # Detection nouveaux items
         nouveaux = _detecter_nouveaux_items(dossier, invs, sinvs, txs)
+        # SONDE TEMPORAIRE (diagnostic compteurs) — à retirer après diagnostic
+        try:
+            result['debug_probe'] = {
+                'counts': {'ventes': len(invs), 'achats': len(sinvs), 'txs': len(txs)},
+                'sample_tx': (txs[:2] if txs else []),
+                'sample_vente': (invs[:2] if invs else []),
+            }
+        except Exception:
+            result['debug_probe'] = {'err': 'probe failed'}
         if nouveaux:
             _notifier_nouveaux_items(dossier, nouveaux)
             result['nouveaux'] = nouveaux

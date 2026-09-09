@@ -3524,10 +3524,14 @@ def pennylane_check(dossier_id):
 
     from app.integrations.pennylane import get_dossier_pennylane_data
     data = get_dossier_pennylane_data(dossier, force_refresh=True)
-    return jsonify({'ok': data.get('ok'),
-                    'nouveaux': data.get('nouveaux', []),
-                    'resume': data.get('resume_nouveaux', ''),
-                    'message': data.get('message', '')})
+    resp = {'ok': data.get('ok'),
+            'nouveaux': data.get('nouveaux', []),
+            'resume': data.get('resume_nouveaux', ''),
+            'message': data.get('message', '')}
+    # SONDE TEMPORAIRE (diagnostic compteurs) — à retirer après diagnostic
+    if data.get('debug_probe'):
+        resp['debug_probe'] = data['debug_probe']
+    return resp
 
 
 
