@@ -4075,6 +4075,40 @@ def pennylane_probe():
             out['chunks_sample'] = chunks[:40]
             out['shell_http'] = rr.status_code
             out['shell_len'] = len(html)
+        elif probe_name == 'v19':
+            import json as _jj
+            # A) POST JSON sur list avec filtres
+            res_post = {}
+            for lbl, body_j in [
+                ('page1', {'page': 1, 'per_page': 1}),
+                ('arch_false', {'page': 1, 'per_page': 1, 'archived': False}),
+                ('arch_true', {'page': 1, 'per_page': 1, 'archived': True}),
+                ('na_2026', {'page': 1, 'per_page': 1, 'archived': False,
+                             'issue_date_after': '2025-12-31',
+                             'issue_date_before': '2027-01-01'}),
+            ]:
+                rr = _rq.post(
+                    f'https://app.pennylane.com/companies/{customer_id}/clients/customer_invoices/list',
+                    headers=_hj, cookies=_ck, timeout=30, json=body_j)
+                try:
+                    j = rr.json()
+                    pg = j.get('pagination') or {}
+                    res_post[lbl] = {'http': rr.status_code,
+                                     'totalEntries': pg.get('totalEntries'),
+                                     'err': (j.get('error') or {}).get('message') or j.get('error')}
+                except Exception:
+                    res_post[lbl] = {'http': rr.status_code}
+            out['post_list'] = res_post
+            # B) vraie page UI : quel GET ? essayer /company/<id>/purchases... non.
+            #    Les chemins UIPennylane ressemblent a /companies/<id>/invoicing...
+            #    On recupere le shell via un chemin connu de l'UI :
+            for path in (f'/companies/{customer_id}/customers',
+                         f'/companies/{customer_id}/invoicing',
+                         '/dashboard'):
+                rr = _g(path)
+                out[f'shell_{path.rsplit("/", 1)[-1][:20]}'] = {
+                    'http': rr.status_code, 'len': len(rr.text or ''),
+                    'n_chunks': len(set(re.findall(r'assets/[A-Za-z0-9_.-]+\.js', rr.text or '')))}
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
