@@ -28,7 +28,9 @@ _MEM = {}            # mini cache mémoire par worker (évite re-désérialiser)
 
 
 def _cache_key(dossier_id):
-    return f'PL_CACHE_{dossier_id}'
+    # V2 : change de préfixe pour ABANDONNER le cache empoisonné par l'ancien
+    # code (montants vides, listes non filtrées) dès le déploiement du fix.
+    return f'PL_CACHE_V2_{dossier_id}'
 
 
 def _cache_load(dossier_id):
@@ -116,18 +118,6 @@ def _refresh_in_background(dossier_id):
     import threading
     threading.Thread(target=_work, daemon=True).start()
 
-
-def _cache_set(dossier_id, res):
-    # garder max 10 dossiers en cache (les plus récents)
-    _CACHE[dossier_id] = (time.time(), res)
-    if len(_CACHE) > 10:
-        for k in sorted(_CACHE, key=lambda k: _CACHE[k][0])[:-10]:
-            _CACHE.pop(k, None)
-
-
-def invalidate_dossier_cache(dossier_id):
-    """Force le rechargement API au prochain accès (ex: après action utilisateur)."""
-    _CACHE.pop(dossier_id, None)
 
 PENNYLANE_API_URL = 'https://app.pennylane.com/api/external'
 PENNYLANE_API_VERSION = 'v2'
@@ -426,6 +416,20 @@ def _to_float(v):
         return None
 
 
+def _pl_montant(d: dict, *keys):
+    """Premier montant numérique trouvé parmi les champs donnés.
+
+    L'API v2 Pennylane renvoie les montants TTC dans `amount` (les champs
+    total_with_tax/total_without_tax n'existent pas ou sont vides selon
+    l'endpoint) — on teste plusieurs noms pour rester robuste.
+    """
+    for k in keys:
+        f = _to_float(d.get(k))
+        if f is not None:
+            return f
+    return None
+
+
 def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str:
     """Traduit le statut brut Pennylane en français (Traité / À traiter / Archivé).
 
@@ -642,35 +646,42 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
               'source_token': 'dossier' if has_dossier_token else 'global'}
 
     try:
+        # Auto-résolution du company_id si absent : même mécanisme que la synchro
+        # checklist (list_companies + match nom + fallback /me) — cf. demande Aziz :
+        # "dès que j'ajoute l'API au dossier, tout se branche tout seul".
         if has_dossier_token and not customer_id:
             try:
-                me = requests.get(_api_url('me'), headers=_headers(token), timeout=15)
-                if me.status_code == 200:
-                    me_data = me.json() or {}
-                    company = me_data.get('company') or {}
-                    if company.get('id'):
-                        dossier.pennylane_customer_id = str(company['id'])
-                        db.session.commit()
-                        customer_id = str(company['id'])
+                res_auto = resolve_company_for_dossier(dossier, token=token)
+                if res_auto.get('ok'):
+                    dossier.pennylane_customer_id = str(res_auto['company_id'])
+                    db.session.commit()
+                    customer_id = str(res_auto['company_id'])
+                    logger.info(f"auto-assoc dossier {dossier.id} -> company "
+                                f"{customer_id} via {res_auto.get('via')}")
             except Exception as e:
-                logger.warning(f'auto-assoc me: {e}')
+                logger.warning(f'auto-assoc dossier {dossier.id}: {e}')
 
         invs_params = {'limit': 100}
-        if customer_id and not has_dossier_token:
-            invs_params['customer_id'] = customer_id
+        if customer_id:
+            # API v2 : filtre par COMPANY du dossier (customer_id v2 = le CLIENT, pas le dossier)
+            invs_params['company_id'] = customer_id
         invs = _paginated_get('customer_invoices', params=invs_params, token=token)
         result['factures'] = [{
             'id': i.get('id'), 'numero': i.get('invoice_number') or i.get('invoice_number_formatted') or '',
-            'montant_ht': i.get('total_without_tax'), 'montant_ttc': i.get('total_with_tax'),
+            'montant_ht': _pl_montant(i, 'total_without_tax', 'amount_without_tax', 'amount_ht'),
+            'montant_ttc': _pl_montant(i, 'total_with_tax', 'amount', 'amount_with_tax', 'amount_ttc'),
             'statut': i.get('status') or '', 'statut_fr': traduire_statut_pl(i.get('status') or '', 'facture_vente'),
             'date': i.get('date'),
         } for i in invs]
 
         try:
-            sinvs = _paginated_get('supplier_invoices', params={'limit': 100}, token=token)
+            sinvs_params = {'limit': 100}
+            if customer_id:
+                sinvs_params['company_id'] = customer_id
+            sinvs = _paginated_get('supplier_invoices', params=sinvs_params, token=token)
             result['factures_fournisseurs'] = [{
-                'id': s.get('id'), 'numero': s.get('invoice_number') or '',
-                'montant_ttc': s.get('total_with_tax'),
+                'id': s.get('id'), 'numero': s.get('invoice_number') or s.get('supplier_invoice_number') or s.get('reference') or '',
+                'montant_ttc': _pl_montant(s, 'total_with_tax', 'amount', 'amount_with_tax'),
                 'statut': s.get('accounting_status') or '',
                 'statut_fr': traduire_statut_pl(s.get('accounting_status') or '', 'facture_achat'),
                 'date': s.get('date'),
@@ -681,10 +692,13 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             sinvs = []
 
         try:
-            txs = _paginated_get('transactions', params={'limit': 100}, token=token)
+            txs_params = {'limit': 100}
+            if customer_id:
+                txs_params['company_id'] = customer_id
+            txs = _paginated_get('transactions', params=txs_params, token=token)
             result['transactions'] = [{
                 'id': t.get('id'), 'date': t.get('transaction_date') or t.get('date'),
-                'libelle': t.get('label') or '', 'montant': t.get('amount'),
+                'libelle': t.get('label') or '', 'montant': _pl_montant(t, 'amount', 'amount_with_tax', 'value'),
                 'statut': 'unaffected' if t.get('attachment_required') in (True, 'true') else 'affected',
                 'statut_fr': traduire_statut_pl(
                     'unaffected' if t.get('attachment_required') in (True, 'true') else 'affected', 'transaction'),

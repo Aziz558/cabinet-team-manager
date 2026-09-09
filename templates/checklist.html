@@ -69,6 +69,13 @@
     .btn-pl-sync:hover { color: var(--info); border-color: var(--info); background: rgba(66,165,245,.08); }
     .btn-pl-sync.spinning i { display: inline-block; animation: plspin 1s linear infinite; }
     @keyframes plspin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    /* Icône « ? » : afficher/masquer le détail des statuts (légende + note) */
+    .btn-pl-detail { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border-color);
+        background: var(--bg-card-hover); color: var(--text-tertiary); font-size: 0.85rem;
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; flex-shrink: 0; padding: 0; transition: all .15s ease; }
+    .btn-pl-detail:hover { color: var(--orange-primary); border-color: var(--orange-primary); background: rgba(255,140,0,.08); }
+    .btn-pl-detail.active-detail { color: var(--orange-primary); border-color: var(--orange-primary); background: rgba(255,140,0,.12); }
 </style>
 {% endblock %}
 
@@ -204,14 +211,19 @@
 {% endif %}
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — chaque colonne = la période déclarée (ex. juillet → dépôt 24 août) · cliquez sur un symbole pour changer son statut</h6>
-        <div class="cl-legend">
-            <span><span class="sym sym-st-solde"><i class="bi bi-check-lg"></i></span> déclarée &amp; payée</span>
-            <span><span class="sym sym-st-declare"><i class="bi bi-circle-half"></i></span> déclarée</span>
-            <span><span class="sym sym-st-retard"><i class="bi bi-x-lg"></i></span> en retard</span>
-            <span><span class="sym sym-st-venir"><i class="bi bi-circle" style="font-size:0.7rem;"></i></span> à venir</span>
-            <span><span class="sym sym-st-na">·</span> rien à signaler</span>
-            <span class="ms-2"><span class="sym sym-pl-static sym-pl-ok"><i class="bi bi-check-lg"></i></span> <b>PL</b> acceptée (vert) · <span class="sym sym-pl-static sym-pl-progress"><i class="bi bi-hourglass-split"></i></span> en cours (orange) · <span class="sym sym-pl-static sym-pl-ready"><i class="bi bi-tools"></i></span> prêt (bleu) · <span class="sym sym-pl-static sym-pl-todo"><i class="bi bi-three-dots"></i></span> à déclarer (gris) · <span class="sym sym-pl-static sym-pl-late"><i class="bi bi-x-lg"></i></span> en retard (rouge)</span>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn-pl-detail" id="btnPlDetail" title="Afficher / masquer le détail des statuts" onclick="togglePlDetail(this)">
+                <i class="bi bi-question-lg"></i>
+            </button>
         </div>
+    </div>
+    <div id="plDetailLegend" class="cl-legend px-3 pb-2" style="display:none;">
+        <span><span class="sym sym-st-solde"><i class="bi bi-check-lg"></i></span> déclarée &amp; payée</span>
+        <span><span class="sym sym-st-declare"><i class="bi bi-circle-half"></i></span> déclarée</span>
+        <span><span class="sym sym-st-retard"><i class="bi bi-x-lg"></i></span> en retard</span>
+        <span><span class="sym sym-st-venir"><i class="bi bi-circle" style="font-size:0.7rem;"></i></span> à venir</span>
+        <span><span class="sym sym-st-na">·</span> rien à signaler</span>
+        <span class="ms-2"><span class="sym sym-pl-static sym-pl-ok"><i class="bi bi-check-lg"></i></span> <b>PL</b> acceptée (vert) · <span class="sym sym-pl-static sym-pl-progress"><i class="bi bi-hourglass-split"></i></span> en cours (orange) · <span class="sym sym-pl-static sym-pl-ready"><i class="bi bi-tools"></i></span> prêt (bleu) · <span class="sym sym-pl-static sym-pl-todo"><i class="bi bi-three-dots"></i></span> à déclarer (gris) · <span class="sym sym-pl-static sym-pl-late"><i class="bi bi-x-lg"></i></span> en retard (rouge)</span>
     </div>
     <div class="card-body-premium p-0">
         <div style="overflow-x: auto;">
@@ -297,7 +309,7 @@
             </table>
         </div>
     </div>
-    <div class="px-3 pb-2">
+    <div class="px-3 pb-2" id="plDetailNote" style="display:none;">
         <small class="text-tertiary"><i class="bi bi-info-circle me-1"></i>Statuts pré-remplis depuis les tâches deadlines de l'application + les déclarations faites dans Pennylane (synchro session web, page Intégration). Statuts Pennylane (survol d'une case : statut, échéance, montant) : <b style="color:var(--success);">Acceptée</b> = envoyée et acceptée par le service d'impôt · <b style="color:var(--warning);">En cours</b> = envoyée mais pas encore acceptée · <b style="color:var(--info);">Prêt</b> = préparée mais pas encore envoyée · <b style="color:#BDBDBD;">À déclarer</b> = ni préparée ni envoyée (échéance à venir) · <b style="color:var(--danger);">En retard</b> = échéance dépassée sans préparation ni envoi. Dossiers reliés : la synchro Pennylane fait foi et met à jour la case — un clic manuel reste ensuite prioritaire jusqu'à la prochaine synchro.</small>
     </div>
 </div>
@@ -391,6 +403,16 @@
     }
     window.plSyncDossier = plSyncDossier;
     window.plVerifyNow = plVerifyNow;
+
+    // « ? » : afficher/masquer le détail des statuts (légende + note bas)
+    window.togglePlDetail = function(btn) {
+        var legend = document.getElementById('plDetailLegend');
+        var note = document.getElementById('plDetailNote');
+        var show = (legend.style.display === 'none');
+        legend.style.display = show ? 'flex' : 'none';
+        if (note) { note.style.display = show ? 'block' : 'none'; }
+        btn.classList.toggle('active-detail', show);
+    };
 
     grid.addEventListener('click', function(ev) {
         var sym = ev.target.closest('.sym[data-field]');
