@@ -847,6 +847,83 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                 'matched_invoices_shapes': dict(mi_stat),
                 'sample_mi': sample_mi,
             }
+            # --- v7 : filtres serveur API externe + grep bundle JS du shell ---
+            v7 = {'tx_filters': {}, 'inv_filters': {}, 'draft_names': {}, 'bundles': []}
+            # filtres candidats sur transactions (si supporté -> count direct)
+            for label, extra in (
+                    ('status_uncategorized', {'status': 'uncategorized'}),
+                    ('categorized_false', {'categorized': 'false'}),
+                    ('categorized_true', {'categorized': 'true'}),
+                    ('att_true', {'attachment_required': 'true'})):
+                try:
+                    pf = {'limit': 1, **({'company_id': customer_id} if customer_id else {}), **extra}
+                    rf = requests.get(_api_url('transactions'), headers=_headers(token),
+                                      params=pf, timeout=20)
+                    v7['tx_filters'][label] = rf.status_code if rf.status_code != 200 else \
+                        f"200 n={len(next((v for v in rf.json().values() if isinstance(v, list)), []))}"
+                except Exception as _e:
+                    v7['tx_filters'][label] = f'ERR {_e}'[:60]
+            # filtres candidats sur customer_invoices
+            for label, extra in (('status_draft', {'status': 'draft'}),
+                                 ('status_incomplete', {'status': 'incomplete'}),
+                                 ('status_archived', {'status': 'archived'})):
+                try:
+                    pf = {'limit': 1, **({'company_id': customer_id} if customer_id else {}), **extra}
+                    rf = requests.get(_api_url('customer_invoices'), headers=_headers(token),
+                                      params=pf, timeout=20)
+                    v7['inv_filters'][label] = rf.status_code if rf.status_code != 200 else \
+                        f"200 n={len(next((v for v in rf.json().values() if isinstance(v, list)), []))}"
+                except Exception as _e:
+                    v7['inv_filters'][label] = f'ERR {_e}'[:60]
+            # variantes d'endpoint brouillons
+            for name in ('invoice_drafts', 'sales_invoice_drafts', 'quotations'):
+                try:
+                    pf = {'limit': 1, **({'company_id': customer_id} if customer_id else {})}
+                    rf = requests.get(_api_url(name), headers=_headers(token), params=pf, timeout=15)
+                    v7['draft_names'][name] = rf.status_code if rf.status_code != 200 else '200 OK'
+                except Exception as _e:
+                    v7['draft_names'][name] = f'ERR {_e}'[:60]
+            # bundles JS du shell (grep noms de requêtes internes)
+            try:
+                from app.integrations import pennylane_web as _plw
+                _plw._load_from_db()
+                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+                rs = requests.get(f'https://app.pennylane.com/companies/{customer_id}/bank_accounts',
+                                  headers={'user-agent': 'Mozilla/5.0'}, cookies=_ck, timeout=25)
+                import re as _re2
+                srcs = _re2.findall(r'<script[^>]+src="([^"]+)"', rs.text or '')
+                v7['bundles'] = srcs[:8]
+                fetched = 0
+                for src in srcs:
+                    if fetched >= 3:
+                        break
+                    if not src.startswith('http'):
+                        src = 'https://app.pennylane.com' + src
+                    if not ('.js' in src):
+                        continue
+                    try:
+                        rb = requests.get(src, headers={'user-agent': 'Mozilla/5.0'}, timeout=40)
+                        b = rb.text or ''
+                        if len(b) < 10000:
+                            continue
+                        fetched += 1
+                        hits = []
+                        for pat in (r'query\s+[A-Za-z0-9_]*[Tt]ransaction[A-Za-z0-9_]*',
+                                    r'query\s+[A-Za-z0-9_]*[Ii]nvoice[A-Za-z0-9_]*',
+                                    r'non_?affected', r'unaffected', r'pendingTransactions',
+                                    r'bankTransactions?', r'requiresAction',
+                                    r'[àa]\s*[tr]{1,2}aiter'):
+                            ms = sorted(set(_re2.findall(pat, b)))[:6]
+                            if ms:
+                                hits.append({pat[:22]: ms})
+                        if hits:
+                            v7.setdefault('bundle_hits', []).append(
+                                {'src': src[-60:], 'hits': hits})
+                    except Exception:
+                        pass
+            except Exception as _e:
+                v7['bundles_err'] = str(_e)[:100]
+            result['debug_probe']['v7'] = v7
             # --- SCRAPING UI PENNYLANE (memes cookies que vat_forms) ---
             ui = {}
             try:
