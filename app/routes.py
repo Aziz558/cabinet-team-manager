@@ -3713,6 +3713,53 @@ def pennylane_probe():
                     tgt[pth.split('?')[-1].split('/')[-1] or 'root'] = \
                         f'ERR {str(_e2)[:60]}'
             out['targeted'] = tgt
+        elif probe_name == 'v12':
+            # API interne "clients" (vue entreprise) : les ventes importees y sont ?
+            def _listkey(j):
+                for k, v in j.items():
+                    if isinstance(v, list):
+                        return k
+                return None
+            r0 = _g(f'/companies/{customer_id}/clients/customer_invoices?page=1&per_page=100')
+            try:
+                j0 = r0.json()
+            except Exception:
+                j0 = {}
+            lk = _listkey(j0)
+            out['cli_http'] = r0.status_code
+            out['cli_root_keys'] = sorted(j0.keys())
+            cli = {}
+            if lk:
+                for it in (j0.get(lk) or []):
+                    cli[it.get('id')] = it
+                for pg in range(2, 12):
+                    rr = _g(f'/companies/{customer_id}/clients/'
+                            f'customer_invoices?page={pg}&per_page=100')
+                    try:
+                        lst = rr.json().get(lk) or []
+                    except Exception:
+                        lst = []
+                    for it in lst:
+                        cli[it.get('id')] = it
+                    if len(lst) < 100:
+                        break
+            allc = list(cli.values())
+            out['cli_total'] = len(allc)
+            if allc:
+                out['cli_keys'] = sorted(allc[0].keys())
+                out['cli_status'] = _cnt(allc, 'status')
+                nums = {i.get('invoice_number') for i in allc}
+                out['cli_has_fac202601952'] = 'FAC202601952' in nums
+                out['cli_sample_nums'] = sorted(n for n in nums if n)[:15]
+            # le search accountants trouve-t-il vraiment FAC202601952 ?
+            try:
+                rr = _g(f'/companies/{customer_id}/accountants/'
+                        f'customer_invoices?search=FAC202601952&per_page=100')
+                lst2 = rr.json().get('invoices') or []
+                out['acc_search_nums'] = [i.get('invoice_number')
+                                          for i in lst2][:12]
+            except Exception as _e:
+                out['acc_search_nums'] = f'ERR {str(_e)[:80]}'
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
