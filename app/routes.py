@@ -4109,6 +4109,29 @@ def pennylane_probe():
                 out[f'shell_{path.rsplit("/", 1)[-1][:20]}'] = {
                     'http': rr.status_code, 'len': len(rr.text or ''),
                     'n_chunks': len(set(re.findall(r'assets/[A-Za-z0-9_.-]+\.js', rr.text or '')))}
+        elif probe_name == 'v20':
+            import json as _jj
+            # page UI Ventes avec en-tetes navigateur complets
+            h2 = dict(_hj)
+            h2.update({
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'accept-language': 'fr-FR,fr;q=0.9,en;q=0.7',
+                'sec-ch-ua': '"Chromium";v="126"',
+                'sec-fetch-dest': 'document',
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-site': 'same-origin',
+                'upgrade-insecure-requests': '1',
+                'referer': 'https://app.pennylane.com/',
+            })
+            rr = _rq.get(
+                f'https://app.pennylane.com/companies/{customer_id}/clients/customer_invoices',
+                headers=h2, cookies=_ck, timeout=60)
+            html = rr.text or ''
+            chunks = sorted(set(re.findall(r'/assets/[A-Za-z0-9_.-]+\.js', html)))
+            out['page_http'] = rr.status_code
+            out['page_len'] = len(html)
+            out['page_n_chunks'] = len(chunks)
+            out['page_chunks'] = [c.split('/')[-1] for c in chunks[:60]]
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
