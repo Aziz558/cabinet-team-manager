@@ -3875,6 +3875,49 @@ def pennylane_probe():
                 except Exception as _e:
                     res_le[q[:40]] = f'ERR {str(_e)[:80]}'
             out['le_filtered'] = res_le
+        elif probe_name == 'v15':
+            import json as _jj
+            # pagination COMPLETE de clients/customer_invoices/list
+            invs = {}
+            pg = 1
+            while pg <= 12:
+                rr = _g(f'/companies/{customer_id}/clients/'
+                        f'customer_invoices/list?page={pg}&per_page=100')
+                if rr.status_code != 200:
+                    out['last_http'] = rr.status_code
+                    break
+                lst = rr.json().get('invoices') or []
+                for it in lst:
+                    invs[it.get('id')] = it
+                pag = rr.json().get('pagination') or {}
+                if not lst or not pag.get('hasNextPage'):
+                    break
+                pg += 1
+            allinv = list(invs.values())
+            out['inv_total'] = len(allinv)
+            out['pages_fetched'] = pg
+            if allinv:
+                out['keys'] = sorted(allinv[0].keys())
+                out['status'] = _cnt(allinv, 'status')
+                out['draft'] = _cnt(allinv, 'draft')
+                out['paid'] = _cnt(allinv, 'paid')
+                out['source'] = _cnt(allinv, 'source')
+                out['pdp_status'] = _cnt(allinv, 'pdp_status')
+                out['factor_status'] = _cnt(allinv, 'factor_status')
+                out['archived'] = _cnt(allinv, 'archived')
+                # annees
+                yrs = {}
+                for it in allinv:
+                    y2 = (it.get('date') or '????')[:4]
+                    yrs[y2] = yrs.get(y2, 0) + 1
+                out['by_year'] = dict(sorted(yrs.items()))
+                nums = {it.get('invoice_number') for it in allinv}
+                out['has_fac202601952'] = 'FAC202601952' in nums
+                out['has_fac202602515'] = 'FAC202602515' in nums
+                # sample 2026 janvier (les factures manquantes)
+                jan = sorted(it.get('invoice_number') for it in allinv
+                             if (it.get('date') or '')[:7] == '2026-01')[:15]
+                out['jan_2026_nums'] = jan
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
