@@ -4132,6 +4132,20 @@ def pennylane_probe():
             out['page_len'] = len(html)
             out['page_n_chunks'] = len(chunks)
             out['page_chunks'] = [c.split('/')[-1] for c in chunks[:60]]
+        elif probe_name == 'v21':
+            import json as _jj
+            try:
+                from app.integrations.pennylane import (
+                    _fetch_accountant_customer_invoices as _faci,
+                )
+                _ai = _faci(customer_id)
+                out['acct_invs'] = len(_ai)
+                if _ai:
+                    from collections import Counter as _C
+                    out['acct_status'] = _jj.dumps(_C([(x.get('status') or '') for x in _ai]), ensure_ascii=False)
+                    out['has_fac1952'] = any((x.get('invoice_number') or '') == 'FAC202601952' for x in _ai)
+            except Exception as _e:
+                out['acct_err'] = repr(_e)[:300]
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
