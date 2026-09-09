@@ -3534,6 +3534,127 @@ def pennylane_check(dossier_id):
     return resp
 
 
+@app.route('/pennylane/probe', methods=['GET', 'POST'])
+@login_required
+def pennylane_probe():
+    """SONDE TEMPORAIRE : diagnostics API interne Pennylane SANS la synchro lourde."""
+    import requests as _rq
+    customer_id = request.args.get('company_id', '23281030', type=str)
+    probe_name = request.args.get('probe', 'v10', type=str)
+    out = {'probe': probe_name, 'company_id': customer_id}
+    try:
+        from app.integrations import pennylane_web as _plw
+        _plw._load_from_db()
+        _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+        _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
+               'x-reseller': 'pennylane'}
+
+        def _g(path):
+            return _rq.get('https://app.pennylane.com' + path,
+                           headers=_hj, cookies=_ck, timeout=30)
+
+        def _cnt(items, key):
+            c = {}
+            for it in items:
+                k = it.get(key)
+                k = 'NULL' if k is None else str(k)[:24]
+                c[k] = c.get(k, 0) + 1
+            return dict(sorted(c.items(), key=lambda x: -x[1])[:12])
+
+        if probe_name == 'v10':
+            # TRANSACTIONS complet
+            txs = {}
+            for pg in range(1, 8):
+                rr = _g(f'/companies/{customer_id}/accountants/transactions'
+                        f'?page={pg}&per_page=500')
+                try:
+                    lst = rr.json().get('transactions') or []
+                except Exception:
+                    lst = []
+                for t in lst:
+                    txs[t['id']] = t
+                if len(lst) < 500:
+                    break
+            alltx = list(txs.values())
+            out['tx_total'] = len(txs)
+            out['tx_status'] = _cnt(alltx, 'status')
+            out['tx_validated'] = {'null': sum(1 for t in alltx if not t.get('validated_at')),
+                                   'set': sum(1 for t in alltx if t.get('validated_at'))}
+            out['tx_pending'] = _cnt(alltx, 'pending')
+            out['tx_validation_method'] = _cnt(alltx, 'validation_method')
+            out['tx_archived'] = {'null': sum(1 for t in alltx if not t.get('archived_at')),
+                                  'set': sum(1 for t in alltx if t.get('archived_at'))}
+            out['tx_files_count'] = _cnt(alltx, 'files_count')
+            out['tx_attachment_required'] = {'true': sum(1 for t in alltx if t.get('attachment_required')),
+                                             'false': sum(1 for t in alltx if not t.get('attachment_required'))}
+            # VENTES accountants complet
+            invs = {}
+            for pg in range(1, 12):
+                rr = _g(f'/companies/{customer_id}/accountants/customer_invoices'
+                        f'?page={pg}&per_page=100')
+                try:
+                    lst = rr.json().get('invoices') or []
+                except Exception:
+                    lst = []
+                for i2 in lst:
+                    invs[i2['id']] = i2
+                if len(lst) < 100:
+                    break
+            allinv = list(invs.values())
+            out['inv_total'] = len(invs)
+            out['inv_status'] = _cnt(allinv, 'status')
+            out['inv_source'] = _cnt(allinv, 'source')
+            out['inv_validation_needed'] = {'true': sum(1 for i2 in allinv if i2.get('validation_needed')),
+                                            'false': sum(1 for i2 in allinv if not i2.get('validation_needed'))}
+            out['inv_archived'] = {'true': sum(1 for i2 in allinv if i2.get('archived')),
+                                   'false': sum(1 for i2 in allinv if not i2.get('archived'))}
+            out['inv_paid'] = {'true': sum(1 for i2 in allinv if i2.get('paid')),
+                               'false': sum(1 for i2 in allinv if not i2.get('paid'))}
+            nums = {i2.get('invoice_number') for i2 in allinv}
+            out['inv_has_fac202601952'] = 'FAC202601952' in nums
+            out['inv_sample_nums'] = sorted(n for n in nums if n)[:15]
+            # CANDIDATS endpoints
+            cand = {}
+            for pth in (f'/companies/{customer_id}/accountants/customer_invoices?status=complete',
+                        f'/companies/{customer_id}/accountants/ledger_entries',
+                        f'/companies/{customer_id}/accountants/journal_entries',
+                        f'/companies/{customer_id}/accountants/accounting_entries',
+                        f'/companies/{customer_id}/accountants/customer_entries',
+                        f'/companies/{customer_id}/accountants/entries',
+                        f'/companies/{customer_id}/accountants/validated_transactions',
+                        f'/companies/{customer_id}/accountants/transactions?status=complete'):
+                try:
+                    rr = _g(pth)
+                    try:
+                        jj = rr.json()
+                        nk = sorted(jj.keys())[:6]
+                        n = sum(len(v) for v in jj.values() if isinstance(v, list))
+                    except Exception:
+                        nk, n = [], -1
+                    cand[pth.split('?')[-1].split('/')[-1] or 'root'] = f"{rr.status_code} n={n} keys={nk}"
+                except Exception as _e2:
+                    cand[pth.split('?')[-1].split('/')[-1] or 'root'] = f'ERR {str(_e2)[:60]}'
+            out['cand'] = cand
+        elif probe_name == 'fetch_tx':
+            # telecharge TOUTES les tx internes et renvoie le total brut
+            txs = []
+            for pg in range(1, 8):
+                rr = _g(f'/companies/{customer_id}/accountants/transactions'
+                        f'?page={pg}&per_page=500')
+                try:
+                    lst = rr.json().get('transactions') or []
+                except Exception:
+                    lst = []
+                txs.extend(lst)
+                if len(lst) < 500:
+                    break
+            out['tx_total'] = len(txs)
+            out['status_counts'] = _cnt(txs, 'status')
+        return out
+    except Exception as e:
+        return {'probe': probe_name, 'err': str(e)[:200]}, 500
+
+
 
 # ==========================
 # Error handlers
