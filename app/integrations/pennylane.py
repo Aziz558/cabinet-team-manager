@@ -11,6 +11,7 @@ Base URL API   : https://api.pennylane.com
 import requests
 import logging
 import time
+import json as _json
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
@@ -792,14 +793,49 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                     pg = dd.get('pagination') or {}
                     nc = pg.get('next_cursor') or dd.get('next_cursor')
                     if dd.get('has_more') is False:
-                        pages_meta.append(f'has_more=False meta={json.dumps(pg)[:120]}')
+                        pages_meta.append(f'has_more=False meta={_json.dumps(pg)[:120]}')
                         break
                     if not nc:
-                        pages_meta.append(f'no_cursor meta={json.dumps(pg)[:120]}')
+                        pages_meta.append(f'no_cursor meta={_json.dumps(pg)[:120]}')
                         break
                     p2['cursor'] = nc
             except Exception as _e:
                 pages_meta.append(f'ERR {_e}')
+            # --- brouillons (endpoint separe) + matched_invoices reel ---
+            drafts_count = None
+            try:
+                p3 = {'limit': 1}
+                if customer_id:
+                    p3['company_id'] = customer_id
+                rr = requests.get(_api_url('customer_invoice_drafts'),
+                                  headers=_headers(token), params=p3, timeout=20)
+                if rr.status_code == 200:
+                    dd3 = rr.json()
+                    pg3 = dd3.get('pagination') or {}
+                    drafts_count = {'nb_page': len(dd3.get('customer_invoice_drafts') or []),
+                                    'meta': {k: v for k, v in pg3.items()
+                                             if 'total' in str(k).lower() or 'count' in str(k).lower()}
+                                    or _json.dumps(pg3)[:200]}
+                else:
+                    drafts_count = f'HTTP{rr.status_code}'
+            except Exception as _e:
+                drafts_count = f'ERR {_e}'
+            mi = []
+            for t in txs:
+                mv = t.get('matched_invoices')
+                mi.append(type(mv).__name__ if mv is None else
+                          ('dict:' + ','.join(sorted(mv.keys())) if isinstance(mv, dict)
+                           else f'{type(mv).__name__}:{len(mv)}'))
+            mi_stat = _C(mi).most_common(6)
+            # echantillon matched_invoices non vide (dict avec cle de liste ?)
+            sample_mi = None
+            for t in txs:
+                mv = t.get('matched_invoices')
+                if isinstance(mv, dict):
+                    interesting = {k: v for k, v in mv.items() if not isinstance(v, dict)}
+                    if interesting:
+                        sample_mi = interesting
+                        break
             result['debug_probe'] = {
                 'counts': {'ventes': len(invs), 'achats': len(sinvs), 'txs': len(txs)},
                 'txs_stat': txs_stat,
@@ -807,6 +843,9 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                 'ventes_draft_true': ventes_draft,
                 'ventes_ledger_nonnull': sum(1 for i in invs if i.get('ledger_entry')),
                 'pages_meta': pages_meta,
+                'drafts_endpoint': drafts_count,
+                'matched_invoices_shapes': dict(mi_stat),
+                'sample_mi': sample_mi,
             }
         except Exception as e:
             result['debug_probe'] = {'err': f'probe failed: {e}'}
