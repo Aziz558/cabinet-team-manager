@@ -924,6 +924,34 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             except Exception as _e:
                 v7['bundles_err'] = str(_e)[:100]
             result['debug_probe']['v7'] = v7
+            # --- v8 : endpoints INTERNES (cookies) pour ventes importees + banque ---
+            v8 = {}
+            try:
+                from app.integrations import pennylane_web as _plw
+                _plw._load_from_db()
+                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+                _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
+                       'x-reseller': 'pennylane'}
+                _cands = [
+                    f'/companies/{customer_id}/accountants/customer_invoices',
+                    f'/companies/{customer_id}/accountants/sales_invoices',
+                    f'/companies/{customer_id}/accountants/transactions',
+                    f'/companies/{customer_id}/customer_invoices',
+                    f'/companies/{customer_id}/transactions',
+                    f'/api/internal/companies/{customer_id}/customer_invoices',
+                ]
+                for _p in _cands:
+                    try:
+                        rr = requests.get('https://app.pennylane.com' + _p,
+                                          headers=_hj, cookies=_ck, timeout=25)
+                        ct = (rr.headers.get('Content-Type') or '')[:30]
+                        body = (rr.text or '')[:220].replace('\n', ' ')
+                        v8[_p] = f'{rr.status_code} {ct} :: {body}'
+                    except Exception as _e2:
+                        v8[_p] = f'ERR {str(_e2)[:80]}'
+            except Exception as _e:
+                v8['err'] = str(_e)[:120]
+            result['debug_probe']['v8'] = v8
             # --- SCRAPING UI PENNYLANE (memes cookies que vat_forms) ---
             ui = {}
             try:
