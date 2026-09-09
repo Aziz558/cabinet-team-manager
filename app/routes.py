@@ -3760,6 +3760,55 @@ def pennylane_probe():
                                           for i in lst2][:12]
             except Exception as _e:
                 out['acc_search_nums'] = f'ERR {str(_e)[:80]}'
+        elif probe_name == 'v13':
+            # ledger_events = ecritures de journal (Import comptable "Ecritures")
+            def _listkey(j):
+                for k, v in j.items():
+                    if isinstance(v, list):
+                        return k
+                return None
+            r0 = _g(f'/companies/{customer_id}/financial_reports/'
+                    f'ledger_events?page=1&per_page=100')
+            try:
+                j0 = r0.json()
+            except Exception:
+                j0 = {}
+            lk = _listkey(j0)
+            out['le_http'] = r0.status_code
+            out['le_root_keys'] = sorted(j0.keys())
+            out['le_list_key'] = lk
+            items = []
+            if lk:
+                items = list(j0.get(lk) or [])
+                out['le_page1'] = len(items)
+                if items:
+                    out['le_item_keys'] = sorted(items[0].keys())
+                    out['le_sample'] = _json.dumps(items[0],
+                                                   ensure_ascii=False)[:1200]
+            for pg in range(2, 4):
+                try:
+                    rr = _g(f'/companies/{customer_id}/financial_reports/'
+                            f'ledger_events?page={pg}&per_page=100')
+                    lst = (rr.json().get(lk) or []) if lk else []
+                    items.extend(lst)
+                    if len(lst) < 100:
+                        break
+                except Exception:
+                    break
+            out['le_total_3pages'] = len(items)
+            try:
+                rs2 = _g(f'/companies/{customer_id}/financial_reports/'
+                         f'ledger_events?search=FAC202601952&per_page=50')
+                j2 = rs2.json()
+                lk2 = _listkey(j2)
+                out['le_search'] = {'http': rs2.status_code,
+                                    'n': len(j2.get(lk2) or []) if lk2 else 0,
+                                    'keys': sorted(j2.keys())}
+                if lk2 and (j2.get(lk2) or []):
+                    out['le_search_sample'] = _json.dumps(
+                        (j2.get(lk2) or [None])[0], ensure_ascii=False)[:900]
+            except Exception as _e:
+                out['le_search'] = f'ERR {str(_e)[:100]}'
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
