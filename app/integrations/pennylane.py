@@ -565,7 +565,7 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
         _year = str(datetime.utcnow().year)
         # Filtre dates au FORMAT UI (JSON, cf. referer page accountants/invoices) :
         # sans lui, l'endpoint ne renvoie que les 47 items hors période (liasse 2025).
-        _fltr = json.dumps(
+        _fltr = _json.dumps(
             [{'field': 'date', 'operator': 'between',
               'value': [f'{_year}-01-01', f'{_year}-12-31']}],
             separators=(',', ':'))
