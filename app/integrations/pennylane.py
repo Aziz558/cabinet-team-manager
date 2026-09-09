@@ -458,6 +458,11 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
     # Banque (transactions)
     if item_type == 'transaction':
         mapping = {
+            # API INTERNE (accountants/transactions) : statuts officiels de l'UI
+            'accounting_needed': 'À traiter',
+            'pending': 'À traiter',
+            'complete': 'Traité',
+            # API externe (fallback) : statut inféré
             'unaffected': 'À traiter',
             'partially_affected': 'À traiter',
             'affected': 'Traité',
@@ -494,6 +499,45 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
         return status.replace('_', ' ').title()
 
     return status.replace('_', ' ').title()
+
+
+def _fetch_internal_transactions(company_id, per_page=500, max_pages=8):
+    """Télécharge TOUTES les transactions via l'API INTERNE Pennylane (cookies web).
+
+    L'API externe ne connait pas le statut réel ; l'endpoint interne
+    /companies/<id>/accountants/transactions expose le champ `status`
+    ('accounting_needed' = À traiter, 'complete' = Traité) — match exact
+    avec les compteurs de l'UI Pennylane (Pro Store : 152 / 1026).
+    Retourne [] si les cookies ne sont pas disponibles.
+    """
+    out = []
+    try:
+        from app.integrations import pennylane_web as _plw
+        _plw._load_from_db()
+        _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+        if not _ck:
+            return out
+        _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
+               'x-reseller': 'pennylane'}
+        seen = set()
+        for pg in range(1, max_pages + 1):
+            rr = requests.get(
+                f'https://app.pennylane.com/companies/{company_id}/accountants/transactions'
+                f'?page={pg}&per_page={per_page}',
+                headers=_hj, cookies=_ck, timeout=30)
+            if rr.status_code != 200:
+                break
+            lst = rr.json().get('transactions') or []
+            for t in lst:
+                if t.get('id') not in seen:
+                    seen.add(t.get('id'))
+                    out.append(t)
+            if len(lst) < per_page:
+                break
+    except Exception as e:
+        logger.warning(f'_fetch_internal_transactions: {e}')
+        return []
+    return out
 
 
 def est_pl_traite(statut_raw: str, item_type: str = 'facture_vente') -> bool:
@@ -569,11 +613,13 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
 
     _process('facture_vente', invs, ('invoice_number', 'invoice_number_formatted'), 'total_with_tax', ('date',))
     _process('facture_achat', sinvs, ('invoice_number',), 'total_with_tax', ('date',), status_key='accounting_status')
-    # Transactions : le statut est inféré depuis attachment_required
+    # Transactions : si le statut brut est déjà présent (API interne), l'utiliser
+    # tel quel ; sinon inférer depuis attachment_required (ancien fallback externe).
     txs_mapped = []
     for t in txs or []:
         t2 = dict(t)
-        t2['status'] = 'unaffected' if t.get('attachment_required') in (True, 'true') else 'affected'
+        if not t2.get('status'):
+            t2['status'] = 'unaffected' if t.get('attachment_required') in (True, 'true') else 'affected'
         txs_mapped.append(t2)
     _process('transaction', txs_mapped, ('label',), 'amount', ('transaction_date', 'date'))
 
@@ -723,24 +769,33 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             sinvs = []
 
         try:
-            txs_params = {'limit': 100}
-            if customer_id:
-                txs_params['company_id'] = customer_id
-            txs = _paginated_get('transactions', params=txs_params, token=token)
-            result['transactions'] = [{
-                'id': t.get('id'), 'date': t.get('transaction_date') or t.get('date'),
-                'libelle': t.get('label') or '', 'montant': _pl_montant(t, 'amount', 'amount_with_tax', 'value'),
-                # Statut Pennylane réel : une transaction est TRAITÉE quand elle est
-                # catégorisée/comptabilisée (liste `categories` non vide), À TRAITER
-                # sinon. NB: `matched_invoices` est toujours {'url': ...} (même sans
-                # rapprochement) -> inutilisable ; `attachment_required` (justificatif)
-                # n'est PAS un critère de traitement — source : comparaison compteurs
-                # UI Pennylane vs app (Pro Store : 152 à traiter / 999+ traitées).
-                'statut': 'affected' if (t.get('categories') or []) else 'unaffected',
-                'statut_fr': traduire_statut_pl(
-                    'affected' if (t.get('categories') or []) else 'unaffected',
-                    'transaction'),
-            } for t in txs]
+            # API INTERNE (cookies) : champ `status` officiel de l'UI
+            # ('accounting_needed' = À traiter, 'complete' = Traité).
+            # Match exact Pro Store : 152 à traiter / 1026 traitées.
+            itxs = _fetch_internal_transactions(customer_id) if customer_id else []
+            if itxs:
+                txs = itxs
+                result['transactions'] = [{
+                    'id': t.get('id'), 'date': t.get('date'),
+                    'libelle': (t.get('label') or '').replace('\n', ' ')[:200],
+                    'montant': _pl_montant(t, 'amount', 'currency_amount', 'gross_amount'),
+                    'statut': t.get('status') or '',
+                    'statut_fr': traduire_statut_pl(t.get('status') or '', 'transaction'),
+                } for t in txs]
+            else:
+                # FALLBACK API externe (pas de cookies ou erreur) : statut inféré
+                txs_params = {'limit': 100}
+                if customer_id:
+                    txs_params['company_id'] = customer_id
+                txs = _paginated_get('transactions', params=txs_params, token=token)
+                result['transactions'] = [{
+                    'id': t.get('id'), 'date': t.get('transaction_date') or t.get('date'),
+                    'libelle': t.get('label') or '', 'montant': _pl_montant(t, 'amount', 'amount_with_tax', 'value'),
+                    'statut': 'affected' if (t.get('categories') or []) else 'unaffected',
+                    'statut_fr': traduire_statut_pl(
+                        'affected' if (t.get('categories') or []) else 'unaffected',
+                        'transaction'),
+                } for t in txs]
         except Exception as e:
             logger.warning(f'transactions: {e}')
             result['transactions'] = []
@@ -748,406 +803,6 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
 
         # Detection nouveaux items
         nouveaux = _detecter_nouveaux_items(dossier, invs, sinvs, txs)
-        # SONDE TEMPORAIRE (diagnostic compteurs) — à retirer après diagnostic
-        try:
-            # --- txs : distribution des valeurs BRUTES des champs candidats ---
-            def _zero(v):
-                try:
-                    return abs(float(v)) < 0.005
-                except (TypeError, ValueError):
-                    return False
-            from collections import Counter as _C
-            txs_stat = {
-                'total': len(txs),
-                'cat_nonvide': sum(1 for t in txs if (t.get('categories') or [])),
-                'uncat_outstanding_zero': sum(1 for t in txs
-                                              if not (t.get('categories') or [])
-                                              and _zero(t.get('outstanding_balance'))),
-                'uncat_outstanding_nz': sum(1 for t in txs
-                                            if not (t.get('categories') or [])
-                                            and not _zero(t.get('outstanding_balance'))),
-                'cat_outstanding_zero': sum(1 for t in txs
-                                            if (t.get('categories') or [])
-                                            and _zero(t.get('outstanding_balance'))),
-                'att_true': sum(1 for t in txs if t.get('attachment_required') is True),
-                'att_false': sum(1 for t in txs if t.get('attachment_required') is False),
-            }
-            # --- ventes : années + statuts, + marche pagination brute (meta) ---
-            ventes_par_an = _C((i.get('date') or '????')[:4] for i in invs)
-            ventes_draft = sum(1 for i in invs if i.get('draft') is True)
-            pages_meta = []
-            try:
-                tok2 = token
-                p2 = {'limit': 100}
-                if customer_id:
-                    p2['company_id'] = customer_id
-                for _p in range(12):
-                    rr = requests.get(_api_url('customer_invoices'),
-                                      headers=_headers(tok2), params=p2, timeout=20)
-                    if rr.status_code != 200:
-                        pages_meta.append(f'HTTP{rr.status_code}')
-                        break
-                    dd = rr.json()
-                    kk = next((k for k, v in dd.items() if isinstance(v, list)), None)
-                    pages_meta.append(len(dd.get(kk) or []))
-                    pg = dd.get('pagination') or {}
-                    nc = pg.get('next_cursor') or dd.get('next_cursor')
-                    if dd.get('has_more') is False:
-                        pages_meta.append(f'has_more=False meta={_json.dumps(pg)[:120]}')
-                        break
-                    if not nc:
-                        pages_meta.append(f'no_cursor meta={_json.dumps(pg)[:120]}')
-                        break
-                    p2['cursor'] = nc
-            except Exception as _e:
-                pages_meta.append(f'ERR {_e}')
-            # --- brouillons (endpoint separe) + matched_invoices reel ---
-            drafts_count = None
-            try:
-                p3 = {'limit': 1}
-                if customer_id:
-                    p3['company_id'] = customer_id
-                rr = requests.get(_api_url('customer_invoice_drafts'),
-                                  headers=_headers(token), params=p3, timeout=20)
-                if rr.status_code == 200:
-                    dd3 = rr.json()
-                    pg3 = dd3.get('pagination') or {}
-                    drafts_count = {'nb_page': len(dd3.get('customer_invoice_drafts') or []),
-                                    'meta': {k: v for k, v in pg3.items()
-                                             if 'total' in str(k).lower() or 'count' in str(k).lower()}
-                                    or _json.dumps(pg3)[:200]}
-                else:
-                    drafts_count = f'HTTP{rr.status_code}'
-            except Exception as _e:
-                drafts_count = f'ERR {_e}'
-            mi = []
-            for t in txs:
-                mv = t.get('matched_invoices')
-                mi.append(type(mv).__name__ if mv is None else
-                          ('dict:' + ','.join(sorted(mv.keys())) if isinstance(mv, dict)
-                           else f'{type(mv).__name__}:{len(mv)}'))
-            mi_stat = _C(mi).most_common(6)
-            # echantillon matched_invoices non vide (dict avec cle de liste ?)
-            sample_mi = None
-            for t in txs:
-                mv = t.get('matched_invoices')
-                if isinstance(mv, dict):
-                    interesting = {k: v for k, v in mv.items() if not isinstance(v, dict)}
-                    if interesting:
-                        sample_mi = interesting
-                        break
-            result['debug_probe'] = {
-                'counts': {'ventes': len(invs), 'achats': len(sinvs), 'txs': len(txs)},
-                'txs_stat': txs_stat,
-                'ventes_par_an': dict(ventes_par_an),
-                'ventes_draft_true': ventes_draft,
-                'ventes_ledger_nonnull': sum(1 for i in invs if i.get('ledger_entry')),
-                'pages_meta': pages_meta,
-                'drafts_endpoint': drafts_count,
-                'matched_invoices_shapes': dict(mi_stat),
-                'sample_mi': sample_mi,
-            }
-            # --- v7 : filtres serveur API externe + grep bundle JS du shell ---
-            v7 = {'tx_filters': {}, 'inv_filters': {}, 'draft_names': {}, 'bundles': []}
-            # filtres candidats sur transactions (si supporté -> count direct)
-            for label, extra in (
-                    ('status_uncategorized', {'status': 'uncategorized'}),
-                    ('categorized_false', {'categorized': 'false'}),
-                    ('categorized_true', {'categorized': 'true'}),
-                    ('att_true', {'attachment_required': 'true'})):
-                try:
-                    pf = {'limit': 1, **({'company_id': customer_id} if customer_id else {}), **extra}
-                    rf = requests.get(_api_url('transactions'), headers=_headers(token),
-                                      params=pf, timeout=20)
-                    v7['tx_filters'][label] = rf.status_code if rf.status_code != 200 else \
-                        f"200 n={len(next((v for v in rf.json().values() if isinstance(v, list)), []))}"
-                except Exception as _e:
-                    v7['tx_filters'][label] = f'ERR {_e}'[:60]
-            # filtres candidats sur customer_invoices
-            for label, extra in (('status_draft', {'status': 'draft'}),
-                                 ('status_incomplete', {'status': 'incomplete'}),
-                                 ('status_archived', {'status': 'archived'})):
-                try:
-                    pf = {'limit': 1, **({'company_id': customer_id} if customer_id else {}), **extra}
-                    rf = requests.get(_api_url('customer_invoices'), headers=_headers(token),
-                                      params=pf, timeout=20)
-                    v7['inv_filters'][label] = rf.status_code if rf.status_code != 200 else \
-                        f"200 n={len(next((v for v in rf.json().values() if isinstance(v, list)), []))}"
-                except Exception as _e:
-                    v7['inv_filters'][label] = f'ERR {_e}'[:60]
-            # variantes d'endpoint brouillons
-            for name in ('invoice_drafts', 'sales_invoice_drafts', 'quotations'):
-                try:
-                    pf = {'limit': 1, **({'company_id': customer_id} if customer_id else {})}
-                    rf = requests.get(_api_url(name), headers=_headers(token), params=pf, timeout=15)
-                    v7['draft_names'][name] = rf.status_code if rf.status_code != 200 else '200 OK'
-                except Exception as _e:
-                    v7['draft_names'][name] = f'ERR {_e}'[:60]
-            # bundles JS du shell (grep noms de requêtes internes)
-            try:
-                from app.integrations import pennylane_web as _plw
-                _plw._load_from_db()
-                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
-                rs = requests.get(f'https://app.pennylane.com/companies/{customer_id}/bank_accounts',
-                                  headers={'user-agent': 'Mozilla/5.0'}, cookies=_ck, timeout=25)
-                import re as _re2
-                srcs = _re2.findall(r'<script[^>]+src="([^"]+)"', rs.text or '')
-                v7['bundles'] = srcs[:8]
-                fetched = 0
-                for src in srcs:
-                    if fetched >= 3:
-                        break
-                    if not src.startswith('http'):
-                        src = 'https://app.pennylane.com' + src
-                    if not ('.js' in src):
-                        continue
-                    try:
-                        rb = requests.get(src, headers={'user-agent': 'Mozilla/5.0'}, timeout=40)
-                        b = rb.text or ''
-                        if len(b) < 10000:
-                            continue
-                        fetched += 1
-                        hits = []
-                        for pat in (r'query\s+[A-Za-z0-9_]*[Tt]ransaction[A-Za-z0-9_]*',
-                                    r'query\s+[A-Za-z0-9_]*[Ii]nvoice[A-Za-z0-9_]*',
-                                    r'non_?affected', r'unaffected', r'pendingTransactions',
-                                    r'bankTransactions?', r'requiresAction',
-                                    r'[àa]\s*[tr]{1,2}aiter'):
-                            ms = sorted(set(_re2.findall(pat, b)))[:6]
-                            if ms:
-                                hits.append({pat[:22]: ms})
-                        if hits:
-                            v7.setdefault('bundle_hits', []).append(
-                                {'src': src[-60:], 'hits': hits})
-                    except Exception:
-                        pass
-            except Exception as _e:
-                v7['bundles_err'] = str(_e)[:100]
-            result['debug_probe']['v7'] = v7
-            # --- v8 : endpoints INTERNES (cookies) pour ventes importees + banque ---
-            v8 = {}
-            try:
-                from app.integrations import pennylane_web as _plw
-                _plw._load_from_db()
-                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
-                _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
-                       'x-reseller': 'pennylane'}
-                _cands = [
-                    f'/companies/{customer_id}/accountants/customer_invoices',
-                    f'/companies/{customer_id}/accountants/sales_invoices',
-                    f'/companies/{customer_id}/accountants/transactions',
-                    f'/companies/{customer_id}/customer_invoices',
-                    f'/companies/{customer_id}/transactions',
-                    f'/api/internal/companies/{customer_id}/customer_invoices',
-                ]
-                for _p in _cands:
-                    try:
-                        rr = requests.get('https://app.pennylane.com' + _p,
-                                          headers=_hj, cookies=_ck, timeout=25)
-                        ct = (rr.headers.get('Content-Type') or '')[:30]
-                        body = (rr.text or '')[:220].replace('\n', ' ')
-                        v8[_p] = f'{rr.status_code} {ct} :: {body}'
-                    except Exception as _e2:
-                        v8[_p] = f'ERR {str(_e2)[:80]}'
-            except Exception as _e:
-                v8['err'] = str(_e)[:120]
-            result['debug_probe']['v8'] = v8
-            # --- v9 : accountants/* — champs complets + pagination ---
-            v9 = {}
-            try:
-                from app.integrations import pennylane_web as _plw
-                _plw._load_from_db()
-                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
-                _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
-                       'x-reseller': 'pennylane'}
-
-                def _g(path):
-                    return requests.get('https://app.pennylane.com' + path,
-                                        headers=_hj, cookies=_ck, timeout=30)
-
-                def _hdrs(rr):
-                    return {k: v for k, v in rr.headers.items()
-                            if 'total' in k.lower() or 'count' in k.lower()
-                            or k.lower() == 'link' or 'page' in k.lower()}
-
-                # VENTES
-                base = f'/companies/{customer_id}/accountants/customer_invoices'
-                r0 = _g(base)
-                try:
-                    j0 = r0.json()
-                except Exception:
-                    j0 = {}
-                invs0 = j0.get('invoices') or []
-                v9['inv0'] = {'http': r0.status_code, 'n': len(invs0),
-                              'root_keys': sorted(j0.keys()),
-                              'first_keys': sorted(invs0[0].keys()) if invs0 else [],
-                              'first': _json.dumps(invs0[0], ensure_ascii=False)[:1300] if invs0 else ''}
-                v9['inv_hdr'] = _hdrs(r0)
-                for tag, q in (('p100', '?page=1&per_page=100'),
-                               ('p500', '?per_page=500'),
-                               ('pg2', '?page=2')):
-                    rr = _g(base + q)
-                    try:
-                        nn = len(rr.json().get('invoices') or [])
-                    except Exception:
-                        nn = -1
-                    v9['inv_' + tag] = {'http': rr.status_code, 'n': nn}
-
-                # TRANSACTIONS
-                baset = f'/companies/{customer_id}/accountants/transactions'
-                rt0 = _g(baset)
-                try:
-                    jt0 = rt0.json()
-                except Exception:
-                    jt0 = {}
-                txs0 = jt0.get('transactions') or []
-                v9['tx0'] = {'http': rt0.status_code, 'n': len(txs0),
-                             'root_keys': sorted(jt0.keys()),
-                             'first_keys': sorted(txs0[0].keys()) if txs0 else [],
-                             'first': _json.dumps(txs0[0], ensure_ascii=False)[:1300] if txs0 else ''}
-                v9['tx_hdr'] = _hdrs(rt0)
-                for tag, q in (('p100', '?page=1&per_page=100'),
-                               ('p500', '?per_page=500'),
-                               ('pg2', '?page=2')):
-                    rr = _g(baset + q)
-                    try:
-                        nn = len(rr.json().get('transactions') or [])
-                    except Exception:
-                        nn = -1
-                    v9['tx_' + tag] = {'http': rr.status_code, 'n': nn}
-            except Exception as _e:
-                v9['err'] = str(_e)[:150]
-            result['debug_probe']['v9'] = v9
-            # --- v10 : download COMPLET tx + inv accountants, comptages croises ---
-            v10 = {}
-            try:
-                from app.integrations import pennylane_web as _plw
-                _plw._load_from_db()
-                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
-                _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
-                       'x-reseller': 'pennylane'}
-
-                def _g(path):
-                    return requests.get('https://app.pennylane.com' + path,
-                                        headers=_hj, cookies=_ck, timeout=30)
-
-                # TRANSACTIONS : toutes les pages per_page=500
-                txs = {}
-                for pg in range(1, 6):
-                    rr = _g(f'/companies/{customer_id}/accountants/transactions'
-                            f'?page={pg}&per_page=500')
-                    try:
-                        lst = rr.json().get('transactions') or []
-                    except Exception:
-                        lst = []
-                    for t in lst:
-                        txs[t['id']] = t
-                    if len(lst) < 500:
-                        break
-                v10['tx_total'] = len(txs)
-                def _cnt(items, key):
-                    c = {}
-                    for it in items:
-                        k = it.get(key)
-                        k = 'NULL' if k is None else str(k)[:24]
-                        c[k] = c.get(k, 0) + 1
-                    return dict(sorted(c.items(), key=lambda x: -x[1])[:12])
-                alltx = list(txs.values())
-                v10['tx_status'] = _cnt(alltx, 'status')
-                v10['tx_validated_at'] = {'null': sum(1 for t in alltx if not t.get('validated_at')),
-                                          'set': sum(1 for t in alltx if t.get('validated_at'))}
-                v10['tx_pending'] = _cnt(alltx, 'pending')
-                v10['tx_validation_method'] = _cnt(alltx, 'validation_method')
-                v10['tx_archived'] = {'null': sum(1 for t in alltx if not t.get('archived_at')),
-                                      'set': sum(1 for t in alltx if t.get('archived_at'))}
-                v10['tx_files_count'] = _cnt(alltx, 'files_count')
-                v10['tx_attachment_required'] = {'true': sum(1 for t in alltx if t.get('attachment_required')),
-                                                 'false': sum(1 for t in alltx if not t.get('attachment_required'))}
-
-                # VENTES accountants : toutes les pages per_page=100
-                invs = {}
-                for pg in range(1, 4):
-                    rr = _g(f'/companies/{customer_id}/accountants/customer_invoices'
-                            f'?page={pg}&per_page=100')
-                    try:
-                        lst = rr.json().get('invoices') or []
-                    except Exception:
-                        lst = []
-                    for i2 in lst:
-                        invs[i2['id']] = i2
-                    if len(lst) < 100:
-                        break
-                allinv = list(invs.values())
-                v10['inv_total'] = len(invs)
-                v10['inv_status'] = _cnt(allinv, 'status')
-                v10['inv_source'] = _cnt(allinv, 'source')
-                v10['inv_validation_needed'] = {'true': sum(1 for i2 in allinv if i2.get('validation_needed')),
-                                                'false': sum(1 for i2 in allinv if not i2.get('validation_needed'))}
-                v10['inv_archived'] = {'true': sum(1 for i2 in allinv if i2.get('archived')),
-                                       'false': sum(1 for i2 in allinv if not i2.get('archived'))}
-                nums = {i2.get('invoice_number') for i2 in allinv}
-                v10['inv_has_fac202601952'] = 'FAC202601952' in nums
-                v10['inv_sample_nums'] = sorted(n for n in nums if n)[:15]
-
-                # CANDIDATS ventes comptabilisees
-                cand = {}
-                for pth in (f'/companies/{customer_id}/accountants/customer_invoices?status=complete',
-                            f'/companies/{customer_id}/accountants/customer_invoices?validation_needed=false',
-                            f'/companies/{customer_id}/accountants/ledger_entries',
-                            f'/companies/{customer_id}/accountants/journal_entries',
-                            f'/companies/{customer_id}/accountants/accounting_entries',
-                            f'/companies/{customer_id}/accountants/customer_entries',
-                            f'/companies/{customer_id}/accountant/customer_invoices',
-                            f'/companies/{customer_id}/accountants/entries'):
-                    try:
-                        rr = _g(pth)
-                        try:
-                            jj = rr.json()
-                            nk = sorted(jj.keys())[:6]
-                            n = sum(len(v) for v in jj.values() if isinstance(v, list))
-                        except Exception:
-                            nk, n = [], -1
-                        cand[pth.split('?')[-1].split('/')[-1]] = f"{rr.status_code} n={n} keys={nk}"
-                    except Exception as _e2:
-                        cand[pth.split('?')[-1].split('/')[-1]] = f'ERR {str(_e2)[:60]}'
-                v10['cand'] = cand
-            except Exception as _e:
-                v10['err'] = str(_e)[:150]
-            result['debug_probe']['v10'] = v10
-            # --- SCRAPING UI PENNYLANE (memes cookies que vat_forms) ---
-            ui = {}
-            try:
-                from app.integrations import pennylane_web as _plw
-                _plw._load_from_db()
-                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
-                _hd = {'accept': 'text/html,application/xhtml+xml',
-                       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                       'x-reseller': 'pennylane'}
-                for label, path in (('ventes', f'/companies/{customer_id}/sales/invoices'),
-                                    ('banque', f'/companies/{customer_id}/bank_accounts'),
-                                    ('achats', f'/companies/{customer_id}/purchases/supplier_invoices')):
-                    try:
-                        ru = requests.get('https://app.pennylane.com' + path,
-                                          headers=_hd, cookies=_ck, timeout=25)
-                        body = ru.text or ''
-                        # extraire le JSON d'etat global si present
-                        import re as _re
-                        keys_found = {}
-                        for pat in (r'__NEXT_DATA__[^{]*', r'window\.__INITIAL_STATE__[^;]{0,200}',
-                                    r'"totalCount"\s*:\s*\d+', r'"total_count"\s*:\s*\d+',
-                                    r'"count"\s*:\s*\d+', r'"nb_[a-z_]+"\s*:\s*\d+'):
-                            keys_found[pat[:24]] = _re.findall(pat, body)[:6]
-                        # URLs d'appels XHR visibles dans le shell
-                        xhr = sorted(set(_re.findall(r'/api/[a-z0-9/_.-]{10,90}', body)))[:12]
-                        ui[label] = {'http': ru.status_code, 'len': len(body),
-                                     'keys': keys_found, 'xhr': xhr}
-                    except Exception as _e2:
-                        ui[label] = {'err': str(_e2)[:100]}
-            except Exception as _e:
-                ui['err'] = str(_e)[:150]
-            result['debug_probe']['ui'] = ui
-        except Exception as e:
-            result['debug_probe'] = {'err': f'probe failed: {e}'}
         if nouveaux:
             _notifier_nouveaux_items(dossier, nouveaux)
             result['nouveaux'] = nouveaux
