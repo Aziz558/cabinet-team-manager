@@ -3809,6 +3809,72 @@ def pennylane_probe():
                         (j2.get(lk2) or [None])[0], ensure_ascii=False)[:900]
             except Exception as _e:
                 out['le_search'] = f'ERR {str(_e)[:100]}'
+        elif probe_name == 'v14':
+            import json as _jj
+            # A) clients/customer_invoices/list (route reelle de la liste Ventes UI)
+            res_l = {}
+            for meth in ('GET', 'POST'):
+                try:
+                    if meth == 'GET':
+                        rr = _g(f'/companies/{customer_id}/clients/'
+                                f'customer_invoices/list?page=1&per_page=50')
+                    else:
+                        rr = _rq.post(
+                            'https://app.pennylane.com/companies/'
+                            f'{customer_id}/clients/customer_invoices/list',
+                            headers=_hj, cookies=_ck, timeout=30,
+                            json={'page': 1, 'per_page': 50})
+                    try:
+                        j1 = rr.json()
+                        lk1 = None
+                        for k, v in j1.items():
+                            if isinstance(v, list):
+                                lk1 = k
+                                break
+                        res_l[meth] = {
+                            'http': rr.status_code, 'keys': sorted(j1.keys())[:8],
+                            'list_key': lk1,
+                            'n': len(j1.get(lk1) or []) if lk1 else 0,
+                            'sample': _jj.dumps((j1.get(lk1) or [None])[0],
+                                                ensure_ascii=False)[:700] if lk1 else _jj.dumps(j1)[:300]}
+                    except Exception:
+                        res_l[meth] = {'http': rr.status_code,
+                                       'body': rr.text[:200]}
+                except Exception as _e:
+                    res_l[meth] = f'ERR {str(_e)[:80]}'
+            out['cli_list'] = res_l
+            # B) count_and_total
+            try:
+                rr = _g(f'/companies/{customer_id}/clients/'
+                        f'customer_invoices/count_and_total')
+                out['cli_count'] = {'http': rr.status_code,
+                                    'body': rr.text[:400]}
+            except Exception as _e:
+                out['cli_count'] = f'ERR {str(_e)[:80]}'
+            # C) ledger_events avec filtres dates (exercice 2026)
+            res_le = {}
+            for q in ('from=2026-01-01&to=2026-12-31',
+                      'date_from=2026-01-01&date_to=2026-12-31',
+                      'fiscal_year_id=&from=2026-01-01&to=2026-12-31&page=1'):
+                try:
+                    rr = _g(f'/companies/{customer_id}/financial_reports/'
+                            f'ledger_events?{q}&per_page=50')
+                    try:
+                        j2 = rr.json()
+                        n2 = len(j2.get('ledger_events') or [])
+                        res_le[q[:40]] = {'http': rr.status_code, 'n': n2,
+                                          'pag': j2.get('pagination')}
+                        if n2:
+                            res_le['sample'] = _jj.dumps(
+                                (j2.get('ledger_events') or [None])[0],
+                                ensure_ascii=False)[:800]
+                            break
+                    except Exception:
+                        res_le[q[:40]] = {'http': rr.status_code,
+                                          'body': rr.text[:200]}
+                except Exception as _e:
+                    res_le[q[:40]] = f'ERR {str(_e)[:80]}'
+            out['le_filtered'] = res_le
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
