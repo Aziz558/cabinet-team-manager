@@ -4029,6 +4029,52 @@ def pennylane_probe():
             rr = _g(f'/companies/{customer_id}/clients/customer_invoices/list_extra_info')
             out['lei_http'] = rr.status_code
             out['lei_body'] = rr.text[:300]
+        elif probe_name == 'v18':
+            import json as _jj
+            # A) count_and_total avec filtres (parallele de la liste UI)
+            res_cat = {}
+            for lbl, q in [
+                ('all', ''),
+                ('not_archived', 'archived=false'),
+                ('archived', 'archived=true'),
+                ('issue_2026', 'issue_date_after=2025-12-31&issue_date_before=2027-01-01'),
+                ('na_2026', 'archived=false&issue_date_after=2025-12-31&issue_date_before=2027-01-01'),
+                ('arch_2026', 'archived=true&issue_date_after=2025-12-31&issue_date_before=2027-01-01'),
+            ]:
+                rr = _g(f'/companies/{customer_id}/clients/customer_invoices/count_and_total'
+                        + (f'?{q}' if q else ''))
+                try:
+                    j = rr.json()
+                    res_cat[lbl] = {'http': rr.status_code,
+                                    'total_count': j.get('total_count'),
+                                    'n_ids': len(j.get('selected_ids') or [])}
+                except Exception:
+                    res_cat[lbl] = {'http': rr.status_code}
+            out['cat'] = res_cat
+            # B) idem sur list (totalEntries)
+            res_list = {}
+            for lbl, q in [
+                ('not_archived', 'archived=false'),
+                ('na_2026', 'archived=false&issue_date_after=2025-12-31&issue_date_before=2027-01-01'),
+            ]:
+                rr = _g(f'/companies/{customer_id}/clients/customer_invoices/list?per_page=1&{q}')
+                try:
+                    j = rr.json()
+                    pg = j.get('pagination') or {}
+                    res_list[lbl] = {'http': rr.status_code,
+                                     'totalEntries': pg.get('totalEntries'),
+                                     'pages': pg.get('pages')}
+                except Exception:
+                    res_list[lbl] = {'http': rr.status_code}
+            out['list'] = res_list
+            # C) shell authentifie -> chunks JS
+            rr = _g('/')
+            html = rr.text or ''
+            chunks = sorted(set(re.findall(r'assets/[A-Za-z0-9_.-]+\.js', html)))
+            out['n_chunks'] = len(chunks)
+            out['chunks_sample'] = chunks[:40]
+            out['shell_http'] = rr.status_code
+            out['shell_len'] = len(html)
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
