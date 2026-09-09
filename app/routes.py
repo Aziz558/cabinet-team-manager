@@ -4145,12 +4145,13 @@ def pennylane_probe():
                     out['acct_status'] = _jj.dumps(_C([(x.get('status') or '') for x in _ai]), ensure_ascii=False)
                     out['has_fac1952'] = any((x.get('invoice_number') or '') == 'FAC202601952' for x in _ai)
                 # diag brut : premier appel sans boucle
+                import requests as _rq2
                 from app.integrations import pennylane_web as _plw
                 _plw._load_from_db()
                 _ck2 = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
                 out['n_cookies_prod'] = len(_ck2)
                 out['has_session_cookie'] = any('session' in k.lower() or 'jeancaisse' in k.lower() for k in _ck2)
-                rr2 = requests.get(
+                rr2 = _rq2.get(
                     f'https://app.pennylane.com/companies/{customer_id}/accountants/customer_invoices?page=1&per_page=5&sort=-date',
                     headers={'accept': 'application/json', 'user-agent': 'Mozilla/5.0', 'x-reseller': 'pennylane'},
                     cookies=_ck2, timeout=30)
