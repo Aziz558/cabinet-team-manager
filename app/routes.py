@@ -3990,6 +3990,45 @@ def pennylane_probe():
             out['cli_src'] = _cnt(cli, 'source')
             if acc:
                 out['acc_sample'] = _jj.dumps(acc[0], ensure_ascii=False)[:900]
+        elif probe_name == 'v17':
+            import json as _jj
+            from app.integrations.pennylane import _paginated_get, get_pennylane_token
+            # A) count_and_total : les ids selectionnes = le vrai total UI ?
+            rr = _g(f'/companies/{customer_id}/clients/customer_invoices/count_and_total')
+            try:
+                j = rr.json()
+                ids = j.get('selected_ids') or []
+                out['cat_http'] = rr.status_code
+                out['cat_n_ids'] = len(ids)
+                out['cat_keys'] = sorted(j.keys())
+                for k, v in j.items():
+                    if isinstance(v, (int, float, str)) and k != 'selected_ids':
+                        out[f'cat_{k}'] = v
+            except Exception as _e:
+                out['cat_http'] = rr.status_code
+                out['cat_err'] = str(_e)[:100]
+            # B) externe : pourquoi 0 ? erreur capturee
+            try:
+                tok = get_pennylane_token()
+                out['tok_present'] = bool(tok)
+                ext = _paginated_get('customer_invoices',
+                                     params={'limit': 100, 'company_id': customer_id},
+                                     token=tok)
+                out['ext_n'] = len(ext)
+            except Exception as _e:
+                out['ext_err'] = str(_e)[:300]
+            # C) list avec per_page=200 -> cap ?
+            rr = _g(f'/companies/{customer_id}/clients/customer_invoices/list?page=1&per_page=200')
+            try:
+                j = rr.json()
+                out['list200_n'] = len(j.get('invoices') or [])
+                out['list200_pag'] = j.get('pagination')
+            except Exception as _e:
+                out['list200_err'] = str(_e)[:100]
+            # D) list_extra_info
+            rr = _g(f'/companies/{customer_id}/clients/customer_invoices/list_extra_info')
+            out['lei_http'] = rr.status_code
+            out['lei_body'] = rr.text[:300]
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
