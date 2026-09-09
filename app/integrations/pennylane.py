@@ -863,12 +863,17 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                         ru = requests.get('https://app.pennylane.com' + path,
                                           headers=_hd, cookies=_ck, timeout=25)
                         body = ru.text or ''
-                        ui[label] = {
-                            'http': ru.status_code, 'len': len(body),
-                            # cherche les compteurs connus dans la page
-                            'hits_778': body.count('778'), 'hits_559': body.count('559'),
-                            'hits_152': body.count('152'),
-                        }
+                        # extraire le JSON d'etat global si present
+                        import re as _re
+                        keys_found = {}
+                        for pat in (r'__NEXT_DATA__[^{]*', r'window\.__INITIAL_STATE__[^;]{0,200}',
+                                    r'"totalCount"\s*:\s*\d+', r'"total_count"\s*:\s*\d+',
+                                    r'"count"\s*:\s*\d+', r'"nb_[a-z_]+"\s*:\s*\d+'):
+                            keys_found[pat[:24]] = _re.findall(pat, body)[:6]
+                        # URLs d'appels XHR visibles dans le shell
+                        xhr = sorted(set(_re.findall(r'/api/[a-z0-9/_.-]{10,90}', body)))[:12]
+                        ui[label] = {'http': ru.status_code, 'len': len(body),
+                                     'keys': keys_found, 'xhr': xhr}
                     except Exception as _e2:
                         ui[label] = {'err': str(_e2)[:100]}
             except Exception as _e:
