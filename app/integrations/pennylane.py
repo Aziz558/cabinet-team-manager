@@ -981,7 +981,7 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                 v9['inv0'] = {'http': r0.status_code, 'n': len(invs0),
                               'root_keys': sorted(j0.keys()),
                               'first_keys': sorted(invs0[0].keys()) if invs0 else [],
-                              'first': json.dumps(invs0[0], ensure_ascii=False)[:1300] if invs0 else ''}
+                              'first': _json.dumps(invs0[0], ensure_ascii=False)[:1300] if invs0 else ''}
                 v9['inv_hdr'] = _hdrs(r0)
                 for tag, q in (('p100', '?page=1&per_page=100'),
                                ('p500', '?per_page=500'),
@@ -1004,7 +1004,7 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                 v9['tx0'] = {'http': rt0.status_code, 'n': len(txs0),
                              'root_keys': sorted(jt0.keys()),
                              'first_keys': sorted(txs0[0].keys()) if txs0 else [],
-                             'first': json.dumps(txs0[0], ensure_ascii=False)[:1300] if txs0 else ''}
+                             'first': _json.dumps(txs0[0], ensure_ascii=False)[:1300] if txs0 else ''}
                 v9['tx_hdr'] = _hdrs(rt0)
                 for tag, q in (('p100', '?page=1&per_page=100'),
                                ('p500', '?per_page=500'),
