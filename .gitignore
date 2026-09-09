@@ -32,6 +32,7 @@ venv/
 _diag_*.py
 _verif_*.py
 _check_*.py
+_fix_*.py
 _dump_*.py
 _restore_prod.py
 _verify_restore.py

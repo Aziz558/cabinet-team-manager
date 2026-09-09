@@ -633,14 +633,34 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                 _refresh_in_background(dossier.id)
             return cached
 
-    token = token or getattr(dossier, 'pennylane_api_token', None) or get_pennylane_token()
+    tok_dossier = (getattr(dossier, 'pennylane_api_token', None) or '').strip()
+    token = (token or tok_dossier or get_pennylane_token()).strip()
     customer_id = getattr(dossier, 'pennylane_customer_id', None)
     if not token:
         return {'ok': False, 'message': 'Token non configuré.',
                 'factures': [], 'factures_fournisseurs': [], 'transactions': [],
                 'nouveaux': [], 'resume_nouveaux': '', 'source_token': None}
 
-    has_dossier_token = bool(getattr(dossier, 'pennylane_api_token', None))
+    has_dossier_token = bool(tok_dossier)
+    # Garde-fou : si un token de dossier est posé mais ne couvre PAS la company
+    # liée (ex. Pro Store relié à la company du vrai Pro Store alors que le token
+    # du dossier appartient à une autre société), l'API ignore silencieusement le
+    # filtre company_id et renvoie les données de la MAUVAISE société. On détecte
+    # le mismatch et on bascule sur le token global du cabinet.
+    # (source : incident PROST 09.09.2026 — données Impermisol sur le dossier Pro Store)
+    if has_dossier_token and customer_id:
+        try:
+            covered = {str(c.get('id')) for c in list_companies(token=token)}
+            if covered and str(customer_id).strip() not in covered:
+                global_tok = get_pennylane_token()
+                if global_tok and global_tok != token:
+                    logger.warning(
+                        f'dossier {dossier.id}: token dédié ne couvre pas la company '
+                        f'{customer_id} -> bascule sur le token global du cabinet')
+                    token = global_tok
+                    has_dossier_token = False
+        except Exception as e:
+            logger.warning(f'dossier {dossier.id}: vérif couverture token: {e}')
     result = {'ok': True, 'factures': [], 'transactions': [], 'factures_fournisseurs': [],
               'nouveaux': [], 'resume_nouveaux': '',
               'source_token': 'dossier' if has_dossier_token else 'global'}
