@@ -104,6 +104,31 @@ with app.app_context():
             pass
         app.logger.warning(f"Bootstrap admin failed: {e}")
 
+    # 🔑 Reset one-time du mot de passe admin de secours (incidents DB) :
+    # s'exécute UNE seule fois (marqueur stocké en base), puis jamais plus.
+    try:
+        _reset_done = AppSetting.query.filter_by(
+            cle='_pwd_reset_2026_09_incident').first()
+        if not _reset_done:
+            _admin = User.query.filter_by(email='admin@cabinet-jmh.com').first()
+            if _admin is None:
+                _admin = User(email='admin@cabinet-jmh.com', nom='JMH',
+                              prenom='Admin', role='admin', actif=True)
+                db.session.add(_admin)
+            _admin.set_password('admin1234')
+            _admin.role = 'admin'
+            _admin.actif = True
+            db.session.add(AppSetting(cle='_pwd_reset_2026_09_incident',
+                                      valeur='done', service='general'))
+            db.session.commit()
+            print("🔑 Reset one-time admin appliqué : admin@cabinet-jmh.com / admin1234")
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        app.logger.warning(f"Reset one-time admin failed: {e}")
+
     # Migrate team email column if missing (Cloudflare Email Routing only)
     try:
         inspector = db.inspect(db.engine)

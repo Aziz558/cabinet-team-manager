@@ -31,6 +31,13 @@ venv/
 # --- Diagnostics locaux (a ne jamais committer) ---
 _diag_*.py
 _verif_*.py
+_check_*.py
+_dump_*.py
+_restore_prod.py
+_verify_restore.py
+_extract_recovery.py
+_old_db_full_dump.json
+render_urls.txt
 _parse_rows*.py
 _dump_pages.py
 _analyse_pages.py
