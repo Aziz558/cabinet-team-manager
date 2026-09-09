@@ -5,6 +5,7 @@ from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
 from sqlalchemy import or_
 import json
 import os
+import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
 
 @app.route('/')
@@ -3650,6 +3651,68 @@ def pennylane_probe():
                     break
             out['tx_total'] = len(txs)
             out['status_counts'] = _cnt(txs, 'status')
+        elif probe_name == 'v11':
+            # 1) shell authentifie -> bundles JS
+            _hd = {'accept': 'text/html,application/xhtml+xml',
+                   'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                   'x-reseller': 'pennylane'}
+            rs = _rq.get('https://app.pennylane.com/companies/'
+                         f'{customer_id}/sales/invoices',
+                         headers=_hd, cookies=_ck, timeout=30)
+            html = rs.text or ''
+            out['shell'] = {'http': rs.status_code, 'len': len(html)}
+            js_urls = list(dict.fromkeys(
+                re.findall(r'[^"\'\s()<>]+\.js[^"\'\s()<>]*', html)))
+            out['js_urls'] = js_urls[:25]
+            # 2) download bundles + grep endpoints
+            pat_endpoints = re.compile(
+                r'["\'`](/?(?:api/)?[a-z0-9_/${}.\-]*'
+                r'(?:invoices|entries|ledger|journal|accountant[s]?/[a-z_]+)'
+                r'[a-z0-9_/${}.\-]*)["\'`]')
+            hits = {}
+            for ju in js_urls[:25]:
+                url = ju if ju.startswith('http') else 'https://app.pennylane.com' + ju
+                try:
+                    rb = _rq.get(url, headers=_hd, cookies=_ck, timeout=60)
+                    if rb.status_code != 200:
+                        hits['HTTP' + str(rb.status_code) + ':' + ju[:60]] = 0
+                        continue
+                    body = rb.text
+                    for m3 in pat_endpoints.findall(body):
+                        hits[m3] = hits.get(m3, 0) + 1
+                except Exception as _e3:
+                    hits['ERR:' + ju[:60]] = 0
+            out['endpoint_hits'] = dict(sorted(hits.items(),
+                                               key=lambda x: -x[1])[:60])
+            # 3) recherche ciblee d'une facture manquante connue
+            tgt = {}
+            for pth in (f'/companies/{customer_id}/accountants/customer_invoices'
+                        f'?invoice_number=FAC202601952',
+                        f'/companies/{customer_id}/accountants/customer_invoices'
+                        f'?search=FAC202601952',
+                        f'/companies/{customer_id}/accountants/customer_invoices'
+                        f'?page=1&per_page=100&archived=both',
+                        f'/companies/{customer_id}/accountants/'
+                        f'customer_ledger_entries',
+                        f'/companies/{customer_id}/ledger_entries',
+                        f'/companies/{customer_id}/accounting_entries',
+                        f'/companies/{customer_id}/accountants/sales_entries',
+                        f'/companies/{customer_id}/accountants/'
+                        f'customer_invoices_imported'):
+                try:
+                    rr = _g(pth)
+                    try:
+                        jj = rr.json()
+                        nk = sorted(jj.keys())[:6]
+                        n = sum(len(v) for v in jj.values() if isinstance(v, list))
+                    except Exception:
+                        nk, n = [], -1
+                    tgt[pth.split('?')[-1].split('/')[-1] or 'root'] = \
+                        f"{rr.status_code} n={n} keys={nk}"
+                except Exception as _e2:
+                    tgt[pth.split('?')[-1].split('/')[-1] or 'root'] = \
+                        f'ERR {str(_e2)[:60]}'
+            out['targeted'] = tgt
         return out
     except Exception as e:
         return {'probe': probe_name, 'err': str(e)[:200]}, 500
