@@ -847,6 +847,33 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
                 'matched_invoices_shapes': dict(mi_stat),
                 'sample_mi': sample_mi,
             }
+            # --- SCRAPING UI PENNYLANE (memes cookies que vat_forms) ---
+            ui = {}
+            try:
+                from app.integrations import pennylane_web as _plw
+                _plw._load_from_db()
+                _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+                _hd = {'accept': 'text/html,application/xhtml+xml',
+                       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                       'x-reseller': 'pennylane'}
+                for label, path in (('ventes', f'/companies/{customer_id}/sales/invoices'),
+                                    ('banque', f'/companies/{customer_id}/bank_accounts'),
+                                    ('achats', f'/companies/{customer_id}/purchases/supplier_invoices')):
+                    try:
+                        ru = requests.get('https://app.pennylane.com' + path,
+                                          headers=_hd, cookies=_ck, timeout=25)
+                        body = ru.text or ''
+                        ui[label] = {
+                            'http': ru.status_code, 'len': len(body),
+                            # cherche les compteurs connus dans la page
+                            'hits_778': body.count('778'), 'hits_559': body.count('559'),
+                            'hits_152': body.count('152'),
+                        }
+                    except Exception as _e2:
+                        ui[label] = {'err': str(_e2)[:100]}
+            except Exception as _e:
+                ui['err'] = str(_e)[:150]
+            result['debug_probe']['ui'] = ui
         except Exception as e:
             result['debug_probe'] = {'err': f'probe failed: {e}'}
         if nouveaux:
