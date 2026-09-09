@@ -540,6 +540,51 @@ def _fetch_internal_transactions(company_id, per_page=500, max_pages=8):
     return out
 
 
+def _fetch_internal_customer_invoices(company_id, per_page=100, max_pages=12):
+    """Télécharge les factures VENTES via l'API INTERNE Pennylane (cookies web).
+
+    Endpoint utilisé par la liste « Ventes » de l'UI :
+    /companies/<id>/clients/customer_invoices/list
+    Contient les factures importées comptablement (source 'fec' =
+    « Import comptable (Ecritures) ») absentes de l'API externe.
+    Pro Store : 594 factures (110 fec + 484 web_accountant_invoicing),
+    dont FAC202601952 — les ~113 manquantes des compteurs Ventes UI.
+    NB : pas de champ `status` dans cette liste ; ces factures sont
+    par définition déjà comptabilisées (d'où statut 'completed' au merge).
+    Retourne [] si les cookies ne sont pas disponibles.
+    """
+    out = []
+    try:
+        from app.integrations import pennylane_web as _plw
+        _plw._load_from_db()
+        _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+        if not _ck:
+            return out
+        _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
+               'x-reseller': 'pennylane'}
+        seen = set()
+        for pg in range(1, max_pages + 1):
+            rr = requests.get(
+                f'https://app.pennylane.com/companies/{company_id}/clients/'
+                f'customer_invoices/list?page={pg}&per_page={per_page}',
+                headers=_hj, cookies=_ck, timeout=30)
+            if rr.status_code != 200:
+                break
+            data = rr.json() or {}
+            lst = data.get('invoices') or []
+            for t in lst:
+                if t.get('id') not in seen:
+                    seen.add(t.get('id'))
+                    out.append(t)
+            pag = data.get('pagination') or {}
+            if not lst or not pag.get('hasNextPage', len(lst) >= per_page):
+                break
+    except Exception as e:
+        logger.warning(f'_fetch_internal_customer_invoices: {e}')
+        return []
+    return out
+
+
 def est_pl_traite(statut_raw: str, item_type: str = 'facture_vente') -> bool:
     """Un item est-il explicitement marqué comme traité côté Pennylane ?"""
     fr = traduire_statut_pl(statut_raw, item_type)
@@ -743,6 +788,42 @@ def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool =
             # API v2 : filtre par COMPANY du dossier (customer_id v2 = le CLIENT, pas le dossier)
             invs_params['company_id'] = customer_id
         invs = _paginated_get('customer_invoices', params=invs_params, token=token)
+
+        # MERGE INTERNE (cookies) : les factures importées comptablement
+        # (source 'fec' / 'web_accountant_invoicing') n'existent que dans
+        # /clients/customer_invoices/list. On fusionne par invoice_number :
+        # - déjà présentes côté externe → on enrichit (source)
+        # - absentes côté externe → ajoutées avec statut 'completed' (Traité)
+        # Fallback : si pas de cookies ou erreur, invs reste l'externe pur.
+        try:
+            _iinvs = _fetch_internal_customer_invoices(customer_id) if customer_id else []
+            if _iinvs:
+                _by_num = {}
+                for _i in invs:
+                    _n = (str(_i.get('invoice_number') or _i.get('invoice_number_formatted') or '')
+                          .strip())
+                    if _n:
+                        _by_num[_n] = _i
+                _added = 0
+                for _j in _iinvs:
+                    _nj = str(_j.get('invoice_number') or '').strip()
+                    if _nj and _nj in _by_num:
+                        _by_num[_nj]['_source'] = _j.get('source') or ''
+                        continue
+                    if not _nj:
+                        continue
+                    _comp = dict(_j)
+                    _comp['status'] = 'completed'   # importée comptablement = Traité
+                    _comp['total_with_tax'] = _j.get('amount')  # TTC (interne)
+                    _comp['_source'] = _j.get('source') or ''
+                    _comp['id'] = _j.get('id') or f"int_{_added}"
+                    invs.append(_comp)
+                    _by_num[_nj] = _comp
+                    _added += 1
+                result['internal_invoices_added'] = _added
+        except Exception as _me:
+            logger.warning(f'merge internal customer_invoices: {_me}')
+
         result['factures'] = [{
             'id': i.get('id'), 'numero': i.get('invoice_number') or i.get('invoice_number_formatted') or '',
             'montant_ht': _pl_montant(i, 'total_without_tax', 'amount_without_tax', 'amount_ht'),
