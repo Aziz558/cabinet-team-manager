@@ -458,10 +458,13 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
     # Banque (transactions)
     if item_type == 'transaction':
         mapping = {
-            # API INTERNE (accountants/transactions) : statuts officiels de l'UI
+            # API INTERNE (accountants/transactions) : les 5 statuts de l'UI
+            # (chunk Transactions-Qd-OJqI2.js : scope à traiter = les 3 premiers)
             'accounting_needed': 'À traiter',
-            'pending': 'À traiter',
+            'waiting_details': 'À traiter',
+            'validation_needed': 'À traiter',
             'complete': 'Traité',
+            'archived': 'Archivé',
             # API externe (fallback) : statut inféré
             'unaffected': 'À traiter',
             'partially_affected': 'À traiter',
@@ -473,11 +476,13 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
     # Factures clients (ventes)
     # IMPORTANT : sur Pennylane, le statut "Traitée" = facture comptabilisée (ledger_entry).
     # Le champ API `status` est un statut de cycle de vie (paid/late/archived...).
-    # Seule `incomplete` = À traiter ; TOUT le reste des factures actives = Traité.
+    # Mapping UI réel (validé 2026-09-10) : l'UI compte « Traité » = `complete`
+    # UNIQUEMENT ; les `archived` vont dans l'onglet Archivé (jamais Traité) ;
+    # validation_needed/entry (imports FEC/liasse) = À traiter.
     if item_type == 'facture_vente':
         if status == 'archived':
             return 'Archivé'
-        if status == 'incomplete':
+        if status in ('incomplete', 'validation_needed', 'entry'):
             return 'À traiter'
         elif status in ('draft', 'to_be_sent', 'sent', 'pending', 'overdue_invoice'):
             return 'À traiter'
@@ -550,8 +555,6 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
     C'est LA source unifiée : contient TOUT (externe + imports FEC),
     dont FAC202601952. Compteur UI = count_summary?period=2026 → 776.
     PAS de dédup : l'UI compte brut (776 = total liste 2026).
-    Filtre année civile courante (= période UI 2026) + mapping statuts
-    calé sur les buckets UI réels : 559 Traité / 217 À traiter.
     Retourne [] si les cookies ne sont pas disponibles.
     """
     out = []
@@ -565,7 +568,7 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
                'x-reseller': 'pennylane'}
         _year = str(datetime.utcnow().year)
         # Filtre dates au FORMAT UI (JSON, cf. referer page accountants/invoices) :
-        # sans lui, l'endpoint ne renvoie que les 47 items hors période (liasse 2025).
+        # sans lui, l'endpoint ne renvoie que les items hors période (liasse 2025).
         _fltr = _json.dumps(
             [{'field': 'date', 'operator': 'between',
               'value': [f'{_year}-01-01', f'{_year}-12-31']}],
@@ -592,20 +595,12 @@ def _fetch_accountant_customer_invoices(company_id, per_page=300, max_pages=6):
                 _d = str(t.get('date') or '')
                 if _d and not _d.startswith(_year):
                     continue
-                # MAPPING UI EXACT (buckets réels 2026 : 559 Traité / 217 À traiter) :
-                #   complete                → completed (Traité)          553
-                #   archived + paid_offline → completed (Traité)            4
-                #   archived + not_duplicate→ completed (Traité)            2
-                #   archived (le reste)     → pending (À traiter)         219
-                #   validation_needed/entry → tels quels (À traiter)       (2025)
-                _st = t.get('status') or ''
-                if _st == 'complete':
-                    t['status'] = 'completed'
-                elif _st == 'archived':
-                    if t.get('payment_status') == 'paid_offline' or t.get('not_duplicate'):
-                        t['status'] = 'completed'
-                    else:
-                        t['status'] = 'pending'
+                # PAS de transformation des statuts : les statuts BRUTS
+                # (complete/archived/validation_needed/entry) sont transmis
+                # tels quels à traduire_statut_pl qui applique le mapping UI :
+                #   complete          -> Traité
+                #   archived          -> Archivé (onglet dédié, JAMAIS À traiter)
+                #   validation_needed/entry -> À traiter
                 # montants : aligner sur les clés attendues par _pl_montant
                 if t.get('total_with_tax') is None and t.get('amount') is not None:
                     t['total_with_tax'] = t['amount']
