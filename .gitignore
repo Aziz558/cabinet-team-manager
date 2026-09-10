@@ -49,3 +49,6 @@ _page_*.html
 _vat_*.json
 cookies*.txt
 response.json
+
+# Secrets locaux (sessions navigateur, cookies)
+_cookie.txt
