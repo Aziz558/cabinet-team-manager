@@ -147,6 +147,9 @@
                 </form>
             </div>
             <div class="d-flex align-items-center gap-1">
+                {% if current_user.role in ('admin', 'manager') and t.assigne_a and t.statut != 'terminee' %}
+                <button type="button" class="btn-task btn-task-sm btn-task-inactive btn-notifier" data-tache-id="{{ t.id }}" title="Notifier l'assigné (email + notification)"><i class="bi bi-bell"></i></button>
+                {% endif %}
                 {% if current_user.role != 'membre' %}
                 <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
                     <button type="submit" class="btn-task btn-task-sm btn-task-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
@@ -456,5 +459,35 @@ function applyFilter(typeFilter) {
     if (counter) counter.textContent = visibleCount + ' tâche(s)';
     saveFilters(typeFilter);
 }
+
+// Bouton 🔔 : notifier manuellement l'assigné (email + notification in-app)
+document.addEventListener('click', function(ev) {
+    var btn = ev.target.closest('.btn-notifier');
+    if (!btn) return;
+    if (btn.dataset.busy) return;
+    var tacheId = btn.dataset.tacheId;
+    if (!confirm('Notifier l\\'assigné de cette tâche (email + notification) ?')) return;
+    btn.dataset.busy = '1';
+    var icon = btn.querySelector('i');
+    if (icon) icon.className = 'bi bi-hourglass-split';
+    fetch('/api/taches/' + tacheId + '/notifier', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            delete btn.dataset.busy;
+            if (icon) icon.className = 'bi bi-bell';
+            if (data.ok) {
+                if (icon) icon.className = 'bi bi-bell-fill';
+                setTimeout(function() { if (icon) icon.className = 'bi bi-bell'; }, 4000);
+                showToast(data.message, data.email_ok === false ? 'warning' : 'success');
+            } else {
+                showToast(data.message || 'Erreur', 'danger');
+            }
+        })
+        .catch(function() {
+            delete btn.dataset.busy;
+            if (icon) icon.className = 'bi bi-bell';
+            showToast('Erreur réseau', 'danger');
+        });
+});
 </script>
 {% endblock %}

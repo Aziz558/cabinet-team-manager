@@ -89,6 +89,10 @@
                     </button>
                 </form>
                 <div id="brevoResult" class="small mb-3"></div>
+                <button type="button" id="btnTestMail" class="btn-premium btn-premium-secondary btn-press w-100 mb-2">
+                    <i class="bi bi-send me-1"></i>Tester l'envoi (m'envoyer un email de test)
+                </button>
+                <div id="testMailResult" class="small mb-3"></div>
 
                 <hr style="border-color: var(--border-color);">
                 <h6 class="mt-3" id="mailbox"><i class="bi bi-envelope me-1" style="color:var(--orange-primary)"></i>Boîte mail Gmail (IMAP)</h6>
@@ -332,6 +336,28 @@ document.getElementById('brevoForm').addEventListener('submit', function(e) {
             box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }
     });
+});
+
+// Test mail
+document.getElementById('btnTestMail').addEventListener('click', function() {
+    const btn = this;
+    const box = document.getElementById('testMailResult');
+    btn.disabled = true;
+    box.textContent = 'Envoi du test...';
+    fetch('/api/test/mail', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            if (data.ok) {
+                box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + (data.message || 'Email de test envoyé.') + '</span>';
+            } else {
+                box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + (data.message || 'Échec — vérifiez la configuration.') + '</span>';
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur : ' + err.message + '</span>';
+        });
 });
 
 // Mailbox form
