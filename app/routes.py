@@ -3538,25 +3538,112 @@ def pennylane_check(dossier_id):
 @app.route('/pennylane/probe', methods=['GET', 'POST'])
 @login_required
 def pennylane_probe():
-    """Sonde Pennylane : check de santé API interne (cookies + helper ventes).
+    """Check de santé / diagnostic Pennylane (permanent).
 
-    Usage : /pennylane/probe?probe=health [&company_id=23281030]
-    Renvoie l'état des cookies et le nb de factures VENTES remontées par le
-    helper interne (endpoint UI réel /accountants/customer_invoices).
-    Tout nom de probe exécute le même check de santé.
+    Usage :
+      /pennylane/probe?probe=health                     -> état cookies + ventes Pro Store (23281030)
+      /pennylane/probe?probe=dossiers                   -> liste dossiers + company_id associés
+      /pennylane/probe?probe=diag&dossier=2             -> diag complet d'un dossier app
+      /pennylane/probe?probe=diag&company_id=XXXX       -> diag complet d'une société Pennylane
+
+    diag = compteurs VENTES (statuts bruts + count_summary UI) et BANQUE
+    (statuts bruts API interne + fallback externe) — pour comparer à l'UI.
     """
-    customer_id = request.args.get('company_id', '23281030', type=str)
+    import requests as _rq
+    from app.models import Dossier as _Dossier
+
+    customer_id = request.args.get('company_id', '', type=str)
     probe_name = request.args.get('probe', 'health', type=str)
-    out = {'probe': probe_name, 'company_id': customer_id}
+    out = {'probe': probe_name, 'company_id': customer_id or None}
+
+    # ---- probe=dossiers : liste des dossiers + leur company_id ----
+    if probe_name == 'dossiers':
+        out['dossiers'] = [
+            {'id': d.id, 'intitule': d.intitule,
+             'company_id': d.pennylane_customer_id,
+             'has_token': bool((d.pennylane_api_token or '').strip())}
+            for d in _Dossier.query.order_by(_Dossier.id).all()]
+        return out
+
+    # ---- résolution company_id (direct ou via dossier app) ----
+    dossier_ref = request.args.get('dossier', '', type=str)
+    if dossier_ref and not customer_id:
+        d = _Dossier.query.get(int(dossier_ref))
+        if d is None:
+            return {'probe': probe_name, 'err': f'dossier {dossier_ref} introuvable'}, 404
+        customer_id = (d.pennylane_customer_id or '').strip()
+        out['dossier'] = {'id': d.id, 'intitule': d.intitule}
+    if not customer_id:
+        customer_id = '23281030'
+    out['company_id'] = customer_id
+
     try:
         from app.integrations import pennylane_web as _plw
+        from app.integrations.pennylane import (
+            _fetch_accountant_customer_invoices as _faci,
+            _fetch_internal_transactions as _fitx,
+        )
         _plw._load_from_db()
         _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
         out['cookies'] = len(_ck)
         out['session_ok'] = any('session' in k.lower() or 'jeancaisse' in k.lower() for k in _ck)
-        from app.integrations.pennylane import (
-            _fetch_accountant_customer_invoices as _faci,
-        )
+
+        if probe_name == 'diag':
+            from collections import Counter as _C
+            _year = str(datetime.utcnow().year)
+
+            # --- VENTES : statuts bruts + compteur UI + scopes UI ---
+            _ai = _faci(customer_id)
+            out['ventes'] = {
+                'nb': len(_ai),
+                'statuts': dict(_C([(x.get('status') or '') for x in _ai])),
+            }
+            try:
+                rr = _rq.get(
+                    f'https://app.pennylane.com/companies/{customer_id}/'
+                    f'accountants/customer_invoices/count_summary',
+                    params={'period_start': f'{_year}-01-01',
+                            'period_end': f'{_year}-12-31'},
+                    headers={'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
+                             'x-reseller': 'pennylane'}, cookies=_ck, timeout=30)
+                out['ventes']['count_summary_ui'] = rr.json()
+            except Exception as e:
+                out['ventes']['count_summary_ui'] = f'err {e}'
+
+            # --- BANQUE : API interne (statuts officiels UI) ---
+            _tx = _fitx(customer_id)
+            out['banque'] = {
+                'nb_interne': len(_tx),
+                'statuts': dict(_C([(x.get('status') or '') for x in _tx])),
+            }
+            # --- BANQUE : fallback externe (ce que verrait l'app si interne échoue) ---
+            try:
+                _tok = None
+                from app.integrations.pennylane import get_pennylane_token as _gpt
+                _tok = _gpt()
+                _ext = []
+                _pg = 1
+                while _pg <= 3:
+                    rr = _rq.get('https://app.pennylane.com/api/v2/transactions',
+                                 params={'limit': 100, 'page': _pg}, timeout=30,
+                                 headers={'authorization': f'Bearer {_tok}'})
+                    if rr.status_code != 200:
+                        break
+                    batch = (rr.json() or {}).get('transactions') or []
+                    _ext.extend(batch)
+                    if len(batch) < 100:
+                        break
+                    _pg += 1
+                if customer_id:
+                    _ext = [t for t in _ext
+                            if str((t.get('company') or {}).get('id') or '') == customer_id]
+                out['banque']['nb_externe'] = len(_ext)
+                out['banque']['avec_categorie'] = sum(1 for t in _ext if t.get('categories'))
+            except Exception as e:
+                out['banque']['nb_externe'] = f'err {e}'
+            return out
+
+        # ---- probe=health (défaut) : check ventes simple ----
         _ai = _faci(customer_id)
         out['ventes_items'] = len(_ai)
         if _ai:
