@@ -466,7 +466,7 @@ document.addEventListener('click', function(ev) {
     if (!btn) return;
     if (btn.dataset.busy) return;
     var tacheId = btn.dataset.tacheId;
-    if (!confirm('Notifier l\\'assigné de cette tâche (email + notification) ?')) return;
+    if (!confirm('Rappeler l\'assigné de cette tâche (email + notification) ?')) return;
     btn.dataset.busy = '1';
     var icon = btn.querySelector('i');
     if (icon) icon.className = 'bi bi-hourglass-split';
