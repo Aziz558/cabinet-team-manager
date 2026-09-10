@@ -412,6 +412,7 @@ function plRowHtml(l) {
     const nw = l.nw ? ' pl-item-new' : '';
     const badge = l.st === 'traite' ? '<span class="badge badge-success">Traité</span>'
         : l.st === 'ignore' ? '<span class="badge badge-tertiary">Ignoré</span>'
+        : l.f === 'archive' ? '<span class="badge badge-tertiary">Archivé</span>'
         : '<span class="badge badge-orange">À traiter</span>';
     const btns = (l.id ? `
             <span class="pl-btns">
