@@ -118,6 +118,9 @@
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end border-0 rounded-3">
                     <li><a class="dropdown-item rounded-2" href="{{ url_for('profil') }}"><i class="bi bi-person me-2 text-tertiary"></i>Mon profil</a></li>
+                    {% if current_user.role == 'admin' %}
+                    <li><a class="dropdown-item rounded-2" href="{{ url_for('settings') }}"><i class="bi bi-gear me-2 text-tertiary"></i>Réglages</a></li>
+                    {% endif %}
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item rounded-2" href="#" id="soundToggleLink" onclick="toggleSound(); return false;"><i class="bi bi-volume-up me-2 text-tertiary"></i>Son activé</a></li>
                     <li>
