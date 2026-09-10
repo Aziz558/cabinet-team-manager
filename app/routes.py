@@ -3598,6 +3598,43 @@ def pennylane_probe():
                 'nb': len(_ai),
                 'statuts': dict(_C([(x.get('status') or '') for x in _ai])),
             }
+            # crosstab BRUT (le helper transforme les statuts ; on relit les
+            # champs originaux conservés) : status x payment_status x not_duplicate
+            try:
+                from app.integrations import pennylane_web as _plw2
+                _ck2 = _ck
+                _fltr = __import__('json').dumps(
+                    [{'field': 'date', 'operator': 'between',
+                      'value': [f'{_year}-01-01', f'{_year}-12-31']}],
+                    separators=(',', ':'))
+                _raw = []
+                _pg = 1
+                while _pg <= 6:
+                    rr = _rq.get(
+                        f'https://app.pennylane.com/companies/{customer_id}/'
+                        f'accountants/customer_invoices',
+                        params={'page': _pg, 'per_page': 300, 'sort': '-date',
+                                'filter': _fltr},
+                        headers={'accept': 'application/json',
+                                 'user-agent': 'Mozilla/5.0',
+                                 'x-reseller': 'pennylane'},
+                        cookies=_ck2, timeout=30)
+                    if rr.status_code != 200:
+                        break
+                    _lst = rr.json().get('invoices') or []
+                    _raw.extend(_lst)
+                    if not (rr.json().get('pagination') or {}).get('hasNextPage', len(_lst) >= 300):
+                        break
+                    _pg += 1
+                _ct = _C()
+                for x in _raw:
+                    _ct[(x.get('status') or '', x.get('payment_status') or '',
+                         bool(x.get('not_duplicate')))] += 1
+                out['ventes']['crosstab_brut'] = {
+                    f'{s} | {p} | nd={int(nd)}': c
+                    for (s, p, nd), c in sorted(_ct.items())}
+            except Exception as e:
+                out['ventes']['crosstab_brut'] = f'err {e}'
             try:
                 rr = _rq.get(
                     f'https://app.pennylane.com/companies/{customer_id}/'
