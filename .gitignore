@@ -52,3 +52,5 @@ response.json
 
 # Secrets locaux (sessions navigateur, cookies)
 _cookie.txt
+# Analyse locale / sondes temporaires (racine, prefixe _)
+/_*
