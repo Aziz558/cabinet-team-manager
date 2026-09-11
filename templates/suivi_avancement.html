@@ -53,31 +53,71 @@
     .cal-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); white-space: nowrap; }
 
     /* ===== Cartes membres (vue équipe) ===== */
-    .avm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .avm-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
-        padding: 16px; cursor: pointer; transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-        display: flex; flex-direction: column; gap: 12px; }
-    .avm-card:hover { transform: translateY(-3px); border-color: rgba(255,140,0,0.5); box-shadow: 0 12px 30px rgba(0,0,0,0.35); }
+    .avm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .avm-card { position: relative; overflow: hidden; background: linear-gradient(160deg, var(--bg-card) 0%, rgba(255,140,0,0.04) 130%);
+        border: 1px solid var(--border-color); border-radius: 18px; padding: 18px 18px 16px;
+        cursor: pointer; display: flex; flex-direction: column; gap: 14px;
+        transition: transform 0.2s cubic-bezier(0.22,1,0.36,1), border-color 0.2s ease, box-shadow 0.25s ease; }
+    .avm-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: var(--orange-gradient); opacity: 0; transition: opacity 0.25s ease; }
+    .avm-card::after { content: '\F138'; font-family: 'bootstrap-icons'; position: absolute; top: 14px; right: 14px;
+        color: var(--orange-primary); opacity: 0; transform: translateX(-6px); transition: all 0.22s ease; font-size: 1rem; }
+    .avm-card:hover { transform: translateY(-4px); border-color: rgba(255,140,0,0.55);
+        box-shadow: 0 14px 34px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,140,0,0.12), 0 0 24px rgba(255,140,0,0.08); }
+    .avm-card:hover::before { opacity: 1; }
+    .avm-card:hover::after { opacity: 1; transform: translateX(0); }
     .avm-card:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 2px; }
-    .avm-card-top { display: flex; align-items: center; gap: 12px; }
-    .avm-avatar { width: 46px; height: 46px; border-radius: 12px; }
-    .avm-avatar-lg { width: 52px; height: 52px; border-radius: 14px; font-size: 1.15rem; }
+    .avm-card-top { display: flex; align-items: center; gap: 13px; }
+    .avm-avatar { width: 50px; height: 50px; border-radius: 14px; border: 2px solid rgba(255,140,0,0.35);
+        box-shadow: 0 0 0 3px rgba(255,140,0,0.07); font-size: 1.05rem; transition: all 0.2s ease; }
+    .avm-card:hover .avm-avatar { border-color: rgba(255,140,0,0.7); box-shadow: 0 0 0 4px rgba(255,140,0,0.12); }
+    .avm-avatar-lg { width: 56px; height: 56px; border-radius: 15px; font-size: 1.2rem; }
     .avm-id { min-width: 0; }
-    .avm-equipe { font-size: 0.72rem; color: var(--orange-primary); margin-top: 2px; white-space: nowrap;
-        overflow: hidden; text-overflow: ellipsis; }
-    .avm-counters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .avm-id .member-name { line-height: 1.25; }
+    .avm-equipe { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;
+        background: rgba(255,140,0,0.1); border: 1px solid rgba(255,140,0,0.22); border-radius: 20px;
+        padding: 2px 10px; font-size: 0.68rem; font-weight: 600; color: var(--orange-primary);
+        max-width: 100%; }
+    .avm-equipe span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .avm-counters { display: flex; gap: 7px; flex-wrap: wrap; }
     .avm-counter { background: var(--bg-card-hover, rgba(255,255,255,0.04)); border: 1px solid var(--border-color);
-        border-radius: 10px; padding: 4px 10px; font-size: 0.78rem; color: var(--text-tertiary);
-        display: inline-flex; align-items: center; gap: 5px; }
-    .avm-counter strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-    .avm-counter:nth-child(2) strong { color: var(--orange-primary); }
-    .avm-counter:nth-child(3) strong { color: var(--success); }
-    .avm-late { border-color: rgba(239,83,80,0.4); background: rgba(239,83,80,0.08); }
-    .avm-late strong { color: var(--danger) !important; }
+        border-radius: 11px; padding: 6px 11px; font-size: 0.76rem; color: var(--text-tertiary);
+        display: inline-flex; align-items: center; gap: 6px; transition: transform 0.15s ease, border-color 0.15s ease; }
+    .avm-counter:hover { transform: translateY(-1px); border-color: var(--border-color); filter: brightness(1.15); }
+    .avm-counter strong { color: var(--text-primary); font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+    .avm-counter i { font-size: 0.85rem; }
+    .avm-counter.avm-c-af i { color: var(--warning); }
+    .avm-counter.avm-c-ec i { color: var(--orange-primary); }
+    .avm-counter.avm-c-ec strong { color: var(--orange-primary); }
+    .avm-counter.avm-c-done i { color: var(--success); }
+    .avm-counter.avm-c-done strong { color: var(--success); }
+    .avm-late { border-color: rgba(239,83,80,0.45) !important; background: rgba(239,83,80,0.09) !important; }
+    .avm-late i, .avm-late strong { color: var(--danger) !important; }
     .avm-progress { min-width: 0; }
+    .avm-progress .member-bar { height: 8px; border-radius: 5px; }
+    .avm-progress .member-bar > div { box-shadow: 0 0 10px rgba(255,140,0,0.45); }
+
     /* ===== Fenêtre détail membre (modal) ===== */
-    .avm-modal .modal-header { flex-wrap: wrap; gap: 10px; }
+    .avm-modal .modal-content { box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,140,0,0.08); }
+    .avm-modal .modal-header { flex-wrap: wrap; gap: 12px; padding: 18px 22px; position: relative; overflow: hidden;
+        border-bottom: 1px solid var(--border-color); background: linear-gradient(135deg, rgba(255,140,0,0.07) 0%, transparent 55%); }
+    .avm-modal .modal-header::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--orange-gradient); }
     .avm-modal .btn-close { margin: 0; }
+    .avm-modal .modal-body { padding: 18px 22px 22px; }
+    .avm-modal .table-premium thead th { position: sticky; top: 0; z-index: 5;
+        background: var(--bg-card); box-shadow: 0 1px 0 var(--border-color); }
+    .avm-modal .table-premium tbody tr { transition: background 0.12s ease; }
+    .avm-modal .table-premium tbody tr:hover { background: rgba(255,140,0,0.045); }
+    .avm-modal .table-premium tbody tr.row-late td:first-child { position: relative; }
+    .avm-modal .table-premium tbody tr.row-late td:first-child::before { content: ''; position: absolute;
+        left: 0; top: 20%; bottom: 20%; width: 3px; border-radius: 2px; background: var(--danger); }
+    .avm-modal .btn-del { border: 1px solid rgba(239,83,80,0.35); color: var(--danger); background: transparent;
+        border-radius: 9px; padding: 0.2rem 0.5rem; font-size: 0.78rem; transition: all 0.15s ease; }
+    .avm-modal .btn-del:hover { background: rgba(239,83,80,0.14); border-color: var(--danger); }
+    .avm-modal #ajoutBox { border: 1px dashed rgba(255,140,0,0.4); border-radius: 14px;
+        background: rgba(255,140,0,0.035); animation: avmSlide 0.25s ease; }
+    @keyframes avmSlide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .avm-modal .modal-dialog { margin-right: auto; }
     .cal-table tbody tr { cursor: pointer; transition: background 0.15s ease; }
     .cal-table tbody tr:hover { background: var(--bg-card-hover); }
     .cal-badge-reste { background: rgba(255,140,0,0.12); color: var(--orange-primary); }
@@ -165,13 +205,13 @@
                 <div class="avm-id">
                     <div class="member-name">{{ item.membre.prenom }} {{ item.membre.nom }}</div>
                     <div class="member-role">{{ item.membre.poste or item.membre.role|capitalize }}</div>
-                    <div class="avm-equipe"><i class="bi bi-people-fill me-1"></i>{{ item.equipe_nom or 'Sans équipe' }}</div>
+                    <div class="avm-equipe"><i class="bi bi-people-fill"></i><span>{{ item.equipe_nom or 'Sans équipe' }}</span></div>
                 </div>
             </div>
             <div class="avm-counters">
-                <div class="avm-counter" title="À faire"><i class="bi bi-hourglass"></i><strong>{{ item.a_faire }}</strong></div>
-                <div class="avm-counter" title="En cours"><i class="bi bi-arrow-repeat"></i><strong>{{ item.en_cours }}</strong></div>
-                <div class="avm-counter" title="Terminées"><i class="bi bi-check2"></i><strong>{{ item.terminees }}</strong></div>
+                <div class="avm-counter avm-c-af" title="À faire"><i class="bi bi-hourglass"></i><strong>{{ item.a_faire }}</strong></div>
+                <div class="avm-counter avm-c-ec" title="En cours"><i class="bi bi-arrow-repeat"></i><strong>{{ item.en_cours }}</strong></div>
+                <div class="avm-counter avm-c-done" title="Terminées"><i class="bi bi-check2"></i><strong>{{ item.terminees }}</strong></div>
                 {% if item.en_retard > 0 %}<div class="avm-counter avm-late" title="En retard"><i class="bi bi-exclamation-triangle"></i><strong>{{ item.en_retard }}</strong></div>{% endif %}
             </div>
             <div class="member-progress-wrap avm-progress">
@@ -201,12 +241,12 @@
                         <div class="member-role" id="mmPoste"></div>
                     </div>
                 </div>
-                <div class="d-flex align-items-center gap-3 ms-auto">
+                <div class="d-flex align-items-center gap-3 ms-auto flex-wrap">
                     <div class="avm-counters mb-0">
-                        <div class="avm-counter" title="À faire"><i class="bi bi-hourglass"></i><strong id="mmAf">0</strong></div>
-                        <div class="avm-counter" title="En cours"><i class="bi bi-arrow-repeat"></i><strong id="mmEc">0</strong></div>
-                        <div class="avm-counter" title="Terminées"><i class="bi bi-check2"></i><strong id="mmDone">0</strong></div>
-                        <div class="avm-counter" title="En retard"><i class="bi bi-exclamation-triangle"></i><strong id="mmRetard">0</strong></div>
+                        <div class="avm-counter avm-c-af" title="À faire"><i class="bi bi-hourglass"></i><strong id="mmAf">0</strong></div>
+                        <div class="avm-counter avm-c-ec" title="En cours"><i class="bi bi-arrow-repeat"></i><strong id="mmEc">0</strong></div>
+                        <div class="avm-counter avm-c-done" title="Terminées"><i class="bi bi-check2"></i><strong id="mmDone">0</strong></div>
+                        <div class="avm-counter avm-late" title="En retard"><i class="bi bi-exclamation-triangle"></i><strong id="mmRetard">0</strong></div>
                     </div>
                     <div class="member-progress-wrap" style="min-width:160px;">
                         <div class="member-progress-top"><span>Avancement</span><strong id="mmPct">0%</strong></div>
@@ -417,7 +457,7 @@ function renderTaches() {
     var html = '';
     rows.forEach(function(t) {
         var late = t.en_retard && t.statut !== 'terminee';
-        html += '<tr data-id="' + t.id + '">'
+        html += '<tr data-id="' + t.id + '"' + (late ? ' class="row-late"' : '') + '>'
             + '<td><strong>' + escapeHtml(t.titre) + '</strong>' + (t.recurrente ? ' <i class="bi bi-arrow-cycle text-tertiary" title="Récurrente"></i>' : '') + '</td>'
             + '<td><small class="text-tertiary">' + escapeHtml(t.dossier || '-') + '</small></td>'
             + '<td><span class="task-priority priority-' + t.priorite + '" style="font-size:0.7rem;">' + t.priorite.charAt(0).toUpperCase() + t.priorite.slice(1) + '</span></td>'
@@ -428,7 +468,7 @@ function renderTaches() {
             + '<option value="en_cours"' + (t.statut === 'en_cours' ? ' selected' : '') + '>En cours</option>'
             + '<option value="terminee"' + (t.statut === 'terminee' ? ' selected' : '') + '>Terminée</option>'
             + '</select></td>'
-            + '<td><button class="btn-premium btn-premium-outline btn-sm" style="padding:0.15rem 0.45rem;font-size:0.72rem;color:var(--danger);border-color:rgba(239,83,80,0.4);" title="Supprimer" onclick="supprimerTache(' + t.id + ')"><i class="bi bi-trash"></i></button></td>'
+            + '<td><button class="btn-del" title="Supprimer" onclick="supprimerTache(' + t.id + ')"><i class="bi bi-trash"></i></button></td>'
             + '</tr>';
     });
     body.innerHTML = html || '<tr><td colspan="7" class="text-center text-tertiary py-4">Aucune tâche (filtres actifs ?)</td></tr>';
