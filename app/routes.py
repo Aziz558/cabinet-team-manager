@@ -2255,7 +2255,23 @@ def importer_csv():
 @app.route('/supprimer_equipe/<int:equipe_id>')
 @login_required
 def supprimer_equipe(equipe_id):
-    flash('Fonctionnalit\u00e9 de suppression d\'\u00e9quipe non encore impl\u00e9ment\u00e9e.', 'info')
+    """Supprime une equipe (admin) : detache membres et dossiers au prealable."""
+    if current_user.role != 'admin':
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('equipes'))
+    equipe = Equipe.query.get_or_404(equipe_id)
+    try:
+        nom = equipe.nom
+        # Detacher les membres (equipe_id -> None)
+        User.query.filter_by(equipe_id=equipe.id).update({User.equipe_id: None})
+        # Detacher les dossiers
+        Dossier.query.filter_by(equipe_id=equipe.id).update({Dossier.equipe_id: None})
+        db.session.delete(equipe)
+        db.session.commit()
+        flash(f'\u00c9quipe \u00ab {nom} \u00bb supprim\u00e9e. Les membres et dossiers ont \u00e9t\u00e9 d\u00e9tach\u00e9s.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression de l\u2019\u00e9quipe: {str(e)}', 'danger')
     return redirect(url_for('equipes'))
 
 @app.route('/supprimer_tache/<int:tache_id>', methods=['POST'])
