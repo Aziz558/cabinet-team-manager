@@ -1881,10 +1881,9 @@ def prendre_en_charge(tache_id):
         )
         db.session.add(notif)
         db.session.commit()
-        # Email : UNIQUEMENT pour les tâches urgentes (priorité haute).
-        # Les autres priorités → notification in-app seulement (économie quota Brevo).
+        # Email au créateur : TOUJOURS (quelle que soit la priorité).
         dest_user = User.query.get(cree_par_id)
-        if dest_user and dest_user.email and tache.priorite == 'haute':
+        if dest_user and dest_user.email:
             try:
                 if team_manager:
                     from app.integrations.brevo import send_email_via_brevo_api
@@ -2452,17 +2451,17 @@ def suivi_changer_statut(tache_id):
         )
         db.session.add(notif)
         db.session.commit()
-        if tache.priorite == 'haute':
-            dest_user = User.query.get(cree_par_id)
-            if dest_user and dest_user.email:
-                try:
-                    from app.integrations.brevo import send_email_via_brevo_api
-                    sujet = f"Changement de statut : {tache.titre}"
-                    corps = f"Bonjour {dest_user.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau.replace('_', ' ')}\".\n\nCabinet JMH"
-                    envoye = send_email_via_brevo_api(to_email=dest_user.email, subject=sujet, body=corps)
-                    app.logger.info(f"Email statut change (suivi) to {dest_user.email}: {'OK' if envoye else 'ECHEC'}")
-                except Exception as e:
-                    app.logger.warning(f"Email statut change (suivi) error: {e}")
+        # Email au créateur (manager) : TOUJOURS (quelle que soit la priorité).
+        dest_user = User.query.get(cree_par_id)
+        if dest_user and dest_user.email:
+            try:
+                from app.integrations.brevo import send_email_via_brevo_api
+                sujet = f"Changement de statut : {tache.titre}"
+                corps = f"Bonjour {dest_user.prenom},\n\n{collab_nom} a changé le statut de la tâche \"{tache.titre}\" à \"{nouveau.replace('_', ' ')}\".\n\nCabinet JMH"
+                envoye = send_email_via_brevo_api(to_email=dest_user.email, subject=sujet, body=corps)
+                app.logger.info(f"Email statut change (suivi) to {dest_user.email}: {'OK' if envoye else 'ECHEC'}")
+            except Exception as e:
+                app.logger.warning(f"Email statut change (suivi) error: {e}")
 
     flash(f'Statut changé.', 'success')
     return redirect(url_for('suivi_avancement'))
@@ -2582,10 +2581,11 @@ def changer_statut_tache(tache_id):
         )
         db.session.add(notif)
         db.session.commit()
-        # Email : UNIQUEMENT pour les tâches urgentes (priorité haute).
-        # Les autres priorités → notification in-app seulement (économie quota Brevo).
+        # Email au créateur : TOUJOURS (quelle que soit la priorité).
+        # Un changement de statut est rare et important pour le manager.
+        # (La condition priorite=='haute' ne s'applique qu'aux emails d'assignation.)
         dest_user = User.query.get(cree_par_id)
-        if dest_user and dest_user.email and tache.priorite == 'haute':
+        if dest_user and dest_user.email:
             try:
                 from app.integrations.brevo import send_email_via_brevo_api
                 sujet = f"Changement de statut : {tache.titre}"
@@ -2634,10 +2634,9 @@ def terminer_tache(tache_id):
         )
         db.session.add(notif)
         db.session.commit()
-        # Email : UNIQUEMENT pour les tâches urgentes (priorité haute).
-        # Les autres priorités → notification in-app seulement (économie quota Brevo).
+        # Email au créateur : TOUJOURS (quelle que soit la priorité).
         dest_user = User.query.get(cree_par_id)
-        if dest_user and dest_user.email and tache.priorite == 'haute':
+        if dest_user and dest_user.email:
             try:
                 if team_manager:
                     from app.integrations.brevo import send_email_via_brevo_api
