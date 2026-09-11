@@ -153,7 +153,7 @@
 
 {% for e in equipes %}
 <!-- Modal Email équipe -->
-<div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" id="modalEquipe" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+<div class="modal fade" id="modalMailEquipe{{ e.id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('configurer_email_equipe', equipe_id=e.id) }}">
@@ -184,7 +184,7 @@
 
 {% for e in equipes %}
 <!-- Modal Manager équipe -->
-<div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" id="modalMailEquipe{{ e.id }}" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+<div class="modal fade" id="modalManagerEquipe{{ e.id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('changer_manager_equipe', equipe_id=e.id) }}">

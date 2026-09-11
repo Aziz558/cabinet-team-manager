@@ -1231,12 +1231,34 @@ def taches():
         dossier_filtre=request.args.get('dossier', type=int),
         date=date, timedelta=timedelta)
 
-@app.route('/equipes')
+@app.route('/equipes', methods=['GET', 'POST'])
 @login_required
 def equipes():
-    """Affiche la liste des \u00e9quipes."""
+    """Affiche la liste des \u00e9quipes + cr\u00e9ation d'\u00e9quipe (admin)."""
+    if request.method == 'POST':
+        # \u00c9conomie/mod\u00e9ration : cr\u00e9ation r\u00e9serv\u00e9e aux admins
+        if current_user.role != 'admin':
+            flash('Acc\u00e8s refus\u00e9.', 'danger')
+            return redirect(url_for('equipes'))
+        nom = (request.form.get('nom') or '').strip()
+        description = (request.form.get('description') or '').strip()
+        couleur = (request.form.get('couleur') or '#E07A5F').strip()
+        icon = (request.form.get('icon') or 'bi-people').strip()
+        if not nom:
+            flash('Le nom de l\u2019\u00e9quipe est obligatoire.', 'danger')
+            return redirect(url_for('equipes'))
+        existante = Equipe.query.filter(db.func.lower(Equipe.nom) == nom.lower()).first()
+        if existante:
+            flash(f'Une \u00e9quipe \u00ab {existante.nom} \u00bb existe d\u00e9j\u00e0.', 'warning')
+            return redirect(url_for('equipes'))
+        equipe = Equipe(nom=nom, description=description or None, couleur=couleur, icon=icon)
+        db.session.add(equipe)
+        db.session.commit()
+        flash(f'\u00c9quipe \u00ab {nom} \u00bb cr\u00e9\u00e9e avec succ\u00e8s.', 'success')
+        return redirect(url_for('equipes'))
     equipes = Equipe.query.order_by(Equipe.nom).all()
-    return render_template('equipes.html', equipes=equipes)
+    managers = User.query.filter(User.role.in_(('admin', 'manager')), User.actif == True).order_by(User.nom).all()
+    return render_template('equipes.html', equipes=equipes, managers=managers)
 
 @app.route('/notifications')
 @login_required
@@ -3080,20 +3102,36 @@ def changer_manager_equipe():
     if current_user.role != 'admin':
         flash('Acc\u00e8s refus\u00e9.', 'danger')
         return redirect(url_for('equipes'))
-    equipe_id = request.form.get('equipe_id')
-    manager_id = request.form.get('manager_id')
-    if equipe_id and manager_id:
+    equipe_id = request.form.get('equipe_id') or request.args.get('equipe_id')
+    manager_id = (request.form.get('manager_id') or '').strip()
+    if equipe_id:
         equipe = Equipe.query.get(int(equipe_id))
         if equipe:
-            equipe.manager_id = int(manager_id)
+            # manager_id vide = retirer le responsable (option \u00ab Aucun \u00bb)
+            equipe.manager_id = int(manager_id) if manager_id else None
             db.session.commit()
-            flash(f'Manager de l\'\u00e9quipe {equipe.nom} mis \u00e0 jour.', 'success')
+            flash(f'Manager de l\u2019\u00e9quipe {equipe.nom} mis \u00e0 jour.', 'success')
     return redirect(url_for('equipes'))
 
-@app.route('/configurer_email_equipe', methods=['GET', 'POST'])
+@app.route('/configurer_email_equipe', methods=['POST'])
 @login_required
 def configurer_email_equipe():
-    flash('Fonctionnalit\u00e9 de configuration d\'email d\'\u00e9quipe non encore impl\u00e9ment\u00e9e.', 'info')
+    """Enregistre l'email d\u00e9di\u00e9 d'une \u00e9quipe (routing Cloudflare -> /api/mailbox/inbound)."""
+    if current_user.role != 'admin':
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('equipes'))
+    equipe_id = request.form.get('equipe_id') or request.args.get('equipe_id')
+    equipe_email = (request.form.get('equipe_email') or '').strip()
+    equipe = Equipe.query.get(int(equipe_id)) if equipe_id else None
+    if not equipe:
+        flash('\u00c9quipe introuvable.', 'danger')
+        return redirect(url_for('equipes'))
+    equipe.equipe_email = equipe_email or None
+    db.session.commit()
+    if equipe_email:
+        flash(f'Email d\u00e9di\u00e9 de l\u2019\u00e9quipe {equipe.nom} enregistr\u00e9 : {equipe_email}', 'success')
+    else:
+        flash(f'Email d\u00e9di\u00e9 de l\u2019\u00e9quipe {equipe.nom} retir\u00e9.', 'info')
     return redirect(url_for('equipes'))
 
 # ==========================
