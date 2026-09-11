@@ -2358,9 +2358,139 @@ def taches_aujourdhui():
     today_taches = Tache.query.filter(Tache.date_echeance == date.today()).all()
     return render_template('taches.html', taches=today_taches, date=date, timedelta=timedelta)
 
-# ==========================
+# ===========================
 # Suivi d'avancement par membre
-# ==========================
+# ===========================
+# API JSON : détails des tâches d'un membre (fenêtre "Tableau d'avancement")
+@app.route('/suivi_avancement/api/membre/<int:membre_id>')
+@login_required
+def api_avancement_membre(membre_id):
+    """Détails d'un membre pour la fenêtre d'avancement : tâches + compteurs.
+
+    Isolation : admin = tout ; manager = membres de ses équipes (+ lui-même) ;
+    membre = lui-même uniquement.
+    """
+    # Vérification du périmètre
+    if current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        team_ids = {current_user.id}
+        for eq in mes_equipes:
+            team_ids.update(m.id for m in eq.membres.all())
+        if membre_id not in team_ids:
+            return jsonify({'ok': False, 'error': 'Accès refusé'}), 403
+    elif current_user.role != 'admin':
+        if membre_id != current_user.id:
+            return jsonify({'ok': False, 'error': 'Accès refusé'}), 403
+
+    membre = User.query.get_or_404(membre_id)
+    taches = Tache.query.filter_by(assigne_a=membre_id).order_by(Tache.date_echeance).all()
+
+    def _t_json(t):
+        return {
+            'id': t.id,
+            'titre': t.titre,
+            'description': t.description or '',
+            'dossier': t.dossier.numero_dossier if t.dossier else '',
+            'dossier_id': t.dossier_id,
+            'priorite': t.priorite,
+            'statut': t.statut,
+            'date_echeance': t.date_echeance.strftime('%Y-%m-%d') if t.date_echeance else None,
+            'date_echeance_fr': t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '-',
+            'en_retard': bool(t.est_en_retard()),
+            'recurrente': bool(t.frequence_repetition),
+        }
+
+    a_faire = [t for t in taches if t.statut == 'a_faire']
+    en_cours = [t for t in taches if t.statut == 'en_cours']
+    terminees = [t for t in taches if t.statut in ('terminee', 'terminée')]
+
+    return jsonify({
+        'ok': True,
+        'membre': {
+            'id': membre.id,
+            'nom': f'{membre.prenom} {membre.nom}',
+            'poste': membre.poste or membre.role,
+            'photo': membre.photo_display_src(),
+            'initiales': ((membre.prenom[:1] + (membre.nom[:1] or '')).upper()),
+        },
+        'compteurs': {
+            'total': len(taches),
+            'a_faire': len(a_faire),
+            'en_cours': len(en_cours),
+            'terminees': len(terminees),
+            'en_retard': sum(1 for t in taches if t.est_en_retard()),
+            'avancement': round(len(terminees) * 100 / len(taches)) if taches else 0,
+        },
+        'taches': [_t_json(t) for t in taches],
+    })
+
+# Ajout d'une tâche pour un membre depuis la fenêtre d'avancement (manager/admin)
+@app.route('/suivi_avancement/ajouter_tache/<int:membre_id>', methods=['POST'])
+@login_required
+def avancement_ajouter_tache(membre_id):
+    if current_user.role == 'membre' and membre_id != current_user.id:
+        return jsonify({'ok': False, 'error': 'Accès refusé'}), 403
+    if current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        team_ids = {current_user.id}
+        for eq in mes_equipes:
+            team_ids.update(m.id for m in eq.membres.all())
+        if membre_id not in team_ids:
+            return jsonify({'ok': False, 'error': 'Accès refusé'}), 403
+
+    titre = (request.form.get('titre') or '').strip()
+    if not titre:
+        return jsonify({'ok': False, 'error': 'Le titre est obligatoire'}), 400
+    echeance_val = (request.form.get('date_echeance') or '').strip()
+    if not echeance_val:
+        return jsonify({'ok': False, 'error': "La date d'échéance est obligatoire"}), 400
+    try:
+        echeance = datetime.strptime(echeance_val, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'ok': False, 'error': "Date d'échéance invalide"}), 400
+
+    t = Tache(
+        titre=titre,
+        description=(request.form.get('description') or '').strip() or None,
+        assigne_a=membre_id,
+        cree_par=current_user.id,
+        priorite=(request.form.get('priorite') or 'moyenne').strip(),
+        statut='a_faire',
+        date_echeance=echeance,
+    )
+    if t.priorite not in ('haute', 'moyenne', 'basse'):
+        t.priorite = 'moyenne'
+    db.session.add(t)
+    db.session.flush()
+    # Notification in-app à l'assigné (pas d'email : ajout ponctuel depuis le pilotage)
+    notif = Notification(user_id=membre_id, tache_id=t.id,
+        message=f"Nouvelle tâche assignée : {t.titre}", type_notification='assignation')
+    db.session.add(notif)
+    db.session.commit()
+    return jsonify({'ok': True, 'id': t.id, 'message': 'Tâche ajoutée'})
+
+# Suppression d'une tâche depuis la fenêtre d'avancement (manager/admin)
+@app.route('/suivi_avancement/supprimer_tache/<int:tache_id>', methods=['POST'])
+@login_required
+def avancement_supprimer_tache(tache_id):
+    tache = Tache.query.get_or_404(tache_id)
+    if current_user.role == 'membre':
+        return jsonify({'ok': False, 'error': 'Seuls les managers et administrateurs peuvent supprimer'}), 403
+    if current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        team_ids = {current_user.id}
+        for eq in mes_equipes:
+            team_ids.update(m.id for m in eq.membres.all())
+        if tache.assigne_a not in team_ids:
+            return jsonify({'ok': False, 'error': 'Accès refusé'}), 403
+
+    Notification.query.filter_by(tache_id=tache.id).delete()
+    CommentaireTache.query.filter_by(tache_id=tache.id).delete()
+    db.session.delete(tache)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'Tâche supprimée'})
+
+# Gérer le changement de statut depuis le suivi
 @app.route('/suivi_avancement')
 @login_required
 def suivi_avancement():
@@ -2399,8 +2529,11 @@ def suivi_avancement():
             if t.dossier_id:
                 dossiers_ids.add(t.dossier_id)
         dossiers_par_membre[m.id] = Dossier.query.filter(Dossier.id.in_(dossiers_ids)).order_by(Dossier.numero_dossier).all() if dossiers_ids else []
+        # Nom de l'équipe du membre (affichage sur la carte)
+        equipe_nom = m.equipe.nom if m.equipe else None
         suivi_data.append({
             'membre': m,
+            'equipe_nom': equipe_nom,
             'total': len(taches),
             'a_faire': len(a_faire),
             'en_cours': len(en_cours),
@@ -2464,6 +2597,8 @@ def suivi_changer_statut(tache_id):
                 app.logger.warning(f"Email statut change (suivi) error: {e}")
 
     flash(f'Statut changé.', 'success')
+    if request.headers.get('X-Requested-With') == 'fetch':
+        return jsonify({'ok': True})
     return redirect(url_for('suivi_avancement'))
 
 @app.route('/api/suivi_membre/<int:membre_id>')

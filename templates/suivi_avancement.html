@@ -51,6 +51,33 @@
     .cal-table th { text-align: left; padding: 12px 16px; color: var(--text-tertiary); font-weight: 600; font-size: 0.75rem;
         letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
     .cal-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); white-space: nowrap; }
+
+    /* ===== Cartes membres (vue équipe) ===== */
+    .avm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .avm-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+        padding: 16px; cursor: pointer; transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        display: flex; flex-direction: column; gap: 12px; }
+    .avm-card:hover { transform: translateY(-3px); border-color: rgba(255,140,0,0.5); box-shadow: 0 12px 30px rgba(0,0,0,0.35); }
+    .avm-card:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 2px; }
+    .avm-card-top { display: flex; align-items: center; gap: 12px; }
+    .avm-avatar { width: 46px; height: 46px; border-radius: 12px; }
+    .avm-avatar-lg { width: 52px; height: 52px; border-radius: 14px; font-size: 1.15rem; }
+    .avm-id { min-width: 0; }
+    .avm-equipe { font-size: 0.72rem; color: var(--orange-primary); margin-top: 2px; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis; }
+    .avm-counters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .avm-counter { background: var(--bg-card-hover, rgba(255,255,255,0.04)); border: 1px solid var(--border-color);
+        border-radius: 10px; padding: 4px 10px; font-size: 0.78rem; color: var(--text-tertiary);
+        display: inline-flex; align-items: center; gap: 5px; }
+    .avm-counter strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .avm-counter:nth-child(2) strong { color: var(--orange-primary); }
+    .avm-counter:nth-child(3) strong { color: var(--success); }
+    .avm-late { border-color: rgba(239,83,80,0.4); background: rgba(239,83,80,0.08); }
+    .avm-late strong { color: var(--danger) !important; }
+    .avm-progress { min-width: 0; }
+    /* ===== Fenêtre détail membre (modal) ===== */
+    .avm-modal .modal-header { flex-wrap: wrap; gap: 10px; }
+    .avm-modal .btn-close { margin: 0; }
     .cal-table tbody tr { cursor: pointer; transition: background 0.15s ease; }
     .cal-table tbody tr:hover { background: var(--bg-card-hover); }
     .cal-badge-reste { background: rgba(255,140,0,0.12); color: var(--orange-primary); }
@@ -90,7 +117,7 @@
     </div>
 </div>
 
-<!-- ============ VUE 1 : AVANCEMENT ÉQUIPE ============ -->
+<!-- ============ VUE 1 : AVANCEMENT ÉQUIPE (cartes membres) ============ -->
 <div id="view-equipe">
     {% set ns = namespace(total=0, af=0, ec=0, done=0, retard=0) %}
     {% for item in suivi_data %}
@@ -126,102 +153,134 @@
         </div>
     </div>
 
-    {% for item in suivi_data %}
-    <div class="card-premium mb-4 member-card animate-fade-in-up" id="membreCard{{ item.membre.id }}">
-        <div class="card-header-premium member-head">
-            <div class="member-id">
-                <div class="member-avatar">
+    <div class="avm-grid animate-fade-in-up" id="memberCards">
+        {% for item in suivi_data %}
+        <div class="avm-card" onclick="openMembre({{ item.membre.id }})" role="button" tabindex="0"
+             onkeypress="if(event.key==='Enter')openMembre({{ item.membre.id }})">
+            <div class="avm-card-top">
+                <div class="member-avatar avm-avatar">
                     {% set s_photo = item.membre.photo_display_src() %}
                     {% if s_photo %}<img src="{{ s_photo }}" alt="">{% else %}{{ (item.membre.prenom[:1] ~ (item.membre.nom[:1] or ''))|upper }}{% endif %}
                 </div>
-                <div>
+                <div class="avm-id">
                     <div class="member-name">{{ item.membre.prenom }} {{ item.membre.nom }}</div>
                     <div class="member-role">{{ item.membre.poste or item.membre.role|capitalize }}</div>
+                    <div class="avm-equipe"><i class="bi bi-people-fill me-1"></i>{{ item.equipe_nom or 'Sans équipe' }}</div>
                 </div>
             </div>
-            <div class="stat-chips">
-                <span class="stat-chip" style="background:var(--warning-bg);color:var(--warning);" onclick="toggleStatut({{ item.membre.id }}, 'a_faire')" data-statut="a_faire">
-                    <i class="bi bi-hourglass"></i> À faire <span class="n">{{ item.a_faire }}</span></span>
-                <span class="stat-chip" style="background:var(--orange-subtle);color:var(--orange-primary);" onclick="toggleStatut({{ item.membre.id }}, 'en_cours')" data-statut="en_cours">
-                    <i class="bi bi-arrow-repeat"></i> En cours <span class="n">{{ item.en_cours }}</span></span>
-                <span class="stat-chip" style="background:var(--success-bg);color:var(--success);" onclick="toggleStatut({{ item.membre.id }}, 'terminee')" data-statut="terminee">
-                    <i class="bi bi-check2"></i> Fait <span class="n">{{ item.terminees }}</span></span>
-                {% if item.en_retard > 0 %}
-                <span class="stat-chip" style="background:var(--danger-bg);color:var(--danger);" title="Échéance dépassée">
-                    <i class="bi bi-exclamation-triangle"></i> Retard <span class="n">{{ item.en_retard }}</span></span>
-                {% endif %}
+            <div class="avm-counters">
+                <div class="avm-counter" title="À faire"><i class="bi bi-hourglass"></i><strong>{{ item.a_faire }}</strong></div>
+                <div class="avm-counter" title="En cours"><i class="bi bi-arrow-repeat"></i><strong>{{ item.en_cours }}</strong></div>
+                <div class="avm-counter" title="Terminées"><i class="bi bi-check2"></i><strong>{{ item.terminees }}</strong></div>
+                {% if item.en_retard > 0 %}<div class="avm-counter avm-late" title="En retard"><i class="bi bi-exclamation-triangle"></i><strong>{{ item.en_retard }}</strong></div>{% endif %}
             </div>
-            <div class="member-progress-wrap">
+            <div class="member-progress-wrap avm-progress">
                 <div class="member-progress-top"><span>Avancement</span><strong>{{ (item.terminees / item.total * 100)|round(0) if item.total else 0 }}%</strong></div>
                 {% set pct = (item.terminees / item.total * 100) if item.total > 0 else 0 %}
                 <div class="member-bar"><div style="width:{{ pct }}%;"></div></div>
             </div>
         </div>
-        <div class="card-body-premium">
-            <!-- Filtres secondaires -->
-            <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-                <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'nature', this.value)">
-                    <option value="all">Toutes natures</option>
-                    <option value="tva">TVA</option>
-                    <option value="is">IS</option>
-                    <option value="cfe">CFE</option>
-                    <option value="generale">Générales</option>
-                </select>
-                <select class="select-premium select-sm" style="width:auto;font-size:0.75rem;" onchange="filterMembre({{ item.membre.id }}, 'dossier', this.value)">
-                    <option value="all">Tous dossiers</option>
-                    {% for d in dossiers_par_membre.get(item.membre.id, []) %}
-                    <option value="{{ d.id }}">{{ d.numero_dossier }} — {{ d.intitule[:30] }}</option>
-                    {% endfor %}
-                </select>
-                <span class="text-tertiary small">Du</span>
-                <input type="date" class="input-premium select-sm" style="width:auto;font-size:0.75rem;padding:0.2rem;" onchange="filterMembre({{ item.membre.id }}, 'date_debut', this.value)">
-                <span class="text-tertiary small">au</span>
-                <input type="date" class="input-premium select-sm" style="width:auto;font-size:0.75rem;padding:0.2rem;" onchange="filterMembre({{ item.membre.id }}, 'date_fin', this.value)">
-                <span class="text-tertiary small ms-auto"><i class="bi bi-funnel me-1"></i>Cliquez les pastilles de statut pour filtrer</span>
-            </div>
+        {% else %}
+        <div class="text-center py-5 w-100">
+            <i class="bi bi-inbox" style="font-size:48px;color:var(--text-tertiary);"></i>
+            <p class="text-tertiary mt-3">Aucun membre à afficher.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
 
-            <!-- Liste des tâches -->
-            <div class="table-responsive" style="max-height:420px;overflow-y:auto;">
-                <table class="table-premium" id="membreTable{{ item.membre.id }}">
-                    <thead><tr><th>Tâche</th><th>Dossier</th><th>Priorité</th><th>Statut</th><th>Échéance</th><th>Action</th></tr></thead>
-                    <tbody>
-                        {% for t in item.toutes_taches %}
-                        {% set tl = t.titre|lower %}
-                        {% if 'cfe' in tl %}{% set nat = 'cfe' %}
-                        {% elif ' is ' in tl or tl.startswith('is ') %}{% set nat = 'is' %}
-                        {% elif 'tva' in tl or 'ca3' in tl or 'ca12' in tl or 'dépôt' in tl or 'depot' in tl or 'déclaration' in tl %}{% set nat = 'tva' %}
-                        {% else %}{% set nat = 'generale' %}{% endif %}
-                        <tr class="task-row" data-statut="{{ t.statut }}" data-dossier="{{ t.dossier_id or '' }}" data-echeance="{{ t.date_echeance }}" data-nature="{{ nat }}">
-                            <td><strong>{{ t.titre }}</strong></td>
-                            <td><small class="text-tertiary">{{ t.dossier.numero_dossier if t.dossier else '-' }}</small></td>
-                            <td><span class="task-priority priority-{{ t.priorite }}" style="font-size:0.7rem;">{{ t.priorite|capitalize }}</span></td>
-                            <td><span class="task-status status-{{ t.statut }}" style="font-size:0.7rem;">{{ t.statut|replace('_',' ') }}</span></td>
-                            <td>{{ t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '-' }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('suivi_changer_statut', tache_id=t.id) }}" class="d-flex gap-1">
-                                    <select name="statut" class="select-premium select-sm" style="width:auto;font-size:0.7rem;padding:0.15rem;">
-                                        <option value="a_faire" {{ 'selected' if t.statut == 'a_faire' else '' }}>À faire</option>
-                                        <option value="en_cours" {{ 'selected' if t.statut == 'en_cours' else '' }}>En cours</option>
-                                        <option value="terminee" {{ 'selected' if t.statut == 'terminee' else '' }}>Terminée</option>
-                                    </select>
-                                    <button type="submit" class="btn-premium btn-premium-outline btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✓</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="6" class="text-center text-tertiary py-3">Aucune tâche pour ce membre.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+<!-- ============ FENÊTRE DÉTAIL MEMBRE (modal) ============ -->
+<div class="modal fade avm-modal" id="membreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content bg-dark" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:18px;">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+                <div class="member-id">
+                    <div class="member-avatar avm-avatar-lg" id="mmAvatar">?</div>
+                    <div>
+                        <div class="member-name" id="mmNom">…</div>
+                        <div class="member-role" id="mmPoste"></div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3 ms-auto">
+                    <div class="avm-counters mb-0">
+                        <div class="avm-counter" title="À faire"><i class="bi bi-hourglass"></i><strong id="mmAf">0</strong></div>
+                        <div class="avm-counter" title="En cours"><i class="bi bi-arrow-repeat"></i><strong id="mmEc">0</strong></div>
+                        <div class="avm-counter" title="Terminées"><i class="bi bi-check2"></i><strong id="mmDone">0</strong></div>
+                        <div class="avm-counter" title="En retard"><i class="bi bi-exclamation-triangle"></i><strong id="mmRetard">0</strong></div>
+                    </div>
+                    <div class="member-progress-wrap" style="min-width:160px;">
+                        <div class="member-progress-top"><span>Avancement</span><strong id="mmPct">0%</strong></div>
+                        <div class="member-bar"><div id="mmBar" style="width:0%;"></div></div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn-premium btn-premium-primary btn-sm" onclick="showAjout()"><i class="bi bi-plus-lg"></i> Ajouter une tâche</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- Filtres (mêmes que la page tâches) -->
+                <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                    <select class="select-premium select-sm" id="fStatut" style="width:auto;" onchange="applyFilters()">
+                        <option value="all">Tous statuts</option>
+                        <option value="a_faire">À faire</option>
+                        <option value="en_cours">En cours</option>
+                        <option value="terminee">Terminée</option>
+                    </select>
+                    <select class="select-premium select-sm" id="fPriorite" style="width:auto;" onchange="applyFilters()">
+                        <option value="all">Toutes priorités</option>
+                        <option value="haute">Haute</option>
+                        <option value="moyenne">Moyenne</option>
+                        <option value="basse">Basse</option>
+                    </select>
+                    <select class="select-premium select-sm" id="fDossier" style="width:auto;" onchange="applyFilters()">
+                        <option value="all">Tous dossiers</option>
+                    </select>
+                    <input type="text" class="input-premium select-sm" id="fSearch" placeholder="Rechercher…" style="width:180px;" oninput="applyFilters()">
+                    <span class="text-tertiary small ms-auto" id="fCount"></span>
+                </div>
+
+                <!-- Formulaire d'ajout (caché par défaut) -->
+                <div id="ajoutBox" class="card-premium mb-3" style="display:none;padding:14px;">
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                        <div>
+                            <label class="text-tertiary" style="font-size:0.72rem;">Tâche *</label>
+                            <input type="text" class="input-premium select-sm" id="ajTitre" style="width:240px;" placeholder="Titre de la tâche">
+                        </div>
+                        <div>
+                            <label class="text-tertiary" style="font-size:0.72rem;">Échéance *</label>
+                            <input type="date" class="input-premium select-sm" id="ajEcheance">
+                        </div>
+                        <div>
+                            <label class="text-tertiary" style="font-size:0.72rem;">Priorité</label>
+                            <select class="select-premium select-sm" id="ajPriorite" style="width:auto;">
+                                <option value="basse">Basse</option>
+                                <option value="moyenne" selected>Moyenne</option>
+                                <option value="haute">Haute</option>
+                            </select>
+                        </div>
+                        <div class="flex-grow-1">
+                            <label class="text-tertiary" style="font-size:0.72rem;">Description</label>
+                            <input type="text" class="input-premium select-sm" id="ajDesc" style="width:100%;" placeholder="Optionnel">
+                        </div>
+                        <button class="btn-premium btn-premium-primary btn-sm" onclick="submitAjout()"><i class="bi bi-check-lg"></i> Ajouter</button>
+                        <button class="btn-premium btn-premium-outline btn-sm" onclick="hideAjout()">Annuler</button>
+        <div class="d-flex gap-2 align-items-center">
+                            <span class="text-tertiary small" id="ajMsg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tableau des tâches -->
+                <div class="table-responsive" style="max-height:52vh;overflow-y:auto;">
+                    <table class="table-premium" id="mmTable">
+                        <thead><tr><th>Tâche</th><th>Dossier</th><th>Priorité</th><th>Statut</th><th>Échéance</th><th style="width:170px;">Action</th><th></th></tr></thead>
+                        <tbody id="mmBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-    {% else %}
-    <div class="text-center py-5">
-        <i class="bi bi-inbox" style="font-size:48px;color:var(--text-tertiary);"></i>
-        <p class="text-tertiary mt-3">Aucun membre à afficher.</p>
-    </div>
-    {% endfor %}
 </div>
 
 <!-- ============ VUE 2 : ÉCHÉANCIER ANNUEL (ex-calendrier) ============ -->
@@ -282,60 +341,201 @@ document.querySelectorAll('#avTabs .av-tab').forEach(function(btn) {
     if (v === 'echeancier') switchView('echeancier');
 })();
 
-/* ===== Filtres par membre ===== */
-function toggleStatut(membreId, value) {
-    if (!statutSelections[membreId]) statutSelections[membreId] = [];
-    var arr = statutSelections[membreId];
-    var idx = arr.indexOf(value);
-    if (idx >= 0) { arr.splice(idx, 1); }
-    else { arr.push(value); }
-    var card = document.getElementById('membreCard' + membreId);
-    card.querySelectorAll('.stat-chip[data-statut]').forEach(function(b) {
-        var on = arr.indexOf(b.dataset.statut) >= 0;
-        b.classList.toggle('on', on);
+/* ===== Fenêtre détail membre (modal) ===== */
+var CURRENT_MEMBRE = null;
+var MEMBRE_DATA = null;
+
+function openMembre(membreId) {
+    CURRENT_MEMBRE = membreId;
+    fetch('/suivi_avancement/api/membre/' + membreId, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) { alert(data.error || 'Erreur'); return; }
+            MEMBRE_DATA = data;
+            document.getElementById('mmNom').textContent = data.membre.nom;
+            document.getElementById('mmPoste').textContent = data.membre.poste;
+            var av = document.getElementById('mmAvatar');
+            if (data.membre.photo) {
+                av.innerHTML = '<img src="' + data.membre.photo + '" alt="" style="width:100%;height:100%;object-fit:cover;">';
+            } else {
+                av.textContent = data.membre.initiales;
+            }
+            updateCounters(data.compteurs);
+            var sel = document.getElementById('fDossier');
+            sel.innerHTML = '<option value="all">Tous dossiers</option>';
+            var seen = {};
+            data.taches.forEach(function(t) {
+                if (t.dossier_id && !seen[t.dossier_id]) {
+                    seen[t.dossier_id] = true;
+                    var o = document.createElement('option');
+                    o.value = t.dossier_id;
+                    o.textContent = t.dossier;
+                    sel.appendChild(o);
+                }
+            });
+            resetFilters();
+            renderTaches();
+            var el = document.getElementById('membreModal');
+            new bootstrap.Modal(el).show();
+        })
+        .catch(function() { alert('Erreur de chargement du membre.'); });
+}
+
+function updateCounters(c) {
+    document.getElementById('mmAf').textContent = c.a_faire;
+    document.getElementById('mmEc').textContent = c.en_cours;
+    document.getElementById('mmDone').textContent = c.terminees;
+    document.getElementById('mmRetard').textContent = c.en_retard;
+    document.getElementById('mmPct').textContent = c.avancement + '%';
+    document.getElementById('mmBar').style.width = c.avancement + '%';
+}
+
+function resetFilters() {
+    document.getElementById('fStatut').value = 'all';
+    document.getElementById('fPriorite').value = 'all';
+    document.getElementById('fDossier').value = 'all';
+    document.getElementById('fSearch').value = '';
+}
+
+function applyFilters() {
+    renderTaches();
+}
+
+function renderTaches() {
+    var body = document.getElementById('mmBody');
+    var st = document.getElementById('fStatut').value;
+    var pr = document.getElementById('fPriorite').value;
+    var ds = document.getElementById('fDossier').value;
+    var q = document.getElementById('fSearch').value.toLowerCase();
+    var rows = MEMBRE_DATA.taches.filter(function(t) {
+        if (st !== 'all' && t.statut !== st) return false;
+        if (pr !== 'all' && t.priorite !== pr) return false;
+        if (ds !== 'all' && String(t.dossier_id) !== ds) return false;
+        if (q && (t.titre.toLowerCase().indexOf(q) < 0)) return false;
+        return true;
     });
-    card.dataset.statutFilter = arr.join(',');
-    applyAllFilters(membreId);
+    var html = '';
+    rows.forEach(function(t) {
+        var late = t.en_retard && t.statut !== 'terminee';
+        html += '<tr data-id="' + t.id + '">'
+            + '<td><strong>' + escapeHtml(t.titre) + '</strong>' + (t.recurrente ? ' <i class="bi bi-arrow-cycle text-tertiary" title="Récurrente"></i>' : '') + '</td>'
+            + '<td><small class="text-tertiary">' + escapeHtml(t.dossier || '-') + '</small></td>'
+            + '<td><span class="task-priority priority-' + t.priorite + '" style="font-size:0.7rem;">' + t.priorite.charAt(0).toUpperCase() + t.priorite.slice(1) + '</span></td>'
+            + '<td><span class="task-status status-' + t.statut + '" style="font-size:0.7rem;">' + t.statut.replace('_', ' ') + '</span></td>'
+            + '<td>' + (late ? '<span style="color:var(--danger);font-weight:600;">' : '') + t.date_echeance_fr + (late ? ' <i class="bi bi-exclamation-triangle-fill"></i>' : '') + '</span>' + '</td>'
+            + '<td><select class="select-premium select-sm" style="width:auto;font-size:0.7rem;padding:0.15rem;" onchange="changeStatut(' + t.id + ', this.value)">'
+            + '<option value="a_faire"' + (t.statut === 'a_faire' ? ' selected' : '') + '>À faire</option>'
+            + '<option value="en_cours"' + (t.statut === 'en_cours' ? ' selected' : '') + '>En cours</option>'
+            + '<option value="terminee"' + (t.statut === 'terminee' ? ' selected' : '') + '>Terminée</option>'
+            + '</select></td>'
+            + '<td><button class="btn-premium btn-premium-outline btn-sm" style="padding:0.15rem 0.45rem;font-size:0.72rem;color:var(--danger);border-color:rgba(239,83,80,0.4);" title="Supprimer" onclick="supprimerTache(' + t.id + ')"><i class="bi bi-trash"></i></button></td>'
+            + '</tr>';
+    });
+    body.innerHTML = html || '<tr><td colspan="7" class="text-center text-tertiary py-4">Aucune tâche (filtres actifs ?)</td></tr>';
+    document.getElementById('fCount').textContent = rows.length + ' tâche(s) affichée(s) / ' + MEMBRE_DATA.taches.length;
 }
 
-function filterMembre(membreId, filterType, value) {
-    var card = document.getElementById('membreCard' + membreId);
-    if (filterType === 'dossier') card.dataset.dossierFilter = value;
-    if (filterType === 'nature') card.dataset.natureFilter = value;
-    if (filterType === 'date_debut') card.dataset.dateDebut = value;
-    if (filterType === 'date_fin') card.dataset.dateFin = value;
-    applyAllFilters(membreId);
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
 }
 
-function applyAllFilters(membreId) {
-    var card = document.getElementById('membreCard' + membreId);
-    var table = document.getElementById('membreTable' + membreId);
-    if (!table || !card) return;
-    var rows = table.querySelectorAll('.task-row');
+function refreshData() {
+    fetch('/suivi_avancement/api/membre/' + CURRENT_MEMBRE, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) return;
+            MEMBRE_DATA = data;
+            updateCounters(data.compteurs);   // compteur d'avancement dynamique
+            renderTaches();
+            refreshCardOnPage();              // met à jour la carte derrière la modale
+        });
+}
 
-    var statutStr = card.dataset.statutFilter || '';
-    var statuts = statutStr ? statutStr.split(',') : [];
-    var dossierF = card.dataset.dossierFilter || 'all';
-    var natureF = card.dataset.natureFilter || 'all';
-    var dateDebut = card.dataset.dateDebut || '';
-    var dateFin = card.dataset.dateFin || '';
+function refreshCardOnPage() {
+    // Recalcule les compteurs de la carte du membre : refetch de la page et copy des valeurs fraîches
+    fetch(location.pathname + location.search, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var freshCards = doc.querySelectorAll('.avm-card');
+            var cards = document.querySelectorAll('.avm-card');
+            var ids = [];
+            cards.forEach(function(c) {
+                var m = (c.getAttribute('onclick') || '').match(/openMembre\((\d+)\)/);
+                ids.push(m ? parseInt(m[1], 10) : null);
+            });
+            var idx = ids.indexOf(CURRENT_MEMBRE);
+            if (idx < 0 || !freshCards[idx]) return;
+            var fresh = freshCards[idx];
+            cards[idx].querySelectorAll('.avm-counter strong').forEach(function(el, i) {
+                var src = fresh.querySelectorAll('.avm-counter strong')[i];
+                if (src) el.textContent = src.textContent;
+            });
+            var pctSrc = fresh.querySelector('.member-progress-top strong');
+            var pctDst = cards[idx].querySelector('.member-progress-top strong');
+            if (pctSrc && pctDst) pctDst.textContent = pctSrc.textContent;
+            var barSrc = fresh.querySelector('.member-bar > div');
+            var barDst = cards[idx].querySelector('.member-bar > div');
+            if (barSrc && barDst) barDst.style.width = barSrc.style.width;
+            var lateDst = cards[idx].querySelector('.avm-late');
+            if (!fresh.querySelector('.avm-late') && lateDst) lateDst.remove();
+        });
+}
 
-    rows.forEach(function(row) {
-        var show = true;
-        if (statuts.length > 0) {
-            show = statuts.indexOf(row.dataset.statut) >= 0;
-        }
-        if (show && dossierF !== 'all' && row.dataset.dossier !== dossierF) show = false;
-        if (show && natureF !== 'all' && row.dataset.nature !== natureF) show = false;
-        if (show && dateDebut) {
-            var e = row.dataset.echeance;
-            if (e && e < dateDebut) show = false;
-        }
-        if (show && dateFin) {
-            var e = row.dataset.echeance;
-            if (e && e > dateFin) show = false;
-        }
-        row.style.display = show ? '' : 'none';
+function changeStatut(tacheId, nouveau) {
+    fetch('/suivi_avancement/changer_statut/' + tacheId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'fetch' },
+        body: 'statut=' + encodeURIComponent(nouveau)
+    }).then(function() { refreshData(); });
+}
+
+function supprimerTache(tacheId) {
+    if (!confirm('Supprimer cette tâche ?')) return;
+    fetch('/suivi_avancement/supprimer_tache/' + tacheId, { method: 'POST', headers: { 'X-Requested-With': 'fetch' } })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.ok) { alert(d.error || 'Erreur'); return; }
+            refreshData();
+        });
+}
+
+function showAjout() {
+    document.getElementById('ajoutBox').style.display = '';
+    var d = new Date();
+    document.getElementById('ajEcheance').value = d.toISOString().slice(0, 10);
+    document.getElementById('ajMsg').textContent = '';
+    document.getElementById('ajTitre').focus();
+}
+
+function hideAjout() {
+    document.getElementById('ajoutBox').style.display = 'none';
+    document.getElementById('ajTitre').value = '';
+    document.getElementById('ajDesc').value = '';
+}
+
+function submitAjout() {
+    var titre = document.getElementById('ajTitre').value.trim();
+    var echeance = document.getElementById('ajEcheance').value;
+    if (!titre) { document.getElementById('ajMsg').textContent = 'Titre obligatoire'; return; }
+    if (!echeance) { document.getElementById('ajMsg').textContent = "Échéance obligatoire"; return; }
+    var body = new URLSearchParams();
+    body.set('titre', titre);
+    body.set('date_echeance', echeance);
+    body.set('priorite', document.getElementById('ajPriorite').value);
+    body.set('description', document.getElementById('ajDesc').value);
+    fetch('/suivi_avancement/ajouter_tache/' + CURRENT_MEMBRE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'fetch' },
+        body: body.toString()
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (!d.ok) { document.getElementById('ajMsg').textContent = d.error || 'Erreur'; return; }
+        hideAjout();
+        refreshData();
     });
 }
 
