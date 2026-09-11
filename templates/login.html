@@ -223,37 +223,25 @@
             opacity: 1;
             transform: translate(-50%, -50%) scale(1);
         }
-        .portal-content img {
-            width: 100px; height: 100px;
-            border-radius: 24px;
-            box-shadow: 0 0 60px rgba(255,140,0,0.25);
-            animation: portalPulse 1.5s ease-in-out infinite;
+        /* Logo orbital dans le portail */
+        .portal-content .orbit-logo { --orbit-size: 140px; }
+        .portal-content .orbit-scene { filter: drop-shadow(0 0 30px rgba(255,122,0,.45)); }
+        .portal-text {
+            color: #FFFFFF; font-weight: 700; font-size: 1.35rem; letter-spacing: 2px;
         }
-        @keyframes portalPulse {
-            0%, 100% { box-shadow: 0 0 40px rgba(255,140,0,0.2); }
-            50% { box-shadow: 0 0 80px rgba(255,140,0,0.35); }
+        .portal-text .portal-dots { color: #FF8C00; }
+        .portal-status {
+            color: rgba(255,255,255,0.65); font-size: 0.92rem; font-weight: 400;
+            min-height: 1.2em; letter-spacing: .3px;
         }
-        .portal-content .portal-text {
-            color: #FF8C00;
-            font-weight: 600;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            opacity: 0;
-            animation: textFadeIn 0.5s 0.5s forwards;
+        .portal-bar {
+            width: 220px; height: 3px; background: rgba(255,255,255,0.08);
+            border-radius: 2px; overflow: hidden; margin-top: .2rem;
         }
-        @keyframes textFadeIn {
-            to { opacity: 1; transform: translateY(0); }
-            from { opacity: 0; transform: translateY(10px); }
+        .portal-bar-fill {
+            height: 100%; width: 0%; background: linear-gradient(90deg, #FF7A00, #FFA149);
+            border-radius: 2px; transition: width .3s ease;
         }
-        .portal-loader {
-            width: 24px; height: 24px;
-            border: 2px solid rgba(255,140,0,0.2);
-            border-top-color: #FF8C00;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-top: 0.5rem;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 480px) {
             .login-container { padding: 1rem; }
@@ -269,18 +257,21 @@
     <div class="orb orb-3"></div>
     <div class="grid-overlay"></div>
 
-    <!-- Portal effect (improved) -->
+    <!-- Portal effect : logo JMH Orbit anime (le logo EST le loader) -->
     <div class="portal-overlay" id="portalOverlay"></div>
     <div class="portal-content" id="portalContent">
-        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
-        <div class="portal-text">Cabinet JMH</div>
-        <div class="portal-loader"></div>
+        {% include 'includes/logo_orbit_anime.html' %}
+        <div class="portal-text">JMH Orbit<span class="portal-dots">…</span></div>
+        <div class="portal-status" id="portalStatus">Connexion à votre espace</div>
+        <div class="portal-bar"><div class="portal-bar-fill" id="portalBarFill"></div></div>
     </div>
 
     <div class="login-container">
         <div class="login-logo">
-            <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
-            <h1>Cabinet JMH</h1>
+            <div style="--orbit-size: 92px;">
+                {% include 'includes/logo_orbit_anime.html' %}
+            </div>
+            <h1>JMH Orbit</h1>
             <p class="tagline">Gestion d'équipe <span>&amp;</span> comptabilité</p>
         </div>
 
@@ -344,15 +335,42 @@
             const card = document.getElementById('loginCard');
             const overlay = document.getElementById('portalOverlay');
             const content = document.getElementById('portalContent');
+            const status = document.getElementById('portalStatus');
+            const barFill = document.getElementById('portalBarFill');
 
             card.classList.add('fade-out');
+
+            // Messages de statut rotatifs pendant la connexion
+            const etapes = [
+                'Connexion à votre espace',
+                'Vérification de vos identifiants',
+                'Chargement de vos dossiers',
+                'Ouverture de JMH Orbit'
+            ];
+            let iEtape = 0;
+            const intMsg = setInterval(() => {
+                iEtape = Math.min(iEtape + 1, etapes.length - 1);
+                if (status) status.textContent = etapes[iEtape];
+            }, 700);
+
+            // Barre de progression (jamais a 100% avant le vrai chargement)
+            let pct = 0;
+            const intBar = setInterval(() => {
+                pct = Math.min(pct + Math.random() * 14 + 6, 90);
+                if (barFill) barFill.style.width = pct + '%';
+            }, 350);
 
             setTimeout(() => {
                 overlay.classList.add('active');
                 setTimeout(() => content.classList.add('active'), 200);
             }, 300);
 
-            setTimeout(() => { this.submit(); }, 1200);
+            setTimeout(() => {
+                clearInterval(intMsg);
+                clearInterval(intBar);
+                if (barFill) barFill.style.width = '100%';
+                this.submit();
+            }, 1400);
         });
     </script>
 <script>

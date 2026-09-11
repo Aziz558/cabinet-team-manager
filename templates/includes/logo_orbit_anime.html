@@ -1,0 +1,50 @@
+{# Logo JMH Orbit - version ANIMEE (inline SVG + CSS, aucune dependance externe)
+   2 anneaux orbitaux en rotation continue autour du noyau JMH + satellites + halo pulsant.
+   Usage : {% include 'includes/logo_orbit_anime.html' %}
+   Taille : modifier la variable inline --orbit-size (defaut 120px). #}
+{% set orbit_uid = range(1000, 9999) | random %}
+<div class="orbit-logo" style="--orbit-size: 120px;" data-orbit="{{ orbit_uid }}">
+  <div class="orbit-scene">
+    <svg class="orbit-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2001/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="orbitGrad{{ orbit_uid }}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FFA149"/>
+          <stop offset="100%" stop-color="#FF7A00"/>
+        </linearGradient>
+        <radialGradient id="coreGrad{{ orbit_uid }}" cx="50%" cy="42%" r="70%">
+          <stop offset="0%" stop-color="#FFB25E"/>
+          <stop offset="100%" stop-color="#FF7A00"/>
+        </radialGradient>
+      </defs>
+      <circle class="orbit-halo" cx="100" cy="100" r="88" fill="#FF7A00" opacity="0.10"/>
+      <g class="orbit-ring orbit-ring-1">
+        <ellipse cx="100" cy="100" rx="86" ry="34" fill="none" stroke="url(#orbitGrad{{ orbit_uid }})" stroke-width="6"/>
+        <circle cx="186" cy="100" r="7" fill="#FFA149"/>
+        <circle cx="14" cy="100" r="5" fill="#FF7A00" opacity="0.85"/>
+      </g>
+      <g class="orbit-ring orbit-ring-2">
+        <ellipse cx="100" cy="100" rx="70" ry="66" fill="none" stroke="url(#orbitGrad{{ orbit_uid }})" stroke-width="4" opacity="0.5"/>
+        <circle cx="100" cy="34" r="5.5" fill="#FFFFFF"/>
+      </g>
+      <circle class="orbit-core" cx="100" cy="100" r="40" fill="url(#coreGrad{{ orbit_uid }})"/>
+      <text x="100" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="800"
+            fill="#141414" text-anchor="middle" class="orbit-core-text">JMH</text>
+    </svg>
+  </div>
+</div>
+<style>
+  .orbit-logo { width: var(--orbit-size, 120px); height: var(--orbit-size, 120px); position: relative; }
+  .orbit-scene { width: 100%; height: 100%; filter: drop-shadow(0 0 18px rgba(255,122,0,.35)); }
+  .orbit-svg { width: 100%; height: 100%; display: block; }
+  .orbit-ring-1 { transform-origin: 100px 100px; animation: orbitSpin1 8s linear infinite; }
+  .orbit-ring-2 { transform-origin: 100px 100px; animation: orbitSpin2 13s linear infinite; }
+  .orbit-core { transform-origin: 100px 100px; animation: orbitCorePulse 2.4s ease-in-out infinite; }
+  .orbit-halo { transform-origin: 100px 100px; animation: orbitHalo 2.4s ease-in-out infinite; }
+  @keyframes orbitSpin1 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes orbitSpin2 { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+  @keyframes orbitCorePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes orbitHalo { 0%,100% { opacity: .08; transform: scale(1); } 50% { opacity: .22; transform: scale(1.12); } }
+  @media (prefers-reduced-motion: reduce) {
+    .orbit-ring-1, .orbit-ring-2, .orbit-core, .orbit-halo { animation: none; }
+  }
+</style>
