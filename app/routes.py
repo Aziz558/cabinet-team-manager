@@ -1082,6 +1082,32 @@ def planifier_taches_tva():
         flash('Erreur lors de la planification des imp\u00f4ts.', 'danger')
     return redirect(url_for('dossiers'))
 
+def _tache_accessible(tache, user):
+    """Isolation par equipe : True si la tache est dans le perimetre de l'utilisateur.
+    - admin : tout (sauf quand une equipe est switchee en session)
+    - manager : taches des membres de ses equipes + les siennes + celles qu'il a creees
+    - membre : ses taches assignees + celles qu'il a creees
+    """
+    if user.role == 'admin':
+        equipe_id = session.get('current_equipe_id')
+        if not equipe_id:
+            return True
+        equipe = Equipe.query.get(equipe_id)
+        team_ids = [m.id for m in equipe.membres.all()] if equipe else []
+        return (tache.assigne_a in team_ids) if team_ids else False
+    if user.role == 'manager':
+        if tache.assigne_a == user.id or tache.cree_par == user.id:
+            return True
+        mes_equipes = Equipe.query.filter_by(manager_id=user.id).all()
+        team_ids = {user.id}
+        for eq in mes_equipes:
+            team_ids.update(m.id for m in eq.membres.all())
+        return tache.assigne_a in team_ids
+    # membre
+    if tache.assigne_a == user.id or tache.cree_par == user.id:
+        return True
+    return False
+
 @app.route('/taches', methods=['GET', 'POST'])
 @login_required
 def taches():
@@ -1091,11 +1117,36 @@ def taches():
         if not titre:
             flash('Le titre est obligatoire.', 'warning')
             return redirect(url_for('taches'))
+        # Isolation par equipe : valider assigne_a et dossier_id selon le role
+        assigne_a = request.form.get('assigne_a', type=int) or None
+        dossier_id = request.form.get('dossier_id', type=int) or None
+        if current_user.role == 'membre':
+            # Un membre assigne uniquement a lui-meme et a un dossier de son perimetre
+            if assigne_a and assigne_a != current_user.id:
+                flash('Vous ne pouvez assigner une tâche qu\u2019à vous-même.', 'danger')
+                return redirect(url_for('taches'))
+            if dossier_id:
+                d = Dossier.query.get(dossier_id)
+                if not d or d.collaborateur_id != current_user.id:
+                    flash('Dossier hors de votre périmètre.', 'danger')
+                    return redirect(url_for('taches'))
+        elif current_user.role == 'manager':
+            team_ids = {current_user.id}
+            for eq in Equipe.query.filter_by(manager_id=current_user.id).all():
+                team_ids.update(m.id for m in eq.membres.all())
+            if assigne_a and assigne_a not in team_ids:
+                flash('Assignation refusée : ce membre ne fait pas partie de vos équipes.', 'danger')
+                return redirect(url_for('taches'))
+            if dossier_id:
+                d = Dossier.query.get(dossier_id)
+                if d and d.collaborateur_id and d.collaborateur_id not in team_ids:
+                    flash('Dossier hors de votre périmètre.', 'danger')
+                    return redirect(url_for('taches'))
         t = Tache(
             titre=titre,
             description=request.form.get('description', '').strip(),
-            dossier_id=request.form.get('dossier_id', type=int) or None,
-            assigne_a=request.form.get('assigne_a', type=int) or None,
+            dossier_id=dossier_id,
+            assigne_a=assigne_a,
             priorite=request.form.get('priorite', 'moyenne'),
             statut=request.form.get('statut', 'a_faire'),
             date_echeance=datetime.strptime(request.form['date_echeance'], '%Y-%m-%d').date() if request.form.get('date_echeance') else None,
@@ -1798,15 +1849,15 @@ def regenerer_taches_dossier(dossier_id):
 @app.route('/prendre_en_charge/<int:tache_id>', methods=['POST'])
 @login_required
 def prendre_en_charge(tache_id):
-    """Prendre en charge une tâche (membre ou assigné)."""
+    """Prendre en charge une t\u00e2che (membre ou assign\u00e9)."""
     tache = Tache.query.get_or_404(tache_id)
     
-    # Vérifier les droits
-    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
-        flash('Vous ne pouvez pas prendre en charge cette tâche.', 'danger')
+    # Isolation par \u00e9quipe : p\u00e9rim\u00e8tre requis
+    if not _tache_accessible(tache, current_user):
+        flash('Acc\u00e8s refus\u00e9 : cette t\u00e2che ne fait pas partie de votre p\u00e9rim\u00e8tre.', 'danger')
         return redirect(url_for('taches'))
     if tache.statut != 'a_faire':
-        flash('Cette tâche n\'est pas en attente de prise en charge.', 'warning')
+        flash('Cette t\u00e2che n\u2019est pas en attente de prise en charge.', 'warning')
         return redirect(url_for('taches'))
     
     tache.statut = 'en_cours'
@@ -2328,8 +2379,8 @@ def suivi_avancement():
         team_ids = [current_user.id]
         for eq in mes_equipes:
             team_ids.extend([m.id for m in eq.membres.all()])
-        # Inclure aussi tous les utilisateurs actifs pour voir les tâches assignées
-        membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
+        # Isolation par equipe : le manager ne voit que les membres de ses equipes
+        membres = User.query.filter(User.id.in_(team_ids), User.actif==True).order_by(User.prenom).all()
     else:
         membres = [current_user]
     
@@ -2491,9 +2542,9 @@ def changer_statut_tache(tache_id):
     """Changer librement le statut d'une tâche."""
     tache = Tache.query.get_or_404(tache_id)
     
-    # Vérifier que le membre ne change que ses propres tâches
-    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
-        flash('Vous ne pouvez modifier que vos propres tâches.', 'danger')
+    # Isolation par \u00e9quipe : p\u00e9rim\u00e8tre requis
+    if not _tache_accessible(tache, current_user):
+        flash('Acc\u00e8s refus\u00e9 : cette t\u00e2che ne fait pas partie de votre p\u00e9rim\u00e8tre.', 'danger')
         return redirect(url_for('taches'))
     
     nouveau_statut = request.form.get('statut', '').strip()
@@ -2549,15 +2600,15 @@ def changer_statut_tache(tache_id):
 @app.route('/terminer_tache/<int:tache_id>', methods=['POST'])
 @login_required
 def terminer_tache(tache_id):
-    """Marquer une tâche comme terminée."""
+    """Marquer une t\u00e2che comme termin\u00e9e."""
     tache = Tache.query.get_or_404(tache_id)
     
-    # Vérifier les droits
-    if current_user.role == 'membre' and tache.assigne_a != current_user.id:
-        flash('Vous ne pouvez pas terminer cette tâche.', 'danger')
+    # Isolation par \u00e9quipe : p\u00e9rim\u00e8tre requis
+    if not _tache_accessible(tache, current_user):
+        flash('Acc\u00e8s refus\u00e9 : cette t\u00e2che ne fait pas partie de votre p\u00e9rim\u00e8tre.', 'danger')
         return redirect(url_for('taches'))
     if tache.statut not in ('en_cours', 'a_faire'):
-        flash('Cette tâche est déjà terminée.', 'warning')
+        flash('Cette t\u00e2che est d\u00e9j\u00e0 termin\u00e9e.', 'warning')
         return redirect(url_for('taches'))
     
     tache.statut = 'terminee'
@@ -2820,8 +2871,12 @@ def api_commentaires(tache_id):
 @app.route('/vue_tache/<int:tache_id>')
 @login_required
 def vue_tache(tache_id):
-    """Vue détaillée d'une tâche avec commentaires."""
+    """Vue d\u00e9taill\u00e9e d'une t\u00e2che avec commentaires."""
     tache = Tache.query.get_or_404(tache_id)
+    # Isolation par \u00e9quipe : un utilisateur ne voit que ses t\u00e2ches ou celles de son p\u00e9rim\u00e8tre
+    if not _tache_accessible(tache, current_user):
+        flash('Acc\u00e8s refus\u00e9 : cette t\u00e2che ne fait pas partie de votre p\u00e9rim\u00e8tre.', 'danger')
+        return redirect(url_for('taches'))
     commentaires = CommentaireTache.query.filter_by(tache_id=tache.id).order_by(CommentaireTache.date_creation).all()
     return render_template('vue_tache.html', tache=tache, commentaires=commentaires)
 
