@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="220" fill="#141414"/>
+  <ellipse cx="512" cy="512" rx="360" ry="150" fill="none" stroke="#FF7A00" stroke-width="34" transform="rotate(-24 512 512)"/>
+  <ellipse cx="512" cy="512" rx="360" ry="150" fill="none" stroke="#FFA149" stroke-width="20" transform="rotate(24 512 512)" opacity="0.55"/>
+  <circle cx="512" cy="512" r="120" fill="#FF7A00"/>
+  <text x="512" y="562" font-family="Segoe UI, Arial, sans-serif" font-size="104" font-weight="800" fill="#141414" text-anchor="middle">JMH</text>
+  <circle cx="200" cy="640" r="34" fill="#FFFFFF"/>
+</svg>
