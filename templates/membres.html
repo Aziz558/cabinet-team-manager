@@ -98,6 +98,7 @@
                         {% if current_user.role == 'admin' %}
                         <td>
                             <form method="POST" action="{{ url_for('assigner_equipe', user_id=m.id) }}" class="d-inline">
+                                <input type="hidden" name="user_id" value="{{ m.id }}">
                                 <select name="equipe_id" class="select-premium select-sm" onchange="this.form.submit()">
                                     <option value="">Aucune</option>
                                     {% for eq in toutes_equipes %}
@@ -110,6 +111,7 @@
                         {% if current_user.role == 'manager' %}
                         <td>
                             <form method="POST" action="{{ url_for('assigner_equipe_manager', user_id=m.id) }}" class="d-inline">
+                                <input type="hidden" name="user_id" value="{{ m.id }}">
                                 <select name="equipe_id" class="select-premium select-sm" onchange="this.form.submit()">
                                     <option value="">Aucune</option>
                                     {% for eq in mes_equipes %}

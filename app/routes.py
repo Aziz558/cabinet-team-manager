@@ -1455,20 +1455,21 @@ def ajouter_membre():
 def assigner_equipe():
     """Assigner un membre \u00e0 une \u00e9quipe (admin seulement)."""
     if current_user.role != 'admin':
-        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        flash('Accès refusé.', 'danger')
         return redirect(url_for('membres'))
-    user_id = request.form.get('user_id')
+    # user_id arrive en query string (action du formulaire) OU en corps de POST
+    user_id = request.form.get('user_id') or request.args.get('user_id')
     equipe_id = request.form.get('equipe_id')
     if user_id:
         user = User.query.get(int(user_id))
         if user and equipe_id:
             user.equipe_id = int(equipe_id)
             db.session.commit()
-            flash(f'\u00c9quipe mise \u00e0 jour pour {user.prenom} {user.nom}.', 'success')
+            flash(f'Équipe mise à jour pour {user.prenom} {user.nom}.', 'success')
         elif user:
             user.equipe_id = None
             db.session.commit()
-            flash(f'\u00c9quipe retir\u00e9e pour {user.prenom} {user.nom}.', 'info')
+            flash(f'Équipe retirée pour {user.prenom} {user.nom}.', 'info')
     return redirect(url_for('membres'))
 
 @app.route('/assigner_equipe_manager', methods=['POST'])
@@ -1478,14 +1479,14 @@ def assigner_equipe_manager():
     if current_user.role != 'manager':
         flash('Acc\u00e8s refus\u00e9.', 'danger')
         return redirect(url_for('membres'))
-    user_id = request.form.get('user_id')
+    user_id = request.form.get('user_id') or request.args.get('user_id')
     equipe_id = request.form.get('equipe_id')
     if user_id:
         user = User.query.get(int(user_id))
         if user and equipe_id:
             user.equipe_id = int(equipe_id)
             db.session.commit()
-            flash(f'\u00c9quipe mise \u00e0 jour pour {user.prenom} {user.nom}.', 'success')
+            flash(f'Équipe mise à jour pour {user.prenom} {user.nom}.', 'success')
     return redirect(url_for('membres'))
 
 @app.route('/supprimer_membre/<int:user_id>', methods=['GET', 'POST'])
