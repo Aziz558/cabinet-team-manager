@@ -289,7 +289,7 @@
 <!-- ============ FENÊTRE DÉTAIL MEMBRE (modal) ============ -->
 <div class="modal fade avm-modal" id="membreModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content bg-dark" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:18px;">
+        <div class="modal-content">
             <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
                 <div class="member-id">
                     <div class="member-avatar avm-avatar-lg" id="mmAvatar">?</div>
@@ -518,7 +518,7 @@ function renderTaches() {
             + '<td><strong>' + escapeHtml(t.titre) + '</strong>' + (t.recurrente ? ' <i class="bi bi-arrow-cycle text-tertiary" title="Récurrente"></i>' : '') + '</td>'
             + '<td><small class="text-tertiary">' + escapeHtml(t.dossier || '-') + '</small></td>'
             + '<td><span class="task-priority priority-' + t.priorite + '" style="font-size:0.7rem;">' + t.priorite.charAt(0).toUpperCase() + t.priorite.slice(1) + '</span></td>'
-            + '<td><span class="task-status status-' + t.statut + '" style="font-size:0.7rem;">' + t.statut.replace('_', ' ') + '</span></td>'
+            + '<td><span class="task-status status-' + t.statut + '">' + (t.statut === 'a_faire' ? 'À faire' : (t.statut === 'en_cours' ? 'En cours' : 'Terminée')) + '</span></td>'
             + '<td>' + (late ? '<span style="color:var(--danger);font-weight:600;">' : '') + t.date_echeance_fr + (late ? ' <i class="bi bi-exclamation-triangle-fill"></i>' : '') + '</span>' + '</td>'
             + '<td><select class="select-premium select-sm" style="width:auto;font-size:0.7rem;padding:0.15rem;" onchange="changeStatut(' + t.id + ', this.value)">'
             + '<option value="a_faire"' + (t.statut === 'a_faire' ? ' selected' : '') + '>À faire</option>'
