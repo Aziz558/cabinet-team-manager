@@ -140,7 +140,7 @@
                     {% for t in taches_membre[:10] %}
                     <div class="task-item-simple">
                         <strong>{{ t.titre }}</strong>
-                        <br><small class="text-tertiary">{{ t.date_echeance.strftime('%d/%m/%Y') }} — {{ t.statut }}</small>
+                        <br><small class="text-tertiary">{{ t.date_echeance.strftime('%d/%m/%Y') }} — {% if t.statut == 'a_faire' %}À faire{% elif t.statut == 'en_cours' %}En cours{% else %}Terminée{% endif %}</small>
                     </div>
                     {% endfor %}
                 {% else %}

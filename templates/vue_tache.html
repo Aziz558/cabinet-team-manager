@@ -16,7 +16,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <span class="task-priority priority-{{ tache.priorite }}">{{ tache.priorite|capitalize }}</span>
-                        <span class="task-status status-{{ tache.statut }}">{{ tache.statut|replace('_',' ') }}</span>
+                        <span class="task-status status-{{ tache.statut }}">{% if tache.statut == 'a_faire' %}À faire{% elif tache.statut == 'en_cours' %}En cours{% else %}Terminée{% endif %}</span>
                     </div>
                 </div>
                 {% if tache.description %}
