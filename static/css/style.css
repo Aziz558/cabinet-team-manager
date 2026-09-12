@@ -1,29 +1,29 @@
 :root {
-    /* Matte Black Deep - True Dark Premium */
-    --bg-dark: #000000;
-    --bg-darker: #000000;
-    --bg-card: #0A0A0A;
-    --bg-card-hover: #111111;
-    --bg-card-active: #181818;
-    --bg-sidebar: #050505;
-    --bg-sidebar-hover: #0D0D0D;
-    --bg-elevated: #141414;
-    --bg-glass: rgba(0, 0, 0, 0.75);
+    /* Calm Engineering — quasi-noir + paliers de blanc (style Linear) */
+    --bg-dark: #08090a;
+    --bg-darker: #060708;
+    --bg-card: #0f1011;
+    --bg-card-hover: #141516;
+    --bg-card-active: #1a1b1c;
+    --bg-sidebar: #0a0b0c;
+    --bg-sidebar-hover: #121314;
+    --bg-elevated: #161718;
+    --bg-glass: rgba(8, 9, 10, 0.75);
     
-    /* Orange Theme - Premium Vibrant */
+    /* Orange Theme — réservé aux actions, lueurs calmes */
     --orange-primary: #FF8C00;
     --orange-dark: #E67800;
     --orange-light: #FFB347;
     --orange-gradient: linear-gradient(135deg, #FF8C00 0%, #FFA726 50%, #FFB347 100%);
-    --orange-glow: 0 0 25px rgba(255, 140, 0, 0.25);
-    --orange-subtle: rgba(255, 140, 0, 0.08);
+    --orange-glow: 0 0 20px rgba(255, 140, 0, 0.14);
+    --orange-subtle: rgba(255, 140, 0, 0.07);
     
-    /* Text Colors - High Contrast */
+    /* Text Colors — hiérarchie par opacité, pas par couleur */
     --text-primary: #FFFFFF;
     --white: #FFFFFF;
-    --text-secondary: #E0E0E0;
-    --text-tertiary: #9E9E9E;
-    --text-muted: #666666;
+    --text-secondary: #d3d4d5;
+    --text-tertiary: #8f9092;
+    --text-muted: #606163;
     --text-inverse: #000000;
     
     /* Status Colors - Refined */
@@ -138,6 +138,15 @@ body {
     position: relative;
     overflow-x: hidden;
     font-weight: var(--font-weight-normal);
+    /* Calm Engineering : ligatures contextuelles (a/g single-story) + nombres tabulaires */
+    font-feature-settings: "cv01" on, "ss03" on;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 510;
+    letter-spacing: -0.01em;
 }
 
 /* Smooth Scrollbar */
