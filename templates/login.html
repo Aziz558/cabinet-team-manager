@@ -377,7 +377,7 @@
         });
     </script>
 <script>
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
 var deferredPrompt;
 window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault(); deferredPrompt = e;

@@ -32,7 +32,7 @@
         <div class="app-topbar-left">
             <a class="app-brand" href="{{ url_for('dashboard') }}">
                 <span class="app-brand-icon"><img src="{{ url_for('static', filename='img/logo-orbit.svg') }}" alt="" style="width:22px;height:22px;display:block;"></span>
-                                <span class="app-brand-text">JMH Orbit <small style="font-size:0.5rem;opacity:0.3;">v3</small></span>
+                                <span class="app-brand-text">JMH Orbit <small style="font-size:0.5rem;opacity:0.3;" title="Heure de construction du serveur — si tu vois une vieille date, ton navigateur affiche un cache">{{ app_build }}</small></span>
             </a>
             {% if current_user.is_authenticated %}
             {% set photo_src = current_user.photo_display_src() %}

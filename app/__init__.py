@@ -16,6 +16,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 # Sans ceci, Chrome garde l'ancien sw.js (max-age statique) et les correctifs HTML ne
 # parviennent jamais aux clients PWA.
 @app.route('/sw.js')
+@app.route('/static/sw.js')
 def _service_worker():
     from flask import send_from_directory
     resp = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
@@ -312,6 +313,7 @@ def load_user(user_id):
 
 # Make date available in templates
 app.jinja_env.globals['date'] = _date
+app.jinja_env.globals['app_build'] = _datetime.now().strftime('%d/%m %H:%M')
 
 # Context processor — makes current_equipe available in all templates
 @app.context_processor
