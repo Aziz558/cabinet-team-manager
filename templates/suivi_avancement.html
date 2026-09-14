@@ -684,7 +684,7 @@ function applyFilters() {
     var d1 = document.getElementById('pDebut'), d2 = document.getElementById('pFin');
     if (d1) AVM.debut = d1.value || '';
     if (d2) AVM.fin = d2.value || '';
-    renderTaches();
+    syncFilterIcons(); renderTaches();
 }
 
 function renderTaches() {
