@@ -239,7 +239,7 @@
         <button type="button" class="avm-fico" id="ebLate" title="Membres en retard" onclick="eqFiltre('late')"><i class="bi bi-exclamation-triangle"></i></button>
         <span class="avm-fsep"></span>
         <div class="dropdown">
-            <button type="button" class="avm-fico" id="ebEq" title="Equipe - toutes" data-bs-toggle="dropdown" onclick="buildEquipeMenu()"><i class="bi bi-diagram-3"></i></button>
+            <button type="button" class="avm-fico" id="ebEq" title="Equipe - toutes" onclick="avmMenu('eqMenu', buildEquipeMenu)"><i class="bi bi-diagram-3"></i></button>
             <ul class="dropdown-menu dropdown-menu-end avm-dd" id="eqMenu"></ul>
         </div>
         <span class="avm-fcount ms-auto" id="eqCount"></span>
@@ -320,11 +320,11 @@
                     <span class="avm-fsep"></span>
                     <button type="button" class="avm-fico" id="ibPri" title="Priorité — toutes" onclick="cyclePriorite()"><i class="bi bi-flag"></i></button>
                     <div class="dropdown">
-                        <button type="button" class="avm-fico" id="ibDos" title="Dossier — tous" data-bs-toggle="dropdown" onclick="buildDossierMenu()"><i class="bi bi-folder"></i></button>
+                        <button type="button" class="avm-fico" id="ibDos" title="Dossier — tous" onclick="avmMenu('dosMenu', buildDossierMenu)"><i class="bi bi-folder"></i></button>
                         <ul class="dropdown-menu dropdown-menu-end avm-dd" id="dosMenu"></ul>
                     </div>
                     <div class="dropdown">
-                        <button type="button" class="avm-fico" id="ibImpot" title="Impôt — tous" data-bs-toggle="dropdown" onclick="buildImpotMenu()"><i class="bi bi-percent"></i></button>
+                        <button type="button" class="avm-fico" id="ibImpot" title="Impôt — tous" onclick="avmMenu('impMenu', buildImpotMenu)"><i class="bi bi-percent"></i></button>
                         <ul class="dropdown-menu dropdown-menu-end avm-dd" id="impMenu"></ul>
                     </div>
                     <button type="button" class="avm-fico" id="ibDates" title="Période" onclick="tglPeriode()"><i class="bi bi-calendar-range"></i></button>
@@ -456,6 +456,7 @@ function eqFiltre(m) {
 }
 function pickEquipe(v) {
     EQ.equipe = v;
+    closeAvmDropdowns();
     var b = document.getElementById('ebEq');
     b.classList.toggle('on', v !== 'all');
     b.title = v === 'all' ? 'Equipe - toutes' : 'Equipe - ' + v;
@@ -604,11 +605,24 @@ function buildDossierMenu() {
     document.getElementById('dosMenu').innerHTML = html;
 }
 function closeAvmDropdowns() {
-    document.querySelectorAll('.avm-iconbar .dropdown-menu.show').forEach(function(m) {
-        var d = bootstrap.Dropdown.getInstance(m.parentElement.querySelector('[data-bs-toggle=\"dropdown\"]'));
-        if (d) d.hide(); else m.classList.remove('show');
-    });
-    document.querySelectorAll('.avm-iconbar .dropdown-toggle.show').forEach(function(b) { b.classList.remove('show'); });
+    document.querySelectorAll('.avm-iconbar .dropdown-menu.show').forEach(function(m) { m.classList.remove('show'); });
+}
+function avmMenu(id, build) {
+    var m = document.getElementById(id);
+    if (!m) return;
+    var wasOpen = m.classList.contains('show');
+    closeAvmDropdowns();
+    if (!wasOpen) {
+        if (typeof build === 'function') build();
+        m.classList.add('show');
+    }
+}
+if (!window.__avmMenuBound) {
+    window.__avmMenuBound = true;
+    document.addEventListener('click', function(e) {
+        if (!e.target || !e.target.closest || !e.target.closest('.avm-iconbar')) closeAvmDropdowns();
+    }, true);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAvmDropdowns(); }, true);
 }
 function dossierLabel(id) {
     var found = '-';
