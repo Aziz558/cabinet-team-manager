@@ -14,7 +14,7 @@
 /* Dropdowns : fonds blancs coherents */
 [data-theme="light"] .dropdown-menu {
     background: #ffffff;
-    border: 1px solid rgba(0,0,0,0.12);
+    border: 1px solid var(--border-whisper);
     box-shadow: 0 8px 30px rgba(0,0,0,0.12);
 }
 [data-theme="light"] .dropdown-menu .dropdown-item { color: #1a1a1a; }
@@ -27,11 +27,11 @@
 /* Modals : fonds clairs */
 [data-theme="light"] .modal-content-premium {
     background: #ffffff;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid var(--border-whisper);
 }
 [data-theme="light"] .modal-header-premium,
 [data-theme="light"] .modal-footer-premium {
-    border-color: rgba(0,0,0,0.08);
+    border-color: var(--border-whisper);
 }
 
 /* Tableaux : survol adapte */
@@ -43,13 +43,13 @@
 [data-theme="light"] .input-premium,
 [data-theme="light"] .select-premium {
     background: #ffffff;
-    border-color: rgba(0,0,0,0.15);
+    border-color: var(--border-light);
     color: #1a1a1a;
 }
 
 /* Sidebar et topbar : bordure adaptee */
-[data-theme="light"] .sidebar { border-right: 1px solid rgba(0,0,0,0.08); }
-[data-theme="light"] .app-topbar { border-bottom: 1px solid rgba(0,0,0,0.08); }
+[data-theme="light"] .sidebar { border-right: 1px solid var(--border-whisper); }
+[data-theme="light"] .app-topbar { border-bottom: 1px solid var(--border-whisper); }
 
 /* Badges tertiaires */
 [data-theme="light"] .badge-tertiary { background: rgba(0,0,0,0.06); color: #555; }

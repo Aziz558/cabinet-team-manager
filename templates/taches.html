@@ -18,45 +18,46 @@
 <!-- Filtres -->
 <div class="card-premium mb-3 animate-fade-in-up">
     <div class="card-body-premium py-2">
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="all" onclick="applyFilter('all')">Toutes</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="fiscal" onclick="applyFilter('fiscal')">Fiscalité</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-btn" data-filter="regular" onclick="applyFilter('regular')">Générales</button>
-            <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
-            <span class="text-tertiary small">Nature :</span>
-            <select class="select-premium select-sm" id="filterNature" onchange="applyFilter()" style="width:auto;">
-                <option value="all">Toutes</option>
-                <option value="tva">TVA</option>
-                <option value="is">IS</option>
-                <option value="cfe">CFE</option>
-                <option value="generale">Générales</option>
-            </select>
-            <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
-            <span class="text-tertiary small">Statut :</span>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle active" data-statut="a_faire" onclick="toggleTaskStatut('a_faire')">À faire</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="en_cours" onclick="toggleTaskStatut('en_cours')">En cours</button>
-            <button class="btn-premium btn-premium-secondary btn-sm filter-toggle" data-statut="terminee" onclick="toggleTaskStatut('terminee')">Terminée</button>
-            <div class="vr mx-1" style="height:24px;border-color:var(--border-color);"></div>
-            <span class="text-tertiary small">Membre :</span>
-            <select class="select-premium select-sm" id="filterMembre" onchange="applyFilter()" style="width:auto;">
-                <option value="all">Tous</option>
-                {% for m in membres %}
-                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
-                {% endfor %}
-            </select>
-            <span class="text-tertiary small">Dossier :</span>
-            <select class="select-premium select-sm" id="filterDossier" onchange="applyFilter()" style="width:auto;" data-prefiltre="{{ dossier_filtre or '' }}">
-                <option value="all">Tous</option>
-                {% for d in dossiers %}
-                <option value="{{ d.id }}" {% if dossier_filtre == d.id %}selected{% endif %}>{{ d.numero_dossier }} — {{ d.intitule[:25] }}</option>
-                {% endfor %}
-            </select>
-            <span class="text-tertiary small">Du :</span>
-            <input type="date" class="input-premium select-sm" id="filterDateDebut" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;">
-            <span class="text-tertiary small">Au :</span>
-            <input type="date" class="input-premium select-sm" id="filterDateFin" onchange="applyFilter()" style="width:auto;font-size:0.75rem;padding:0.2rem;">
-            <input type="text" class="input-premium input-sm" id="filterSearch" placeholder="Rechercher..." oninput="applyFilter()" style="width:140px;">
-            <button type="button" class="btn-premium btn-premium-secondary btn-sm" onclick="resetFilters()" title="Réinitialiser tous les filtres"><i class="bi bi-arrow-counterclockwise me-1"></i>Réinitialiser</button>
+        <div class="d-flex flex-wrap align-items-center gap-1 avm-iconbar">
+            <button type="button" class="filter-btn avm-fico" data-filter="all" title="Toutes les taches" onclick="applyFilter('all')"><i class="bi bi-collection"></i></button>
+            <button type="button" class="filter-btn avm-fico" data-filter="fiscal" title="Fiscalite" onclick="applyFilter('fiscal')"><i class="bi bi-percent"></i></button>
+            <button type="button" class="filter-btn avm-fico" data-filter="regular" title="Generales" onclick="applyFilter('regular')"><i class="bi bi-card-checklist"></i></button>
+            <span class="avm-fsep"></span>
+            <div class="dropdown">
+                <button type="button" class="avm-fico" id="icoNature" title="Nature — toutes" data-bs-toggle="dropdown" onclick="buildNatureMenu()"><i class="bi bi-tags"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end avm-dd" id="natureMenu"></ul>
+            </div>
+            <button type="button" class="avm-fico" id="icoAf" title="À faire" onclick="toggleTaskStatut('a_faire')"><i class="bi bi-hourglass"></i></button>
+            <button type="button" class="avm-fico" id="icoEc" title="En cours" onclick="toggleTaskStatut('en_cours')"><i class="bi bi-arrow-repeat"></i></button>
+            <button type="button" class="avm-fico" id="icoDone" title="Terminee" onclick="toggleTaskStatut('terminee')"><i class="bi bi-check2"></i></button>
+            <span class="avm-fsep"></span>
+            <div class="dropdown">
+                <button type="button" class="avm-fico" id="icoMembre" title="Membre — tous" data-bs-toggle="dropdown" onclick="buildMembreMenu()"><i class="bi bi-person"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end avm-dd" id="membreMenu"></ul>
+            </div>
+            <div class="dropdown">
+                <button type="button" class="avm-fico" id="icoDossier" title="Dossier — tous" data-bs-toggle="dropdown" onclick="buildDossierMenu()"><i class="bi bi-folder"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end avm-dd" id="dossierMenu"></ul>
+            </div>
+            <button type="button" class="avm-fico" id="icoDates" title="Periode" onclick="tglDates()"><i class="bi bi-calendar-range"></i></button>
+            <input type="date" class="input-premium avm-search" id="filterDateDebut" onchange="applyFilter()" style="display:none;width:132px;">
+            <input type="date" class="input-premium avm-search" id="filterDateFin" onchange="applyFilter()" style="display:none;width:132px;">
+            <button type="button" class="avm-fico" id="icoSearch" title="Rechercher" onclick="tglSearch()"><i class="bi bi-search"></i></button>
+            <input type="text" class="input-premium avm-search" id="filterSearch" placeholder="…" oninput="applyFilter()" style="display:none;width:150px;">
+            <button type="button" class="avm-fico" title="Reinitialiser les filtres" onclick="resetFilters()"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <span class="d-none" aria-hidden="true">
+                <select id="filterNature" onchange="syncFilterIcons();applyFilter()"><option value="all">Toutes</option><option value="tva">TVA</option><option value="is">IS</option><option value="cfe">CFE</option><option value="generale">Generales</option></select>
+                <select id="filterMembre" onchange="syncFilterIcons();applyFilter()">
+                    <option value="all">Tous</option>
+                    {% for m in membres %}<option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>{% endfor %}
+                </select>
+                <select id="filterDossier" data-prefiltre="{{ dossier_filtre or '' }}" onchange="syncFilterIcons();applyFilter()">
+                    <option value="all">Tous</option>
+                    {% for d in dossiers %}<option value="{{ d.id }}" {% if dossier_filtre == d.id %}selected{% endif %}>{{ d.numero_dossier }} — {{ d.intitule[:25] }}</option>{% endfor %}
+                </select>
+            </span>
+            <span class="avm-fcount ms-auto" id="tacheFCount"></span>
+        </div>
         </div>
     </div>
 </div>
@@ -363,16 +364,85 @@ function restoreFilters() {
 }
 
 function updateStatutButtons() {
-    document.querySelectorAll('.filter-toggle').forEach(function(b) {
-        var v = b.dataset.statut;
-        if (taskStatutSelected.indexOf(v) >= 0) {
-            b.classList.add('active', 'btn-premium-primary');
-            b.classList.remove('btn-premium-secondary');
-        } else {
-            b.classList.remove('active', 'btn-premium-primary');
-            b.classList.add('btn-premium-secondary');
-        }
+    var map = { a_faire: 'icoAf', en_cours: 'icoEc', terminee: 'icoDone' };
+    Object.keys(map).forEach(function(s) {
+        var el = document.getElementById(map[s]);
+        if (!el) return;
+        el.classList.toggle('on', taskStatutSelected.indexOf(s) >= 0);
+        el.classList.toggle('off', taskStatutSelected.length === 0);
     });
+    syncFilterIcons();
+}
+/* Synchroniser l'etat des icones avec les selects cachés */
+function syncFilterIcons() {
+    var nat = document.getElementById('filterNature');
+    var natIco = document.getElementById('icoNature');
+    if (nat && natIco) {
+        natIco.classList.toggle('on', nat.value !== 'all');
+        natIco.title = 'Nature — ' + (nat.options[nat.selectedIndex] || {}).text;
+    }
+    var mb = document.getElementById('filterMembre');
+    var mbIco = document.getElementById('icoMembre');
+    if (mb && mbIco) {
+        mbIco.classList.toggle('on', mb.value !== 'all');
+        mbIco.title = 'Membre — ' + (mb.options[mb.selectedIndex] || {}).text;
+    }
+    var dos = document.getElementById('filterDossier');
+    var dosIco = document.getElementById('icoDossier');
+    if (dos && dosIco) {
+        dosIco.classList.toggle('on', dos.value !== 'all');
+        dosIco.title = 'Dossier — ' + (dos.options[dos.selectedIndex] || {}).text;
+    }
+    var d1 = document.getElementById('filterDateDebut'), d2 = document.getElementById('filterDateFin');
+    var icoD = document.getElementById('icoDates');
+    if (icoD && d1 && d2) {
+        var set = !!(d1.value || d2.value);
+        icoD.classList.toggle('on', set);
+        if (set) { d1.style.display = ''; d2.style.display = ''; }
+    }
+    var s = document.getElementById('filterSearch'), icoS = document.getElementById('icoSearch');
+    if (s && icoS) {
+        if (s.value && s.style.display === 'none') s.style.display = '';
+        icoS.classList.toggle('on', s.style.display !== 'none');
+    }
+    document.querySelectorAll('.filter-btn').forEach(function(b) {
+        b.classList.toggle('on', b.classList.contains('active'));
+    });
+}
+function tglFromSelect(id, fnPick) {
+    var sel = document.getElementById(id);
+    var html = '';
+    Array.prototype.forEach.call(sel.options, function(o) {
+        html += '<li><button class="dropdown-item' + (o.value === sel.value ? ' active' : '') + '" onclick="' + fnPick + '(&#39;' + o.value + '&#39;)">' + o.text + '</button></li>';
+    });
+    return html;
+}
+function buildNatureMenu() {
+    document.getElementById('natureMenu').innerHTML = tglFromSelect('filterNature', 'pickNature');
+}
+function pickNature(v) { document.getElementById('filterNature').value = v; syncFilterIcons(); applyFilter(); }
+function buildMembreMenu() {
+    document.getElementById('membreMenu').innerHTML = tglFromSelect('filterMembre', 'pickMembre');
+}
+function pickMembre(v) { document.getElementById('filterMembre').value = v; syncFilterIcons(); applyFilter(); }
+function buildDossierMenu() {
+    document.getElementById('dossierMenu').innerHTML = tglFromSelect('filterDossier', 'pickDossier');
+}
+function pickDossier(v) { document.getElementById('filterDossier').value = v; syncFilterIcons(); applyFilter(); }
+function tglDates() {
+    var d1 = document.getElementById('filterDateDebut'), d2 = document.getElementById('filterDateFin');
+    var show = d1.style.display === 'none';
+    d1.style.display = show ? '' : 'none';
+    d2.style.display = show ? '' : 'none';
+    if (!show) { d1.value = ''; d2.value = ''; applyFilter(); }
+    else d1.focus();
+}
+function tglSearch() {
+    var inp = document.getElementById('filterSearch');
+    var show = inp.style.display === 'none';
+    inp.style.display = show ? '' : 'none';
+    document.getElementById('icoSearch').classList.toggle('on', show);
+    if (show) inp.focus(); else { inp.value = ''; applyFilter(); }
 }
 
 function toggleTaskStatut(value) {
@@ -457,6 +527,9 @@ function applyFilter(typeFilter) {
 
     var counter = document.getElementById('taskCount');
     if (counter) counter.textContent = visibleCount + ' tâche(s)';
+    var fc = document.getElementById('tacheFCount');
+    if (fc) fc.textContent = visibleCount + '/' + cards.length;
+    syncFilterIcons();
     saveFilters(typeFilter);
 }
 

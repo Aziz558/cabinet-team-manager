@@ -2,6 +2,7 @@
     /* Calm Engineering — quasi-noir + paliers de blanc (style Linear) */
     --bg-dark: #08090a;
     --bg-darker: #060708;
+    --bg-hover: rgba(255, 255, 255, 0.04);
     --bg-card: #0f1011;
     --bg-card-hover: #141516;
     --bg-card-active: #1a1b1c;
@@ -44,8 +45,11 @@
     --shadow-inner: inset 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-orange: 0 4px 20px rgba(255, 140, 0, 0.2);
     
-    /* Border - Ultra Subtle */
+    /* Border - Ultra Subtle — hiérarchie whisper uniforme (toute l'app) */
     --border-color: rgba(255, 255, 255, 0.06);
+    --border-whisper: rgba(255, 255, 255, 0.06);
+    --border-light: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.14);
     --border-color-hover: rgba(255, 255, 255, 0.12);
     --border-active: rgba(255, 140, 0, 0.3);
     
@@ -67,6 +71,7 @@
 [data-theme="light"] {
     --bg-dark: #f5f5f5;
     --bg-darker: #ffffff;
+    --bg-hover: rgba(0, 0, 0, 0.04);
     --bg-card: #ffffff;
     --bg-card-hover: #f0f0f0;
     --bg-card-active: #e8e8e8;
@@ -90,6 +95,9 @@
     --shadow-orange: 0 4px 20px rgba(255, 140, 0, 0.15);
 
     --border-color: rgba(0, 0, 0, 0.08);
+    --border-whisper: rgba(0, 0, 0, 0.07);
+    --border-light: rgba(0, 0, 0, 0.10);
+    --border-strong: rgba(0, 0, 0, 0.14);
     --border-color-hover: rgba(0, 0, 0, 0.15);
     --border-active: rgba(255, 140, 0, 0.3);
 
@@ -594,8 +602,8 @@ p {
 /* Priority badges - icon prefix only, no colors */
 .badge-danger {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: var(--border-whisper);
+    border-color: var(--border-light);
 }
 .badge-danger::before {
     content: '▲';
@@ -2773,7 +2781,7 @@ p {
     background: rgba(17, 17, 26, 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-whisper);
 }
 
 /* Suggestion card styling */
@@ -2907,6 +2915,21 @@ p {
     pointer-events: none !important;
 }
 
+/* ================= BARRE FILTRES ICONE (Avancement + Taches) ================= */
+.avm-iconbar { gap: 4px; }
+.avm-fico { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border-color);
+    background: transparent; color: var(--text-muted); display: inline-flex; align-items: center;
+    justify-content: center; font-size: 0.85rem; cursor: pointer; padding: 0; flex-shrink: 0;
+    transition: color .15s ease, border-color .15s ease, background .15s ease; }
+.avm-fico:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.avm-fico.on { color: var(--orange-primary); border-color: rgba(255,140,0,0.45); background: var(--orange-subtle); }
+.avm-fico.off { color: var(--danger); border-color: rgba(239,83,80,0.4); }
+.avm-fsep { width: 1px; height: 18px; background: var(--border-color); margin: 0 4px; flex-shrink: 0; }
+.avm-fcount { font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.avm-dd { min-width: 200px; max-height: 260px; overflow-y: auto; }
+.avm-search { height: 30px; font-size: 0.78rem; padding: 0 8px; }
+[data-theme="light"] .avm-fico.on { border-color: rgba(255,140,0,0.55); }
+
 /* Force light theme on body when data-theme is set */
 [data-theme="light"] body,
 [data-theme="light"] .app-topbar,
@@ -2970,9 +2993,9 @@ h2.fw-semibold::before, h4.fw-semibold::before {
 }
 
 /* Light theme adjustments supplementaires */
-[data-theme="light"] .btn-premium-secondary { border-color: rgba(0,0,0,0.12); }
+[data-theme="light"] .btn-premium-secondary { border-color: var(--border-light); }
 [data-theme="light"] .badge-tertiary { background: rgba(0,0,0,0.06); color: #555; }
-[data-theme="light"] .dropdown-menu { background: #ffffff; border-color: rgba(0,0,0,0.1); }
+[data-theme="light"] .dropdown-menu { background: #ffffff; border-color: var(--border-whisper); }
 
 /* ============================================================
    PREMIUM POLISH — effets « application haut de gamme »

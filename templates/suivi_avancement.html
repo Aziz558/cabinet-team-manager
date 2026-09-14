@@ -8,28 +8,7 @@
        bordures whisper blanc · orange réservé à l'action/au statut
        Inter cv01+ss03 · poids signature 510 · zéro glow décoratif
        ============================================================ */
-    :root {
-        --bg-dark: #08090a;
-        --bg-darker: #08090a;
-        --bg-card: #101012;
-        --bg-card-hover: #191a1b;
-        --bg-card-active: #232425;
-        --bg-sidebar: #0b0c0d;
-        --bg-elevated: #161718;
-        --text-primary: #f7f8f8;
-        --text-secondary: #d0d6e0;
-        --text-tertiary: #8a8f98;
-        --text-muted: #62666d;
-        --border-color: rgba(255,255,255,0.07);
-        --border-color-hover: rgba(255,255,255,0.13);
-        --orange-gradient: linear-gradient(135deg, #FF8C00, #FF8C00);
-        --orange-glow: 0 0 0 rgba(255,140,0,0);
-        --orange-subtle: rgba(255,140,0,0.08);
-        --shadow-sm: none;
-        --shadow-md: 0 2px 8px rgba(0,0,0,0.35);
-        --shadow-lg: 0 8px 28px rgba(0,0,0,0.5);
-    }
-    body { background: #08090a; font-feature-settings: "cv01", "ss03"; }
+    body { background: var(--bg-dark); font-feature-settings: "cv01", "ss03"; }
     h2.fw-semibold { font-weight: 510; letter-spacing: -0.02em; color: var(--text-primary); }
 
     /* ===== Onglets de vue (segment control Linear) ===== */
@@ -118,6 +97,7 @@
         border-bottom: 1px solid rgba(255,255,255,0.06); background: transparent; }
     .avm-modal .btn-close { margin: 0; opacity: 0.5; filter: invert(1) grayscale(100%) brightness(200%); }
     .avm-modal .btn-close:hover { opacity: 1; }
+    [data-theme="light"] .avm-modal .btn-close { filter: none; opacity: 0.6; }
     .avm-modal .modal-body { padding: 14px 20px 20px; }
     .avm-modal .modal-header::before { display: none; }
 
@@ -250,10 +230,26 @@
         </div>
     </div>
 
+    <!-- Filtres cartes membres : icones seules -->
+    <div class="d-flex flex-wrap gap-1 mb-3 align-items-center avm-iconbar">
+        <button type="button" class="avm-fico on" id="ebAll" title="Tous les membres" onclick="eqFiltre('all')"><i class="bi bi-people"></i></button>
+        <button type="button" class="avm-fico" id="ebAf" title="Membres avec taches a faire" onclick="eqFiltre('af')"><i class="bi bi-hourglass"></i></button>
+        <button type="button" class="avm-fico" id="ebEc" title="Membres avec taches en cours" onclick="eqFiltre('ec')"><i class="bi bi-arrow-repeat"></i></button>
+        <button type="button" class="avm-fico" id="ebDone" title="Membres avec taches terminees" onclick="eqFiltre('done')"><i class="bi bi-check2"></i></button>
+        <button type="button" class="avm-fico" id="ebLate" title="Membres en retard" onclick="eqFiltre('late')"><i class="bi bi-exclamation-triangle"></i></button>
+        <span class="avm-fsep"></span>
+        <div class="dropdown">
+            <button type="button" class="avm-fico" id="ebEq" title="Equipe - toutes" data-bs-toggle="dropdown" onclick="buildEquipeMenu()"><i class="bi bi-diagram-3"></i></button>
+            <ul class="dropdown-menu dropdown-menu-end avm-dd" id="eqMenu"></ul>
+        </div>
+        <span class="avm-fcount ms-auto" id="eqCount"></span>
+    </div>
     <div class="avm-grid animate-fade-in-up" id="memberCards">
         {% for item in suivi_data %}
         <div class="avm-card" onclick="openMembre({{ item.membre.id }})" role="button" tabindex="0"
-             onkeypress="if(event.key==='Enter')openMembre({{ item.membre.id }})">
+             onkeypress="if(event.key==='Enter')openMembre({{ item.membre.id }})"
+             data-af="{{ item.a_faire }}" data-ec="{{ item.en_cours }}" data-done="{{ item.terminees }}"
+             data-late="{{ item.en_retard }}" data-equipe="{{ item.equipe_nom or '' }}">
             <div class="avm-card-top">
                 <div class="member-avatar avm-avatar">
                     {% set s_photo = item.membre.photo_display_src() %}
@@ -316,25 +312,23 @@
                 </div>
             </div>
             <div class="modal-body">
-                <!-- Filtres (mêmes que la page tâches) -->
-                <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-                    <select class="select-premium select-sm" id="fStatut" style="width:auto;" onchange="applyFilters()">
-                        <option value="all">Tous statuts</option>
-                        <option value="a_faire">À faire</option>
-                        <option value="en_cours">En cours</option>
-                        <option value="terminee">Terminée</option>
-                    </select>
-                    <select class="select-premium select-sm" id="fPriorite" style="width:auto;" onchange="applyFilters()">
-                        <option value="all">Toutes priorités</option>
-                        <option value="haute">Haute</option>
-                        <option value="moyenne">Moyenne</option>
-                        <option value="basse">Basse</option>
-                    </select>
-                    <select class="select-premium select-sm" id="fDossier" style="width:auto;" onchange="applyFilters()">
-                        <option value="all">Tous dossiers</option>
-                    </select>
-                    <input type="text" class="input-premium select-sm" id="fSearch" placeholder="Rechercher…" style="width:180px;" oninput="applyFilters()">
-                    <span class="text-tertiary small ms-auto" id="fCount"></span>
+                <!-- Filtres : icônes seules (économie d'espace) -->
+                <div class="d-flex flex-wrap gap-1 mb-3 align-items-center avm-iconbar">
+                    <button type="button" class="avm-fico" id="ibAf" title="À faire" onclick="tglStatut('a_faire')"><i class="bi bi-hourglass"></i></button>
+                    <button type="button" class="avm-fico" id="ibEc" title="En cours" onclick="tglStatut('en_cours')"><i class="bi bi-arrow-repeat"></i></button>
+                    <button type="button" class="avm-fico" id="ibDone" title="Terminée" onclick="tglStatut('terminee')"><i class="bi bi-check2"></i></button>
+                    <span class="avm-fsep"></span>
+                    <button type="button" class="avm-fico" id="ibPri" title="Priorité — toutes" onclick="cyclePriorite()"><i class="bi bi-flag"></i></button>
+                    <div class="dropdown">
+                        <button type="button" class="avm-fico" id="ibDos" title="Dossier — tous" data-bs-toggle="dropdown" onclick="buildDossierMenu()"><i class="bi bi-folder"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end avm-dd" id="dosMenu"></ul>
+                    </div>
+                    <button type="button" class="avm-fico" id="ibLate" title="En retard" onclick="tglRetard()"><i class="bi bi-exclamation-triangle"></i></button>
+                    <span class="avm-fsep"></span>
+                    <button type="button" class="avm-fico" id="ibSearch" title="Rechercher" onclick="tglSearch()"><i class="bi bi-search"></i></button>
+                    <input type="text" class="input-premium avm-search" id="fSearch" placeholder="…" style="display:none;width:150px;" oninput="applyFilters()">
+                    <button type="button" class="avm-fico" title="Réinitialiser les filtres" onclick="resetFilters(true)"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    <span class="avm-fcount ms-auto" id="fCount"></span>
                 </div>
 
                 <!-- Formulaire d'ajout (caché par défaut) -->
@@ -438,6 +432,59 @@ document.querySelectorAll('#avTabs .av-tab').forEach(function(btn) {
     if (v === 'echeancier') switchView('echeancier');
 })();
 
+/* Filtre icone vue equipe (membres) — symboles seuls */
+var EQ = { mode: 'all', equipe: 'all' };
+try {
+    var eqs = JSON.parse(localStorage.getItem('avm_eq_filters') || 'null');
+    if (eqs) EQ = eqs;
+} catch (e) {}
+function saveEqFilters() { try { localStorage.setItem('avm_eq_filters', JSON.stringify(EQ)); } catch (e) {} }
+function eqFiltre(m) {
+    EQ.mode = (EQ.mode === m && m !== 'all') ? 'all' : m;
+    [['all','ebAll'],['af','ebAf'],['ec','ebEc'],['done','ebDone'],['late','ebLate']].forEach(function(k) {
+        var el = document.getElementById(k[1]);
+        if (el) el.classList.toggle('on', EQ.mode === k[0]);
+    });
+    applyEqFiltre();
+}
+function pickEquipe(v) {
+    EQ.equipe = v;
+    var b = document.getElementById('ebEq');
+    b.classList.toggle('on', v !== 'all');
+    b.title = v === 'all' ? 'Equipe - toutes' : 'Equipe - ' + v;
+    applyEqFiltre();
+}
+function eqEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function buildEquipeMenu() {
+    var seen = {};
+    document.querySelectorAll('#memberCards .avm-card').forEach(function(c) {
+        var e = c.dataset.equipe || '';
+        if (e) seen[e] = 1;
+    });
+    var html = '<li><button class="dropdown-item' + (EQ.equipe === 'all' ? ' active' : '') + '" onclick="pickEquipe(&#39;all&#39;)"><i class="bi bi-diagram-3 me-2"></i>Toutes</button></li>';
+    Object.keys(seen).sort().forEach(function(e) {
+        html += '<li><button class="dropdown-item' + (EQ.equipe === e ? ' active' : '') + '" onclick="pickEquipe(&#39;' + eqEsc(e) + '&#39;)">' + eqEsc(e) + '</button></li>';
+    });
+    document.getElementById('eqMenu').innerHTML = html;
+}
+function applyEqFiltre() {
+    saveEqFilters();
+    var shown = 0, total = 0;
+    document.querySelectorAll('#memberCards .avm-card').forEach(function(c) {
+        total++;
+        var ok = true;
+        if (EQ.mode === 'af') ok = +c.dataset.af > 0;
+        else if (EQ.mode === 'ec') ok = +c.dataset.ec > 0;
+        else if (EQ.mode === 'done') ok = +c.dataset.done > 0;
+        else if (EQ.mode === 'late') ok = +c.dataset.late > 0;
+        if (ok && EQ.equipe !== 'all') ok = (c.dataset.equipe || '') === EQ.equipe;
+        c.style.display = ok ? '' : 'none';
+        if (ok) shown++;
+    });
+    var cnt = document.getElementById('eqCount');
+    if (cnt) cnt.textContent = (shown === total ? '' : shown + '/' + total);
+}
+
 /* ===== Fenêtre détail membre (modal) ===== */
 var CURRENT_MEMBRE = null;
 var MEMBRE_DATA = null;
@@ -458,18 +505,6 @@ function openMembre(membreId) {
                 av.textContent = data.membre.initiales;
             }
             updateCounters(data.compteurs);
-            var sel = document.getElementById('fDossier');
-            sel.innerHTML = '<option value="all">Tous dossiers</option>';
-            var seen = {};
-            data.taches.forEach(function(t) {
-                if (t.dossier_id && !seen[t.dossier_id]) {
-                    seen[t.dossier_id] = true;
-                    var o = document.createElement('option');
-                    o.value = t.dossier_id;
-                    o.textContent = t.dossier;
-                    sel.appendChild(o);
-                }
-            });
             resetFilters();
             renderTaches();
             var el = document.getElementById('membreModal');
@@ -487,11 +522,78 @@ function updateCounters(c) {
     document.getElementById('mmBar').style.width = c.avancement + '%';
 }
 
-function resetFilters() {
-    document.getElementById('fStatut').value = 'all';
-    document.getElementById('fPriorite').value = 'all';
-    document.getElementById('fDossier').value = 'all';
-    document.getElementById('fSearch').value = '';
+/* Filtres icone : statut multi, priorite cycle, dossier dropdown, retard, recherche */
+var AVM = { statuts: ['a_faire','en_cours','terminee'], priorite: 'all', dossier: 'all', retard: false };
+(function() {
+    try {
+        var s = JSON.parse(localStorage.getItem('avm_filters') || 'null');
+        if (s && Array.isArray(s.statuts)) {
+            AVM = s; AVM.dossier = 'all'; AVM.retard = false;
+        }
+    } catch (e) {}
+})();
+function saveAvmFilters() {
+    try { localStorage.setItem('avm_filters', JSON.stringify(AVM)); } catch (e) {}
+}
+var PRI_CYCLE = ['all','haute','moyenne','basse'];
+var PRI_TITRE = { all: 'Priorité — toutes', haute: 'Priorité — haute', moyenne: 'Priorité — moyenne', basse: 'Priorité — basse' };
+
+function syncFilterIcons() {
+    saveAvmFilters();
+    var map = { a_faire: 'ibAf', en_cours: 'ibEc', terminee: 'ibDone' };
+    Object.keys(map).forEach(function(s) {
+        var el = document.getElementById(map[s]);
+        el.classList.toggle('on', AVM.statuts.indexOf(s) > -1);
+        el.classList.toggle('off', AVM.statuts.length === 0);
+    });
+    var pb = document.getElementById('ibPri');
+    pb.classList.toggle('on', AVM.priorite !== 'all');
+    pb.title = PRI_TITRE[AVM.priorite];
+    document.getElementById('ibDos').classList.toggle('on', AVM.dossier !== 'all');
+    document.getElementById('ibLate').classList.toggle('on', AVM.retard);
+}
+function tglStatut(s) {
+    var i = AVM.statuts.indexOf(s);
+    if (i > -1) AVM.statuts.splice(i, 1); else AVM.statuts.push(s);
+    if (AVM.statuts.length === 3) AVM.statuts = ['a_faire','en_cours','terminee'];
+    syncFilterIcons(); renderTaches();
+}
+function cyclePriorite() {
+    var i = PRI_CYCLE.indexOf(AVM.priorite);
+    AVM.priorite = PRI_CYCLE[(i + 1) % PRI_CYCLE.length];
+    syncFilterIcons(); renderTaches();
+}
+function tglRetard() { AVM.retard = !AVM.retard; syncFilterIcons(); renderTaches(); }
+function tglSearch() {
+    var inp = document.getElementById('fSearch');
+    var show = inp.style.display === 'none';
+    inp.style.display = show ? '' : 'none';
+    document.getElementById('ibSearch').classList.toggle('on', show);
+    if (show) inp.focus(); else { inp.value = ''; renderTaches(); }
+}
+function buildDossierMenu() {
+    var sel = {};
+    (MEMBRE_DATA ? MEMBRE_DATA.taches : []).forEach(function(t) {
+        if (t.dossier_id) sel[t.dossier_id] = t.dossier;
+    });
+    var html = '<li><button class="dropdown-item' + (AVM.dossier === 'all' ? ' active' : '') + '" onclick="pickDossier(&#39;all&#39;)"><i class="bi bi-folder2-open me-2"></i>Tous</button></li>';
+    Object.keys(sel).forEach(function(id) {
+        html += '<li><button class="dropdown-item' + (String(AVM.dossier) === id ? ' active' : '') + '" onclick="pickDossier(&#39;' + id + '&#39;)">' + escapeHtml(sel[id]) + '</button></li>';
+    });
+    document.getElementById('dosMenu').innerHTML = html;
+}
+function pickDossier(v) { AVM.dossier = v; syncFilterIcons(); renderTaches(); }
+
+function resetFilters(full) {
+    if (full) {
+        AVM = { statuts: ['a_faire','en_cours','terminee'], priorite: 'all', dossier: 'all', retard: false };
+        try { localStorage.removeItem('avm_filters'); } catch (e) {}
+    } else {
+        AVM.dossier = 'all'; AVM.retard = false;
+    }
+    var inp = document.getElementById('fSearch');
+    if (inp) { inp.value = ''; inp.style.display = 'none'; }
+    syncFilterIcons(); renderTaches();
 }
 
 function applyFilters() {
@@ -500,14 +602,12 @@ function applyFilters() {
 
 function renderTaches() {
     var body = document.getElementById('mmBody');
-    var st = document.getElementById('fStatut').value;
-    var pr = document.getElementById('fPriorite').value;
-    var ds = document.getElementById('fDossier').value;
     var q = document.getElementById('fSearch').value.toLowerCase();
     var rows = MEMBRE_DATA.taches.filter(function(t) {
-        if (st !== 'all' && t.statut !== st) return false;
-        if (pr !== 'all' && t.priorite !== pr) return false;
-        if (ds !== 'all' && String(t.dossier_id) !== ds) return false;
+        if (AVM.statuts.length < 3 && AVM.statuts.indexOf(t.statut) < 0) return false;
+        if (AVM.priorite !== 'all' && t.priorite !== AVM.priorite) return false;
+        if (AVM.dossier !== 'all' && String(t.dossier_id) !== String(AVM.dossier)) return false;
+        if (AVM.retard && !(t.en_retard && t.statut !== 'terminee')) return false;
         if (q && (t.titre.toLowerCase().indexOf(q) < 0)) return false;
         return true;
     });
