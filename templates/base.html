@@ -392,6 +392,14 @@ if (!window.__avmMenuBound) {
 // PWA: Service Worker registration
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js');
+    // Tuer les enregistrements herites (ancien worker /static/sw.js, scope limite)
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(rg) {
+            try {
+                if (new URL(rg.scope).pathname !== '/') rg.unregister();
+            } catch (e) {}
+        });
+    });
 }
 // PWA: Install prompt
 var deferredPrompt;
