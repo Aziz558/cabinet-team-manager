@@ -24,7 +24,7 @@
             <button type="button" class="filter-btn avm-fico" data-filter="regular" title="Generales" onclick="applyFilter('regular')"><i class="bi bi-card-checklist"></i></button>
             <span class="avm-fsep"></span>
             <div class="dropdown">
-                <button type="button" class="avm-fico" id="icoNature" title="Nature — toutes" data-bs-toggle="dropdown" onclick="buildNatureMenu()"><i class="bi bi-tags"></i></button>
+                <button type="button" class="avm-fico" id="icoNature" title="Nature — toutes" onclick="avmMenu('natureMenu', buildNatureMenu)"><i class="bi bi-tags"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end avm-dd" id="natureMenu"></ul>
             </div>
             <button type="button" class="avm-fico" id="icoAf" title="À faire" onclick="toggleTaskStatut('a_faire')"><i class="bi bi-hourglass"></i></button>
@@ -32,11 +32,11 @@
             <button type="button" class="avm-fico" id="icoDone" title="Terminee" onclick="toggleTaskStatut('terminee')"><i class="bi bi-check2"></i></button>
             <span class="avm-fsep"></span>
             <div class="dropdown">
-                <button type="button" class="avm-fico" id="icoMembre" title="Membre — tous" data-bs-toggle="dropdown" onclick="buildMembreMenu()"><i class="bi bi-person"></i></button>
+                <button type="button" class="avm-fico" id="icoMembre" title="Membre — tous" onclick="avmMenu('membreMenu', buildMembreMenu)"><i class="bi bi-person"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end avm-dd" id="membreMenu"></ul>
             </div>
             <div class="dropdown">
-                <button type="button" class="avm-fico" id="icoDossier" title="Dossier — tous" data-bs-toggle="dropdown" onclick="buildDossierMenu()"><i class="bi bi-folder"></i></button>
+                <button type="button" class="avm-fico" id="icoDossier" title="Dossier — tous" onclick="avmMenu('dossierMenu', buildDossierMenu)"><i class="bi bi-folder"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end avm-dd" id="dossierMenu"></ul>
             </div>
             <button type="button" class="avm-fico" id="icoDates" title="Periode" onclick="tglDates()"><i class="bi bi-calendar-range"></i></button>
@@ -420,15 +420,15 @@ function tglFromSelect(id, fnPick) {
 function buildNatureMenu() {
     document.getElementById('natureMenu').innerHTML = tglFromSelect('filterNature', 'pickNature');
 }
-function pickNature(v) { document.getElementById('filterNature').value = v; syncFilterIcons(); applyFilter(); }
+function pickNature(v) { closeAvmDropdowns(); document.getElementById('filterNature').value = v; syncFilterIcons(); applyFilter(); }
 function buildMembreMenu() {
     document.getElementById('membreMenu').innerHTML = tglFromSelect('filterMembre', 'pickMembre');
 }
-function pickMembre(v) { document.getElementById('filterMembre').value = v; syncFilterIcons(); applyFilter(); }
+function pickMembre(v) { closeAvmDropdowns(); document.getElementById('filterMembre').value = v; syncFilterIcons(); applyFilter(); }
 function buildDossierMenu() {
     document.getElementById('dossierMenu').innerHTML = tglFromSelect('filterDossier', 'pickDossier');
 }
-function pickDossier(v) { document.getElementById('filterDossier').value = v; syncFilterIcons(); applyFilter(); }
+function pickDossier(v) { closeAvmDropdowns(); document.getElementById('filterDossier').value = v; syncFilterIcons(); applyFilter(); }
 function tglDates() {
     var d1 = document.getElementById('filterDateDebut'), d2 = document.getElementById('filterDateFin');
     var show = d1.style.display === 'none';

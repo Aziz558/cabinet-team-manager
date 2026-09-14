@@ -358,6 +358,35 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<script>
+/* Menus deroulants filtres (avm-iconbar) en gestion manuelle : ferme a la
+   selection, au 2e clic sur l'icone, au clic exterieur et a Echap. Remplace
+   le dropdown Bootstrap (race Popper = menu qui reste ouvert). */
+function closeAvmDropdowns() {
+    document.querySelectorAll('.avm-iconbar .dropdown-menu.show').forEach(function(m) {
+        m.classList.remove('show');
+        var t = m.parentElement ? m.parentElement.querySelector('[aria-expanded]') : null;
+        if (t) t.setAttribute('aria-expanded', 'false');
+    });
+}
+function avmMenu(id, build) {
+    var m = document.getElementById(id);
+    if (!m) return;
+    var wasOpen = m.classList.contains('show');
+    closeAvmDropdowns();
+    if (!wasOpen) {
+        if (typeof build === 'function') build();
+        m.classList.add('show');
+    }
+}
+if (!window.__avmMenuBound) {
+    window.__avmMenuBound = true;
+    document.addEventListener('click', function(e) {
+        if (!e.target || !e.target.closest || !e.target.closest('.avm-iconbar')) closeAvmDropdowns();
+    }, true);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAvmDropdowns(); }, true);
+}
+</script>
     {% block scripts %}{% endblock %}
 <script>
 // PWA: Service Worker registration
