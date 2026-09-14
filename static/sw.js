@@ -1,65 +1,39 @@
-const CACHE_NAME = 'cabinet-jmh-v2';
-const urlsToCache = [
-  '/',
-  '/login',
-  '/static/css/style.css',
-  '/static/js/app.js',
-  '/static/img/logo-jmh.png',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
-  'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js',
-];
+const CACHE_NAME = 'cabinet-jmh-v3';
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
-    })
-  );
+  // Ne pré-cache plus aucune page HTML : le reseau est la seule source de verite.
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  // Network-first pour les navigations et les assets statiques
-  // (fallback cache si hors ligne) : les mises à jour sont TOUJOURS servies.
-  if (event.request.mode === 'navigate' || url.pathname.startsWith('/static/')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request).then(res => res || caches.match('/login')))
-    );
+  // Navigations (pages Flask) : JAMAIS de cache, erreur = page d'erreur, pas un vieux HTML.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request));
     return;
   }
-  // Cache-first pour le reste (CDN, API lourdes)
+  // Assets statiques et CDN : network-first, fallback cache (hors ligne).
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        return res;
-      });
-    })
+    fetch(event.request)
+      .then(response => {
+        const copy = response.clone();
+        if (response.ok) {
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then(cacheNames =>
+      Promise.all(cacheNames.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
+    )
+    .then(() => self.clients.claim())
+    // Les fenetres ouvertes (PWA incluses) recoverent le HTML neuf.
+    .then(() => self.clients.matchAll({ type: 'window' }))
+    .then(clients => clients.forEach(c => c.navigate(c.url).catch(() => {})))
   );
 });
