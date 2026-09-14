@@ -12,6 +12,24 @@ app = Flask(
 )
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
+# Service worker : servi sans cache HTTP, enregistre a la racine (scope = toute l'app).
+# Sans ceci, Chrome garde l'ancien sw.js (max-age statique) et les correctifs HTML ne
+# parviennent jamais aux clients PWA.
+@app.route('/sw.js')
+def _service_worker():
+    from flask import send_from_directory
+    resp = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
+# Pages HTML : jamais de cache navigateur (les correctifs UI doivent arriver immediatement).
+@app.after_request
+def _no_cache_html(resp):
+    if resp.mimetype == 'text/html':
+        resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        resp.headers['Pragma'] = 'no-cache'
+    return resp
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 database_url = os.environ.get('DATABASE_URL')
 use_postgres = False
