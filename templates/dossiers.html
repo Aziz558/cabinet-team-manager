@@ -345,7 +345,17 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Intitulé *</label>
-                            <input type="text" name="intitule" class="input-premium" required>
+                            <input type="text" name="intitule" id="newIntitule" class="input-premium" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label-premium"><i class="bi bi-search me-1" style="color:var(--orange-primary)"></i>SIREN — extraction automatique <small class="text-tertiary">(INSEE / Infogreffe)</small></label>
+                            <div class="d-flex gap-2">
+                                <input type="text" name="siren" id="newSiren" class="input-premium" inputmode="numeric" maxlength="9" placeholder="9 chiffres" style="max-width:200px" autocomplete="off">
+                                <button type="button" class="btn-premium btn-premium-secondary" id="btnExtractSiren" onclick="extraireSiren()"><i class="bi bi-magic me-1"></i>Extraire</button>
+                            </div>
+                            <div id="sirenResult" class="small mt-2"></div>
                         </div>
                     </div>
                     <div class="row">
@@ -420,6 +430,30 @@
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" name="has_cfe" id="hasCFECheckbox">
                         <label class="form-check-label" for="hasCFECheckbox">Soumis à la CFE</label>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Forme juridique <small class="text-tertiary">(optionnel)</small></label>
+                            <select name="forme_juridique" id="newFormeJuridique" class="select-premium">
+                                <option value="">-- Non renseignée --</option>
+                                <option value="SAS">SAS</option>
+                                <option value="SASU">SASU</option>
+                                <option value="SARL">SARL</option>
+                                <option value="SCI">SCI</option>
+                                <option value="SA">SA</option>
+                                <option value="EURL">EURL</option>
+                                <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Secteur d'activité <small class="text-tertiary">(optionnel)</small></label>
+                            <input type="text" name="secteur_activite" id="newSecteurActivite" class="input-premium" placeholder="ex: Hébergement, Conseil, Commerce...">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Honoraires mensuels € <small class="text-tertiary">(optionnel, pour la rentabilité)</small></label>
+                        <input type="number" step="0.01" min="0" name="honoraires_mensuel" id="newHonoraires" class="input-premium" placeholder="ex: 350">
                     </div>
                     <div class="mb-3">
                         <label class="form-label-premium">Token API Pennylane <small class="text-tertiary">(optionnel, spécifique à ce dossier)</small></label>
@@ -790,6 +824,52 @@
             var val = document.getElementById('editRegimeTva')?.value || '';
             var row = document.getElementById('editAcomptesCa12Row');
             if (row) row.classList.toggle('d-none', val !== 'annuel');
+        }
+
+        // === Extraction automatique par SIREN (API officielle INSEE/greffes) ===
+        function extraireSiren() {
+            var input = document.getElementById('newSiren');
+            var box = document.getElementById('sirenResult');
+            var btn = document.getElementById('btnExtractSiren');
+            var s = (input.value || '').replace(/\D/g, '');
+            if (s.length !== 9) {
+                box.innerHTML = '<span style="color:var(--red,#e5484d)">Saisissez 9 chiffres.</span>';
+                return;
+            }
+            btn.disabled = true;
+            box.innerHTML = '<span class="text-tertiary"><i class="bi bi-arrow-repeat me-1"></i>Recherche en cours…</span>';
+            fetch('/api/siren/' + s)
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    btn.disabled = false;
+                    if (!d.ok) { box.innerHTML = '<span style="color:var(--red,#e5484d)">' + (d.error || 'Erreur') + '</span>'; return; }
+                    // Renseigne uniquement les champs vides (ne jamais ecraser une saisie)
+                    var intitule = document.getElementById('newIntitule');
+                    if (intitule && !intitule.value.trim() && d.nom) intitule.value = d.nom;
+                    var formeSel = document.getElementById('newFormeJuridique');
+                    if (formeSel && d.forme_juridique) {
+                        var opt = Array.prototype.find.call(formeSel.options, function(o) { return o.value === d.forme_juridique; });
+                        if (opt) formeSel.value = d.forme_juridique;
+                        else { formeSel.value = 'Autre'; }
+                    }
+                    var sect = document.getElementById('newSecteurActivite');
+                    if (sect && !sect.value.trim() && d.secteur_activite) sect.value = d.secteur_activite;
+                    var resume = [];
+                    if (d.nom) resume.push('<b>' + d.nom + '</b>');
+                    if (d.forme_juridique) resume.push('Forme : ' + d.forme_juridique);
+                    if (d.secteur_activite) resume.push('Activité : ' + d.secteur_activite);
+                    if (d.dirigeant_principal) resume.push('Dirigeant : ' + d.dirigeant_principal);
+                    if (d.date_creation) resume.push('Créée le : ' + d.date_creation);
+                    if (d.adresse) resume.push(d.adresse);
+                    if (d.siret) resume.push('SIRET ' + d.siret);
+                    box.innerHTML = '<span style="color:var(--green,#30a46c)"><i class="bi bi-check-circle me-1"></i>Infos récupérées :</span> ' +
+                        '<div class="ms-1 mt-1" style="color:var(--text-secondary,#aab)">' + resume.join(' · ') + '</div>' +
+                        (d.dirigeants && d.dirigeants.length > 1 ? '<div class="ms-1" style="color:var(--text-secondary,#aab)">Autres dirigeants : ' + d.dirigeants.slice(1, 5).map(function(x) { return x.texte; }).join(' · ') + '</div>' : '');
+                })
+                .catch(function() {
+                    btn.disabled = false;
+                    box.innerHTML = '<span style="color:var(--red,#e5484d)">Service indisponible — vérifiez la connexion.</span>';
+                });
         }
 
         var dossiersData = {{ dossiers_data|tojson }};

@@ -207,6 +207,9 @@ with app.app_context():
                 if 'honoraires_mensuel' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN honoraires_mensuel FLOAT"))
                     app.logger.info("Added pennylane_api_token column to dossiers")
+                if 'siren' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN siren VARCHAR(9)"))
+                    app.logger.info("Added siren column to dossiers")
                 # Table pennylane_items : suivi documents/transactions + statut traitement
                 pl_tables = [r[0] for r in conn.execute(db.text("SELECT tablename FROM pg_tables WHERE schemaname='public'")).fetchall()]
                 if 'pennylane_items' not in pl_tables:

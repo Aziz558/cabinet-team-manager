@@ -101,6 +101,7 @@ class Dossier(db.Model):
     has_cfe = db.Column(db.Boolean, default=False)
     forme_juridique = db.Column(db.String(20))  # SAS | SARL | SCI | SA | EURL | Autre
     secteur_activite = db.Column(db.String(60))  # libellé libre pour analytics
+    siren = db.Column(db.String(9), nullable=True, index=True)  # n° SIREN (extraction auto Infogreffe/INSEE)
     honoraires_mensuel = db.Column(db.Float, nullable=True)  # honoraires mensuels € pour rentabilité
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
 
