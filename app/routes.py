@@ -2051,6 +2051,25 @@ def api_dossiers_membres():
         'membres': [{'id': m.id, 'label': f"{m.prenom} {m.nom}"} for m in membres]
     })
 
+def _nettoyer_relations_dossier(dossier):
+    """Supprime TOUTES les lignes rattachees a un dossier avant de le deletes
+    (taches + notifications/commentaires + suggestions + items Pennylane +
+    checklists + statuts TVA Pennylane). Doit etre appelle dans le meme
+    session que db.session.delete(dossier)."""
+    from .models import ChecklistEntry, TvaStatutPennylane
+    tache_ids = [t.id for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
+    if tache_ids:
+        Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+        CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
+    SuggestionTache.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
+    Tache.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
+    # Tables Pennylane (causes de la FK violation pennylane_items_dossier_id_fkey)
+    PennylaneItem.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
+    TvaStatutPennylane.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
+    ChecklistEntry.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
+    db.session.flush()
+
+
 @app.route('/supprimer_dossier/<int:dossier_id>')
 @login_required
 def supprimer_dossier(dossier_id):
@@ -2063,15 +2082,7 @@ def supprimer_dossier(dossier_id):
         return redirect(url_for('dossiers'))
     
     try:
-        # Supprimer les notifications et commentaires liés aux tâches du dossier
-        tache_ids = [t.id for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
-        if tache_ids:
-            Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
-            CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
-        # Supprimer les suggestions liées au dossier
-        SuggestionTache.query.filter_by(dossier_id=dossier.id).delete()
-        # Supprimer les tâches associées
-        Tache.query.filter_by(dossier_id=dossier.id).delete()
+        _nettoyer_relations_dossier(dossier)
         # Supprimer le dossier
         db.session.delete(dossier)
         db.session.commit()
@@ -2101,13 +2112,7 @@ def supprimer_dossiers():
         for did in dossier_ids:
             dossier = Dossier.query.get(did)
             if dossier:
-                tache_ids = [t.id for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
-                if tache_ids:
-                    Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
-                    CommentaireTache.query.filter(CommentaireTache.tache_id.in_(tache_ids)).delete(synchronize_session=False)
-                # Supprimer aussi les suggestions liées au dossier
-                SuggestionTache.query.filter_by(dossier_id=dossier.id).delete()
-                Tache.query.filter_by(dossier_id=dossier.id).delete()
+                _nettoyer_relations_dossier(dossier)
                 db.session.delete(dossier)
                 count += 1
         db.session.commit()
