@@ -319,14 +319,6 @@
                     <button type="button" class="avm-fico" id="ibDone" title="Terminée" onclick="tglStatut('terminee')"><i class="bi bi-check2"></i></button>
                     <span class="avm-fsep"></span>
                     <button type="button" class="avm-fico" id="ibPri" title="Priorité — toutes" onclick="cyclePriorite()"><i class="bi bi-flag"></i></button>
-                    <div class="dropdown">
-                        <button type="button" class="avm-fico" id="ibDos" title="Dossier — tous" onclick="avmMenu('dosMenu', buildDossierMenu)"><i class="bi bi-folder"></i></button>
-                        <ul class="dropdown-menu dropdown-menu-end avm-dd" id="dosMenu"></ul>
-                    </div>
-                    <div class="dropdown">
-                        <button type="button" class="avm-fico" id="ibImpot" title="Impôt — tous" onclick="avmMenu('impMenu', buildImpotMenu)"><i class="bi bi-percent"></i></button>
-                        <ul class="dropdown-menu dropdown-menu-end avm-dd" id="impMenu"></ul>
-                    </div>
                     <button type="button" class="avm-fico" id="ibDates" title="Période" onclick="tglPeriode()"><i class="bi bi-calendar-range"></i></button>
                     <input type="date" class="input-premium avm-search" id="pDebut" style="display:none;width:132px;" onchange="applyFilters()">
                     <input type="date" class="input-premium avm-search" id="pFin" style="display:none;width:132px;" onchange="applyFilters()">
@@ -530,14 +522,14 @@ function updateCounters(c) {
     document.getElementById('mmBar').style.width = c.avancement + '%';
 }
 
-/* Filtres icone : statut multi, priorite cycle, dossier dropdown, retard, recherche */
-var AVM = { statuts: ['a_faire','en_cours','terminee'], priorite: 'all', dossier: 'all', impot: 'all', retard: false, debut: '', fin: '' };
+/* Filtres icone : statut multi, priorite cycle, retard, recherche */
+var AVM = { statuts: ['a_faire','en_cours','terminee'], priorite: 'all', retard: false, debut: '', fin: '' };
 (function() {
     try {
         var s = JSON.parse(localStorage.getItem('avm_filters') || 'null');
         if (s && Array.isArray(s.statuts)) {
-            AVM = s; AVM.dossier = 'all'; AVM.retard = false;
-            if (!AVM.impot) AVM.impot = 'all';
+            AVM = s; AVM.retard = false;
+            delete AVM.dossier; delete AVM.impot;
             document.addEventListener('DOMContentLoaded', function() {
                 var d1 = document.getElementById('pDebut'), d2 = document.getElementById('pFin');
                 if (d1 && AVM.debut) d1.value = AVM.debut;
@@ -563,12 +555,6 @@ function syncFilterIcons() {
     var pb = document.getElementById('ibPri');
     pb.classList.toggle('on', AVM.priorite !== 'all');
     pb.title = PRI_TITRE[AVM.priorite];
-    var db = document.getElementById('ibDos');
-    db.classList.toggle('on', AVM.dossier !== 'all');
-    db.title = 'Dossier — ' + (AVM.dossier === 'all' ? 'tous' : dossierLabel(AVM.dossier));
-    var ib = document.getElementById('ibImpot');
-    ib.classList.toggle('on', AVM.impot !== 'all');
-    ib.title = 'Impôt — ' + (IMPOT_TITRE[AVM.impot] || 'tous');
     var idt = document.getElementById('ibDates');
     idt.classList.toggle('on', !!(AVM.debut || AVM.fin));
     idt.title = (AVM.debut || AVM.fin) ? ('Période — ' + (AVM.debut || '…') + ' → ' + (AVM.fin || '…')) : 'Période';
@@ -593,17 +579,6 @@ function tglSearch() {
     document.getElementById('ibSearch').classList.toggle('on', show);
     if (show) inp.focus(); else { inp.value = ''; renderTaches(); }
 }
-function buildDossierMenu() {
-    var sel = {};
-    (MEMBRE_DATA ? MEMBRE_DATA.taches : []).forEach(function(t) {
-        if (t.dossier_id) sel[t.dossier_id] = t.dossier;
-    });
-    var html = '<li><button class="dropdown-item' + (AVM.dossier === 'all' ? ' active' : '') + '" onclick="pickDossier(&#39;all&#39;)"><i class="bi bi-folder2-open me-2"></i>Tous</button></li>';
-    Object.keys(sel).forEach(function(id) {
-        html += '<li><button class="dropdown-item' + (String(AVM.dossier) === id ? ' active' : '') + '" onclick="pickDossier(&#39;' + id + '&#39;)">' + escapeHtml(sel[id]) + '</button></li>';
-    });
-    document.getElementById('dosMenu').innerHTML = html;
-}
 function closeAvmDropdowns() {
     document.querySelectorAll('.avm-iconbar .dropdown-menu.show').forEach(function(m) { m.classList.remove('show'); });
 }
@@ -624,48 +599,6 @@ if (!window.__avmMenuBound) {
     }, true);
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAvmDropdowns(); }, true);
 }
-function dossierLabel(id) {
-    var found = '-';
-    (MEMBRE_DATA ? MEMBRE_DATA.taches : []).forEach(function(t) {
-        if (String(t.dossier_id) === String(id)) found = t.dossier || id;
-    });
-    return found;
-}
-function pickDossier(v) {
-    AVM.dossier = v;
-    closeAvmDropdowns();
-    syncFilterIcons(); renderTaches();
-}
-/* --- Filtre par impot (detecte depuis le titre, comme la page Taches) --- */
-var IMPOT_TITRE = { all: 'tous', tva: 'TVA', is: 'IS', cfe: 'CFE', autre: 'Autre fiscal' };
-function impotDe(titre) {
-    var s = String(titre || '').toLowerCase();
-    if (s.indexOf('cfe') > -1) return 'cfe';
-    if (/\bis\b|acompte is|liasse/.test(s)) return 'is';
-    if (/tva|ca3|ca12/.test(s)) return 'tva';
-    if (/d[ée]claration/.test(s)) return 'autre';
-    if (/d[ée]claration|d[ée]p[ôo]t|acompte|imp[ôo]t|fiscal/.test(s)) return 'autre';
-    return null;
-}
-function buildImpotMenu() {
-    var counts = {};
-    (MEMBRE_DATA ? MEMBRE_DATA.taches : []).forEach(function(t) {
-        var k = impotDe(t.titre);
-        if (k) counts[k] = (counts[k] || 0) + 1;
-    });
-    var html = '<li><button class="dropdown-item' + (AVM.impot === 'all' ? ' active' : '') + '" onclick="pickImpot(&#39;all&#39;)"><i class="bi bi-percent me-2"></i>Tous</button></li>';
-    ['tva', 'is', 'cfe', 'autre'].forEach(function(k) {
-        if (!counts[k]) return;
-        html += '<li><button class="dropdown-item' + (AVM.impot === k ? ' active' : '') + '" onclick="pickImpot(&#39;' + k + '&#39;)">' + IMPOT_TITRE[k] + ' <span class=\"badge rounded-pill ms-auto\" style="background:var(--bg-hover);color:var(--text-secondary);">' + counts[k] + '</span></button></li>';
-    });
-    if (Object.keys(counts).length === 0) html += '<li><span class="dropdown-item-text text-tertiary" style="font-size:0.75rem;">Aucune tache fiscale</span></li>';
-    document.getElementById('impMenu').innerHTML = html;
-}
-function pickImpot(v) {
-    AVM.impot = v;
-    closeAvmDropdowns();
-    syncFilterIcons(); renderTaches();
-}
 /* --- Filtre periode (echeance entre debut et fin) --- */
 function tglPeriode() {
     var d1 = document.getElementById('pDebut'), d2 = document.getElementById('pFin');
@@ -679,10 +612,10 @@ function tglPeriode() {
 
 function resetFilters(full) {
     if (full) {
-        AVM = { statuts: ['a_faire','en_cours','terminee'], priorite: 'all', dossier: 'all', impot: 'all', retard: false, debut: '', fin: '' };
+        AVM = { statuts: ['a_faire','en_cours','terminee'], priorite: 'all', retard: false, debut: '', fin: '' };
         try { localStorage.removeItem('avm_filters'); } catch (e) {}
     } else {
-        AVM.dossier = 'all'; AVM.retard = false;
+        AVM.retard = false;
     }
     var inp = document.getElementById('fSearch');
     if (inp) { inp.value = ''; inp.style.display = 'none'; }
@@ -707,8 +640,6 @@ function renderTaches() {
     var rows = MEMBRE_DATA.taches.filter(function(t) {
         if (AVM.statuts.length < 3 && AVM.statuts.indexOf(t.statut) < 0) return false;
         if (AVM.priorite !== 'all' && t.priorite !== AVM.priorite) return false;
-        if (AVM.dossier !== 'all' && String(t.dossier_id) !== String(AVM.dossier)) return false;
-        if (AVM.impot !== 'all' && impotDe(t.titre) !== AVM.impot) return false;
         if (AVM.retard && !(t.en_retard && t.statut !== 'terminee')) return false;
         if ((AVM.debut || AVM.fin) && t.date_echeance) {
             if (AVM.debut && t.date_echeance < AVM.debut) return false;
