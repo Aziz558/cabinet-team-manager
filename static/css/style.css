@@ -3104,3 +3104,41 @@ input:focus, select:focus, textarea:focus, .select-premium:focus, .input-premium
 .kpi-chip .kpi-value { font-size: 1.65rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; margin-top: 4px;
     font-variant-numeric: tabular-nums; }
 .kpi-chip .kpi-sub { font-size: 0.72rem; color: var(--text-tertiary); }
+
+/* ============================================================
+   FOLLOWAPP POLISH — blocs transverses partagés par toutes les pages
+   Avatars à initiales (dégradés par rôle), cartes d'équipe liftées,
+   petites pastilles de progression sur les lignes de tableau.
+   ============================================================ */
+.user-icon-badge { overflow: hidden; }
+/* Avatars initiales : dégradé orange par défaut, bleu manager, rouge admin */
+.user-icon-badge.user-init,
+.manager-avatar-icon.user-init,
+.avatar-init {
+    background: linear-gradient(135deg, #FF8C00 0%, #FFB347 100%);
+    color: #fff; font-weight: 700; border: none;
+    box-shadow: 0 3px 8px rgba(255, 140, 0, 0.28);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.user-icon-badge.user-init-mgr { background: linear-gradient(135deg, #42A5F5, #1E88E5); box-shadow: 0 3px 8px rgba(66,165,245,0.3); }
+.user-icon-badge.user-init-admin { background: linear-gradient(135deg, #EF5350, #E53935); box-shadow: 0 3px 8px rgba(239,83,80,0.3); }
+.user-icon-badge.user-init-lg { width: 44px; height: 44px; font-size: 17px; border-radius: 14px; }
+/* Cartes d'équipe : coins plus ronds, icône dans une pastille colorée */
+.equipe-cards-container .card-premium { border-radius: 18px; transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease; }
+.equipe-cards-container .card-premium:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.equipe-cards-container .card-body-premium .d-flex .bi { background: rgba(255,140,0,.12); border-radius: 12px; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+.equipe-cards-container .card-body-premium [style*="color:"] .bi { color: inherit !important; }
+/* Survol des lignes de tableau : halo + chevron discret (toutes pages) */
+.table-premium tbody tr td { transition: background .12s ease; }
+.table-premium tbody tr:hover { background: rgba(255,140,0,0.035); }
+/* Compteurs en pastilles tête-bêche dans les cartes (FollowApp) */
+.avm-chip-count { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 9999px; padding: 4px 12px; font-size: .78rem; color: var(--text-secondary); }
+.avm-chip-count b { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.avm-chip-count.warn { border-color: rgba(255,152,0,.4); color: var(--warning); }
+.avm-chip-count.danger { border-color: rgba(239,83,80,.45); color: var(--danger); }
+.avm-chip-count.ok { border-color: rgba(76,175,80,.4); color: var(--success); }
+/* Filtres persistant : état actif plus prononcé (conventions existantes) */
+.filter-btn.active, .avm-fico.on { box-shadow: 0 0 0 3px rgba(255,140,0,.12); }
+@media (prefers-reduced-motion: reduce) {
+    .equipe-cards-container .card-premium, .user-icon-badge { transition: none !important; }
+}
