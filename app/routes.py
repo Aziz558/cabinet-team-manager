@@ -2696,9 +2696,26 @@ def suivi_avancement():
         dossiers_par_membre[m.id] = Dossier.query.filter(Dossier.id.in_(dossiers_ids)).order_by(Dossier.numero_dossier).all() if dossiers_ids else []
         # Nom de l'équipe du membre (affichage sur la carte)
         equipe_nom = m.equipe.nom if m.equipe else None
+        # Pastilles fiscales TVA/IS/CFE (total, faits, en retard) — style matrice FollowApp
+        def _cat_taxe(titre):
+            tl = (titre or '').lower()
+            if 'tva' in tl or 'ca3' in tl or 'ca12' in tl: return 'TVA'
+            if 'cfe' in tl: return 'CFE'
+            if 'liasse' in tl or 'impôt sur' in tl or tl.startswith('is ') or ' is ' in tl or tl.startswith('is-') or tl == 'is': return 'IS'
+            return None
+        taxes = {'TVA': [0, 0, 0], 'IS': [0, 0, 0], 'CFE': [0, 0, 0]}  # [total, fait, retard]
+        for t in taches:
+            k = _cat_taxe(t.titre)
+            if k:
+                taxes[k][0] += 1
+                if t.statut in ('terminee', 'terminée'):
+                    taxes[k][1] += 1
+                elif t.est_en_retard():
+                    taxes[k][2] += 1
         suivi_data.append({
             'membre': m,
             'equipe_nom': equipe_nom,
+            'taxes': taxes,
             'total': len(taches),
             'a_faire': len(a_faire),
             'en_cours': len(en_cours),

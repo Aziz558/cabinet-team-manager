@@ -174,6 +174,72 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06); }
     .cal-tab .count { background: rgba(255,255,255,0.1); border-radius: 9px; padding: 0 7px; font-size: 0.72rem; }
     .cal-tab:not(.active) .count { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+
+    /* ===== Design language FollowApp : donuts, stackbars, pills fiscales, KPI cliquables ===== */
+    .avm-donut { position: relative; width: 54px; height: 54px; flex: 0 0 auto; }
+    .avm-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .avm-donut circle { fill: none; stroke-width: 6.5; }
+    .avm-donut .trk { stroke: rgba(255,255,255,0.08); }
+    [data-theme="light"] .avm-donut .trk { stroke: rgba(0,0,0,0.08); }
+    .avm-donut .fil { stroke: var(--orange-primary); stroke-linecap: round; stroke-dasharray: 0 100; transition: stroke-dasharray 1s cubic-bezier(0.22,1,0.36,1); }
+    .avm-donut .pct { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 0.8rem; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .avm-donut.big { width: 82px; height: 82px; }
+    .avm-donut.big .pct { font-size: 1.05rem; }
+    .avm-donut[data-alert="1"] .fil { stroke: var(--danger); }
+    .avm-donut[data-alert="2"] .fil { stroke: var(--warning); }
+
+    .avm-stack { display: flex; height: 10px; border-radius: 9999px; overflow: hidden; background: rgba(255,255,255,0.06); }
+    [data-theme="light"] .avm-stack { background: rgba(0,0,0,0.07); }
+    .avm-stack i { display: block; height: 100%; min-width: 0; transition: width 0.8s cubic-bezier(0.22,1,0.36,1); }
+    .avm-stack i.t { background: var(--success); }
+    .avm-stack i.c { background: var(--info); }
+    .avm-stack i.a { background: var(--warning); }
+    .avm-stack i.r { background: var(--danger); }
+    .avm-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 0.71rem; color: var(--text-muted); }
+    .avm-legend s { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    .avm-legend s::before { content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--k, #999); }
+
+    .avm-txpills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .avm-tx { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 9999px; font-size: 0.71rem; font-weight: 600; border: 1px solid var(--border-color); color: var(--text-muted); background: transparent; }
+    .avm-tx i { font-size: 0.68rem; }
+    .avm-tx b { font-variant-numeric: tabular-nums; }
+    .avm-tx.ok { color: var(--success); border-color: rgba(76,175,80,0.35); }
+    .avm-tx.ok i { color: var(--success); }
+    .avm-tx.rt { color: var(--danger); border-color: rgba(239,83,80,0.4); }
+    .avm-tx.rt i { color: var(--danger); }
+
+    .avm-av { width: 42px; height: 42px; border-radius: 12px; flex: 0 0 auto; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 0.82rem; background: var(--orange-gradient); box-shadow: 0 3px 8px rgba(255,140,0,0.22); }
+
+    /* KPI cards cliquables (filtrent la grille) */
+    .avm-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .avm-kpi { border: 1px solid var(--border-color); border-radius: 14px; padding: 12px 14px; cursor: pointer; text-align: left; transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; background: rgba(255,255,255,0.02); }
+    .avm-kpi:hover { transform: translateY(-2px); border-color: rgba(255,140,0,0.45); }
+    .avm-kpi.on { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255,140,0,0.13); }
+    .avm-kpi .kv { font-size: 1.5rem; font-weight: 700; line-height: 1.1; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .avm-kpi .kl { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.02em; display: flex; align-items: center; gap: 5px; }
+    .avm-kpi .kl i { font-size: 0.7rem; }
+
+    /* Transition entre les vues (équipe <-> échéancier) */
+    .view-swap { animation: avmSwap 0.34s cubic-bezier(0.22,1,0.36,1); }
+    @keyframes avmSwap { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    /* Fenêtre membre : glissement doux (FollowApp slide-up) */
+    .avm-modal .modal-dialog { transition: transform 0.36s cubic-bezier(0.22,1,0.36,1), opacity 0.28s ease; }
+    .avm-modal.fade:not(.show) .modal-dialog { transform: translateY(26px) scale(0.97); opacity: 0; }
+
+    /* Échéancier : chevron au survol + tri des en-têtes */
+    .cal-table thead th.avm-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+    .cal-table thead th.avm-sort::after { content: "↕"; margin-left: 6px; opacity: 0.35; font-size: 0.82em; }
+    .cal-table thead th.avm-sort.asc::after { content: "↑"; opacity: 1; color: var(--orange-primary); }
+    .cal-table thead th.avm-sort.desc::after { content: "↓"; opacity: 1; color: var(--orange-primary); }
+    .cal-table tbody tr td:first-child { position: relative; }
+    .cal-table tbody tr:hover td:first-child { padding-right: 26px; }
+    .cal-table tbody tr td:first-child .cal-chev { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); color: var(--orange-primary); font-weight: 700; opacity: 0; transition: all 0.16s ease; }
+    .cal-table tbody tr:hover td:first-child .cal-chev { opacity: 1; right: 8px; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .avm-donut .fil, .avm-stack i, .view-swap, .avm-modal .modal-dialog { transition: none !important; animation: none !important; }
+    }
 </style>
 {% endblock %}
 
@@ -202,32 +268,34 @@
         {% set ns.ec = ns.ec + item.en_cours %}{% set ns.done = ns.done + item.terminees %}
         {% set ns.retard = ns.retard + item.en_retard %}
     {% endfor %}
-    <div class="kpi-band animate-fade-in-up">
-        <div class="kpi-chip" style="--accent: var(--info);">
-            <div class="kpi-label"><i class="bi bi-stack"></i> Tâches totales</div>
-            <div class="kpi-value">{{ ns.total }}</div>
-            <div class="kpi-sub">{{ suivi_data|length }} membres suivis</div>
-        </div>
-        <div class="kpi-chip" style="--accent: var(--danger);">
-            <div class="kpi-label"><i class="bi bi-exclamation-triangle"></i> En retard</div>
-            <div class="kpi-value">{{ ns.retard }}</div>
-            <div class="kpi-sub">{{ (ns.retard / ns.total * 100)|round(1) if ns.total else 0 }}% du total</div>
-        </div>
-        <div class="kpi-chip" style="--accent: var(--warning);">
-            <div class="kpi-label"><i class="bi bi-hourglass-split"></i> À faire</div>
-            <div class="kpi-value">{{ ns.af }}</div>
-            <div class="kpi-sub">en attente de prise en charge</div>
-        </div>
-        <div class="kpi-chip" style="--accent: var(--orange-primary);">
-            <div class="kpi-label"><i class="bi bi-arrow-repeat"></i> En cours</div>
-            <div class="kpi-value">{{ ns.ec }}</div>
-            <div class="kpi-sub">travaux actifs</div>
-        </div>
-        <div class="kpi-chip" style="--accent: var(--success);">
-            <div class="kpi-label"><i class="bi bi-check2-circle"></i> Terminées</div>
-            <div class="kpi-value">{{ ns.done }}</div>
-            <div class="kpi-sub">{{ (ns.done / ns.total * 100)|round(1) if ns.total else 0 }}% d'avancement global</div>
-        </div>
+    <div class="avm-kpis animate-fade-in-up" id="kpiBar">
+        <button type="button" class="avm-kpi" id="kpiAll" onclick="eqFiltre('all')" title="Réinitialiser le filtre">
+            <div class="kv">{{ ns.total }}</div>
+            <div class="kl"><i class="bi bi-stack"></i> Tâches totales</div>
+        </button>
+        <button type="button" class="avm-kpi k-ret" id="kpiLate" onclick="eqFiltre('late')" title="Membres avec tâches en retard">
+            <div class="kv">{{ ns.retard }}</div>
+            <div class="kl"><i class="bi bi-exclamation-triangle"></i> En retard</div>
+        </button>
+        <button type="button" class="avm-kpi" id="kpiAf" onclick="eqFiltre('af')" title="Membres avec tâches à faire">
+            <div class="kv">{{ ns.af }}</div>
+            <div class="kl"><i class="bi bi-hourglass-split"></i> À faire</div>
+        </button>
+        <button type="button" class="avm-kpi" id="kpiEc" onclick="eqFiltre('ec')" title="Membres avec tâches en cours">
+            <div class="kv">{{ ns.ec }}</div>
+            <div class="kl"><i class="bi bi-arrow-repeat"></i> En cours</div>
+        </button>
+        <button type="button" class="avm-kpi k-fait" id="kpiDone" onclick="eqFiltre('done')" title="Membres avec tâches terminées">
+            <div class="kv">{{ ns.done }}</div>
+            <div class="kl"><i class="bi bi-check2-circle"></i> Terminées</div>
+        </button>
+    </div>
+    <div class="avm-legend mb-3">
+        <s style="--k:var(--success)"><b>{{ ns.done }}</b> terminée(s)</s>
+        <s style="--k:var(--info)"><b>{{ ns.ec }}</b> en cours</s>
+        <s style="--k:var(--warning)"><b>{{ ns.af }}</b> à faire</s>
+        <s style="--k:var(--danger)"><b>{{ ns.retard }}</b> en retard</s>
+        <s class="ms-auto text-tertiary">{{ suivi_data|length }} membre(s) suivi(s)</s>
     </div>
 
     <!-- Filtres cartes membres : icones seules -->
@@ -251,7 +319,7 @@
              data-af="{{ item.a_faire }}" data-ec="{{ item.en_cours }}" data-done="{{ item.terminees }}"
              data-late="{{ item.en_retard }}" data-equipe="{{ item.equipe_nom or '' }}">
             <div class="avm-card-top">
-                <div class="member-avatar avm-avatar">
+                <div class="member-avatar avm-av">
                     {% set s_photo = item.membre.photo_display_src() %}
                     {% if s_photo %}<img src="{{ s_photo }}" alt="">{% else %}{{ (item.membre.prenom[:1] ~ (item.membre.nom[:1] or ''))|upper }}{% endif %}
                 </div>
@@ -259,6 +327,14 @@
                     <div class="member-name">{{ item.membre.prenom }} {{ item.membre.nom }}</div>
                     <div class="member-role">{{ item.membre.poste or item.membre.role|capitalize }}</div>
                     <div class="avm-equipe"><i class="bi bi-people-fill"></i><span>{{ item.equipe_nom or 'Sans équipe' }}</span></div>
+                </div>
+                <div class="avm-donut ms-auto" data-alert="{{ 1 if item.en_retard > 0 and item.total > 0 else (2 if item.en_cours > 0 and item.terminees == 0 and item.total > 0 else 0) }}" aria-label="Avancement">
+                    <svg viewBox="0 0 36 36" aria-hidden="true">
+                        <circle class="trk" cx="18" cy="18" r="15.5"></circle>
+                        <circle class="fil" cx="18" cy="18" r="15.5" pathLength="100"
+                                data-val="{{ (item.terminees / item.total * 100) if item.total else 0 }}"></circle>
+                    </svg>
+                    <span class="pct">{{ (item.terminees / item.total * 100)|round(0) if item.total else 0 }}%</span>
                 </div>
             </div>
             <div class="avm-counters">
@@ -270,7 +346,22 @@
             <div class="member-progress-wrap avm-progress">
                 <div class="member-progress-top"><span>Avancement</span><strong>{{ (item.terminees / item.total * 100)|round(0) if item.total else 0 }}%</strong></div>
                 {% set pct = (item.terminees / item.total * 100) if item.total > 0 else 0 %}
-                <div class="member-bar"><div style="width:{{ pct }}%;"></div></div>
+                {% set paf = (item.a_faire / item.total * 100) if item.total else 0 %}
+                {% set pec = (item.en_cours / item.total * 100) if item.total else 0 %}
+                {% set prt = (item.en_retard / item.total * 100) if item.total else 0 %}
+                <div class="avm-stack" aria-hidden="true">
+                    {% if item.total %}
+                    <i class="t" data-w="{{ pct }}"></i>
+                    <i class="c" data-w="{{ pec }}"></i>
+                    <i class="a" data-w="{{ paf }}"></i>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="avm-txpills">
+                {% set tva = item.taxes.TVA %}{% set is = item.taxes.IS %}{% set cfe = item.taxes.CFE %}
+                {% if tva[0] %}<span class="avm-tx {{ 'ok' if tva[1] == tva[0] and not tva[2] else ('rt' if tva[2] else '') }}"><i class="bi bi-receipt"></i>TVA <b>{{ tva[1] }}/{{ tva[0] }}</b></span>{% endif %}
+                {% if is[0] %}<span class="avm-tx {{ 'ok' if is[1] == is[0] and not is[2] else ('rt' if is[2] else '') }}"><i class="bi bi-bank"></i>IS <b>{{ is[1] }}/{{ is[0] }}</b></span>{% endif %}
+                {% if cfe[0] %}<span class="avm-tx {{ 'ok' if cfe[1] == cfe[0] and not cfe[2] else ('rt' if cfe[2] else '') }}"><i class="bi bi-buildings"></i>CFE <b>{{ cfe[1] }}/{{ cfe[0] }}</b></span>{% endif %}
             </div>
         </div>
         {% else %}
@@ -385,14 +476,14 @@
     <div class="card-premium">
         <div class="card-body-premium p-0">
             <div style="overflow-x: auto;">
-                <table class="cal-table">
+                <table class="cal-table" id="echeTable">
                     <thead>
                         <tr>
-                            <th>Catégorie</th>
-                            <th>Reste à faire</th>
-                            <th>Fait</th>
-                            <th>Prochaine échéance</th>
-                            <th>Total</th>
+                            <th data-srt="label">Catégorie</th>
+                            <th data-srt="reste">Reste à faire</th>
+                            <th data-srt="fait">Fait</th>
+                            <th data-srt="prochaine">Prochaine échéance</th>
+                            <th data-srt="total">Total</th>
                         </tr>
                     </thead>
                     <tbody id="calBody">
@@ -418,8 +509,16 @@ function setAnnee(v) {
 }
 function switchView(view) {
     document.querySelectorAll('#avTabs .av-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    document.getElementById('view-equipe').style.display = view === 'equipe' ? '' : 'none';
-    document.getElementById('view-echeancier').style.display = view === 'echeancier' ? '' : 'none';
+    var eq = document.getElementById('view-equipe');
+    var ec = document.getElementById('view-echeancier');
+    var showEl = view === 'equipe' ? eq : ec;
+    var hideEl = view === 'equipe' ? ec : eq;
+    hideEl.style.display = 'none';
+    hideEl.classList.remove('view-swap');
+    showEl.style.display = '';
+    showEl.classList.remove('view-swap');
+    void showEl.offsetWidth; /* relance l'animation */
+    showEl.classList.add('view-swap');
     localStorage.setItem('av_view', view);
     if (view === 'echeancier') loadEcheancier();
 }
@@ -441,6 +540,10 @@ function saveEqFilters() { try { localStorage.setItem('avm_eq_filters', JSON.str
 function eqFiltre(m) {
     EQ.mode = (EQ.mode === m && m !== 'all') ? 'all' : m;
     [['all','ebAll'],['af','ebAf'],['ec','ebEc'],['done','ebDone'],['late','ebLate']].forEach(function(k) {
+        var el = document.getElementById(k[1]);
+        if (el) el.classList.toggle('on', EQ.mode === k[0]);
+    });
+    [['all','kpiAll'],['af','kpiAf'],['ec','kpiEc'],['done','kpiDone'],['late','kpiLate']].forEach(function(k) {
         var el = document.getElementById(k[1]);
         if (el) el.classList.toggle('on', EQ.mode === k[0]);
     });
@@ -713,6 +816,31 @@ function refreshCardOnPage() {
             var barSrc = fresh.querySelector('.member-bar > div');
             var barDst = cards[idx].querySelector('.member-bar > div');
             if (barSrc && barDst) barDst.style.width = barSrc.style.width;
+            /* Donut + barre empilée : on copie les valeurs fraîches */
+            var donut = cards[idx].querySelector('.avm-donut');
+            var donutF = fresh.querySelector('.avm-donut');
+            if (donut && donutF) {
+                var cSrc = donutF.querySelector('.fil');
+                var cDst = donut.querySelector('.fil');
+                if (cSrc && cDst) {
+                    cDst.dataset.val = cSrc.dataset.val;
+                    cDst.style.strokeDasharray = cSrc.dataset.val + ' 100';
+                }
+                var pSrc = donutF.querySelector('.pct');
+                var pDst = donut.querySelector('.pct');
+                if (pSrc && pDst) pDst.textContent = pSrc.textContent;
+            }
+            ['t', 'c', 'a', 'r'].forEach(function(k) {
+                var srcI = fresh.querySelector('.avm-stack i.' + k);
+                var dstI = cards[idx].querySelector('.avm-stack i.' + k);
+                if (dstI) {
+                    if (srcI) { dstI.dataset.w = srcI.dataset.w; dstI.style.width = (parseFloat(srcI.dataset.w) || 0) + '%'; }
+                    else dstI.remove();
+                } else if (srcI) {
+                    var stack = cards[idx].querySelector('.avm-stack');
+                    if (stack) stack.appendChild(srcI.cloneNode(true));
+                }
+            });
             var lateDst = cards[idx].querySelector('.avm-late');
             if (!fresh.querySelector('.avm-late') && lateDst) lateDst.remove();
         });
@@ -796,11 +924,20 @@ function renderEcheancier() {
     if (!calData) return;
     var body = document.getElementById('calBody');
     var icons = { fiscal: 'bi-bank', comptable: 'bi-journal-check', social: 'bi-people' };
+    var rows = calData.lignes.slice();
+    if (calMod !== 'tous') rows = rows.filter(function(l) { return l.module === calMod; });
+    if (srtKey) {
+        rows.sort(function(a, b) {
+            var va = srtKey === 'label' ? (a.label || '') : (a[srtKey] == null ? -1 : a[srtKey]);
+            var vb = srtKey === 'label' ? (b.label || '') : (b[srtKey] == null ? -1 : b[srtKey]);
+            var cmp = (typeof va === 'string') ? va.localeCompare(vb, 'fr') : (va - vb);
+            return srtDir * cmp;
+        });
+    }
     var html = '';
-    calData.lignes.forEach(function(l) {
-        if (calMod !== 'tous' && l.module !== calMod) return;
+    rows.forEach(function(l) {
         html += '<tr data-mod="' + l.module + '" onclick="location.href=\'{{ url_for("taches") }}\'">'
-            + '<td><span class="cal-mod-ico cal-mod-' + l.module + '"><i class="bi ' + (icons[l.module] || 'bi-tag') + '"></i></span><strong>' + l.label + '</strong></td>'
+            + '<td><span class="cal-mod-ico cal-mod-' + l.module + '"><i class="bi ' + (icons[l.module] || 'bi-tag') + '"></i></span><strong>' + l.label + '</strong><span class="cal-chev">›</span></td>'
             + '<td>' + (l.reste ? '<span class="badge cal-badge-reste">' + l.reste + '</span>' : '<span class="text-tertiary">—</span>') + '</td>'
             + '<td>' + (l.fait ? '<span class="badge cal-badge-fait">' + l.fait + '</span>' : '<span class="text-tertiary">—</span>') + '</td>'
             + '<td>' + (l.prochaine !== '—' ? '<i class="bi bi-calendar-event me-1 text-tertiary"></i>' + l.prochaine : '<span class="text-tertiary">—</span>') + '</td>'
@@ -809,6 +946,44 @@ function renderEcheancier() {
     });
     body.innerHTML = html || '<tr><td colspan="5" class="text-center text-tertiary py-4">Aucune obligation en ' + calData.annee + '</td></tr>';
 }
+/* Tri des colonnes de l'échéancier (clic sur l'en-tête) */
+var srtKey = null, srtDir = 1;
+function setSort(key) {
+    if (srtKey === key) { srtDir = -srtDir; } else { srtKey = key; srtDir = 1; }
+    document.querySelectorAll('#echeTable thead th.avm-sort').forEach(function(th) {
+        var k = th.dataset.srt;
+        th.classList.remove('asc', 'desc');
+        if (k === srtKey) th.classList.add(srtDir === 1 ? 'asc' : 'desc');
+    });
+    renderEcheancier();
+}
+document.addEventListener('DOMContentLoaded', function() {
+    var ths = document.querySelectorAll('#echeTable thead th[data-srt]');
+    ths.forEach(function(th) {
+        th.classList.add('avm-sort');
+        th.addEventListener('click', function() { setSort(th.dataset.srt); });
+    });
+});
+/* Animation des donuts + barres empilées (cascade légère) */
+document.addEventListener('DOMContentLoaded', function() {
+    var d = document.createElement('style');
+    d.textContent = '.avm-donut .fil{stroke-dasharray:var(--df,0) 100;}.avm-donut.go .fil{stroke-dasharray:var(--df,0) 100;}.avm-stack i{width:0;}';
+    document.head.appendChild(d);
+    setTimeout(function() {
+        document.querySelectorAll('.avm-donut').forEach(function(el, i) {
+            var c = el.querySelector('.fil');
+            if (c) {
+                var v = parseFloat(c.dataset.val || '0');
+                el.style.setProperty('--df', Math.max(0, Math.min(100, v)));
+                el.classList.add('go');
+                requestAnimationFrame(function() { c.style.strokeDasharray = v + ' 100'; });
+            }
+        });
+        document.querySelectorAll('.avm-stack i[data-w]').forEach(function(b, i) {
+            setTimeout(function() { b.style.width = (parseFloat(b.dataset.w) || 0) + '%'; }, 60 + i * 45);
+        });
+    }, 120);
+});
 document.querySelectorAll('#calTabs .cal-tab').forEach(function(btn) {
     btn.addEventListener('click', function() {
         document.querySelectorAll('#calTabs .cal-tab').forEach(b => b.classList.remove('active'));

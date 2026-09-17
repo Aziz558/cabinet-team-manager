@@ -54,3 +54,4 @@ response.json
 _cookie.txt
 # Analyse locale / sondes temporaires (racine, prefixe _)
 /_*
+data/app.db
