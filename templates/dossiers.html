@@ -618,6 +618,47 @@
                             <input type="text" name="secteur_activite" id="editSecteurActivite" class="input-premium" placeholder="ex: Hébergement, Conseil, Commerce...">
                         </div>
                     </div>
+                    <h6 class="text-tertiary mb-2" style="font-size:0.78rem;letter-spacing:0.04em;"><i class="bi bi-building me-1" style="color:var(--orange-primary)"></i>INFOS ENTREPRISE — VIA SIREN</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">N° TVA intracommunautaire</label>
+                            <input type="text" name="tva_intra" id="editTvaIntra" class="input-premium" placeholder="FR…" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label-premium">Code NAF</label>
+                            <input type="text" name="naf_code" id="editNaf" class="input-premium" placeholder="70.10Z" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label-premium">Catégorie</label>
+                            <select name="categorie_entreprise" id="editCategorie" class="select-premium">
+                                <option value="">—</option>
+                                <option value="micro">Micro (PME &lt;10)</option>
+                                <option value="PME">PME</option>
+                                <option value="ETI">ETI</option>
+                                <option value="GE">GE</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Dirigeant principal</label>
+                            <input type="text" name="dirigeant" id="editDirigeant" class="input-premium" autocomplete="off">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Tranche d'effectif</label>
+                            <input type="text" name="effectif_label" id="editEffectif" class="input-premium" placeholder="ex: 10 à 19 salariés" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-9 mb-3">
+                            <label class="form-label-premium">Adresse du siège</label>
+                            <input type="text" name="adresse_siege" id="editAdresseSiege" class="input-premium" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label-premium">Création</label>
+                            <input type="date" name="date_creation_entreprise" id="editDateCreation_ent" class="input-premium">
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label-premium">Token API Pennylane <small class="text-tertiary">(optionnel, spécifique à ce dossier)</small></label>
                         <input type="password" name="pennylane_api_token" id="editPennylaneToken" class="input-premium" placeholder="pl_o_..." autocomplete="off">
@@ -894,6 +935,19 @@
                     }
                     var sect = document.getElementById(p + 'SecteurActivite');
                     if (sect && !sect.value.trim() && d.secteur_activite) sect.value = d.secteur_activite;
+                    // Remplit directement les champs d'infos entreprise si presents dans ce modal
+                    var fillIf = function(id, v) { var el = document.getElementById(id); if (el && !el.value.trim() && v) el.value = v; };
+                    fillIf('editTvaIntra', d.tva_intra);
+                    fillIf('editNaf', d.activite_principale);
+                    fillIf('editEffectif', d.effectif_label);
+                    fillIf('editDirigeant', d.dirigeant_principal);
+                    fillIf('editAdresseSiege', d.adresse);
+                    fillIf('editDateCreation_ent', d.date_creation);
+                    var catSel2 = document.getElementById('editCategorie');
+                    if (catSel2 && !catSel2.value && d.categorie_entreprise) {
+                        var opt2 = Array.prototype.find.call(catSel2.options, function(o) { return o.value === d.categorie_entreprise; });
+                        if (opt2) catSel2.value = d.categorie_entreprise;
+                    }
                     var resume = [];
                     if (d.nom) resume.push('<b>' + d.nom + '</b>');
                     if (d.forme_juridique) resume.push('Forme : ' + d.forme_juridique);
@@ -967,6 +1021,16 @@
         if (sirenInput) { sirenInput.value = d.siren || ''; }
         var sirenBox = document.getElementById('sirenResultEdit');
         if (sirenBox) sirenBox.innerHTML = '';
+        // Infos entreprise enrichies via SIREN
+        var setV = function(id, v) { var el = document.getElementById(id); if (el) el.value = v || ''; };
+        setV('editTvaIntra', d.tva_intra);
+        setV('editNaf', d.naf_code);
+        setV('editEffectif', d.effectif_label);
+        setV('editDirigeant', d.dirigeant);
+        setV('editAdresseSiege', d.adresse_siege);
+        setV('editDateCreation_ent', d.date_creation_entreprise);
+        var catSel = document.getElementById('editCategorie');
+        if (catSel) catSel.value = d.categorie_entreprise || '';
         // Token Pennylane : ne jamais afficher le token complet, juste un indicateur
         var tokenInput = document.getElementById('editPennylaneToken');
         if (tokenInput) {

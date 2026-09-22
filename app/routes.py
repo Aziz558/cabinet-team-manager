@@ -1003,6 +1003,13 @@ def dossiers():
             'forme_juridique': d.forme_juridique,
             'secteur_activite': d.secteur_activite,
             'siren': d.siren,
+            'tva_intra': d.tva_intra,
+            'naf_code': d.naf_code,
+            'effectif_label': d.effectif_label,
+            'categorie_entreprise': d.categorie_entreprise,
+            'dirigeant': d.dirigeant,
+            'adresse_siege': d.adresse_siege,
+            'date_creation_entreprise': d.date_creation_entreprise.strftime('%Y-%m-%d') if d.date_creation_entreprise else None,
             'pennylane_api_token_set': bool(d.pennylane_api_token),
         }
         if d.collaborateur_id:
@@ -1821,6 +1828,14 @@ def modifier_dossier(dossier_id):
         dossier.secteur_activite = secteur_activite
         # SIREN : normaliser + enrichir automatiquement si fourni
         siren_edit = re.sub(r'\D', '', request.form.get('siren') or '') or None
+        # Champs "infos entreprise" soumis par le formulaire (values editees manuellement)
+        def _f(name):
+            return (request.form.get(name) or '').strip() or None
+        form_infos = {
+            'tva_intra': (_f('tva_intra'), 20), 'naf_code': (_f('naf_code'), 10),
+            'effectif_label': (_f('effectif_label'), 40), 'categorie_entreprise': (_f('categorie_entreprise'), 5),
+            'dirigeant': (_f('dirigeant'), 200), 'adresse_siege': (_f('adresse_siege'), 250),
+        }
         if siren_edit and (len(siren_edit) != 9):
             flash('SIREN invalide : 9 chiffres attendus.', 'warning')
         elif siren_edit:
@@ -1830,6 +1845,19 @@ def modifier_dossier(dossier_id):
                 if not ok:
                     flash(f'SIREN {siren_edit} : {err} (valeur enregistrée sans enrichissement).', 'warning')
                     dossier.siren = siren_edit
+            else:
+                # SIREN inchange : ne pas relancer l'API, garder les valeurs du formulaire
+                pass
+        # Appliquer les valeurs du formulaire (precedent sur l'enrichissement auto si editees)
+        for _fld, (_val, _max) in form_infos.items():
+            if _val:
+                setattr(dossier, _fld, _val[:_max])
+        dce = _f('date_creation_entreprise')
+        if dce:
+            try:
+                dossier.date_creation_entreprise = datetime.strptime(dce, '%Y-%m-%d').date()
+            except ValueError:
+                pass
         # Token Pennylane : ne mettre à jour que si un nouveau token est fourni
         # (champ vide = conserver le token existant)
         token_val = (request.form.get('pennylane_api_token') or '').strip()
