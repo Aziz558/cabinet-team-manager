@@ -210,8 +210,30 @@ with app.app_context():
                 if 'siren' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN siren VARCHAR(9)"))
                     app.logger.info("Added siren column to dossiers")
+                # Colonnes d'enrichissement SIREN (idempotent)
+                _enrich_cols = {
+                    'tva_intra': 'VARCHAR(20)',
+                    'naf_code': 'VARCHAR(10)',
+                    'effectif_label': 'VARCHAR(40)',
+                    'categorie_entreprise': 'VARCHAR(5)',
+                    'date_creation_entreprise': 'DATE',
+                    'dirigeant': 'VARCHAR(200)',
+                    'adresse_siege': 'VARCHAR(250)',
+                    'etat_administratif': 'VARCHAR(5)',
+                    'enrichi_le': 'TIMESTAMP',
+                }
+                for _col, _type in _enrich_cols.items():
+                    if _col not in dossiers_cols:
+                        try:
+                            conn.execute(db.text(f"ALTER TABLE dossiers ADD COLUMN {_col} {_type}"))
+                            app.logger.info(f"Added {_col} column to dossiers")
+                        except Exception as _e:
+                            app.logger.warning(f"Migration {_col}: {_e}")
                 # Table pennylane_items : suivi documents/transactions + statut traitement
-                pl_tables = [r[0] for r in conn.execute(db.text("SELECT tablename FROM pg_tables WHERE schemaname='public'")).fetchall()]
+                if db.engine.dialect.name == 'postgresql':
+                    pl_tables = [r[0] for r in conn.execute(db.text("SELECT tablename FROM pg_tables WHERE schemaname='public'")).fetchall()]
+                else:
+                    pl_tables = inspector.get_table_names()
                 if 'pennylane_items' not in pl_tables:
                     _sql_pl = ("CREATE TABLE pennylane_items (id SERIAL PRIMARY KEY, dossier_id INTEGER NOT NULL "
                                "REFERENCES dossiers(id) ON DELETE CASCADE, item_type VARCHAR(30) NOT NULL, "
@@ -224,12 +246,16 @@ with app.app_context():
                     conn.execute(db.text("CREATE INDEX ix_pl_items_dossier ON pennylane_items (dossier_id)"))
                     app.logger.info("Created table pennylane_items")
                 # Ajouter api_statut si absent
-                pl_cols = [c[0] for c in conn.execute(db.text(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name='pennylane_items'"
-                )).fetchall()]
-                if 'api_statut' not in pl_cols:
-                    conn.execute(db.text("ALTER TABLE pennylane_items ADD COLUMN api_statut VARCHAR(30)"))
-                    app.logger.info("Added api_statut to pennylane_items")
+                try:
+                    if db.engine.dialect.name == 'postgresql':
+                        pl_cols = [c[0] for c in conn.execute(db.text(
+                            "SELECT column_name FROM information_schema.columns WHERE table_name='pennylane_items'"
+                        )).fetchall()]
+                        if 'api_statut' not in pl_cols:
+                            conn.execute(db.text("ALTER TABLE pennylane_items ADD COLUMN api_statut VARCHAR(30)"))
+                            app.logger.info("Added api_statut to pennylane_items")
+                except Exception as _apistat_e:
+                    app.logger.warning(f"Migration api_statut: {_apistat_e}")
     except Exception as e:
         app.logger.warning(f"Migration error (dossiers columns): {e}")
 

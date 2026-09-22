@@ -103,6 +103,16 @@ class Dossier(db.Model):
     secteur_activite = db.Column(db.String(60))  # libellé libre pour analytics
     siren = db.Column(db.String(9), nullable=True, index=True)  # n° SIREN (extraction auto Infogreffe/INSEE)
     honoraires_mensuel = db.Column(db.Float, nullable=True)  # honoraires mensuels € pour rentabilité
+    # --- Champs enrichis automatiquement depuis le SIREN (API recherche-entreprises) ---
+    tva_intra = db.Column(db.String(20), nullable=True)          # n° TVA intracommunautaire (FR..)
+    naf_code = db.Column(db.String(10), nullable=True)           # code NAF / APE (ex: 70.10Z)
+    effectif_label = db.Column(db.String(40), nullable=True)     # tranche d'effectif salarié
+    categorie_entreprise = db.Column(db.String(5), nullable=True)  # GE | ETI | PME | micro
+    date_creation_entreprise = db.Column(db.Date, nullable=True)  # création de l'entreprise (INSEE)
+    dirigeant = db.Column(db.String(200), nullable=True)          # dirigeant principal
+    adresse_siege = db.Column(db.String(250), nullable=True)      # adresse du siège
+    etat_administratif = db.Column(db.String(5), nullable=True)   # A = actif, R = radié...
+    enrichi_le = db.Column(db.DateTime, nullable=True)            # dernière extraction SIREN
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
 
     taches = db.relationship('Tache', backref='dossier', lazy='dynamic')

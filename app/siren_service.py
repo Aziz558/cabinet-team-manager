@@ -30,6 +30,16 @@ _NATURE = {
     '5496': "Société civile de moyens",
 }
 
+# tranches effectif INSEE -> libellé lisible
+_EFFECTIFS = {
+    'NN': 'Non renseigné', '00': '0 salarié',
+    '01': '1 ou 2 salariés', '02': '3 à 5 salariés', '03': '6 à 9 salariés',
+    '11': '10 à 19 salariés', '12': '20 à 49 salariés', '21': '50 à 99 salariés',
+    '22': '100 à 199 salariés', '31': '200 à 249 salariés', '32': '250 à 499 salariés',
+    '41': '500 à 999 salariés', '42': '1 000 à 1 999 salariés', '51': '2 000 à 4 999 salariés',
+    '52': '5 000 à 9 999 salariés', '53': '10 000 et plus',
+}
+
 # NAF -> forme la plus probable quand nature_juridique absente
 def _forme_from_nature(nature_code, nom_complet=''):
     if not nature_code:
@@ -89,14 +99,14 @@ def recherche_siren(siren: str):
         return dict(_CACHE[s])
 
     try:
-        resp = requests.get(API_URL, params={'q': s, 'per_page': 1, 'page': 1},
-                            timeout=_TIMEOUT, headers={'User-Agent': 'cabinet-jmh-app'})
-        # retry unique sur rate-limit (quota public ~7 req/s)
-        if resp.status_code == 429:
-            import time as _t
-            _t.sleep(2)
+        import time as _t
+        resp = None
+        for _attempt in range(4):
             resp = requests.get(API_URL, params={'q': s, 'per_page': 1, 'page': 1},
                                 timeout=_TIMEOUT, headers={'User-Agent': 'cabinet-jmh-app'})
+            if resp.status_code != 429:
+                break
+            _t.sleep(2 + 3 * _attempt)  # backoff progressif sur quota public (~7 req/s)
     except requests.RequestException as e:
         return {'ok': False, 'error': f'Réseau/indisponible : {e.__class__.__name__}'}
 
@@ -147,7 +157,64 @@ def recherche_siren(siren: str):
         'adresse': addr or None,
         'date_creation': creation,
         'effectif': r.get('tranche_effectif_salarie'),
+        'effectif_label': _EFFECTIFS.get(str(r.get('tranche_effectif_salarie') or '').strip()),
+        'categorie_entreprise': r.get('categorie_entreprise'),
+        'tva_intra': (r.get('tva') or [None])[0],
         'etat_administratif': r.get('etat_administratif'),
     }
     _CACHE[s] = dict(result)
     return result
+
+
+def _parse_date_str(v):
+    if not v:
+        return None
+    from datetime import datetime
+    try:
+        return datetime.strptime(str(v)[:10], '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+def apply_siren_to_dossier(dossier, siren: str, overwrite=False):
+    """Récupère les infos via l'API et les écrit dans le dossier (flush seulement,
+    pas de commit — c'est l'appelant qui gere la transaction).
+
+    overwrite=False : ne remplit que les champs vides (sans ecraser une saisie manuelle).
+    Retourne (True, None) si enrichi, (False, message_erreur) sinon.
+    """
+    from datetime import datetime as _dt
+    from .models import Dossier  # noqa: F401  (referencement explicite)
+    info = recherche_siren(siren)
+    if not info.get('ok'):
+        return False, info.get('error') or 'SIREN injoignable'
+
+    s = info['siren']
+    dossier.siren = s
+    if overwrite or not dossier.intitule:
+        if info.get('nom'):
+            dossier.intitule = info['nom']
+    if (overwrite or not dossier.forme_juridique) and info.get('forme_juridique'):
+        dossier.forme_juridique = info['forme_juridique'][:20]
+    if (overwrite or not dossier.secteur_activite) and info.get('secteur_activite'):
+        dossier.secteur_activite = info['secteur_activite'][:60]
+    if (overwrite or not dossier.tva_intra) and info.get('tva_intra'):
+        dossier.tva_intra = info['tva_intra'][:20]
+    if (overwrite or not dossier.naf_code) and info.get('activite_principale'):
+        dossier.naf_code = str(info['activite_principale'])[:10]
+    if (overwrite or not dossier.effectif_label) and info.get('effectif_label'):
+        dossier.effectif_label = info['effectif_label'][:40]
+    if (overwrite or not dossier.categorie_entreprise) and info.get('categorie_entreprise'):
+        dossier.categorie_entreprise = info['categorie_entreprise'][:5]
+    if (overwrite or not dossier.date_creation_entreprise):
+        dc = _parse_date_str(info.get('date_creation'))
+        if dc:
+            dossier.date_creation_entreprise = dc
+    if (overwrite or not dossier.dirigeant) and info.get('dirigeant_principal'):
+        dossier.dirigeant = info['dirigeant_principal'][:200]
+    if (overwrite or not dossier.adresse_siege) and info.get('adresse'):
+        dossier.adresse_siege = info['adresse'][:250]
+    if info.get('etat_administratif'):
+        dossier.etat_administratif = info['etat_administratif'][:5]
+    dossier.enrichi_le = _dt.utcnow()
+    return True, None

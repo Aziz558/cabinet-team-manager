@@ -32,8 +32,21 @@
                         <td><strong>{{ d.numero_dossier }}</strong><br><small class="text-tertiary">{{ d.intitule }}</small></td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
+                                {% set collab = d.collaborateur %}
+                                {% if collab %}
+                                    {% set f_photo = collab.photo_display_src() %}
+                                    {% if f_photo and (f_photo.startswith('/') or f_photo.startswith('data:')) %}
+                                    <span class="user-icon-badge"><img src="{{ f_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                                    {% else %}
+                                    {% set f_init = (collab.prenom[:1] ~ (collab.nom[:1] or ''))|upper %}
+                                    {% set f_variant = ' user-init-mgr' if collab.role == 'manager' else (' user-init-admin' if collab.role == 'admin' else '') %}
+                                    <span class="user-icon-badge user-init{{ f_variant }}">{{ f_init }}</span>
+                                    {% endif %}
+                                    <span>{{ collab.prenom }} {{ collab.nom }}</span>
+                                {% else %}
                                 <span class="user-icon-badge"><i class="bi bi-person"></i></span>
-                                <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
+                                <span class="text-tertiary">-</span>
+                                {% endif %}
                             </div>
                         </td>
                         <td>{{ d.equipe.nom if d.equipe else '-' }}</td>

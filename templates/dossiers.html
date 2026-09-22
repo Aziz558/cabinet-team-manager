@@ -11,6 +11,11 @@
                 <i class="bi bi-trash me-1"></i>Supprimer sélection
             </button>
         </form>
+        <form method="POST" action="{{ url_for('enrichir_tous_dossiers') }}" class="d-inline" onsubmit="return enrichirToutConfirm(this)">
+            <button type="submit" class="btn-premium btn-premium-secondary btn-press" id="btnEnrichirTout" title="Compléter les infos entreprise via le SIREN">
+                <i class="bi bi-stars me-1"></i>Enrichir (SIREN)
+            </button>
+        </form>
     </div>
 </div>
 {% elif current_user.role == 'membre' %}
@@ -56,7 +61,8 @@
                         <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="8" checked> <span>Délai restant</span></label></li>
                         <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="9" checked> <span>Tâches TVA</span></label></li>
                         <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="10" checked> <span>Tâches restantes</span></label></li>
-                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="11" checked> <span>Actions</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="11" checked> <span>SIREN / Info</span></label></li>
+                        <li><label class="dropdown-item rounded-2 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0 col-toggle" data-col="12" checked> <span>Actions</span></label></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><button type="button" class="dropdown-item rounded-2" onclick="resetDossierColumns()"><i class="bi bi-arrow-counterclockwise me-2"></i>Tout afficher</button></li>
                     </ul>
@@ -191,6 +197,7 @@
                         <th>DÉLAI RESTANT</th>
                         <th>TÂCHES TVA</th>
                         <th>TÂCHES REST.</th>
+                        <th>SIREN / INFO</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -202,21 +209,22 @@
                         <td>{{ d.intitule }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                {% set d_photo = d.collaborateur.photo_display_src() if d.collaborateur else None %}
-                                {% if d_photo %}
-                                <span class="user-icon-badge"><img src="{{ d_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                                {% set collab = d.collaborateur %}
+                                {% if collab %}
+                                    {% set photo = collab.photo_display_src() %}
+                                    {% if photo and (photo.startswith('/') or photo.startswith('data:')) %}
+                                        <span class="user-icon-badge"><img src="{{ photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                                    {% else %}
+                                        {% set initials = (collab.prenom[0] if collab.prenom else '') + (collab.nom[0] if collab.nom else '') %}
+                                        {% set role = collab.role %}
+                                        <span class="user-icon-badge user-init-{{ role }}">{{ initials|upper }}</span>
+                                    {% endif %}
                                 {% else %}
-                                {% set d_icon = "bi-person" %}
-                                {% if d.collaborateur and d.collaborateur.role == "admin" %}
-                                  {% set d_icon = "bi-person-badge" %}
-                                {% elif d.collaborateur and d.collaborateur.role == "manager" %}
-                                  {% set d_icon = "bi-person-lines-fill" %}
+                                    <span class="user-icon-badge user-init"><i class="bi bi-person"></i></span>
                                 {% endif %}
-                                <span class="user-icon-badge"><i class="bi {{ d_icon }}"></i></span>
-                                {% endif %}
-                                <span>{{ d.collaborateur.prenom }} {{ d.collaborateur.nom if d.collaborateur else '-' }}</span>
+                                <span>{% if collab %}{{ collab.prenom }} {{ collab.nom }}{% else %}-{% endif %}</span>
                             </div>
-                                </td>
+                        </td>
                                 <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
                                 <td>
                                     {% set rc = d._regime_combo %}
@@ -261,6 +269,17 @@
                             {% set taches_restantes_count = d._tva_taches_restantes if d._tva_taches_restantes is defined else 0 %}
                             {{ taches_restantes_count }}
                         </td>
+                        <td>
+                            {% if d.siren %}
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="badge badge-tertiary" style="font-size:0.68rem;font-variant-numeric:tabular-nums;" title="SIREN">{{ d.siren }}</span>
+                                {% if d.tva_intra %}<i class="bi bi-patch-check-fill" style="color:var(--success);font-size:0.75rem;"
+                                    title="{{ [d.tva_intra, d.categorie_entreprise, d.effectif_label, d.naf_code, d.dirigeant]|select|join(' · ') }}"></i>{% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-tertiary">-</span>
+                            {% endif %}
+                        </td>
                         {% if show_actions %}
                         <td class="text-end">
                             <div class="btn-group" role="group">
@@ -279,6 +298,9 @@
                                     <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
                                     {% endif %}
                                     <li><a class="dropdown-item" href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}"><i class="bi bi-link-45deg me-2"></i>Pennylane{% if d.pennylane_customer_id %} <span class="badge badge-success ms-1">●</span>{% endif %}</a></li>
+                                    {% if d.siren %}
+                                    <li><a class="dropdown-item" href="#" onclick="enrichirDossier({{ d.id }}, this);return false;"><i class="bi bi-stars me-2"></i>Enrichir via SIREN</a></li>
+                                    {% endif %}
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="{{ url_for('supprimer_dossier', dossier_id=d.id) }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce dossier ? Cette action est irréversible.');"><i class="bi bi-trash me-2"></i>Supprimer</a></li>
                                 </ul>
@@ -315,6 +337,11 @@
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" name="creer_taches" id="creerTachesCheckbox" checked>
                         <label class="form-check-label" for="creerTachesCheckbox">Générer automatiquement les tâches fiscales (TVA, IS, CFE)</label>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" name="enrichir_siren" id="enrichirSirenCheckbox" checked>
+                        <label class="form-check-label" for="enrichirSirenCheckbox">Compléter automatiquement les infos entreprise via le SIREN (raison sociale, forme juridique, secteur, TVA intracommunautaire, dirigeant…)</label>
+                        <p class="text-tertiary small mt-1">Uniquement pour les lignes avec un SIREN valide — ne remplace pas les valeurs déjà renseignées dans le CSV.</p>
                     </div>
                 </div>
                 <div class="modal-footer-premium">
@@ -353,7 +380,7 @@
                             <label class="form-label-premium"><i class="bi bi-search me-1" style="color:var(--orange-primary)"></i>SIREN — extraction automatique <small class="text-tertiary">(INSEE / Infogreffe)</small></label>
                             <div class="d-flex gap-2">
                                 <input type="text" name="siren" id="newSiren" class="input-premium" inputmode="numeric" maxlength="9" placeholder="9 chiffres" style="max-width:200px" autocomplete="off">
-                                <button type="button" class="btn-premium btn-premium-secondary" id="btnExtractSiren" onclick="extraireSiren()"><i class="bi bi-magic me-1"></i>Extraire</button>
+                                <button type="button" class="btn-premium btn-premium-secondary" id="btnExtractSiren" onclick="extraireSiren('new')"><i class="bi bi-magic me-1"></i>Extraire</button>
                             </div>
                             <div id="sirenResult" class="small mt-2"></div>
                         </div>
@@ -488,6 +515,16 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Intitulé *</label>
                             <input type="text" name="intitule" id="editIntitule" class="input-premium" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label-premium"><i class="bi bi-search me-1" style="color:var(--orange-primary)"></i>SIREN <small class="text-tertiary">(extraction auto : raison sociale, forme juridique, secteur, TVA intracommunautaire…)</small></label>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <input type="text" name="siren" id="editSiren" class="input-premium" inputmode="numeric" maxlength="9" placeholder="9 chiffres" style="max-width:200px" autocomplete="off">
+                                <button type="button" class="btn-premium btn-premium-secondary" id="btnExtractSirenEdit" onclick="extraireSiren('edit')"><i class="bi bi-magic me-1"></i>Extraire</button>
+                            </div>
+                            <div id="sirenResultEdit" class="small mt-2"></div>
                         </div>
                     </div>
                     <div class="row">
@@ -781,7 +818,7 @@
                 function applyDossierCols() {
                     var cols = JSON.parse(localStorage.getItem(COLS_KEY) || '{}');
                     // Par défaut toutes visibles
-                    for (var i = 2; i <= 11; i++) {
+                    for (var i = 2; i <= 12; i++) {
                         var visible = cols[i] !== false;
                         document.querySelectorAll('#tableDossiers thead th:nth-child(' + i + '), #tableDossiers tbody tr td:nth-child(' + i + ')').forEach(function(el) {
                             el.style.display = visible ? '' : 'none';
@@ -796,7 +833,7 @@
                     cols[n] = cb.checked;  // état actuel du checkbox
                     // Si toutes les colonnes sont visibles, effacer pour repartir sur défaut
                     var allVisible = true;
-                    for (var i = 2; i <= 11; i++) { if (cols[i] === false) { allVisible = false; break; } }
+                    for (var i = 2; i <= 12; i++) { if (cols[i] === false) { allVisible = false; break; } }
                     if (allVisible) { localStorage.removeItem(COLS_KEY); }
                     else { localStorage.setItem(COLS_KEY, JSON.stringify(cols)); }
                     applyDossierCols();
@@ -827,37 +864,44 @@
         }
 
         // === Extraction automatique par SIREN (API officielle INSEE/greffes) ===
-        function extraireSiren() {
-            var input = document.getElementById('newSiren');
-            var box = document.getElementById('sirenResult');
-            var btn = document.getElementById('btnExtractSiren');
+        // mode 'new' = modal creation, mode 'edit' = modal modification
+        function extraireSiren(mode) {
+            mode = mode || 'new';
+            var p = mode === 'edit' ? 'edit' : 'new';
+            var input = document.getElementById(p + 'Siren');
+            var box = document.getElementById(mode === 'edit' ? 'sirenResultEdit' : 'sirenResult');
+            var btn = document.getElementById(mode === 'edit' ? 'btnExtractSirenEdit' : 'btnExtractSiren');
             var s = (input.value || '').replace(/\D/g, '');
             if (s.length !== 9) {
                 box.innerHTML = '<span style="color:var(--red,#e5484d)">Saisissez 9 chiffres.</span>';
                 return;
             }
             btn.disabled = true;
-            box.innerHTML = '<span class="text-tertiary"><i class="bi bi-arrow-repeat me-1"></i>Recherche en cours…</span>';
+            box.innerHTML = '<span class="text-tertiary"><i class="bi bi-arrow-repeat me-1"></i>Recherche en cours...</span>';
             fetch('/api/siren/' + s)
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     btn.disabled = false;
                     if (!d.ok) { box.innerHTML = '<span style="color:var(--red,#e5484d)">' + (d.error || 'Erreur') + '</span>'; return; }
                     // Renseigne uniquement les champs vides (ne jamais ecraser une saisie)
-                    var intitule = document.getElementById('newIntitule');
+                    var intitule = document.getElementById(p + 'Intitule');
                     if (intitule && !intitule.value.trim() && d.nom) intitule.value = d.nom;
-                    var formeSel = document.getElementById('newFormeJuridique');
+                    var formeSel = document.getElementById(p + 'FormeJuridique');
                     if (formeSel && d.forme_juridique) {
                         var opt = Array.prototype.find.call(formeSel.options, function(o) { return o.value === d.forme_juridique; });
                         if (opt) formeSel.value = d.forme_juridique;
                         else { formeSel.value = 'Autre'; }
                     }
-                    var sect = document.getElementById('newSecteurActivite');
+                    var sect = document.getElementById(p + 'SecteurActivite');
                     if (sect && !sect.value.trim() && d.secteur_activite) sect.value = d.secteur_activite;
                     var resume = [];
                     if (d.nom) resume.push('<b>' + d.nom + '</b>');
                     if (d.forme_juridique) resume.push('Forme : ' + d.forme_juridique);
                     if (d.secteur_activite) resume.push('Activité : ' + d.secteur_activite);
+                    if (d.tva_intra) resume.push('TVA : ' + d.tva_intra);
+                    if (d.naf_code || d.activite_principale) resume.push('NAF : ' + (d.activite_principale || d.naf_code));
+                    if (d.categorie_entreprise) resume.push('Taille : ' + d.categorie_entreprise);
+                    if (d.effectif_label) resume.push('Effectif : ' + d.effectif_label);
                     if (d.dirigeant_principal) resume.push('Dirigeant : ' + d.dirigeant_principal);
                     if (d.date_creation) resume.push('Créée le : ' + d.date_creation);
                     if (d.adresse) resume.push(d.adresse);
@@ -869,6 +913,36 @@
                 .catch(function() {
                     btn.disabled = false;
                     box.innerHTML = '<span style="color:var(--red,#e5484d)">Service indisponible — vérifiez la connexion.</span>';
+                });
+        }
+
+        // === Confirmation + etat charge pour l'enrichissement global ===
+        function enrichirToutConfirm(form) {
+            if (!confirm('Interroger l\'annuaire officiel (INSEE) pour chaque dossier ayant un SIREN et compléter les infos manquantes ?\nCela peut prendre quelques secondes.')) return false;
+            var btn = document.getElementById('btnEnrichirTout');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enrichissement…'; }
+            return true;
+        }
+
+        // === Enrichissement a partir du SIREN deja enregistre (action ligne) ===
+        function enrichirDossier(id, el) {
+            var li = el.closest ? el.closest('li') : null;
+            var original = li ? li.innerHTML : '';
+            if (li) li.innerHTML = '<span class="dropdown-item disabled"><i class="bi bi-arrow-repeat me-2"></i>Enrichissement…</span>';
+            fetch('/enrichir_dossier/' + id, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.ok) {
+                        if (window.showToast) showToast('Dossier ' + (res.numero || '') + ' enrichi via SIREN', 'success');
+                        setTimeout(function() { location.reload(); }, 700);
+                    } else {
+                        if (li) li.innerHTML = original;
+                        if (window.showToast) showToast(res.error || 'Échec de l’enrichissement', 'error');
+                    }
+                })
+                .catch(function() {
+                    if (li) li.innerHTML = original;
+                    if (window.showToast) showToast('Service indisponible', 'error');
                 });
         }
 
@@ -889,6 +963,10 @@
         document.getElementById('editHasCfe').checked = !!d.has_cfe;
         document.getElementById('editFormeJuridique').value = d.forme_juridique || '';
         document.getElementById('editSecteurActivite').value = d.secteur_activite || '';
+        var sirenInput = document.getElementById('editSiren');
+        if (sirenInput) { sirenInput.value = d.siren || ''; }
+        var sirenBox = document.getElementById('sirenResultEdit');
+        if (sirenBox) sirenBox.innerHTML = '';
         // Token Pennylane : ne jamais afficher le token complet, juste un indicateur
         var tokenInput = document.getElementById('editPennylaneToken');
         if (tokenInput) {

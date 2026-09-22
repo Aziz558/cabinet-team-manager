@@ -1002,6 +1002,7 @@ def dossiers():
             'has_cfe': d.has_cfe,
             'forme_juridique': d.forme_juridique,
             'secteur_activite': d.secteur_activite,
+            'siren': d.siren,
             'pennylane_api_token_set': bool(d.pennylane_api_token),
         }
         if d.collaborateur_id:
@@ -1818,6 +1819,17 @@ def modifier_dossier(dossier_id):
         dossier.has_cfe = has_cfe
         dossier.forme_juridique = forme_juridique
         dossier.secteur_activite = secteur_activite
+        # SIREN : normaliser + enrichir automatiquement si fourni
+        siren_edit = re.sub(r'\D', '', request.form.get('siren') or '') or None
+        if siren_edit and (len(siren_edit) != 9):
+            flash('SIREN invalide : 9 chiffres attendus.', 'warning')
+        elif siren_edit:
+            from .siren_service import apply_siren_to_dossier
+            if siren_edit != dossier.siren:
+                ok, err = apply_siren_to_dossier(dossier, siren_edit, overwrite=True)
+                if not ok:
+                    flash(f'SIREN {siren_edit} : {err} (valeur enregistrée sans enrichissement).', 'warning')
+                    dossier.siren = siren_edit
         # Token Pennylane : ne mettre à jour que si un nouveau token est fourni
         # (champ vide = conserver le token existant)
         token_val = (request.form.get('pennylane_api_token') or '').strip()
@@ -1837,6 +1849,53 @@ def modifier_dossier(dossier_id):
         app.logger.error(f"Erreur lors de la modification du dossier {dossier_id}: {e}")
         flash(f'Erreur lors de la modification du dossier: {str(e)}', 'danger')
     return redirect(url_for('dossiers'))
+
+@app.route('/enrichir_dossier/<int:dossier_id>', methods=['POST'])
+@login_required
+def enrichir_dossier(dossier_id):
+    """Re-ecoute l'API SIREN pour un dossier donne et complete ses infos entreprise."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
+    dossier = Dossier.query.get_or_404(dossier_id)
+    if not dossier.siren:
+        return jsonify({'ok': False, 'error': 'Ce dossier n’a pas de SIREN.'})
+    from .siren_service import apply_siren_to_dossier
+    overwrite = bool(request.form.get('overwrite')) if request.method == 'POST' else False
+    ok, err = apply_siren_to_dossier(dossier, dossier.siren, overwrite=overwrite)
+    if ok:
+        db.session.commit()
+        return jsonify({'ok': True, 'numero': dossier.numero_dossier})
+    db.session.rollback()
+    return jsonify({'ok': False, 'error': err or 'Échec de l’enrichissement.'})
+
+
+@app.route('/enrichir_tous_dossiers', methods=['POST'])
+@login_required
+def enrichir_tous_dossiers():
+    """Enrichit par lots tous les dossiers ayant un SIREN mais des infos entreprise
+    incomplete (API publique rate-limitee ~7 req/s -> pause entre chaque appel)."""
+    if current_user.role not in ('admin', 'manager'):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('dossiers'))
+    import time as _t
+    from .siren_service import apply_siren_to_dossier
+    cibles = Dossier.query.filter(Dossier.siren.isnot(None), Dossier.siren != '').all()
+    fait = erreur = 0
+    for d in cibles:
+        if len(d.siren or '') != 9:
+            erreur += 1
+            continue
+        ok, err = apply_siren_to_dossier(d, d.siren, overwrite=False)
+        if ok:
+            fait += 1
+        else:
+            erreur += 1
+        db.session.commit()
+        _t.sleep(0.2)  # menage du quota public
+    flash(f'Enrichissement SIREN : {fait} dossier(s) mis à jour'
+          + (f', {erreur} en échec.' if erreur else '.'), 'success' if fait or not erreur else 'warning')
+    return redirect(url_for('dossiers'))
+
 
 @app.route('/regenerer_taches_dossier/<int:dossier_id>', methods=['POST'])
 @login_required
@@ -2136,15 +2195,17 @@ def telecharger_template_csv():
         'regime_tva', 'frequence_tva', 'date_limite_declaration',
         'date_acompte_1', 'date_acompte_2',
         'regime_fiscale', 'has_cfe', 'forme_juridique', 'secteur_activite',
-        'honoraires_mensuel', 'pennylane_customer_id', 'pennylane_api_token', 'siren'
+        'honoraires_mensuel', 'pennylane_customer_id', 'pennylane_api_token', 'siren',
+        'tva_intra', 'naf', 'effectif', 'categorie_entreprise', 'dirigeant', 'adresse_siege'
     ])
-    # Exemple 1 : CA3 mensuel, IS, avec CFE + liaison Pennylane
+    # Exemple 1 : CA3 mensuel, IS, avec CFE + liaison Pennylane (infos entreprise completes)
     writer.writerow([
         'EXEMPLE-001', 'SAS Exemple Tech', 'collaborateur@cabinet-jmh.com', 'Equipe de Hamza',
         'ca3_mensuel', 'mensuelle', '2026-10-15',
         '', '',
         'IS', 'OUI', 'SAS', 'Services',
-        '350', '1234567890', 'pl_o_xxxxxxxx', '552032534'
+        '350', '1234567890', 'pl_o_xxxxxxxx', '552032534',
+        'FR27552032534', '70.10Z', '10 000 et plus', 'GE', 'ANTOINE BERNARD DE SAINT AFFRIQUE — Directeur Général', '17 BLD HAUSSMANN 75009 PARIS'
     ])
     # Exemple 2 : CA3 trimestriel, IRPP, sans CFE
     writer.writerow([
@@ -2152,15 +2213,15 @@ def telecharger_template_csv():
         'ca3_trimestriel', 'trimestrielle', '2026-10-30',
         '', '',
         'IRPP', 'NON', 'EURL', 'BTP',
-        '', '', '', ''
+        '', '', '', '', '', '', '', '', '', ''
     ])
-    # Exemple 3 : CA12 annuel (2 acomptes) + token uniquement
+    # Exemple 3 : CA12 annuel (2 acomptes) + token uniquement (infos auto via SIREN si enrichissement coche)
     writer.writerow([
         'EXEMPLE-003', 'SCI Exemple Immobilier', '', '',
         'ca12', 'annuelle', '2027-05-15',
         '2026-07-15', '2026-12-15',
         'IS', 'OUI', 'SCI', 'Immobilier',
-        '200', '', 'pl_o_yyyyyyyy', ''
+        '200', '', 'pl_o_yyyyyyyy', '', '', '', '', '', '', ''
     ])
 
     output.seek(0)
@@ -2206,6 +2267,12 @@ def importer_csv():
         'pennylaneapitoken': 'pennylane_api_token', 'apitoken': 'pennylane_api_token',
         'token': 'pennylane_api_token', 'cleapi': 'pennylane_api_token',
         'siren': 'siren', 'numsiren': 'siren',
+        'tvaintracommunautaire': 'tva_intra', 'tvaintra': 'tva_intra', 'numerotva': 'tva_intra',
+        'naf': 'naf_code', 'codenaf': 'naf_code', 'ape': 'naf_code', 'codeape': 'naf_code',
+        'effectif': 'effectif_label', 'trancheeffectif': 'effectif_label',
+        'categorieentreprise': 'categorie_entreprise', 'categorie': 'categorie_entreprise',
+        'dirigeant': 'dirigeant',
+        'adressesiege': 'adresse_siege', 'adresse': 'adresse_siege',
     }
 
     if current_user.role not in ('admin', 'manager'):
@@ -2222,6 +2289,7 @@ def importer_csv():
         return redirect(url_for('dossiers'))
 
     creer_taches = 'creer_taches' in request.form
+    enrichir_siren = 'enrichir_siren' in request.form
 
     # Decodage tolerant (Excel FR = cp1252, template = utf-8 avec BOM)
     content = None
@@ -2422,6 +2490,12 @@ def importer_csv():
                 forme_juridique=_cell(r, 'forme_juridique') or None,
                 secteur_activite=_cell(r, 'secteur_activite') or None,
                 siren=(re.sub(r'\D', '', _cell(r, 'siren')) or None),
+                tva_intra=(_cell(r, 'tva_intra') or '').strip() or None,
+                naf_code=(_cell(r, 'naf_code') or '').strip() or None,
+                effectif_label=(_cell(r, 'effectif_label') or '').strip() or None,
+                categorie_entreprise=(_cell(r, 'categorie_entreprise') or '').strip() or None,
+                dirigeant=(_cell(r, 'dirigeant') or '').strip() or None,
+                adresse_siege=(_cell(r, 'adresse_siege') or '').strip() or None,
                 honoraires_mensuel=_norm_float(_cell(r, 'honoraires_mensuel')),
                 pennylane_customer_id=_cell(r, 'pennylane_customer_id') or None,
                 pennylane_api_token=_cell(r, 'pennylane_api_token') or None,
@@ -2430,6 +2504,14 @@ def importer_csv():
                 avertissements.append(f'{numero} : pas de date limite TVA, échéances au 15 du mois par défaut du scheduler')
             db.session.add(dossier)
             db.session.flush()
+
+            # Enrichissement SIREN a l'import (cases vides seulement, sans ecraser le CSV)
+            if enrichir_siren and dossier.siren:
+                from .siren_service import apply_siren_to_dossier
+                if len(dossier.siren) == 9:
+                    ok, err = apply_siren_to_dossier(dossier, dossier.siren, overwrite=False)
+                    if not ok:
+                        avertissements.append(f'{numero} : enrichissement SIREN échoué ({err})')
 
             if creer_taches:
                 from app.tva_scheduler import planifier_impots_dossier
@@ -3477,6 +3559,14 @@ def ajouter_dossier():
         )
         db.session.add(nouveau_dossier)
         db.session.flush()
+
+        # Enrichissement SIREN : complete les champs restes vides (sans ecraser la saisie)
+        if siren:
+            from .siren_service import apply_siren_to_dossier
+            if len(siren) == 9:
+                ok, err = apply_siren_to_dossier(nouveau_dossier, siren, overwrite=False)
+                if not ok:
+                    app.logger.warning(f'Enrichissement SIREN {siren} (dossier {numero_dossier}): {err}')
 
         # Planifier les imp\u00f4ts pour ce dossier
         from .tva_scheduler import planifier_impots_dossier

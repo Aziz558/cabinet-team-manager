@@ -157,16 +157,12 @@
                             {% set u = membres | selectattr('id', 'equalto', s.assigne_a) | first %}
                             <div class="d-flex align-items-center gap-2">
                                 {% set member_photo = u.photo_display_src() if u else None %}
-                                {% if member_photo %}
+                                {% if member_photo and (member_photo.startswith('/') or member_photo.startswith('data:')) %}
                                 <span class="user-icon-badge"><img src="{{ member_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
                                 {% else %}
-                                {% set member_icon = 'bi-person' %}
-                                {% if u.role == 'admin' %}
-                                  {% set member_icon = 'bi-person-badge' %}
-                                {% elif u.role == 'manager' %}
-                                  {% set member_icon = 'bi-person-lines-fill' %}
-                                {% endif %}
-                                <span class="user-icon-badge"><i class="bi {{ member_icon }}"></i></span>
+                                {% set s_init = (u.prenom[:1] ~ (u.nom[:1] or ''))|upper if u else '?' %}
+                                {% set s_variant = ' user-init-mgr' if u and u.role == 'manager' else (' user-init-admin' if u and u.role == 'admin' else '') %}
+                                <span class="user-icon-badge user-init{{ s_variant }}">{{ s_init }}</span>
                                 {% endif %}
                                 <span>{{ u.prenom }} {{ u.nom }}</span>
                             </div>
@@ -255,16 +251,12 @@
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
                                         {% set m_photo = m.photo_display_src() %}
-                                        {% if m_photo %}
+                                        {% if m_photo and (m_photo.startswith('/') or m_photo.startswith('data:')) %}
                                         <span class="user-icon-badge"><img src="{{ m_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
                                         {% else %}
-                                        {% set member_icon2 = "bi-person" %}
-                                        {% if m.role == "admin" %}
-                                          {% set member_icon2 = "bi-person-badge" %}
-                                        {% elif m.role == "manager" %}
-                                          {% set member_icon2 = "bi-person-lines-fill" %}
-                                        {% endif %}
-                                        <span class="user-icon-badge"><i class="bi {{ member_icon2 }}"></i></span>
+                                        {% set m_init2 = (m.prenom[:1] ~ (m.nom[:1] or ''))|upper %}
+                                        {% set m_variant2 = ' user-init-mgr' if m.role == 'manager' else (' user-init-admin' if m.role == 'admin' else '') %}
+                                        <span class="user-icon-badge user-init{{ m_variant2 }}">{{ m_init2 }}</span>
                                         {% endif %}
                                         <strong>{{ m.prenom }} {{ m.nom }}</strong>
                                     </div>
