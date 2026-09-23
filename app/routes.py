@@ -1925,6 +1925,148 @@ def enrichir_tous_dossiers():
     return redirect(url_for('dossiers'))
 
 
+# ==========================
+# Export / Import de la base entiere (secours & migration) — admin uniquement
+# ==========================
+
+def _jsonable(v):
+    import datetime as _dt
+    if isinstance(v, (_dt.datetime, _dt.date, _dt.time)):
+        return v.isoformat()
+    if isinstance(v, (bytes, bytearray)):
+        return bytes(v).hex()
+    return v
+
+
+def _retype(col, v):
+    """Reconvertit les valeurs JSON selon le type de colonne SQLAlchemy."""
+    from sqlalchemy import types as sqltypes
+    import datetime as _dt
+    if v is None:
+        return None
+    if isinstance(col.type, sqltypes.LargeBinary) and isinstance(v, str):
+        return bytes.fromhex(v)
+    if isinstance(v, str):
+        if isinstance(col.type, (sqltypes.DateTime, sqltypes.TIMESTAMP)):
+            try:
+                return _dt.datetime.fromisoformat(v)
+            except ValueError:
+                return None
+        if isinstance(col.type, sqltypes.Date):
+            try:
+                return _dt.date.fromisoformat(v[:10])
+            except ValueError:
+                return None
+        if isinstance(col.type, sqltypes.Time):
+            try:
+                return _dt.time.fromisoformat(v)
+            except ValueError:
+                return None
+    return v
+
+
+@app.route('/admin/export_db')
+@login_required
+def admin_export_db():
+    """Exporte TOUTE la base en JSON telechargeable (secours, transfert dev<->prod,
+    migration vers un autre Postgres)."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
+    import datetime as _dt
+    md = db.metadata
+    data = {}
+    for t in md.sorted_tables:
+        rows = db.session.execute(t.select()).mappings().all()
+        data[t.name] = [[_jsonable(r[c.name]) for c in t.columns] for r in rows]
+    payload = {
+        'kind': 'jmh-orbit-db-export',
+        'version': 1,
+        'exported_at': _dt.datetime.utcnow().isoformat(),
+        'dialect': db.engine.dialect.name,
+        'column_order': {t.name: [c.name for c in t.columns] for t in md.sorted_tables},
+        'tables': data,
+    }
+    import io
+    from flask import send_file
+    buf = io.BytesIO(json.dumps(payload, ensure_ascii=False, default=str).encode('utf-8'))
+    fname = f"jmh_orbit_backup_{_dt.datetime.utcnow():%Y%m%d_%H%M%S}.json"
+    return send_file(buf, mimetype='application/json', as_attachment=True, download_name=fname)
+
+
+@app.route('/admin/import_db', methods=['POST'])
+@login_required
+def admin_import_db():
+    """Restaure un export /admin/export_db : VIDE la base courante puis re-insere.
+    Exige confirm=OUI_ECRASER. Attention a la coherence des schemas (tables identiques)."""
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
+    if request.form.get('confirm') != 'OUI_ECRASER':
+        return jsonify({'ok': False,
+                        'error': "Confirmation requise : champ confirm='OUI_ECRASER' — cette action VIDE la base existante."})
+    f = request.files.get('backup')
+    if not f:
+        return jsonify({'ok': False, 'error': 'Fichier backup manquant.'})
+    try:
+        payload = json.loads(f.read().decode('utf-8'))
+        assert payload.get('kind') == 'jmh-orbit-db-export'
+        tables = {t.name: t for t in db.metadata.sorted_tables}
+    except Exception:
+        return jsonify({'ok': False, 'error': 'Fichier de backup invalide ou schema different.'})
+    try:
+        from sqlalchemy import text as _text
+        # desactive la verification FK pendant la recharge (cycles users<->equipes)
+        # — requis superuser, que Render accorde sur ses instances Postgres
+        fk_off = False
+        if db.engine.dialect.name == 'postgresql':
+            try:
+                db.session.execute(_text("SET session_replication_role = 'replica'"))
+                fk_off = True
+            except Exception:
+                db.session.rollback()
+        # 1) vider (ordre FK-inverse)
+        for name in reversed(list(tables.keys())):
+            db.session.execute(tables[name].delete())
+        db.session.flush()
+        # 2) reinserer (ordre parents d'abord)
+        counts = {}
+        for name, cols in payload.get('column_order', {}).items():
+            t = tables.get(name)
+            rows = payload.get('tables', {}).get(name)
+            if t is None or rows is None:
+                continue
+            n = 0
+            for row in rows:
+                vals = {c: _retype(t.c[c], v) for c, v in zip(cols, row)}
+                db.session.execute(t.insert().values(**vals))
+                n += 1
+            counts[name] = n
+        db.session.commit()
+        # 3) resequencer les clefs automatiques Postgres + retablir la verification FK
+        if db.engine.dialect.name == 'postgresql':
+            from sqlalchemy import text as _text
+            for name, t in tables.items():
+                pk = list(t.primary_key.columns.keys())
+                if not pk:
+                    continue
+                try:
+                    db.session.execute(_text(
+                        f"SELECT setval(pg_get_serial_sequence('{name}', '{pk[0]}'), "
+                        f"COALESCE((SELECT MAX({pk[0]}) FROM {name}), 1) + 1, false)"))
+                except Exception:
+                    db.session.rollback()
+            if fk_off:
+                try:
+                    db.session.execute(_text("SET session_replication_role = 'origin'"))
+                except Exception:
+                    db.session.rollback()
+            db.session.commit()
+        app.logger.info(f'import_db: {counts}')
+        return jsonify({'ok': True, 'tables': counts})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route('/regenerer_taches_dossier/<int:dossier_id>', methods=['POST'])
 @login_required
 def regenerer_taches_dossier(dossier_id):
