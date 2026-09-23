@@ -38,10 +38,11 @@ if database_url and database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
     use_postgres = True
 if database_url and database_url.startswith('postgresql://'):
-    if '?' not in database_url:
-        database_url += '?sslmode=require'
-    else:
-        database_url += '&sslmode=require'
+    if 'sslmode' not in database_url:
+        if '?' not in database_url:
+            database_url += '?sslmode=require'
+        else:
+            database_url += '&sslmode=require'
 
 # For Render free tier, use a writable SQLite path by default
 # PostgreSQL can be enabled later by setting USE_POSTGRES=true

@@ -2012,17 +2012,19 @@ def admin_import_db():
         tables = {t.name: t for t in db.metadata.sorted_tables}
     except Exception:
         return jsonify({'ok': False, 'error': 'Fichier de backup invalide ou schema different.'})
+    from sqlalchemy import text as _text
+    dropped = []
     try:
-        from sqlalchemy import text as _text
-        # desactive la verification FK pendant la recharge (cycles users<->equipes)
-        # — requis superuser, que Render accorde sur ses instances Postgres
-        fk_off = False
+        # desactive les FK (Postgres) pendant la recharge : drop des contraintes,
+        # re-ajout en fin (fonctionne aussi bien que superuser ou owner, cf. Neon)
         if db.engine.dialect.name == 'postgresql':
-            try:
-                db.session.execute(_text("SET session_replication_role = 'replica'"))
-                fk_off = True
-            except Exception:
-                db.session.rollback()
+            dropped = db.session.execute(_text(
+                "SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def "
+                "FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace"
+            )).fetchall()
+            for tbl, conname, _def in dropped:
+                db.session.execute(_text(f'ALTER TABLE {tbl} DROP CONSTRAINT "{conname}"'))
+            db.session.commit()
         # 1) vider (ordre FK-inverse)
         for name in reversed(list(tables.keys())):
             db.session.execute(tables[name].delete())
@@ -2054,17 +2056,24 @@ def admin_import_db():
                         f"COALESCE((SELECT MAX({pk[0]}) FROM {name}), 1) + 1, false)"))
                 except Exception:
                     db.session.rollback()
-            if fk_off:
-                try:
-                    db.session.execute(_text("SET session_replication_role = 'origin'"))
-                except Exception:
-                    db.session.rollback()
-            db.session.commit()
         app.logger.info(f'import_db: {counts}')
         return jsonify({'ok': True, 'tables': counts})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        # retablir TOUJOURS les contraintes FK droppees (sinon la base tourne sans integrite)
+        if dropped:
+            try:
+                for tbl, conname, condef in dropped:
+                    try:
+                        db.session.execute(_text(f'ALTER TABLE {tbl} ADD CONSTRAINT "{conname}" {condef}'))
+                    except Exception:
+                        db.session.rollback()
+                db.session.commit()
+                app.logger.info(f'import_db: {len(dropped)} FK restaurees')
+            except Exception:
+                db.session.rollback()
 
 
 @app.route('/regenerer_taches_dossier/<int:dossier_id>', methods=['POST'])
