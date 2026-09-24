@@ -73,11 +73,10 @@ def dashboard():
         ).group_by(PennylaneItem.dossier_id, PennylaneItem.item_type, PennylaneItem.statut).all()
         by_do = {}
         for did, itype, _st, cnt, mt in rows:
-            e = by_do.setdefault(did, {'vente': [0, 0.0], 'achat': [0, 0.0], 'banque': [0, 0.0], 'total': 0})
+            e = by_do.setdefault(did, {'vente': 0, 'achat': 0, 'banque': 0, 'total': 0})
             key = {'facture_vente': 'vente', 'facture_achat': 'achat', 'transaction': 'banque'}.get(itype)
             if key:
-                e[key][0] += cnt
-                e[key][1] += abs(mt or 0)
+                e[key] += cnt
                 e['total'] += cnt
         if not by_do:
             return None
@@ -89,15 +88,12 @@ def dashboard():
             items.append({
                 'dossier': d,
                 'total': e['total'],
-                'vente_n': e['vente'][0], 'vente_m': e['vente'][1],
-                'achat_n': e['achat'][0], 'achat_m': e['achat'][1],
-                'banque_n': e['banque'][0], 'banque_m': e['banque'][1],
+                'vente_n': e['vente'], 'achat_n': e['achat'], 'banque_n': e['banque'],
             })
         items.sort(key=lambda x: -x['total'])
         return {
             'lignes': items,
             'total': sum(i['total'] for i in items),
-            'montant': sum(i['vente_m'] + i['achat_m'] + i['banque_m'] for i in items),
         }
     
     if current_user.role == 'manager':
