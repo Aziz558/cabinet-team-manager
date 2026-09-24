@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     photo_data = db.Column(db.LargeBinary, nullable=True)
     photo_mimetype = db.Column(db.String(50), nullable=True)
     role = db.Column(db.String(20), nullable=False, default='membre')  # admin | manager | membre
+    pole = db.Column(db.String(20), default='comptable')  # comptable | social | les_deux
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
     poste = db.Column(db.String(120))  # e.g., "Comptable", "Auditeur"
     telephone = db.Column(db.String(20))
@@ -22,7 +23,7 @@ class User(UserMixin, db.Model):
     date_arrivee = db.Column(db.Date, default=date.today)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
 
-    dossiers_assignes = db.relationship('Dossier', backref='collaborateur', lazy='dynamic')
+    dossiers_assignes = db.relationship('Dossier', foreign_keys='Dossier.collaborateur_id', backref='collaborateur', lazy='dynamic')
     taches_assignees = db.relationship('Tache', foreign_keys='Tache.assigne_a', backref='assigne', lazy='dynamic')
     taches_creees = db.relationship('Tache', foreign_keys='Tache.cree_par', backref='createur', lazy='dynamic')
     notifications = db.relationship('Notification', backref='user', lazy='dynamic', order_by='desc(Notification.date_envoi)')
@@ -37,6 +38,11 @@ class User(UserMixin, db.Model):
 
     def nom_complet(self):
         return f"{self.prenom} {self.nom}"
+
+    @property
+    def dans_pole_social(self):
+        """True si le membre appartient au pole social (ou les deux)."""
+        return (self.pole or 'comptable') in ('social', 'les_deux')
 
     def nb_dossiers_en_cours(self):
         return Dossier.query.filter_by(collaborateur_id=self.id).count()
@@ -103,6 +109,7 @@ class Dossier(db.Model):
     secteur_activite = db.Column(db.String(60))  # libellé libre pour analytics
     siren = db.Column(db.String(9), nullable=True, index=True)  # n° SIREN (extraction auto Infogreffe/INSEE)
     honoraires_mensuel = db.Column(db.Float, nullable=True)  # honoraires mensuels € pour rentabilité
+    collaborateur_social_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # référent pole social (distinct du comptable)
     # --- Champs enrichis automatiquement depuis le SIREN (API recherche-entreprises) ---
     tva_intra = db.Column(db.String(20), nullable=True)          # n° TVA intracommunautaire (FR..)
     naf_code = db.Column(db.String(10), nullable=True)           # code NAF / APE (ex: 70.10Z)
@@ -117,6 +124,7 @@ class Dossier(db.Model):
 
     taches = db.relationship('Tache', backref='dossier', lazy='dynamic')
     equipe = db.relationship('Equipe', backref='dossiers', lazy=True)
+    social = db.relationship('User', foreign_keys=[collaborateur_social_id])
 
     def __repr__(self):
         return f'<Dossier {self.numero_dossier}>'
@@ -271,6 +279,52 @@ class ChecklistEntry(db.Model):
 
     def __repr__(self):
         return f'<ChecklistEntry d={self.dossier_id} {self.taxe} {self.annee}-{self.mois} {self.kind}>'
+
+
+class DsnSuivi(db.Model):
+    """Suivi DSN + écritures de paie par dossier et période (mois principal déclaré).
+    mois/annee = la PERIODE déclarée (la DSN de janvier = 2026-01, exigible le 5 ou 15 fév.).
+    Statuts DSN : a_deposer -> deposee -> validee | rejetee (motif saisi).
+    Écritures de paie (Silae) : non_passees -> pretes -> integrees (compta Pennylane faite)."""
+    __tablename__ = 'dsn_suivi'
+    id = db.Column(db.Integer, primary_key=True)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=False, index=True)
+    annee = db.Column(db.Integer, nullable=False, index=True)
+    mois = db.Column(db.Integer, nullable=False)          # période déclarée 1..12
+    dsn_statut = db.Column(db.String(20), default='a_deposer')  # a_deposer|deposee|validee|rejetee
+    dsn_date_depot = db.Column(db.Date, nullable=True)
+    dsn_motif = db.Column(db.String(250), nullable=True)      # motif de rejet / remarque
+    ecritures_statut = db.Column(db.String(20), default='non_passees')  # non_passees|pretes|integrees
+    ecritures_date = db.Column(db.DateTime, nullable=True)
+    notifie_compta = db.Column(db.Boolean, default=False)     # notif "prête" déjà envoyée au compta
+    modifie_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    date_modif = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('dossier_id', 'annee', 'mois', name='uq_dsn_suivi'),
+    )
+
+    # seuil effectif URSSAF : 5 du mois M+1 si >= 50 salaries, sinon 15
+    SEUIL_GRAND_EFFECTIF = 50
+
+    def date_exigibilite(self, effectif_nbre=None):
+        """Date limite de dépôt (M+1, le 5 si gros effectif sinon le 15), reportée
+        au jour ouvré suivant si week-end."""
+        from .tva_scheduler import next_working_day
+        y, m = (self.annee + 1, 1) if self.mois == 12 else (self.annee, self.mois + 1)
+        jour = self.SEUIL_GRAND_EFFECTIF_JOUR(effectif_nbre)
+        try:
+            d = date(y, m, jour)
+        except ValueError:
+            d = date(y, m, 28)
+        return next_working_day(d)
+
+    @staticmethod
+    def SEUIL_GRAND_EFFECTIF_JOUR(effectif_nbre):
+        return 5 if (effectif_nbre or 0) >= 50 else 15
+
+    def __repr__(self):
+        return f'<DsnSuivi d={self.dossier_id} {self.annee}-{self.mois} {self.dsn_statut}/{self.ecritures_statut}>'
 
 
 class TvaStatutPennylane(db.Model):

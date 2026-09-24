@@ -938,6 +938,17 @@ def dossiers():
         all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
     
+    # Pole social : etendre aux dossiers dont on est le referent social (equipes comptables differentes)
+    if current_user.role != 'admin' and current_user.dans_pole_social:
+        ids_vus = {d.id for d in all_dossiers}
+        ids_sociaux = [current_user.id]
+        if current_user.role == 'manager':
+            ids_sociaux += [u.id for u in User.query.filter(
+                User.pole.in_(['social', 'les_deux']), User.actif == True).all()]
+        for d in Dossier.query.filter(Dossier.collaborateur_social_id.in_(ids_sociaux)).all():
+            if d.id not in ids_vus:
+                all_dossiers.append(d)
+
     # Pre-calculate TVA task data for each dossier to avoid Jinja template errors
     for d in all_dossiers:
         d._tva_taches = [t for t in d.taches if t.titre and ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper())]
@@ -1051,6 +1062,7 @@ def dossiers():
             'forme_juridique': d.forme_juridique,
             'secteur_activite': d.secteur_activite,
             'siren': d.siren,
+            'collaborateur_social_id': d.collaborateur_social_id,
             'tva_intra': d.tva_intra,
             'naf_code': d.naf_code,
             'effectif_label': d.effectif_label,
@@ -1063,7 +1075,10 @@ def dossiers():
         if d.collaborateur_id:
             dossiers_par_collab[d.collaborateur_id] = dossiers_par_collab.get(d.collaborateur_id, 0) + 1
 
+    membres_social_list = User.query.filter(
+        User.pole.in_(['social', 'les_deux']), User.actif == True).order_by(User.nom).all()
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres,
+        membres_social=membres_social_list,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
         show_actions=True, dossiers_data=dossiers_data, dossiers_par_collab=dossiers_par_collab)
@@ -1874,6 +1889,10 @@ def modifier_dossier(dossier_id):
         dossier.has_cfe = has_cfe
         dossier.forme_juridique = forme_juridique
         dossier.secteur_activite = secteur_activite
+        # Referent social (peut etre retire = vide)
+        nouveau_social = request.form.get('collaborateur_social_id', type=int) or None
+        social_changed = (dossier.collaborateur_social_id != nouveau_social)
+        dossier.collaborateur_social_id = nouveau_social
         # SIREN : normaliser + enrichir automatiquement si fourni
         siren_edit = re.sub(r'\D', '', request.form.get('siren') or '') or None
         # Champs "infos entreprise" soumis par le formulaire (values editees manuellement)
@@ -1917,6 +1936,14 @@ def modifier_dossier(dossier_id):
         if params_fiscaux_changes:
             from .tva_scheduler import planifier_impots_dossier
             planifier_impots_dossier(dossier)
+
+        # Referent social ajoute/modifie -> generer les taches DSN de l'horizon
+        if social_changed and dossier.collaborateur_social_id:
+            try:
+                from .social_service import generer_taches_dsn
+                generer_taches_dsn(dossier)
+            except Exception as _dsn_e:
+                app.logger.warning(f"Taches DSN a la modification: {_dsn_e}")
 
         db.session.commit()
         flash('Dossier modifié avec succès. Les tâches fiscales ont été mises à jour.', 'success')
@@ -2342,7 +2369,7 @@ def _nettoyer_relations_dossier(dossier):
     (taches + notifications/commentaires + suggestions + items Pennylane +
     checklists + statuts TVA Pennylane). Doit etre appelle dans le meme
     session que db.session.delete(dossier)."""
-    from .models import ChecklistEntry, TvaStatutPennylane
+    from .models import ChecklistEntry, TvaStatutPennylane, DsnSuivi
     tache_ids = [t.id for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
     if tache_ids:
         Notification.query.filter(Notification.tache_id.in_(tache_ids)).delete(synchronize_session=False)
@@ -2353,6 +2380,7 @@ def _nettoyer_relations_dossier(dossier):
     PennylaneItem.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
     TvaStatutPennylane.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
     ChecklistEntry.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
+    DsnSuivi.query.filter_by(dossier_id=dossier.id).delete(synchronize_session=False)
     db.session.flush()
 
 
@@ -3738,6 +3766,8 @@ def ajouter_dossier():
         forme_juridique = (request.form.get('forme_juridique') or '').strip() or None
         secteur_activite = (request.form.get('secteur_activite') or '').strip() or None
         siren = re.sub(r'\D', '', request.form.get('siren') or '') or None
+        # referent social (facultatif)
+        collab_social = request.form.get('collaborateur_social_id', type=int) or None
         # honoraires: tolerer les formats francais ("1 200,50", espaces insécables)
         hon_raw = re.sub(r'[\s\u202f\xa0]', '', request.form.get('honoraires_mensuel') or '').replace(',', '.')
         try:
@@ -3782,6 +3812,7 @@ def ajouter_dossier():
             secteur_activite=secteur_activite,
             siren=siren,
             honoraires_mensuel=honoraires_mensuel,
+            collaborateur_social_id=collab_social,
             pennylane_api_token=pennylane_api_token
         )
         db.session.add(nouveau_dossier)
@@ -3794,6 +3825,14 @@ def ajouter_dossier():
                 ok, err = apply_siren_to_dossier(nouveau_dossier, siren, overwrite=False)
                 if not ok:
                     app.logger.warning(f'Enrichissement SIREN {siren} (dossier {numero_dossier}): {err}')
+
+        # Referent social -> generer les taches DSN qui tombent dans l'horizon
+        if nouveau_dossier.collaborateur_social_id:
+            try:
+                from .social_service import generer_taches_dsn
+                generer_taches_dsn(nouveau_dossier)
+            except Exception as _dsn_e:
+                app.logger.warning(f"Taches DSN a la creation: {_dsn_e}")
 
         # Planifier les imp\u00f4ts pour ce dossier
         from .tva_scheduler import planifier_impots_dossier

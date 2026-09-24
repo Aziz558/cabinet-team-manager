@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Suivi Social — DSN & Paie{% endblock %}
+{% block content %}
+<style>
+    .dss-kpi-band { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .dss-kpi { display:flex; align-items:center; gap:9px; padding:9px 16px; border-radius:9999px; border:1px solid var(--border-whisper); background:var(--bg-card); font-size:.82rem; color:var(--text-secondary); transition:transform .15s ease, box-shadow .15s ease; }
+    .dss-kpi b { font-size:1.05rem; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+    .dss-kpi .dot { width:8px; height:8px; border-radius:50%; }
+    .dss-grid-wrap { overflow-x:auto; border-radius:var(--radius-xl); border:1px solid var(--border-whisper); background:var(--bg-card); }
+    table.dss-grid { border-collapse:separate; border-spacing:0; width:100%; min-width:1080px; }
+    .dss-grid th { font-size:.68rem; letter-spacing:.05em; color:var(--text-tertiary); font-weight:600; padding:10px 6px; border-bottom:1px solid var(--border-whisper); text-align:center; position:sticky; top:0; background:var(--bg-card); }
+    .dss-grid th.dss-do { text-align:left; min-width:230px; padding-left:16px; }
+    .dss-grid td { border-bottom:1px solid var(--border-whisper); padding:6px; text-align:center; vertical-align:middle; }
+    .dss-grid tr:last-child td { border-bottom:none; }
+    .dss-grid tr:hover td { background:rgba(255,140,0,0.03); }
+    .dss-do-cell { text-align:left !important; padding-left:16px !important; }
+    .dss-do-cell .t { font-size:.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:230px; display:block; }
+    .dss-do-cell .n { font-size:.68rem; color:var(--text-tertiary); }
+    .dss-cell { display:inline-flex; flex-direction:column; gap:4px; width:100%; }
+    .dss-chip { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:64px; font-size:.66rem; line-height:1; padding:5px 8px; border-radius:9999px; border:1px solid var(--border-whisper); background:var(--bg-elevated); color:var(--text-muted); cursor:pointer; transition:all .15s ease; user-select:none; white-space:nowrap; }
+    .dss-chip:hover { transform:translateY(-1px); border-color:var(--border-strong); }
+    .dss-chip i { font-size:.78rem; }
+    .dss-chip.s-a_deposer { color:var(--text-muted); border-style:dashed; }
+    .dss-chip.s-retard, .dss-chip.s-rejetee { color:#EF5350; background:var(--danger-bg); border-color:rgba(239,83,80,.4); }
+    .dss-chip.s-deposee { color:#42A5F5; background:var(--info-bg); border-color:rgba(66,165,245,.4); }
+    .dss-chip.s-validee, .dss-chip.s-integrees { color:#4CAF50; background:var(--success-bg); border-color:rgba(76,175,80,.4); }
+    .dss-chip.s-a_faire { color:#FF9800; background:var(--warning-bg); border-color:rgba(255,152,0,.4); }
+    .dss-chip.s-pretes { color:#FFB347; background:rgba(255,179,71,.12); border-color:rgba(255,140,0,.5); }
+    .dss-futur { color:var(--text-muted); opacity:.45; }
+    .dss-year-nav { display:inline-flex; border:1px solid var(--border-whisper); border-radius:9999px; overflow:hidden; }
+    .dss-year-nav a { padding:6px 14px; font-size:.8rem; color:var(--text-secondary); text-decoration:none; }
+    .dss-year-nav a.active { background:var(--orange-primary); color:#000; font-weight:600; }
+    .dss-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:14px; font-size:.72rem; color:var(--text-tertiary); }
+    .dss-legend .dss-chip { cursor:default; }
+    .dss-motif { font-size:.62rem; color:#EF5350; max-width:70px; margin:0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 animate-fade-in-up flex-wrap gap-2">
+    <h2 class="fw-semibold mb-0"><i class="bi bi-people me-2" style="color:var(--orange-primary)"></i>Suivi social — DSN & Paie</h2>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <select id="filtreSocial" class="select-premium" style="width:auto" onchange="location.href='?annee={{annee}}&social='+this.value">
+            <option value="">Tous les collaborateurs sociaux</option>
+            {% for m in membres_social %}
+            <option value="{{ m.id }}" {% if filtre_social==m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+            {% endfor %}
+        </select>
+        <div class="dss-year-nav">
+            {% for a in annees %}
+            <a href="?annee={{a}}{% if filtre_social %}&social={{filtre_social}}{% endif %}" class="{{ 'active' if a==annee }}">{{ a }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- KPI -->
+<div class="dss-kpi-band animate-fade-in-up">
+    <div class="dss-kpi"><span class="dot" style="background:#FF9800"></span> DSN en attente <b>{{ nb_a_deposer }}</b></div>
+    <div class="dss-kpi"><span class="dot" style="background:#EF5350"></span> En retard (échéance dépassée) <b>{{ nb_retard }}</b></div>
+    <div class="dss-kpi"><span class="dot" style="background:#42A5F5"></span> Écritures à intégrer <b>{{ nb_ecrit_att }}</b></div>
+    <div class="dss-kpi"><span class="dot" style="background:var(--orange-primary)"></span> Tâches DSN en retard <b>{{ social_retard }}</b></div>
+</div>
+
+<div class="dss-grid-wrap animate-fade-in-up">
+    <table class="dss-grid">
+        <thead>
+            <tr>
+                <th class="dss-do">DOSSIER</th>
+                {% for m in range(1,13) %}<th>{{ mois_fr[m] }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for l in lignes %}
+            {% set d = l.d %}
+            <tr>
+                <td class="dss-do-cell">
+                    <span class="t">{{ d.intitule }}</span>
+                    <span class="n">{{ d.numero_dossier }}
+                        {% if d.social %} · {{ d.social.prenom }} {{ d.social.nom[:1] }}.{% endif %}
+                        {% if d.effectif_label %} · {{ d.effectif_label }}{% endif %}</span>
+                </td>
+                {% for c in l.grille %}
+                <td>
+                    <div class="dss-cell">
+                        {% set st = c.ligne.dsn_statut %}
+                        {% set cls = 's-' + st %}
+                        {% if st == 'a_deposer' and c.exigible < date.today() %}{% set cls = 's-retard' %}{% endif %}
+                        <span class="dss-chip {{ cls }}" data-d="{{ d.id }}" data-m="{{ c.mois }}" data-y="{{ c.annee }}" data-f="dsn"
+                              onclick="cycleDsn(this)" title="Exigible le {{ c.exigible.strftime('%d/%m/%Y') }} — cliquer pour changer le statut">
+                            {% if st=='validee' %}<i class="bi bi-check-circle-fill"></i>OK
+                            {% elif st=='rejetee' %}<i class="bi bi-x-circle-fill"></i>Rejet
+                            {% elif st=='deposee' %}<i class="bi bi-send-fill"></i>Déposé
+                            {% elif cls=='s-retard' %}<i class="bi bi-exclamation-octagon-fill"></i>Retard
+                            {% elif c.exigible > date.today() %}<span class="dss-futur">—</span>
+                            {% else %}<i class="bi bi-circle"></i>À déposer{% endif %}
+                        </span>
+                        {% if c.ligne.dsn_motif and st=='rejetee' %}<div class="dss-motif" title="{{ c.ligne.dsn_motif }}">{{ c.ligne.dsn_motif }}</div>{% endif %}
+                        {% set ec = c.ligne.ecritures_statut %}
+                        <span class="dss-chip s-{{ ec }}" data-d="{{ d.id }}" data-m="{{ c.mois }}" data-y="{{ c.annee }}" data-f="ecritures"
+                              onclick="cycleEcritures(this)" title="Écritures de paie (Silae) — cliquer pour changer">
+                            {% if ec=='integrees' %}<i class="bi bi-journal-check"></i>Intégré
+                            {% elif ec=='pretes' %}<i class="bi bi-lightning-charge-fill"></i>Prêtes
+                            {% elif c.exigible > date.today() %}<span class="dss-futur">paie</span>
+                            {% else %}<i class="bi bi-journal"></i>À passer{% endif %}
+                        </span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+        {% else %}
+            <tr><td colspan="13" style="padding:28px;text-align:center;color:var(--text-tertiary)">
+                Aucun dossier suivi par le pôle social. Affectez un <b>collaborateur social</b> aux dossiers (modal Modifier du dossier) pour les voir ici.
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dss-legend animate-fade-in-up">
+    <span><b>DSN :</b></span>
+    <span class="dss-chip s-a_deposer">À déposer</span>
+    <span class="dss-chip s-retard">Retard</span>
+    <span class="dss-chip s-deposee">Déposé</span>
+    <span class="dss-chip s-validee">Validé (CRM OK)</span>
+    <span class="dss-chip s-rejetee">Rejet</span>
+    <span style="margin-left:12px"><b>Écritures :</b></span>
+    <span class="dss-chip s-non_passees">À passer</span>
+    <span class="dss-chip s-pretes">Prêtes → notifie le compta</span>
+    <span class="dss-chip s-integrees">Intégrées</span>
+    <span style="margin-left:12px;color:var(--text-muted)">Échéance : 5 du mois M+1 (≥50 salariés) sinon 15.</span>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+const DSN_SEQ = ['a_deposer', 'deposee', 'validee', 'rejetee'];
+const ECR_SEQ = ['non_passees', 'pretes', 'integrees'];
+let _reloadTimer = null;
+
+function setCell(el, champ, valeur, motif) {
+    fetch('/dsn/set', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({dossier_id: +el.dataset.d, mois: +el.dataset.m, annee: +el.dataset.y,
+                              champ: champ, valeur: valeur, motif: motif || null})
+    }).then(r => r.json()).then(res => {
+        if (!res.ok) { if (window.showToast) showToast(res.error || 'Erreur', 'error'); return; }
+        if (res.notif_compta && window.showToast) showToast('Comptable notifié : écritures prêtes', 'success');
+        clearTimeout(_reloadTimer);
+        _reloadTimer = setTimeout(() => location.reload(), 350);
+    }).catch(() => window.showToast && showToast('Réseau indisponible', 'error'));
+}
+
+function cycleDsn(el) {
+    const chips = el.closest('td').querySelectorAll('.dss-chip');
+    const cur = (el.className.match(/s-(\w+)/) || [,'a_deposer'])[1] || 'a_deposer';
+    const st = cur === 'retard' ? 'a_deposer' : cur;
+    let next = DSN_SEQ[(DSN_SEQ.indexOf(st) + 1) % DSN_SEQ.length];
+    if (next === 'rejetee') {
+        const m = prompt('Motif du rejet / anomalie CRM (optionnel) :');
+        if (m === null) return;
+        setCell(el, 'dsn', next, m);
+    } else {
+        setCell(el, 'dsn', next);
+    }
+}
+
+function cycleEcritures(el) {
+    const cur = (el.className.match(/s-(\w+)/) || [,'non_passees'])[1] || 'non_passees';
+    const next = ECR_SEQ[(ECR_SEQ.indexOf(cur) + 1) % ECR_SEQ.length];
+    setCell(el, 'ecritures', next);
+}
+</script>
+{% endblock %}

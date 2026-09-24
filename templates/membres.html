@@ -60,6 +60,7 @@
                         <th>Rôle</th>
                         <th>Poste</th>
                         {% if current_user.role == 'admin' %}
+                        <th>Pôle</th>
                         <th>Équipe</th>
                         {% endif %}
                         {% if current_user.role == 'manager' %}
@@ -92,6 +93,15 @@
                         </td>
                         <td class="text-tertiary">{{ m.poste or '-' }}</td>
                         {% if current_user.role == 'admin' %}
+                        <td>
+                            <form method="POST" action="{{ url_for('assigner_pole', user_id=m.id) }}" class="d-inline">
+                                <select name="pole" class="select-premium select-sm" onchange="this.form.submit()" title="Pôle">
+                                    <option value="comptable" {% if (m.pole or 'comptable')=='comptable' %}selected{% endif %}>Comptable</option>
+                                    <option value="social" {% if m.pole=='social' %}selected{% endif %}>Social</option>
+                                    <option value="les_deux" {% if m.pole=='les_deux' %}selected{% endif %}>Les deux</option>
+                                </select>
+                            </form>
+                        </td>
                         <td>
                             <form method="POST" action="{{ url_for('assigner_equipe', user_id=m.id) }}" class="d-inline">
                                 <input type="hidden" name="user_id" value="{{ m.id }}">

@@ -396,6 +396,17 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Référent social <small class="text-tertiary">(pôle social)</small></label>
+                            <select name="collaborateur_social_id" class="select-premium" id="dossierSocialSelect">
+                                <option value="">-- Aucun --</option>
+                                {% for m in membres_social %}
+                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Équipe *</label>
                             <select name="equipe_id" class="select-premium" id="dossierEquipeSelect" required>
                                 <option value="">-- Sélectionner une équipe --</option>
@@ -543,6 +554,17 @@
                                 <option value="">-- Sélectionner une équipe --</option>
                                 {% for e in equipes %}
                                 <option value="{{ e.id }}">{{ e.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Référent social <small class="text-tertiary">(pôle social — pour le suivi DSN & paie)</small></label>
+                            <select name="collaborateur_social_id" id="editCollaborateurSocialId" class="select-premium">
+                                <option value="">-- Aucun --</option>
+                                {% for m in membres_social %}
+                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -1007,6 +1029,8 @@
         document.getElementById('editNumeroDossier').value = d.numero_dossier || '';
         document.getElementById('editIntitule').value = d.intitule || '';
         document.getElementById('editCollaborateurId').value = d.collaborateur_id || '';
+        var selSocial = document.getElementById('editCollaborateurSocialId');
+        if (selSocial) selSocial.value = d.collaborateur_social_id || '';
         document.getElementById('editEquipeId').value = d.equipe_id || '';
         document.getElementById('editRegimeTva').value = d.regime_tva || '';
         document.getElementById('editFrequenceTva').value = d.frequence_tva || '';

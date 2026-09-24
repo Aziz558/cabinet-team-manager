@@ -64,7 +64,13 @@ def _cleanup_existing_tasks(dossier_id, keywords):
         conditions.append(Tache.description.ilike(f'%{kw}%'))
     if not conditions:
         return
-    existing = Tache.query.filter(Tache.dossier_id == dossier_id, or_(*conditions)).all()
+    # Les taches « Depot DSN » appartiennent au pole social : ne JAMAIS les supprimer
+    # par le nettoyage fiscal (mot-cle « Depot » commun).
+    existing = Tache.query.filter(
+        Tache.dossier_id == dossier_id,
+        or_(*conditions),
+        ~Tache.titre.ilike('%DSN%'),
+    ).all()
     ids = [t.id for t in existing]
     if not ids:
         return
@@ -76,7 +82,7 @@ def _cleanup_existing_tasks(dossier_id, keywords):
         CommentaireTache.query.filter(CommentaireTache.tache_id.in_(ids)).delete(synchronize_session=False)
     except Exception:
         pass
-    Tache.query.filter(Tache.dossier_id == dossier_id, or_(*conditions)).delete(synchronize_session=False)
+    Tache.query.filter(Tache.id.in_(ids)).delete(synchronize_session=False)
     try:
         db.session.commit()
     except Exception as e:

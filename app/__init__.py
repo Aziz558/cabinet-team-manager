@@ -94,6 +94,7 @@ except Exception as e:
         pass
 
 from app import routes  # noqa: F401
+from app import social_routes  # noqa: F401  (pole social : suivi DSN & écritures de paie)
 from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
 with app.app_context():
@@ -211,6 +212,9 @@ with app.app_context():
                 if 'siren' not in dossiers_cols:
                     conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN siren VARCHAR(9)"))
                     app.logger.info("Added siren column to dossiers")
+                if 'collaborateur_social_id' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN collaborateur_social_id INTEGER REFERENCES users(id)"))
+                    app.logger.info("Added collaborateur_social_id column to dossiers")
                 # Colonnes d'enrichissement SIREN (idempotent)
                 _enrich_cols = {
                     'tva_intra': 'VARCHAR(20)',
@@ -309,6 +313,13 @@ with app.app_context():
                         app.logger.warning(f"Could not add {col}: {e2}")
         if 'users' in inspector.get_table_names():
             users_cols = [c['name'] for c in inspector.get_columns('users')]
+            if 'pole' not in users_cols:
+                try:
+                    with db.engine.begin() as conn:
+                        conn.execute(db.text("ALTER TABLE users ADD COLUMN pole VARCHAR(20) DEFAULT 'comptable'"))
+                        app.logger.info("Added pole column to users")
+                except Exception as e2:
+                    app.logger.warning(f"Could not add pole: {e2}")
             for col in ['photo_data', 'photo_mimetype']:
                 if col not in users_cols:
                     try:
@@ -556,6 +567,17 @@ try:
             except Exception as e:
                 app.logger.error(f"Monthly fiscal refresh error: {e}")
 
+    def generer_taches_dsn():
+        """Crée les tâches « Dépôt DSN » arrivant à échéance (horizon 20 j)."""
+        with app.app_context():
+            try:
+                from app.social_service import generer_taches_dsn as _g
+                n = _g()
+                if n:
+                    app.logger.info(f"Tâches DSN générées: {n}")
+            except Exception as e:
+                app.logger.error(f"DSN tasks generation error: {e}")
+
     def verifier_nouveaux_pennylane():
         """Vérifie les nouveaux documents/transactions Pennylane de tous les dossiers connectés."""
         with app.app_context():
@@ -604,6 +626,7 @@ try:
     scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
     scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)
     scheduler.add_job(regenerer_taches_fiscales, 'cron', day=1, hour=6, minute=0)  # 1er du mois à 06:00
+    scheduler.add_job(generer_taches_dsn, 'cron', hour=6, minute=30)  # chaque jour 06:30 (horizon 20j)
     scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0)  # toutes les heures
     scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10)  # toutes les heures (:10)
     scheduler.start()
