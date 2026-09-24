@@ -1502,12 +1502,16 @@ def ajouter_membre():
             return redirect(url_for('membres'))
 
         from werkzeug.security import generate_password_hash
+        pole = request.form.get('pole', 'comptable')
+        if pole not in ('comptable', 'social', 'les_deux'):
+            pole = 'comptable'
         user = User(
             prenom=prenom,
             nom=nom,
             email=email,
             password_hash=generate_password_hash(mot_de_passe),
             role=role,
+            pole=pole,
             poste=poste if poste else None,
             telephone=telephone if telephone else None,
             actif=True
