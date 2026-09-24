@@ -563,5 +563,10 @@ function resetFilters() {
 {% if data.lignes %}
 applyPlFilters();
 {% endif %}
+// Lien profond depuis le dashboard (ex: ?ftab=a_traiter) -> preselectionne l'onglet
+(function() {
+    var f = new URLSearchParams(location.search).get('ftab');
+    if (f && ['a_traiter', 'traite', 'archive'].includes(f)) setStatutTab(f);
+})();
 </script>
 {% endblock %}

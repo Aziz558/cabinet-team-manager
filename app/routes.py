@@ -50,10 +50,55 @@ def team_select():
 @login_required
 def dashboard():
     from datetime import timedelta
-    
+
     # Horizon 3 mois pour les tâches
     horizon_3m = date.today() + timedelta(days=95)
     week_end = date.today() + timedelta(days=7)
+
+    def _pl_triage_stats(ids):
+        """Récap triage Pennylane par dossier (factures/transactions À TRAITER).
+        Retourne None si rien à afficher (aucun item vu)."""
+        if not ids:
+            return None
+        from app.models import PennylaneItem
+        rows = db.session.query(
+            PennylaneItem.dossier_id,
+            PennylaneItem.item_type,
+            PennylaneItem.statut,
+            db.func.count(PennylaneItem.id),
+            db.func.coalesce(db.func.sum(PennylaneItem.montant), 0.0),
+        ).filter(
+            PennylaneItem.dossier_id.in_(ids),
+            PennylaneItem.statut == 'a_traiter',
+        ).group_by(PennylaneItem.dossier_id, PennylaneItem.item_type, PennylaneItem.statut).all()
+        by_do = {}
+        for did, itype, _st, cnt, mt in rows:
+            e = by_do.setdefault(did, {'vente': [0, 0.0], 'achat': [0, 0.0], 'banque': [0, 0.0], 'total': 0})
+            key = {'facture_vente': 'vente', 'facture_achat': 'achat', 'transaction': 'banque'}.get(itype)
+            if key:
+                e[key][0] += cnt
+                e[key][1] += abs(mt or 0)
+                e['total'] += cnt
+        if not by_do:
+            return None
+        items = []
+        for did, e in by_do.items():
+            d = Dossier.query.get(did)
+            if not d:
+                continue
+            items.append({
+                'dossier': d,
+                'total': e['total'],
+                'vente_n': e['vente'][0], 'vente_m': e['vente'][1],
+                'achat_n': e['achat'][0], 'achat_m': e['achat'][1],
+                'banque_n': e['banque'][0], 'banque_m': e['banque'][1],
+            })
+        items.sort(key=lambda x: -x['total'])
+        return {
+            'lignes': items,
+            'total': sum(i['total'] for i in items),
+            'montant': sum(i['vente_m'] + i['achat_m'] + i['banque_m'] for i in items),
+        }
     
     if current_user.role == 'manager':
         # Compute real KPIs for manager
@@ -142,7 +187,7 @@ def dashboard():
         return render_template('dashboard_manager.html', kpi=kpi, alertes=alertes,
             suggestions=suggestions, membres=membres, taches_jour=taches_jour,
             taches_semaine=taches_semaine, notifications_non_lues=notifications_non_lues,
-            horizon_3m=horizon_3m)
+            horizon_3m=horizon_3m, pl_triage=_pl_triage_stats(all_dossiers_ids))
     else:
         # Dashboard collaborateur
         team_member_ids = [current_user.id]
@@ -179,8 +224,15 @@ def dashboard():
             'taux_completion': taux_completion,
             'total_taches': total_taches
         }
+        # Triage Pennylane : admin voit tout, collaborateur voit ses dossiers
+        if current_user.role == 'admin':
+            pl_dossier_ids = [d.id for d in Dossier.query.all()]
+        else:
+            pl_dossier_ids = [d.id for d in Dossier.query.filter(
+                Dossier.collaborateur_id.in_(team_member_ids)).all()]
         return render_template('dashboard_collaborateur.html', kpi=kpi,
-            taches_jour=taches_jour, taches_semaine=taches_semaine)
+            taches_jour=taches_jour, taches_semaine=taches_semaine,
+            pl_triage=_pl_triage_stats(pl_dossier_ids))
 
 def prochaine_echeance_theorique(dossier, today):
     """Calcule la prochaine échéance TVA théorique pour les tâches pas encore générées."""

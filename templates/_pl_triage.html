@@ -1,0 +1,54 @@
+{# Récap triage Pennylane (factures/transactions À TRAITER par dossier) #}
+{% if pl_triage %}
+<div class="card-premium mb-4 animate-fade-in-up" id="plTriageCard">
+    <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--orange-primary);"></i>Triage Pennylane — à traiter</h5>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge badge-danger avm-chip-count" title="Éléments à traiter au total">{{ pl_triage.total }}</span>
+            <span class="text-tertiary small">{{ '{:,.0f}'.format(pl_triage.montant).replace(',', ' ') }} €</span>
+        </div>
+    </div>
+    <div class="card-body-premium p-0">
+        <style>
+            #plTriageCard .pl-tr-row { display:flex; align-items:center; gap:12px; padding:11px 18px; border-bottom:1px solid var(--border-whisper); text-decoration:none; color:inherit; transition:background .15s ease; }
+            #plTriageCard .pl-tr-row:last-child { border-bottom:none; }
+            #plTriageCard .pl-tr-row:hover { background: rgba(255,140,0,0.045); }
+            #plTriageCard .pl-tr-nom { flex:1 1 auto; min-width:0; }
+            #plTriageCard .pl-tr-nom .t { font-size:.86rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            #plTriageCard .pl-tr-nom .n { font-size:.7rem; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+            #plTriageCard .pl-tr-chips { display:flex; gap:6px; flex-shrink:0; }
+            #plTriageCard .pl-tr-chip { display:inline-flex; align-items:center; gap:5px; font-size:.72rem; line-height:1; padding:5px 9px; border-radius:9999px; border:1px solid var(--border-whisper); background:var(--bg-card); color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+            #plTriageCard .pl-tr-chip.hot { border-color:rgba(239,83,80,.45); color:#EF5350; background:var(--danger-bg); }
+            #plTriageCard .pl-tr-chip i { font-size:.8rem; }
+            #plTriageCard .pl-tr-mt { font-size:.72rem; color:var(--text-tertiary); width:74px; text-align:right; flex-shrink:0; font-variant-numeric:tabular-nums; }
+            #plTriageCard .pl-tr-chevron { color:var(--text-muted); flex-shrink:0; font-size:.8rem; transition:transform .15s ease; }
+            #plTriageCard .pl-tr-row:hover .pl-tr-chevron { transform:translateX(3px); color:var(--orange-primary); }
+            #plTriageCard .pl-tr-empty { padding:18px; text-align:center; color:var(--text-tertiary); font-size:.85rem; }
+        </style>
+        {% for it in pl_triage.lignes %}
+        <a class="pl-tr-row" href="{{ url_for('pennylane_dossier', dossier_id=it.dossier.id) }}?ftab=a_traiter"
+           title="Ouvrir le triage du dossier">
+            <span class="pl-tr-nom">
+                <span class="d-block t">{{ it.dossier.intitule }}</span>
+                <span class="n">{{ it.dossier.numero_dossier }}{% if it.dossier.collaborateur %} · {{ it.dossier.collaborateur.prenom }} {{ it.dossier.collaborateur.nom }}{% endif %}</span>
+            </span>
+            <span class="pl-tr-chips">
+                <span class="pl-tr-chip {% if it.vente_n %}hot{% endif %}" title="Factures de vente à traiter">
+                    <i class="bi bi-arrow-up-right-square"></i>{{ it.vente_n }}
+                </span>
+                <span class="pl-tr-chip {% if it.achat_n %}hot{% endif %}" title="Factures d'achat à traiter">
+                    <i class="bi bi-arrow-down-left-square"></i>{{ it.achat_n }}
+                </span>
+                <span class="pl-tr-chip {% if it.banque_n %}hot{% endif %}" title="Transactions bancaires à traiter">
+                    <i class="bi bi-bank"></i>{{ it.banque_n }}
+                </span>
+            </span>
+            <span class="pl-tr-mt" title="Montant cumulé à traiter">
+                {{ '{:,.0f}'.format(it.vente_m + it.achat_m + it.banque_m).replace(',', ' ') }} €
+            </span>
+            <i class="bi bi-chevron-right pl-tr-chevron"></i>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
