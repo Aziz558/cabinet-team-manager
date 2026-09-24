@@ -1346,11 +1346,20 @@ def taches():
             team_member_ids.extend([m.id for m in eq.membres.all()])
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
         all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
+
+    # Pole social pur : ne voir que les taches sociales (DSN, paie, RH) — filtre dur
+    social_only = (current_user.role not in ('admin', 'manager')
+                   and (current_user.pole or '') == 'social')
+    if social_only:
+        from .social_service import est_tache_sociale
+        all_taches = [t for t in all_taches if est_tache_sociale(t)]
+
     return render_template('taches.html', taches=all_taches, membres=membres,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
         dossiers=Dossier.query.order_by(Dossier.numero_dossier).all(),
         dossier_filtre=request.args.get('dossier', type=int),
+        social_only=social_only,
         date=date, timedelta=timedelta)
 
 @app.route('/equipes', methods=['GET', 'POST'])
@@ -2860,9 +2869,25 @@ def supprimer_tache(tache_id):
 @app.route('/taches/aujourdhui')
 @login_required
 def taches_aujourdhui():
-    """Tâches dont l'échéance est aujourd'hui."""
+    """Tâches dont l'échéance est aujourd'hui (scoping : mes equipes / social)."""
+    from .social_service import est_tache_sociale
     today_taches = Tache.query.filter(Tache.date_echeance == date.today()).all()
-    return render_template('taches.html', taches=today_taches, date=date, timedelta=timedelta)
+    if current_user.role == 'membre':
+        mine = {current_user.id}
+        today_taches = [t for t in today_taches if t.assigne_a in mine]
+    elif current_user.role == 'manager':
+        mes_eq = Equipe.query.filter_by(manager_id=current_user.id).all()
+        ids = {current_user.id}
+        for eq in mes_eq:
+            ids.update(m.id for m in eq.membres.all())
+        today_taches = [t for t in today_taches if t.assigne_a in ids]
+    # pole social pur : uniquement les taches sociales
+    social_only = (current_user.role not in ('admin', 'manager')
+                   and (current_user.pole or '') == 'social')
+    if social_only:
+        today_taches = [t for t in today_taches if est_tache_sociale(t)]
+    return render_template('taches.html', taches=today_taches, date=date, timedelta=timedelta,
+                           social_only=social_only)
 
 # ===========================
 # Suivi d'avancement par membre

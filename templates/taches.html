@@ -46,7 +46,7 @@
             <input type="text" class="input-premium avm-search" id="filterSearch" placeholder="…" oninput="applyFilter()" style="display:none;width:150px;">
             <button type="button" class="avm-fico" title="Reinitialiser les filtres" onclick="resetFilters()"><i class="bi bi-arrow-counterclockwise"></i></button>
             <span class="d-none" aria-hidden="true">
-                <select id="filterNature" onchange="syncFilterIcons();applyFilter()"><option value="all">Toutes</option><option value="tva">TVA</option><option value="is">IS</option><option value="cfe">CFE</option><option value="generale">Generales</option></select>
+                <select id="filterNature" onchange="syncFilterIcons();applyFilter()"><option value="all">Toutes</option><option value="tva">TVA</option><option value="is">IS</option><option value="cfe">CFE</option><option value="dsn">DSN</option><option value="paie">Paie</option><option value="generale">Generales</option></select>
                 <select id="filterMembre" onchange="syncFilterIcons();applyFilter()">
                     <option value="all">Tous</option>
                     {% for m in membres %}<option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>{% endfor %}
@@ -110,7 +110,9 @@
     {% for kw in fiscal_keywords %}{% if kw in (t.titre|lower) %}{% set is_fiscal_display = true %}{% endif %}{% endfor %}
     {% if not ((is_fiscal_display or t.frequence_repetition) and t.date_echeance and t.date_echeance > horizon_1m) %}
     {% set titre_low = t.titre|lower %}
-    {% if 'cfe' in titre_low %}{% set nature_tache = 'cfe' %}
+    {% if 'dsn' in titre_low %}{% set nature_tache = 'dsn' %}
+    {% elif 'paie' in titre_low %}{% set nature_tache = 'paie' %}
+    {% elif 'cfe' in titre_low %}{% set nature_tache = 'cfe' %}
     {% elif ' is ' in titre_low or titre_low.startswith('is ') %}{% set nature_tache = 'is' %}
     {% elif 'tva' in titre_low or 'ca3' in titre_low or 'ca12' in titre_low or 'dépôt' in titre_low or 'depot' in titre_low or 'déclaration' in titre_low %}{% set nature_tache = 'tva' %}
     {% else %}{% set nature_tache = 'generale' %}{% endif %}

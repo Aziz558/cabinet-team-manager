@@ -20,6 +20,17 @@ def est_pole_social(user):
 MOIS_FR = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
            'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
 
+# Mots-cles (minuscules) qui qualifient une tache comme relevant du pole social
+MOTS_CLES_SOCIAL = ('dsn', 'paie', 'ecritures de paie', 'arrêt de travail', 'embauche', 'sortie')
+
+
+def est_tache_sociale(tache):
+    """True si la tache releve du pole social (DSN, ecritures de paie, RH)."""
+    txt = (tache.titre or '').lower()
+    if 'is ' in txt or txt.startswith('is ') or 'tva' in txt or 'cfe' in txt or 'ca3' in txt or 'ca12' in txt:
+        return False  # les fiscales restent au compta, meme si « depot » commun
+    return any(kw in txt for kw in MOTS_CLES_SOCIAL)
+
 
 def dossiers_suivis_par(user):
     """Dossiers visibles cote social : les siens (referent social) ; admin = tous."""
