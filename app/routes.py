@@ -703,6 +703,25 @@ def checklist_toggle():
                     'paye': paye if (declare or paye) else False})
 
 
+@app.route('/checklist/relink_all', methods=['POST'])
+@login_required
+def checklist_relink_all():
+    """Backfill de la liaison Checklist <-> taches : applique l'etat de TOUTES les
+    cases existantes (declarees ou non) sur les taches deadline correspondantes.
+    Utile apres deploiement de la liaison ou pour resynchroniser manuellement."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
+    from .models import ChecklistEntry
+    from .checklist_link import appliquer_case_a_taches
+    n = 0
+    for e in ChecklistEntry.query.all():
+        n += appliquer_case_a_taches(e.dossier_id, e.taxe, e.annee, e.mois, e.kind,
+                                     bool(e.declare or e.paye), bool(e.paye))
+    db.session.commit()
+    app.logger.info(f"checklist_relink_all: {n} tache(s) ajustee(s) par {current_user.email}")
+    return jsonify({'ok': True, 'taches_ajustees': n})
+
+
 @app.route('/calendrier')
 @login_required
 def calendrier():
