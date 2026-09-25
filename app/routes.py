@@ -690,6 +690,15 @@ def checklist_toggle():
     e.updated_by_id = current_user.id
     e.date_modif = datetime.utcnow()
     db.session.commit()
+    # LIAISON checklist -> taches : cocher la case termine la tache deadline
+    # de la meme periode, la decocher la remet a faire.
+    try:
+        from .checklist_link import appliquer_case_a_taches
+        if appliquer_case_a_taches(dossier_id, taxe, annee, mois, kind, declare or paye, paye):
+            db.session.commit()
+    except Exception as _lk_e:
+        db.session.rollback()
+        app.logger.warning(f"Liaison case->taches: {_lk_e}")
     return jsonify({'ok': True, 'declare': declare if (declare or paye) else False,
                     'paye': paye if (declare or paye) else False})
 
@@ -3116,6 +3125,14 @@ def suivi_changer_statut(tache_id):
     elif nouveau == 'en_cours' and not tache.date_prise_en_charge:
         tache.date_prise_en_charge = datetime.utcnow()
     db.session.commit()
+    # LIAISON tache -> checklist (meme logique que changer_statut_tache)
+    try:
+        from .checklist_link import appliquer_tache_a_case
+        if appliquer_tache_a_case(tache):
+            db.session.commit()
+    except Exception as _lk_e:
+        db.session.rollback()
+        app.logger.warning(f"Liaison tache->case (suivi): {_lk_e}")
 
     # Notifier le créateur (manager) : notif in-app toujours, email si tâche urgente
     # (même logique que le reste de l'app : économie quota Brevo).
@@ -3245,8 +3262,17 @@ def changer_statut_tache(tache_id):
     elif nouveau_statut == 'a_faire':
         tache.date_prise_en_charge = None
         tache.date_completion = None
-    
+
     db.session.commit()
+    # LIAISON tache -> checklist : une echeance fiscale terminee coche la case
+    # correspondante, remise a « a faire » la decoche (cf. checklist_link).
+    try:
+        from .checklist_link import appliquer_tache_a_case
+        if appliquer_tache_a_case(tache):
+            db.session.commit()
+    except Exception as _lk_e:
+        db.session.rollback()
+        app.logger.warning(f"Liaison tache->case: {_lk_e}")
     
     # Notifier le créateur (manager) du changement + email
     collab_nom = f"{current_user.prenom} {current_user.nom}"
@@ -3300,6 +3326,14 @@ def terminer_tache(tache_id):
     if not tache.date_prise_en_charge:
         tache.date_prise_en_charge = datetime.utcnow()
     db.session.commit()
+    # LIAISON tache -> checklist : terminer l'echeance coche la case correspondante
+    try:
+        from .checklist_link import appliquer_tache_a_case
+        if appliquer_tache_a_case(tache):
+            db.session.commit()
+    except Exception as _lk_e:
+        db.session.rollback()
+        app.logger.warning(f"Liaison tache->case (terminer): {_lk_e}")
     
     # Notifier le créateur (manager) + in-app
     collab_nom = f"{current_user.prenom} {current_user.nom}"
@@ -4060,6 +4094,28 @@ def checklist_pl_sync_dossier(dossier_id):
     db.session.commit()
     msg = (f"{d.numero_dossier} : {statuts} statut(s) Pennylane enregistré(s), "
            f"{synced} case(s) cochée(s), {forces_annules} forçage(s) manuel(s) annulé(s).")
+    # LIAISON Pennylane -> taches : les cases cochees par la synchro terminent
+    # les taches deadline correspondantes (ex. aout declare dans PL -> "Dépôt TVA
+    # mensuel" termine).
+    try:
+        from .checklist_link import appliquer_case_a_taches as _lk
+        n_lk = 0
+        for vr in res['vat_returns']:
+            if (vr.get('status') or '').lower() not in FILED_STATUSES:
+                continue
+            per = _extract_period(vr)
+            if not per:
+                continue
+            y, mo = per
+            if taxe == 'tva_trimestriel':
+                mo = ((mo - 1) // 3) * 3 + 1
+            n_lk += _lk(d.id, taxe, y, mo, 'depot', True)
+        if n_lk:
+            db.session.commit()
+            msg += f" {n_lk} tâche(s) deadline auto-terminée(s)."
+    except Exception as _lk_e:
+        db.session.rollback()
+        app.logger.warning(f"Liaison sync->taches {d.numero_dossier}: {_lk_e}")
     _save_last_sync(ok=True, message=msg)
     return jsonify({'ok': True, 'message': msg, 'statuts': statuts,
                     'synced': synced, 'forces_annules': forces_annules})

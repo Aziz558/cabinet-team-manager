@@ -466,6 +466,7 @@ def sync_checklist_tva() -> dict:
     statuts_ecrits = 0
     en_retard = 0
     forces_annules = 0
+    taches_liees = 0
     dossiers_ok = 0
     dossiers_vides = 0
     erreurs = []
@@ -561,6 +562,16 @@ def sync_checklist_tva() -> dict:
             e.paye = (st == 'paid')
             e.pl_mode = True
             synced += 1
+            # LIAISON sync -> taches : la tache deadline de la periode declaree
+            # dans Pennylane est auto-terminee (ex. aout -> "Dépôt TVA mensuel").
+            try:
+                from ..checklist_link import appliquer_case_a_taches
+                t_lk = appliquer_case_a_taches(d.id, taxe, y, mo, 'depot', True)
+                if t_lk:
+                    taches_liees += t_lk
+            except Exception as _lk_e:
+                from flask import current_app
+                current_app.logger.warning(f"Liaison auto-sync->taches {d.numero_dossier}: {_lk_e}")
 
     db.session.commit()
     msg = (f"{dossiers_ok}/{len(dossiers)} dossier(s) synchronisé(s) — "
