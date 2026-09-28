@@ -506,6 +506,72 @@ def traduire_statut_pl(statut_raw: str, item_type: str = 'facture_vente') -> str
     return status.replace('_', ' ').title()
 
 
+def _fetch_internal_payroll(company_id, per_page=200, max_pages=4):
+    """Sonde le journal de paie via l'API INTERNE Pennylane (cookies web).
+
+    Endpoints essayes dans l'ordre (le 1er qui repond 200 avec une liste gagne) :
+      /companies/<id>/accountants/payroll_entries
+      /companies/<id>/accountants/payrolls
+      /companies/<id>/payroll_entries
+    Chaque entree contient normalement un mois/date de paie. On ne retourne que
+    des periodes identifiables (annee + mois) — aucune ecriture en base ici.
+    Retourne [] si cookies absents / endpoint inconnu / aucune donnee.
+    """
+    out = []
+    try:
+        from app.integrations import pennylane_web as _plw
+        _plw._load_from_db()
+        _ck = _plw._parse_cookie_header(_plw._pl_session_cookies or '')
+        if not _ck:
+            return out
+        _hj = {'accept': 'application/json', 'user-agent': 'Mozilla/5.0',
+               'x-reseller': 'pennylane'}
+        paths = [
+            f'https://app.pennylane.com/companies/{company_id}/accountants/payroll_entries',
+            f'https://app.pennylane.com/companies/{company_id}/accountants/payrolls',
+            f'https://app.pennylane.com/companies/{company_id}/payroll_entries',
+        ]
+        for url in paths:
+            got = []
+            try:
+                rr = requests.get(f'{url}?per_page={per_page}', headers=_hj,
+                                  cookies=_ck, timeout=20)
+                if rr.status_code != 200:
+                    continue
+                body = rr.json()
+                lst = (body.get('payroll_entries') or body.get('payrolls')
+                       or body.get('entries') or body.get('data') or [])
+                if not isinstance(lst, list):
+                    continue
+                for p in lst:
+                    if not isinstance(p, dict):
+                        continue
+                    y = mo = None
+                    for ky in ('period', 'month', 'date', 'payroll_date', 'paid_at'):
+                        v = p.get(ky)
+                        if isinstance(v, str) and len(v) >= 7 and v[4] == '-':
+                            y, mo = int(v[:4]), int(v[5:7]); break
+                    if not y or not mo:
+                        continue
+                    got.append({
+                        'annee': y, 'mois': mo,
+                        'id': str(p.get('id') or ''),
+                        'libelle': (p.get('label') or p.get('reference') or '')[:120],
+                        'montant': _pl_montant(p, 'total', 'amount', 'gross_amount', 'net_amount'),
+                        'statut': (p.get('status') or ''),
+                        'source': url.rsplit('/', 1)[-1],
+                    })
+                if got:
+                    out = got
+                    logger.info(f'_fetch_internal_payroll OK via {url.rsplit("/", 1)[-1]} ({len(got)} periodes)')
+                    break
+            except Exception:
+                continue
+    except Exception as e:
+        logger.warning(f'_fetch_internal_payroll: {e}')
+    return out
+
+
 def _fetch_internal_transactions(company_id, per_page=500, max_pages=8):
     """Télécharge TOUTES les transactions via l'API INTERNE Pennylane (cookies web).
 

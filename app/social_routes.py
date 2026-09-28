@@ -183,6 +183,19 @@ def dsn_set():
     return jsonify({'ok': True, 'notif_compta': bool(notif_social)})
 
 
+@app.route('/paie/sync_pennylane/<int:dossier_id>', methods=['POST'])
+@login_required
+def paie_sync_pennylane(dossier_id):
+    """Sonde le journal de paie Pennylane du dossier et confirme les periodes
+    « ecritures integrees » (regle prudente : ne degrade jamais un etat humain)."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
+    d = Dossier.query.get_or_404(dossier_id)
+    n, _ign, msg = SS.synchroniser_paie_pennylane(d)
+    return jsonify({'ok': True, 'periodes': n, 'message': msg,
+                    'session_pennylane': bool((d.pennylane_customer_id or '').strip())})
+
+
 @app.route('/assigner_pole/<int:user_id>', methods=['POST'])
 @login_required
 def assigner_pole(user_id):

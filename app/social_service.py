@@ -154,3 +154,47 @@ def taches_dsn_retard():
         Tache.statut != 'terminee',
         Tache.date_echeance < date.today(),
     ).count()
+
+
+# ---- Detection auto des ecritures de paie depuis Pennylane (journal de paie) ----
+
+def synchroniser_paie_pennylane(dossier, annee=None):
+    """Sonde le journal de paie Pennylane du dossier et met a jour le volet
+    « ecritures » de la grille DSN.
+
+    Regle VOLONTAIREMENT prudente (une source externe ne peut pas degrader un
+    etat qualifie par un humain) :
+      - une periode vue dans le journal Pennylane  -> ecritures_statut = 'integrees'
+      - une periode deja 'integrees' mais absente   -> on ne touche a rien
+      - une periode 'pretes' / 'non_passees' absente-> on ne touche a rien
+    Retourne (n_integree, n_ignoree, message).
+    """
+    from app.integrations.pennylane import _fetch_internal_payroll
+    cid = (dossier.pennylane_customer_id or '').strip()
+    if not cid:
+        return 0, 0, 'Dossier non relié à Pennylane.'
+    try:
+        periodes = _fetch_internal_payroll(cid)
+    except Exception as e:
+        return 0, 0, f'Sonde paie impossible : {e}'
+    if not periodes:
+        return 0, 0, ('Journal de paie Pennylane indisponible '
+                       '(session expirée ou endpoint indisponible) — rien modifié.')
+    annee = annee or date.today().year
+    n = 0
+    for p in periodes:
+        y, mo = p['annee'], p['mois']
+        if y not in (annee, annee - 1) or not (1 <= mo <= 12):
+            continue
+        ligne = DsnSuivi.query.filter_by(dossier_id=dossier.id, annee=y, mois=mo).first()
+        if ligne is None:
+            ligne = DsnSuivi(dossier_id=dossier.id, annee=y, mois=mo)
+            db.session.add(ligne)
+            db.session.flush()
+        if ligne.ecritures_statut != 'integrees':
+            ligne.ecritures_statut = 'integrees'
+            ligne.ecritures_date = datetime.utcnow()
+            ligne.modifie_par_id = None
+            n += 1
+    db.session.commit()
+    return n, 0, f'{n} période(s) confirmée(s) « Intégrées » via le journal de paie Pennylane.'

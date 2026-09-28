@@ -35,6 +35,10 @@
     .dss-motif { font-size:.62rem; color:#EF5350; max-width:70px; margin:0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .dss-chip.dss-ro { cursor:default; opacity:.85; }
     .dss-chip.dss-ro:hover { transform:none; border-color:var(--border-whisper); }
+    .dss-sync-paie { border:none; background:none; color:var(--text-muted); cursor:pointer; padding:0 0 0 6px; font-size:.75rem; vertical-align:middle; transition:color .15s ease, transform .3s ease; }
+    .dss-sync-paie:hover { color:var(--orange-primary); }
+    .dss-sync-paie.spin i { display:inline-block; animation:dss-spin .9s linear infinite; }
+    @keyframes dss-spin { to { transform:rotate(360deg); } }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 animate-fade-in-up flex-wrap gap-2">
@@ -80,7 +84,14 @@
             {% set d = l.d %}
             <tr>
                 <td class="dss-do-cell">
-                    <span class="t">{{ d.intitule }}</span>
+                    <span class="t">{{ d.intitule }}
+                        {% if d.pennylane_customer_id and not lecture_seule %}
+                        <button type="button" class="dss-sync-paie" data-d="{{ d.id }}"
+                                onclick="syncPaie(this)" title="Sonder le journal de paie Pennylane pour confirmer les écritures intégrées">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                        {% endif %}
+                    </span>
                     <span class="n">{{ d.numero_dossier }}
                         {% if d.social %} · {{ d.social.prenom }} {{ d.social.nom[:1] }}.{% endif %}
                         {% if d.effectif_label %} · {{ d.effectif_label }}{% endif %}</span>
@@ -189,6 +200,24 @@ function cycleEcritures(el) {
     const cur = (el.className.match(/s-(\w+)/) || [,'non_passees'])[1] || 'non_passees';
     const next = ECR_SEQ[(ECR_SEQ.indexOf(cur) + 1) % ECR_SEQ.length];
     setCell(el, 'ecritures', next);
+}
+
+// Sonde le journal de paie Pennylane : confirme « Intégrées » sans jamais degrader
+function syncPaie(btn) {
+    if (btn.classList.contains('spin')) return;
+    btn.classList.add('spin');
+    fetch('/paie/sync_pennylane/' + btn.dataset.d, { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            btn.classList.remove('spin');
+            if (window.showToast) showToast(res.message || (res.error || 'Erreur'),
+                                           res.periodes ? 'success' : 'info');
+            if (res.periodes) setTimeout(() => location.reload(), 900);
+        })
+        .catch(() => {
+            btn.classList.remove('spin');
+            if (window.showToast) showToast('Réseau indisponible', 'error');
+        });
 }
 </script>
 {% endblock %}
