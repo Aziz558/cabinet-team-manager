@@ -24,7 +24,7 @@
             <i class="bi bi-calendar3-week"></i>
             <span>Avancement</span>
         </a>
-        {% if current_user.role == 'admin' or current_user.dans_pole_social %}
+        {% if current_user.role == 'admin' or current_user.dans_pole_social or current_user.a_des_dossiers_avec_referent_social %}
         <a href="{{ url_for('suivi_social') }}" class="sidebar-nav-item {% if request.endpoint == 'suivi_social' %}active{% endif %}">
             <i class="bi bi-people"></i>
             <span>Suivi social</span>

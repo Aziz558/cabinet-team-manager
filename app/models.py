@@ -44,6 +44,17 @@ class User(UserMixin, db.Model):
         """True si le membre appartient au pole social (ou les deux)."""
         return (self.pole or 'comptable') in ('social', 'les_deux')
 
+    @property
+    def a_des_dossiers_avec_referent_social(self):
+        """True si le membre est collaborateur comptable d'au moins un dossier
+        dont le volet paie est suivi par le pole social (droit de lecture du
+        suivi social, pour valider le volet « ecritures »)."""
+        from app.models import Dossier as _D
+        return _D.query.filter(
+            _D.collaborateur_id == self.id,
+            _D.collaborateur_social_id.isnot(None),
+        ).first() is not None
+
     def nb_dossiers_en_cours(self):
         return Dossier.query.filter_by(collaborateur_id=self.id).count()
 

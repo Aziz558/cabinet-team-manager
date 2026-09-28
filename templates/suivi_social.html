@@ -33,10 +33,17 @@
     .dss-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:14px; font-size:.72rem; color:var(--text-tertiary); }
     .dss-legend .dss-chip { cursor:default; }
     .dss-motif { font-size:.62rem; color:#EF5350; max-width:70px; margin:0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dss-chip.dss-ro { cursor:default; opacity:.85; }
+    .dss-chip.dss-ro:hover { transform:none; border-color:var(--border-whisper); }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 animate-fade-in-up flex-wrap gap-2">
     <h2 class="fw-semibold mb-0"><i class="bi bi-people me-2" style="color:var(--orange-primary)"></i>Suivi social — DSN & Paie</h2>
+    {% if lecture_seule %}
+    <span class="badge" style="background:var(--info-bg);border:1px solid rgba(66,165,245,.45);color:#42A5F5;" title="Vous voyez vos dossiers dont le volet paie est pris en charge par le pole social">
+        <i class="bi bi-eye me-1"></i>Vue comptable — vous validez le volet « écritures »
+    </span>
+    {% endif %}
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <select id="filtreSocial" class="select-premium" style="width:auto" onchange="location.href='?annee={{annee}}&social='+this.value">
             <option value="">Tous les collaborateurs sociaux</option>
@@ -84,6 +91,17 @@
                         {% set st = c.ligne.dsn_statut %}
                         {% set cls = 's-' + st %}
                         {% if st == 'a_deposer' and c.exigible < date.today() %}{% set cls = 's-retard' %}{% endif %}
+                        {% if lecture_seule %}
+                        {# Collab comptable : lecture seule sur le volet DSN #}
+                        <span class="dss-chip {{ cls }} dss-ro" title="Exigible le {{ c.exigible.strftime('%d/%m/%Y') }}">
+                            {% if st=='validee' %}<i class="bi bi-check-circle-fill"></i>OK
+                            {% elif st=='rejetee' %}<i class="bi bi-x-circle-fill"></i>Rejet
+                            {% elif st=='deposee' %}<i class="bi bi-send-fill"></i>Déposé
+                            {% elif cls=='s-retard' %}<i class="bi bi-exclamation-octagon-fill"></i>Retard
+                            {% elif c.exigible > date.today() %}<span class="dss-futur">—</span>
+                            {% else %}<i class="bi bi-circle"></i>À déposer{% endif %}
+                        </span>
+                        {% else %}
                         <span class="dss-chip {{ cls }}" data-d="{{ d.id }}" data-m="{{ c.mois }}" data-y="{{ c.annee }}" data-f="dsn"
                               onclick="cycleDsn(this)" title="Exigible le {{ c.exigible.strftime('%d/%m/%Y') }} — cliquer pour changer le statut">
                             {% if st=='validee' %}<i class="bi bi-check-circle-fill"></i>OK
@@ -93,10 +111,12 @@
                             {% elif c.exigible > date.today() %}<span class="dss-futur">—</span>
                             {% else %}<i class="bi bi-circle"></i>À déposer{% endif %}
                         </span>
+                        {% endif %}
                         {% if c.ligne.dsn_motif and st=='rejetee' %}<div class="dss-motif" title="{{ c.ligne.dsn_motif }}">{{ c.ligne.dsn_motif }}</div>{% endif %}
                         {% set ec = c.ligne.ecritures_statut %}
                         <span class="dss-chip s-{{ ec }}" data-d="{{ d.id }}" data-m="{{ c.mois }}" data-y="{{ c.annee }}" data-f="ecritures"
-                              onclick="cycleEcritures(this)" title="Écritures de paie (Silae) — cliquer pour changer">
+                              {% if not lecture_seule %}onclick="cycleEcritures(this)"{% endif %}
+                              title="Écritures de paie (Silae){% if not lecture_seule %} — cliquer pour changer{% endif %}">
                             {% if ec=='integrees' %}<i class="bi bi-journal-check"></i>Intégré
                             {% elif ec=='pretes' %}<i class="bi bi-lightning-charge-fill"></i>Prêtes
                             {% elif c.exigible > date.today() %}<span class="dss-futur">paie</span>

@@ -21,17 +21,38 @@ def _acces_social():
 @app.route('/suivi_social')
 @login_required
 def suivi_social():
-    """Grille annuelle DSN + écritures de paie par dossier suivi par le social."""
+    """Grille annuelle DSN + écritures de paie par dossier suivi par le social.
+
+    Acces : admin + pôle social (complet) + COLLABORATEUR COMPTABLE d'un dossier
+    suivi (lecture de ses lignes + validation du volet « écritures » uniquement)."""
     if not _acces_social():
-        flash('Accès réservé au pôle social.', 'danger')
-        return redirect(url_for('dashboard'))
+        # Un comptable non-social peut consulter la grille s'il est le collaborateur
+        # comptable d'au moins un dossier ayant un referent social.
+        if current_user.role == 'membre':
+            a_suivi = Dossier.query.filter(
+                Dossier.collaborateur_social_id.isnot(None),
+                Dossier.collaborateur_id == current_user.id).count()
+            if not a_suivi:
+                flash('Accès réservé au pôle social.', 'danger')
+                return redirect(url_for('dashboard'))
+        else:
+            flash('Accès réservé au pôle social.', 'danger')
+            return redirect(url_for('dashboard'))
 
     annee = request.args.get('annee', type=int) or date.today().year
     annees = [date.today().year - 1, date.today().year, date.today().year + 1]
     if annee not in annees:
         annees.append(annee); annees.sort()
 
-    dossiers = SS.dossiers_suivis_par(current_user)
+    if current_user.role == 'admin' or current_user.dans_pole_social:
+        dossiers = SS.dossiers_suivis_par(current_user)
+        lecture_seule = False
+    else:
+        # comptable : uniquement ses dossiers qui ont un referent social
+        dossiers = Dossier.query.filter(
+            Dossier.collaborateur_social_id.isnot(None),
+            Dossier.collaborateur_id == current_user.id).all()
+        lecture_seule = True
     today = date.today()
     lignes = []
     for d in dossiers:
@@ -59,6 +80,7 @@ def suivi_social():
                            nb_retard=nb_retard, nb_a_deposer=nb_a_deposer,
                            nb_ecrit_att=nb_ecrit_att, social_retard=social_retard,
                            membres_social=membres_social, filtre_social=filtre_social,
+                           lecture_seule=lecture_seule,
                            mois_fr=SS.MOIS_FR)
 
 
@@ -66,8 +88,6 @@ def suivi_social():
 @login_required
 def dsn_set():
     """Met a jour une cellule : dossier_id, annee, mois, champ (dsn|ecritures), valeur."""
-    if not _acces_social():
-        return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
     j = request.get_json(silent=True) or {}
     did = j.get('dossier_id')
     annee = j.get('annee')
@@ -78,13 +98,18 @@ def dsn_set():
     d = Dossier.query.get(did)
     if not d or not (annee and mois):
         return jsonify({'ok': False, 'error': 'Paramètres invalides.'}), 400
-    # scoping : admin = tout ; sinon le dossier doit etre suivi par le social de l'appelant
+    # scoping : admin = tout ; le referent social (ou son manager social) de son cote.
+    # Le COLLABORATEUR COMPTABLE du dossier a acces au volet « ecritures » uniquement
+    # (il doit pouvoir confirmer l'integration comptable qu'il a faite) : c'est lui
+    # qu'on notifie, autant il doit pouvoir repondre.
     if current_user.role != 'admin':
-        ids_ok = [current_user.id]
-        if current_user.role == 'manager':
-            ids_ok += [u.id for u in User.query.filter(
-                User.pole.in_(['social', 'les_deux']), User.actif == True).all()]
-        if d.collaborateur_social_id not in ids_ok:
+        est_social = (d.collaborateur_social_id == current_user.id)
+        est_manager_social = False
+        if current_user.role == 'manager' and d.collaborateur_social_id:
+            cible = User.query.get(d.collaborateur_social_id)
+            est_manager_social = bool(cible and (cible.pole or '') in ('social', 'les_deux'))
+        est_comptable = (champ == 'ecritures' and d.collaborateur_id == current_user.id)
+        if not (est_social or est_manager_social or est_comptable):
             return jsonify({'ok': False, 'error': 'Dossier hors de votre périmètre social.'}), 403
     ligne = DsnSuivi.query.filter_by(dossier_id=did, annee=annee, mois=mois).first()
     if not ligne:
@@ -114,14 +139,39 @@ def dsn_set():
         # Notification au collaborateur COMPTABLE quand les écritures deviennent prêtes
         if valeur == 'pretes' and old != 'pretes' and not ligne.notifie_compta:
             if d.collaborateur_id and d.collaborateur_id != current_user.id:
+                lien = url_for('suivi_social', annee=annee)
                 notif = Notification(
                     user_id=d.collaborateur_id,
                     message=(f"Écritures de paie {mois:02d}/{annee} prêtes pour {d.intitule} "
-                             f"({d.numero_dossier}) — à intégrer en comptabilité."),
+                             f"({d.numero_dossier}) — à intégrer en comptabilité, puis marquer « Intégrées »."),
                     type_notification='social_paie')
                 db.session.add(notif)
                 ligne.notifie_compta = True
                 notif_social = True
+                # email au comptable (le SMS/e-mail relie les deux poles hors de l'app)
+                try:
+                    from app.integrations.brevo import send_email_via_brevo_api
+                    dest = User.query.get(d.collaborateur_id)
+                    if dest and dest.email:
+                        # lien direct vers l'annee concernee (pas l'annee courante)
+                        url_ext = url_for('suivi_social', annee=annee, _external=True)
+                        txt = (f"Bonjour {dest.prenom},\n\n"
+                               f"Les écritures de paie de {mois:02d}/{annee} pour le dossier "
+                               f"{d.intitule} ({d.numero_dossier}) sont prêtes.\n\n"
+                               f"Merci de les intégrer en comptabilité dans Pennylane, puis de marquer "
+                               f"la ligne comme « Intégrées » dans le suivi social.\n\n"
+                               f"{url_ext}")
+                        html = (f"<p>Bonjour {dest.prenom},</p>"
+                                f"<p>Les écritures de paie de <b>{mois:02d}/{annee}</b> pour le dossier "
+                                f"<b>{d.intitule} ({d.numero_dossier})</b> sont prêtes.</p>"
+                                f"<p>Merci de les intégrer en comptabilité dans Pennylane, puis de marquer "
+                                f"la ligne comme « Intégrées » dans le suivi social.</p>"
+                                f'<p><a href="{url_ext}">Ouvrir le suivi social ({annee})</a></p>')
+                        send_email_via_brevo_api(dest.email,
+                                                  f"Écritures de paie prêtes — {d.intitule}",
+                                                  txt, html)
+                except Exception as _mail_e:
+                    app.logger.warning(f"Email ecritures pretes -> compta: {_mail_e}")
     else:
         return jsonify({'ok': False, 'error': 'Champ inconnu.'}), 400
     ligne.modifie_par_id = current_user.id
