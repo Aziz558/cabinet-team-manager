@@ -11,6 +11,32 @@
 </div>
 
 <div class="row mb-4">
+    <!-- Apparence : choix de thème (appliqué à toute l'application) -->
+    <div class="col-12">
+        <div class="card-premium animate-fade-in-up">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-palette me-2" style="color: var(--orange-primary);"></i>Apparence</h5>
+            </div>
+            <div class="card-body-premium">
+                <p class="text-tertiary small mb-3">Choisissez le thème de l'interface. Votre choix s'applique immédiatement à <strong>toutes les fenêtres</strong> de JMH Orbit (y compris la connexion) et reste mémorisé.</p>
+                <div class="theme-choice-group" role="group" aria-label="Choix du thème">
+                    <button type="button" class="theme-choice" data-theme-choice="light" onclick="setOrbitTheme('light')">
+                        <i class="bi bi-sun-fill"></i>
+                        <span>Clair</span>
+                        <small>Fonds blancs, idéal en journée</small>
+                    </button>
+                    <button type="button" class="theme-choice" data-theme-choice="dark" onclick="setOrbitTheme('dark')">
+                        <i class="bi bi-moon-stars-fill"></i>
+                        <span>Sombre</span>
+                        <small>Fonds encre, reposant le soir</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
     <!-- SMTP Configuration -->
     <div class="col-md-4">
         <div class="card-premium h-100 animate-fade-in-up stagger-1">

@@ -1,32 +1,60 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="{{ request.cookies.get('theme') or 'light' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Cabinet Manager{% endblock %}</title>
     <!-- Appliquer le thème AVANT le premier rendu (évite flash/latence de changement de page) -->
     <script>
+    // ===== Socle thème JMH Orbit (source unique, appliqué à toutes les fenêtres) =====
+    // Priorité : préférence navigateur (localStorage) > préférence servie (cookie) > clair.
+    // Le choix est écrit dans le cookie pour s'appliquer aussi aux pages hors app
+    // (login / register / sélection d'équipe).
     (function() {
-        // Refonte light-first : force le thème CLAIR une seule fois, quel que
-        // soit le 'theme' déjà mémorisé (dark) dans le navigateur. Ensuite le
-        // toggle manuel de l'utilisateur est respecté normalement.
-        var V = 'orbit-light-2';
-        var t;
+        var t = null;
+        try { t = localStorage.getItem('theme'); } catch (e) {}
+        if (!t) { t = "{{ request.cookies.get('theme') or 'light' }}"; }
+        if (t !== 'dark' && t !== 'light') { t = 'light'; }
         try {
-            if (localStorage.getItem('themeVersion') !== V) {
-                localStorage.setItem('theme', 'light');
-                localStorage.setItem('themeVersion', V);
-            }
-            t = localStorage.getItem('theme') || 'light';
-        } catch (e) { t = 'light'; }
+            localStorage.setItem('theme', t);
+            document.cookie = 'theme=' + t + ';path=/;max-age=31536000;SameSite=Lax';
+        } catch (e) {}
         document.documentElement.setAttribute('data-theme', t);
+        window.ORBIT_THEME = t;
+
+        window.setOrbitTheme = function(theme, persist) {
+            if (theme !== 'dark' && theme !== 'light') { theme = 'light'; }
+            document.documentElement.setAttribute('data-theme', theme);
+            window.ORBIT_THEME = theme;
+            if (persist !== false) {
+                try {
+                    localStorage.setItem('theme', theme);
+                    document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
+                } catch (e) {}
+            }
+            var icon = document.getElementById('themeIcon');
+            if (icon) { icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill'; }
+            document.querySelectorAll('.sidebar-logo').forEach(function(img) {
+                img.src = theme === 'light'
+                    ? "{{ url_for('static', filename='img/logo-jmh-light.svg') }}"
+                    : "{{ url_for('static', filename='img/logo-jmh.svg') }}";
+            });
+            document.querySelectorAll('[data-theme-choice]').forEach(function(el) {
+                el.classList.toggle('active', el.getAttribute('data-theme-choice') === theme);
+            });
+            window.dispatchEvent(new CustomEvent('orbit:theme', { detail: theme }));
+        };
+
+        window.toggleTheme = function() {
+            window.setOrbitTheme(window.ORBIT_THEME === 'light' ? 'dark' : 'light', true);
+        };
     })();
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="{{ url_for('static', filename='css/style.css') }}?v=8" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=3" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/polish.css') }}?v=2" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/polish.css') }}?v=3" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&display=swap" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#f6f7f9">
@@ -321,29 +349,10 @@
     })();
     </script>
 <script>
-// Theme toggle
-function applyThemeLogo(theme) {
-    var logos = document.querySelectorAll('.sidebar-logo');
-    var src = theme === 'light' ? "{{ url_for('static', filename='img/logo-jmh-light.svg') }}" : "{{ url_for('static', filename='img/logo-jmh.svg') }}";
-    logos.forEach(function(img) { img.src = src; });
-}
+// Applique l'icône + le logo du thème courant (socle défini dans <head>)
 (function() {
-    var theme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    var icon = document.getElementById('themeIcon');
-    if (icon) icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
-    applyThemeLogo(theme);
+    if (window.setOrbitTheme) { window.setOrbitTheme(window.ORBIT_THEME, false); }
 })();
-function toggleTheme() {
-    var html = document.documentElement;
-    var current = html.getAttribute('data-theme') || 'dark';
-    var next = current === 'light' ? 'dark' : 'light';
-    html.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    var icon = document.getElementById('themeIcon');
-    if (icon) icon.className = next === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
-    applyThemeLogo(next);
-}
 </script>
 <script>
 // Tiroir de navigation mobile (additif : n'affecte pas l'effondrement desktop)

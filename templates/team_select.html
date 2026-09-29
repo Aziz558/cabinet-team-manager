@@ -1,7 +1,43 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="{{ request.cookies.get('theme') or 'light' }}">
 <head>
     <meta charset="UTF-8">
+    <script>
+    /* Thème JMH Orbit — aligné sur le reste de l'app (localStorage + cookie) */
+    (function() {
+        var t = null;
+        try { t = localStorage.getItem('theme'); } catch (e) {}
+        if (!t) { t = "{{ request.cookies.get('theme') or 'light' }}"; }
+        if (t !== 'dark' && t !== 'light') { t = 'light'; }
+        try { localStorage.setItem('theme', t); document.cookie = 'theme=' + t + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {}
+        document.documentElement.setAttribute('data-theme', t);
+        window.ORBIT_THEME = t;
+        window.setOrbitTheme = function(theme, persist) {
+            if (theme !== 'dark' && theme !== 'light') { theme = 'light'; }
+            document.documentElement.setAttribute('data-theme', theme);
+            window.ORBIT_THEME = theme;
+            if (persist !== false) { try { localStorage.setItem('theme', theme); document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {} }
+            var r = document.getElementById('authThemeToggle');
+            if (r) {
+                r.innerHTML = '<i class="bi ' + (theme === 'light' ? 'bi-moon-stars-fill' : 'bi-sun-fill') + '"></i>';
+                r.style.background = theme === 'light' ? '#ffffff' : '#1a1c20';
+                r.style.borderColor = theme === 'light' ? '#e6e8ec' : 'rgba(255,255,255,0.14)';
+                r.style.color = theme === 'light' ? '#0f1115' : '#f5f6f8';
+            }
+        };
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('authThemeToggle')) return;
+            var b = document.createElement('button');
+            b.id = 'authThemeToggle';
+            b.type = 'button';
+            b.title = 'Changer de thème';
+            b.style.cssText = 'position:fixed;top:16px;right:16px;z-index:50;width:42px;height:42px;border-radius:50%;border:1px solid #e6e8ec;background:#ffffff;color:#0f1115;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(16,24,40,.10);';
+            b.addEventListener('click', function() { window.setOrbitTheme(window.ORBIT_THEME === 'light' ? 'dark' : 'light', true); });
+            document.body.appendChild(b);
+            window.setOrbitTheme(window.ORBIT_THEME, false);
+        });
+    })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cabinet JMH — Sélection d'équipe</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -180,25 +216,25 @@
             .teams-grid { grid-template-columns: 1fr; }
             .header h1 { font-size: 1.3rem; }
         }
-    /* ===== LIGHT (refonte JMH Orbit light-first) ===== */
-    body { background: #f6f7f9 !important; }
-    .orb { opacity: 0.07 !important; }
-    .grid-overlay { background-image: linear-gradient(rgba(15,17,21,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(15,17,21,0.03) 1px, transparent 1px); }
-    .header img { background: #ffffff !important; border: 1px solid #e6e8ec !important; }
-    .header h1 { color: #0f1115 !important; }
-    .header p { color: #6b7280 !important; }
-    .team-card { background: #ffffff !important; border: 1px solid #e6e8ec !important; box-shadow: 0 2px 8px -2px rgba(16,24,40,.08); }
-    .team-card:hover { border-color: rgba(255,122,0,.35) !important; box-shadow: 0 12px 30px -8px rgba(16,24,40,.18) !important; }
-    .team-avatar { background: #f3f4f7 !important; border-color: #e6e8ec !important; color: #6b7280 !important; }
-    .team-info h3 { color: #0f1115 !important; }
-    .team-info .meta { color: #6b7280 !important; }
-    .team-desc { color: #4b5563 !important; }
-    .team-footer { border-top: 1px solid #eceef1 !important; }
-    .team-footer span { color: #6b7280 !important; }
-    .enter-btn { color: #ff7a00 !important; }
-    .back-link { color: #6b7280 !important; }
-    .back-link:hover { color: #ff7a00 !important; }
-    .teams-grid .text-center { color: #6b7280 !important; }
+    /* ===== Thème CLAIR (refonte JMH Orbit) — actif uniquement si thème clair ===== */
+    html[data-theme="light"] body { background: #f6f7f9 !important; }
+    html[data-theme="light"] .orb { opacity: 0.07 !important; }
+    html[data-theme="light"] .grid-overlay { background-image: linear-gradient(rgba(15,17,21,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(15,17,21,0.03) 1px, transparent 1px); }
+    html[data-theme="light"] .header img { background: #ffffff !important; border: 1px solid #e6e8ec !important; }
+    html[data-theme="light"] .header h1 { color: #0f1115 !important; }
+    html[data-theme="light"] .header p { color: #6b7280 !important; }
+    html[data-theme="light"] .team-card { background: #ffffff !important; border: 1px solid #e6e8ec !important; box-shadow: 0 2px 8px -2px rgba(16,24,40,.08); }
+    html[data-theme="light"] .team-card:hover { border-color: rgba(255,122,0,.35) !important; box-shadow: 0 12px 30px -8px rgba(16,24,40,.18) !important; }
+    html[data-theme="light"] .team-avatar { background: #f3f4f7 !important; border-color: #e6e8ec !important; color: #6b7280 !important; }
+    html[data-theme="light"] .team-info h3 { color: #0f1115 !important; }
+    html[data-theme="light"] .team-info .meta { color: #6b7280 !important; }
+    html[data-theme="light"] .team-desc { color: #4b5563 !important; }
+    html[data-theme="light"] .team-footer { border-top: 1px solid #eceef1 !important; }
+    html[data-theme="light"] .team-footer span { color: #6b7280 !important; }
+    html[data-theme="light"] .enter-btn { color: #ff7a00 !important; }
+    html[data-theme="light"] .back-link { color: #6b7280 !important; }
+    html[data-theme="light"] .back-link:hover { color: #ff7a00 !important; }
+    html[data-theme="light"] .teams-grid .text-center { color: #6b7280 !important; }
     </style>
 </head>
 <body>
