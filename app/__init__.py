@@ -32,17 +32,49 @@ def _no_cache_html(resp):
     return resp
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-database_url = os.environ.get('DATABASE_URL')
-use_postgres = False
-if database_url and database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    use_postgres = True
-if database_url and database_url.startswith('postgresql://'):
-    if 'sslmode' not in database_url:
-        if '?' not in database_url:
-            database_url += '?sslmode=require'
-        else:
-            database_url += '&sslmode=require'
+# --- Lecture + normalisation ROBUSTE de DATABASE_URL ------------------------------
+# Tolere les erreurs de copier-coller classiques : espaces, guillemets, backticks,
+# prefixe "psql ", prefixe "DATABASE_URL=" collE dans le champ valeur, et les
+# options non supportees par psycopg2 (ex: channel_binding=require, present par
+# defaut dans les chaines de connexion Neon).
+def _orbit_clean_db_url(_v):
+    _v = (_v or '').strip()
+    for _ in range(4):
+        _v = _v.strip()
+        _low = _v.lower()
+        if _low.startswith('database_url='):
+            _v = _v.split('=', 1)[1].strip()
+            continue
+        if _low.startswith('psql '):
+            _v = _v[5:].strip()
+            continue
+        if _low.startswith('psql\t'):
+            _v = _v[5:].strip()
+            continue
+        if len(_v) > 1 and _v[0] in ('"', "'", '`') and _v[-1] == _v[0]:
+            _v = _v[1:-1].strip()
+            continue
+        break
+    if _v.startswith('postgres://'):
+        _v = _v.replace('postgres://', 'postgresql://', 1)
+    for _bad in ('&channel_binding=require', '?channel_binding=require',
+                 'channel_binding=require&', 'channel_binding=require'):
+        _v = _v.replace(_bad, '')
+    _v = _v.replace('?&', '?').replace('&&', '&').rstrip('?&')
+    return _v
+
+
+database_url = _orbit_clean_db_url(os.environ.get('DATABASE_URL'))
+use_postgres = bool(database_url.startswith('postgresql://'))
+if use_postgres and 'sslmode' not in database_url:
+    database_url += ('&' if '?' in database_url else '?') + 'sslmode=require'
+
+# Trace sur une ligne, sans jamais exposer identifiants ni mot de passe.
+_orbit_scheme = database_url.split('://', 1)[0].lower() if '://' in database_url else 'none'
+if _orbit_scheme not in ('postgresql', 'postgres'):
+    _orbit_scheme = 'none' if not database_url else 'other'
+app.logger.info("[DB] DATABASE_URL set=%s scheme=%s use_postgres=%s",
+                bool(database_url), _orbit_scheme, use_postgres)
 
 # For Render free tier, use a writable SQLite path by default
 # PostgreSQL can be enabled later by setting USE_POSTGRES=true
@@ -72,8 +104,10 @@ elif _orbit_on_render and not database_url:
                         "(postgresql://...?sslmode=require) dans Render > Environment, puis relancez "
                         "un deploiement.")
 elif _orbit_on_render and not _orbit_pg_active:
-    orbit_db_warning = ("Production sans PostgreSQL : l'application tourne sur SQLite ephemere. "
-                        "Definissez USE_POSTGRES=true et DATABASE_URL pour conserver les donnees.")
+    orbit_db_warning = ("DATABASE_URL est definie mais son format n'est pas reconnu : elle doit "
+                        "commencer par postgresql:// . Verifiez la valeur dans Render > Environment "
+                        "(sans guillemets, sans espace avant, sans prefixe 'psql' ni 'DATABASE_URL='), "
+                        "puis relancez un deploiement.")
 if orbit_db_warning:
     app.logger.error("[DB GUARD] %s", orbit_db_warning)
 
