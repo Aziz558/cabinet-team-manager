@@ -67,3 +67,99 @@ html[data-theme="dark"] .btn-premium-primary { box-shadow: none; }
 /* Tableaux : en-tete affirmee, densite confortable */
 .table-premium thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; }
 .table-premium tbody td { padding-top: 0.85rem; padding-bottom: 0.85rem; }
+
+/* ============================================================
+   1) KPI / CARTES DE STAT (dashboard_manager, dashboard_collaborateur)
+   ============================================================ */
+.stats-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.15rem; margin: 1.5rem 0; }
+.stat-card { box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 2px 6px -2px rgba(16,24,40,.06); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -8px rgba(16,24,40,.16); }
+.stat-card-icon { width: 46px; height: 46px; border-radius: 12px; margin-bottom: 0.9rem; box-shadow: inset 0 0 0 1px rgba(0,0,0,.03); }
+.stat-card-icon i { font-size: 1.35rem; }
+.stat-card-label { font-size: 0.72rem; color: var(--text-muted); letter-spacing: .05em; margin-bottom: .3rem; }
+.stat-card-value { font-size: 2rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: .35rem; }
+.stat-card-trend { font-size: 0.8rem; font-weight: 600; }
+html[data-theme="dark"] .stat-card { box-shadow: none; }
+html[data-theme="dark"] .stat-card:hover { box-shadow: var(--shadow-lg); }
+html[data-theme="dark"] .stat-card-icon { box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+
+/* ============================================================
+   2) SQUELETTES DE CHARGEMENT + ETATS VIDES
+   ============================================================ */
+.skeleton { border-radius: 10px; }
+html[data-theme="light"] .skeleton {
+    background: linear-gradient(90deg, #eef0f4 25%, #e1e4ea 37%, #eef0f4 63%);
+    background-size: 200% 100%;
+}
+.empty-state { padding: 2.5rem 1.25rem; }
+.empty-state-title { color: var(--text); font-weight: 600; font-size: 1.05rem; }
+.empty-state p { color: var(--text-muted); font-size: 0.9rem; max-width: 360px; margin: 0.35rem auto 0; }
+
+/* ============================================================
+   3) FORMULAIRES HARMONISES (input-premium + Bootstrap)
+   ============================================================ */
+.input-premium, .form-control, .form-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text);
+    border-radius: 10px;
+}
+.input-premium::placeholder, .form-control::placeholder { color: var(--text-muted); opacity: .8; }
+.input-premium:hover:not(:focus), .form-control:hover:not(:focus), .form-select:hover:not(:focus) { border-color: var(--border-strong); }
+.input-premium:focus, .form-control:focus, .form-select:focus {
+    background: var(--bg-card);
+    border-color: var(--primary);
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(255,122,0,.15);
+    outline: none;
+}
+.form-label, .form-label-premium { color: var(--text-secondary); font-weight: 500; font-size: .875rem; }
+textarea.input-premium, textarea.form-control { min-height: 90px; }
+
+/* ============================================================
+   6) CONTRASTE MARQUE (logo + bascule) — cohérent clair/sombre
+   ============================================================ */
+.sidebar-logo { border-radius: 8px; }
+.app-brand-icon { display: inline-flex; }
+#themeToggle i { line-height: 1; }
+
+/* ============================================================
+   4) RESPONSIVE — tableaux adaptés + espacements + tiroir mobile
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .table-premium { display: block; width: 100%; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .card-body-premium { padding: 1rem; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+    .stat-card-value { font-size: 1.6rem; }
+    .stat-card-icon { width: 40px; height: 40px; }
+    .container { padding-left: .75rem; padding-right: .75rem; }
+    .app-topbar { left: 0 !important; padding: 0 .75rem; }
+
+    /* Sidebar en tiroir hors-canvas sur mobile */
+    #sidebarCol {
+        display: flex !important;
+        position: fixed !important;
+        top: 56px; left: 0; bottom: 0;
+        width: 240px !important; max-width: 82vw; padding: 0;
+        transform: translateX(-100%);
+        transition: transform .26s ease;
+        box-shadow: 0 0 40px rgba(0,0,0,.35);
+        z-index: 1040;
+    }
+    #sidebarCol .sidebar { position: static; width: 100% !important; height: 100%; box-shadow: none; }
+    #sidebarCol .sidebar-nav-item span,
+    #sidebarCol .sidebar-section-title,
+    #sidebarCol .sidebar-brand-text,
+    #sidebarCol .sidebar-subtitle { display: inline-block !important; }
+    #sidebarCol .sidebar-nav-item { justify-content: flex-start !important; padding: .55rem .75rem !important; }
+    body.sidebar-open #sidebarCol { transform: translateX(0); }
+    body.sidebar-open { overflow: hidden; }
+    body.sidebar-open .sidebar-backdrop { opacity: 1; visibility: visible; }
+}
+.sidebar-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(8, 9, 11, .55);
+    opacity: 0; visibility: hidden;
+    transition: opacity .2s ease;
+    z-index: 1039;
+}
