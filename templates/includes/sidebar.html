@@ -202,3 +202,85 @@
     </div>
 </div>
 {% endif %}
+<script>
+/* Navigation : recherche rapide + sections repliables (non invasif, dégrade en douceur) */
+(function() {
+    function ready(fn) { if (document.readyState !== 'loading') { fn(); } else { document.addEventListener('DOMContentLoaded', fn); } }
+    ready(function() {
+        var menu = document.querySelector('.sidebar-menu');
+        if (!menu || menu.dataset.orbitGroups) { return; }
+        menu.dataset.orbitGroups = '1';
+
+        /* 1) Recherche rapide */
+        var search = document.createElement('div');
+        search.className = 'sidebar-search';
+        search.innerHTML = '<i class="bi bi-search"></i><input type="text" id="orbitSidebarSearch" placeholder="Rechercher…" autocomplete="off" aria-label="Rechercher dans la navigation">';
+        menu.insertBefore(search, menu.firstChild);
+
+        /* 2) Regrouper les items en sections repliables */
+        var groups = [];
+        var currentItems = null;
+        Array.prototype.slice.call(menu.children).forEach(function(el) {
+            if (el === search) { return; }
+            if (el.classList && el.classList.contains('sidebar-section-title')) {
+                var g = document.createElement('div');
+                g.className = 'sidebar-group';
+                g.dataset.group = (el.textContent || '').trim().toLowerCase();
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'sidebar-group-title';
+                btn.innerHTML = '<span>' + (el.textContent || '').trim() + '</span><i class="bi bi-chevron-down"></i>';
+                var items = document.createElement('div');
+                items.className = 'sidebar-group-items';
+                g.appendChild(btn);
+                g.appendChild(items);
+                menu.insertBefore(g, el);
+                menu.removeChild(el);
+                currentItems = items;
+                groups.push(g);
+                btn.addEventListener('click', function() { g.classList.toggle('collapsed'); saveGroups(); });
+            } else if (currentItems) {
+                currentItems.appendChild(el);
+            }
+        });
+
+        var empty = document.createElement('div');
+        empty.className = 'sidebar-search-empty';
+        empty.textContent = 'Aucun résultat';
+        menu.appendChild(empty);
+
+        function saveGroups() {
+            try {
+                var state = {};
+                groups.forEach(function(g) { state[g.dataset.group] = g.classList.contains('collapsed'); });
+                localStorage.setItem('orbitSidebarGroups', JSON.stringify(state));
+            } catch (e) {}
+        }
+        try {
+            var saved = JSON.parse(localStorage.getItem('orbitSidebarGroups') || '{}');
+            groups.forEach(function(g) { if (saved[g.dataset.group]) { g.classList.add('collapsed'); } });
+        } catch (e) {}
+
+        /* 3) Filtrage par recherche */
+        var input = document.getElementById('orbitSidebarSearch');
+        if (input) {
+            input.addEventListener('input', function() {
+                var q = (this.value || '').trim().toLowerCase();
+                var any = false;
+                groups.forEach(function(g) {
+                    var found = false;
+                    g.querySelectorAll('.sidebar-nav-item').forEach(function(a) {
+                        var match = !q || (a.textContent || '').toLowerCase().indexOf(q) !== -1;
+                        a.classList.toggle('hidden-by-search', !match);
+                        if (match) { found = true; }
+                    });
+                    g.style.display = found ? '' : 'none';
+                    if (q && found) { g.classList.remove('collapsed'); }
+                    if (found) { any = true; }
+                });
+                empty.classList.toggle('show', Boolean(q) && !any);
+            });
+        }
+    });
+})();
+</script>

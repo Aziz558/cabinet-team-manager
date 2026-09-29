@@ -278,12 +278,15 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 animate-fade-in-up">
-    <div>
-        <h2 class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-2" style="color:var(--orange-primary)"></i>Avancement</h2>
-        <span class="text-tertiary" style="font-size:0.85rem;">Pilotage de l'équipe et échéancier des obligations</span>
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-graph-up-arrow"></i></span>
+        <div class="page-head-titles">
+            <h2>Avancement</h2>
+            <p class="page-head-sub">Pilotage de l'équipe et échéancier des obligations</p>
+        </div>
     </div>
-    <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="page-head-actions">
         <select id="anneeSelect" class="select-premium" style="width:auto;" onchange="setAnnee(this.value)">
             {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
         </select>

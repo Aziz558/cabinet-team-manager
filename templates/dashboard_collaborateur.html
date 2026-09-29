@@ -3,6 +3,49 @@
 {% block title %}Mon Dashboard{% endblock %}
 
 {% block content %}
+{# ============ BANDEAU « AUJOURD'HUI » ============ #}
+<div class="card-premium today-band animate-fade-in-up mb-4">
+    <div class="today-head">
+        <div>
+            <div class="today-hello">Bonjour {{ current_user.prenom }} 👋</div>
+            <div class="today-date" id="todayDateLabelCollab">Voici votre journée</div>
+        </div>
+        <div class="today-stats">
+            <span class="today-chip"><strong>{{ taches_jour|length }}</strong> aujourd'hui</span>
+            <span class="today-chip"><strong>{{ taches_semaine|length }}</strong> cette semaine</span>
+            <span class="today-chip"><strong>{{ kpi.taux_completion or 0 }}%</strong> avancement</span>
+        </div>
+    </div>
+    {% if taches_jour %}
+    <div class="today-list">
+        {% for t in taches_jour[:5] %}
+        <a class="today-item" href="{{ url_for('mes_taches') }}">
+            <span class="today-dot prio-{{ t.priorite or 'moyenne' }}"></span>
+            <span class="today-item-title">{{ t.titre }}</span>
+            {% if t.dossier %}<span class="today-item-meta">{{ t.dossier.numero_dossier }}</span>{% endif %}
+            <span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}">{{ t.priorite }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="today-empty"><i class="bi bi-check2-circle"></i> Aucune tâche prévue aujourd'hui — bon moment pour anticiper.</div>
+    {% endif %}
+</div>
+
+{# ============ ACTIONS RAPIDES ============ #}
+<div class="quick-actions animate-fade-in-up mb-4">
+    <div class="quick-actions-head">
+        <span class="qa-title"><i class="bi bi-lightning-charge-fill me-1"></i>Actions rapides</span>
+    </div>
+    <div class="quick-actions-grid">
+        <a href="{{ url_for('mes_taches') }}" class="qa-btn"><i class="bi bi-check2-circle"></i><span>Mes tâches</span></a>
+        <a href="{{ url_for('mes_dossiers') }}" class="qa-btn"><i class="bi bi-folder"></i><span>Mes dossiers</span></a>
+        <a href="{{ url_for('taches_aujourdhui') }}" class="qa-btn"><i class="bi bi-calendar-check"></i><span>Tâches du jour</span></a>
+        <a href="{{ url_for('notifications_page') }}" class="qa-btn"><i class="bi bi-bell"></i><span>Notifications</span></a>
+        <a href="{{ url_for('profil') }}" class="qa-btn"><i class="bi bi-person"></i><span>Mon profil</span></a>
+    </div>
+</div>
+
 <!-- Stats Grid -->
 <div class="stats-grid stagger-1" id="kpiSkeletonsCollab">
     <div class="skeleton-stat stagger-1"></div>
@@ -31,7 +74,7 @@
         </div>
         <div class="stat-card-content">
             <div class="stat-card-label">À faire</div>
-            <div class="stat-card-value">{{ kpi.taches_a_faire }}</div>
+            <div class="stat-card-value">{{ kpi.taches_a_faire if kpi.taches_a_faire is defined else taches_jour|length }}</div>
             <div class="stat-card-trend down">
                 <i class="bi bi-arrow-down"></i>
                 <span>Urgent</span>
@@ -45,6 +88,7 @@
         <div class="stat-card-content">
             <div class="stat-card-label">Taux d'avancement</div>
             <div class="stat-card-value">{{ kpi.taux_completion or 0 }}%</div>
+            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ kpi.taux_completion or 0 }}%; background: var(--orange-primary);"></div></div>
             <div class="stat-card-trend up">
                 <i class="bi bi-rocket"></i>
                 <span>Progression</span>
@@ -161,6 +205,11 @@
 <script>
 // Simulate loading
 document.addEventListener('DOMContentLoaded', function () {
+    var dEl = document.getElementById('todayDateLabelCollab');
+    if (dEl) {
+        var s = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        dEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+    }
     setTimeout(function () {
         var sk = document.getElementById('kpiSkeletonsCollab');
         var ct = document.getElementById('kpiContentCollab');

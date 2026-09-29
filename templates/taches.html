@@ -2,17 +2,30 @@
 {% block title %}Tâches{% endblock %}
 {% block content %}
 {% if current_user.role == 'manager' %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <div>
-        <h2 class="fw-semibold mb-1" style="letter-spacing:-0.5px;">Tâches</h2>
-        <p class="text-tertiary small mb-0" id="taskCount">{{ taches|length }} tâche(s)</p>
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-check2-square"></i></span>
+        <div class="page-head-titles">
+            <h2>Tâches</h2>
+            <p class="page-head-sub" id="taskCount">{{ taches|length }} tâche(s)</p>
+        </div>
     </div>
-    <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalTache">
-        <i class="bi bi-plus-lg me-1"></i>Nouvelle tâche
-    </button>
+    <div class="page-head-actions">
+        <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalTache">
+            <i class="bi bi-plus-lg me-1"></i>Nouvelle tâche
+        </button>
+    </div>
 </div>
 {% else %}
-<h2 class="fw-semibold animate-fade-in-up" style="letter-spacing:-0.5px;">Mes tâches</h2>
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-check2-square"></i></span>
+        <div class="page-head-titles">
+            <h2>Mes tâches</h2>
+            <p class="page-head-sub">Vos tâches assignées</p>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <!-- Filtres -->
