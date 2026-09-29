@@ -1,0 +1,69 @@
+/* ============================================================
+   POLISH — surcouche UI (light-first). Chargée en DERNIER (apres
+   style.css et light-theme.css) pour affiner les composants vus sur
+   toutes les pages. 100% basee sur les tokens => coherent en clair
+   comme en sombre. Aucun impact sur la logique / le HTML.
+   ============================================================ */
+
+/* Schema de couleur natif : inputs, selects, date pickers, scrollbars systeme */
+:root { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+
+/* Barre de defilement discrete et coherente (tous les panneaux) */
+* { scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Selection de texte */
+::selection { background: rgba(255, 122, 0, 0.18); color: var(--text); }
+
+/* Anneau de focus discret et coherit (clair + sombre) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Typographie : titres plus serres et hierarchises */
+h1, h2, h3, h4, .h1, .h2, .h3, .h4 { color: var(--text); letter-spacing: -0.018em; font-weight: 600; }
+.text-gradient-premium { letter-spacing: -0.02em; }
+
+/* Cartes : presence plus nette en clair (bord fin + ombre douce), hover discret */
+.card-premium { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06); }
+.card-premium:hover { box-shadow: 0 6px 18px -6px rgba(16, 24, 40, 0.14), 0 2px 6px rgba(16, 24, 40, 0.06); }
+html[data-theme="dark"] .card-premium { box-shadow: none; }
+html[data-theme="dark"] .card-premium:hover { box-shadow: var(--shadow-lg); }
+
+/* Barre superieure : legere elevation en clair */
+.app-topbar { box-shadow: 0 1px 0 rgba(16, 24, 40, 0.03), 0 2px 8px -4px rgba(16, 24, 40, 0.08); }
+html[data-theme="dark"] .app-topbar { box-shadow: none; }
+
+/* Sidebar : element actif mieux signale (indicateur accent + graisse) */
+.sidebar-nav-item { font-weight: 500; }
+.sidebar-nav-item::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 50%;
+    width: 3px; height: 18px;
+    border-radius: 0 3px 3px 0;
+    background: var(--primary);
+    transform: translateY(-50%) scaleY(0);
+    transition: transform var(--transition);
+}
+.sidebar-nav-item.active { font-weight: 600; }
+.sidebar-nav-item.active::before { transform: translateY(-50%) scaleY(1); }
+
+/* Boutons : micro-elevation et retour au clic */
+.btn-premium { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); }
+.btn-premium:hover { filter: brightness(1.03); }
+.btn-premium:active { transform: translateY(1px); }
+.btn-premium-primary { box-shadow: 0 2px 8px -2px rgba(255, 122, 0, 0.45); }
+html[data-theme="dark"] .btn-premium,
+html[data-theme="dark"] .btn-premium-primary { box-shadow: none; }
+
+/* Tableaux : en-tete affirmee, densite confortable */
+.table-premium thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; }
+.table-premium tbody td { padding-top: 0.85rem; padding-bottom: 0.85rem; }

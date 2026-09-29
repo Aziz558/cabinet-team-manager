@@ -7,7 +7,18 @@
     <!-- Appliquer le thème AVANT le premier rendu (évite flash/latence de changement de page) -->
     <script>
     (function() {
-        var t = localStorage.getItem('theme') || 'light';
+        // Refonte light-first : force le thème CLAIR une seule fois, quel que
+        // soit le 'theme' déjà mémorisé (dark) dans le navigateur. Ensuite le
+        // toggle manuel de l'utilisateur est respecté normalement.
+        var V = 'orbit-light-2';
+        var t;
+        try {
+            if (localStorage.getItem('themeVersion') !== V) {
+                localStorage.setItem('theme', 'light');
+                localStorage.setItem('themeVersion', V);
+            }
+            t = localStorage.getItem('theme') || 'light';
+        } catch (e) { t = 'light'; }
         document.documentElement.setAttribute('data-theme', t);
     })();
     </script>
@@ -15,6 +26,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="{{ url_for('static', filename='css/style.css') }}?v=8" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=3" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/polish.css') }}?v=1" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&display=swap" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#f6f7f9">
