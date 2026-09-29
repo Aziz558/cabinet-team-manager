@@ -11,13 +11,13 @@ from datetime import date, datetime, timedelta
 @app.route('/')
 def index():
     if current_user.is_authenticated:
-        return redirect(url_for('dossiers'))
+        return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('dossiers'))
+        return redirect(url_for('dashboard'))
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
@@ -29,7 +29,7 @@ def login():
             login_user(user, remember=True)
             next_page = request.args.get('next')
             flash(f'Bienvenue, {user.prenom} !', 'success')
-            return redirect(next_page or url_for('dossiers'))
+            return redirect(next_page or url_for('dashboard'))
         else:
             flash('Email ou mot de passe incorrect.', 'danger')
     return render_template('login.html')

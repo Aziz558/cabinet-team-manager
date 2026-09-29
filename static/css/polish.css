@@ -304,6 +304,17 @@ html[data-theme="dark"] .stat-mini { background: rgba(255,255,255,.08); }
 .sidebar-collapsed .sidebar-group-title .bi-chevron-down { display: none !important; }
 
 /* ============================================================
+   V4.5 — ALERTE CONFIGURATION BASE DE DONNEES
+   ============================================================ */
+.orbit-db-warning { display: flex; align-items: flex-start; gap: .75rem; padding: .85rem 1rem; margin-bottom: 1rem; border-radius: 12px; border: 1px solid rgba(209,67,67,.35); background: var(--danger-bg); color: var(--danger); }
+.orbit-db-warning > i { font-size: 1.2rem; line-height: 1.2; margin-top: 1px; }
+.orbit-db-warning-text { display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; }
+.orbit-db-warning-text strong { font-weight: 700; }
+.orbit-db-warning-close { margin-left: auto; background: none; border: none; color: inherit; font-size: 1.3rem; line-height: 1; cursor: pointer; opacity: .7; }
+.orbit-db-warning-close:hover { opacity: 1; }
+html[data-theme="dark"] .orbit-db-warning { background: rgba(209,67,67,.12); border-color: rgba(209,67,67,.35); }
+
+/* ============================================================
    V4.4 — TOASTS plus clairs + micro-animations de listes
    ============================================================ */
 .toast { border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-elevated); color: var(--text-primary); box-shadow: var(--shadow-lg); overflow: hidden; }

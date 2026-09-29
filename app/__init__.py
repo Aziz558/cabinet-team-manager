@@ -55,6 +55,22 @@ else:
     if use_postgres:
         app.logger.info(f"Using SQLite instead of PostgreSQL. Set USE_POSTGRES=true to enable PostgreSQL.")
 
+# --- Garde-fou base de donnees : alerte visible si PostgreSQL est ignore en production ---
+# Objectif : ne plus jamais perdre de donnees en silence (SQLite ephemere sur Render/Railway).
+_orbit_pg_active = bool(use_postgres and os.environ.get('USE_POSTGRES', 'false').lower() == 'true')
+_orbit_on_render = bool(os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_URL'))
+orbit_db_warning = None
+if use_postgres and not _orbit_pg_active:
+    orbit_db_warning = ("Une base PostgreSQL (Neon) est configuree via DATABASE_URL mais elle est "
+                        "IGNOREE car USE_POSTGRES n'est pas exactement 'true'. L'application tourne "
+                        "sur une base SQLite ephemere : les donnees peuvent disparaitre a chaque "
+                        "deploiement. Corrigez la variable d'environnement USE_POSTGRES=true.")
+elif _orbit_on_render and not _orbit_pg_active:
+    orbit_db_warning = ("Production sans PostgreSQL : l'application tourne sur SQLite ephemere. "
+                        "Definissez USE_POSTGRES=true et DATABASE_URL pour conserver les donnees.")
+if orbit_db_warning:
+    app.logger.error("[DB GUARD] %s", orbit_db_warning)
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, '..', 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -355,6 +371,7 @@ def load_user(user_id):
 # Make date available in templates
 app.jinja_env.globals['date'] = _date
 app.jinja_env.globals['app_build'] = _datetime.now().strftime('%d/%m %H:%M')
+app.jinja_env.globals['orbit_db_warning'] = orbit_db_warning
 
 # Context processor — makes current_equipe available in all templates
 @app.context_processor

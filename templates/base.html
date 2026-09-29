@@ -54,7 +54,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="{{ url_for('static', filename='css/style.css') }}?v=8" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=3" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/polish.css') }}?v=4" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/polish.css') }}?v=5" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&display=swap" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#f6f7f9">
@@ -213,6 +213,20 @@
                     {% endfor %}
                     {% endif %}
                     {% endwith %}
+                    {% if orbit_db_warning %}
+                    <div class="orbit-db-warning" id="orbitDbWarning" role="alert">
+                        <i class="bi bi-database-exclamation"></i>
+                        <div class="orbit-db-warning-text">
+                            <strong>Configuration base de données à corriger</strong>
+                            <span>{{ orbit_db_warning }}</span>
+                        </div>
+                        <button type="button" class="orbit-db-warning-close" aria-label="Masquer"
+                                onclick="this.parentNode.style.display='none'; try{localStorage.setItem('orbitDbWarnDismissed','1');}catch(e){}">&times;</button>
+                    </div>
+                    <script>
+                    try { if (localStorage.getItem('orbitDbWarnDismissed') === '1') { var _w = document.getElementById('orbitDbWarning'); if (_w) { _w.style.display = 'none'; } } } catch (e) {}
+                    </script>
+                    {% endif %}
                     {% block content %}{% endblock %}
                 </div>
             </div>
