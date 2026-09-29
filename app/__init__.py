@@ -61,10 +61,16 @@ _orbit_pg_active = bool(use_postgres and os.environ.get('USE_POSTGRES', 'false')
 _orbit_on_render = bool(os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_URL'))
 orbit_db_warning = None
 if use_postgres and not _orbit_pg_active:
-    orbit_db_warning = ("Une base PostgreSQL (Neon) est configuree via DATABASE_URL mais elle est "
-                        "IGNOREE car USE_POSTGRES n'est pas exactement 'true'. L'application tourne "
-                        "sur une base SQLite ephemere : les donnees peuvent disparaitre a chaque "
-                        "deploiement. Corrigez la variable d'environnement USE_POSTGRES=true.")
+    orbit_db_warning = ("Une base PostgreSQL est configuree via DATABASE_URL mais elle est IGNOREE "
+                        "car USE_POSTGRES n'est pas exactement 'true'. L'application tourne sur une "
+                        "base SQLite ephemere : les donnees disparaissent a chaque deploiement. "
+                        "Corrigez USE_POSTGRES=true dans Render > Environment.")
+elif _orbit_on_render and not database_url:
+    orbit_db_warning = ("DATABASE_URL n'est PAS definie sur Render : l'application tourne sur une "
+                        "base SQLite ephemere, donc dossiers, taches et membres sont perdus a chaque "
+                        "deploiement. Ajoutez DATABASE_URL = votre chaine de connexion Neon "
+                        "(postgresql://...?sslmode=require) dans Render > Environment, puis relancez "
+                        "un deploiement.")
 elif _orbit_on_render and not _orbit_pg_active:
     orbit_db_warning = ("Production sans PostgreSQL : l'application tourne sur SQLite ephemere. "
                         "Definissez USE_POSTGRES=true et DATABASE_URL pour conserver les donnees.")
@@ -129,7 +135,7 @@ with app.app_context():
                 nom='JMH', prenom='Admin',
                 role='admin', actif=True,
             )
-            admin.set_password('Admin2026!')
+            admin.set_password(os.environ.get('BOOTSTRAP_ADMIN_PASSWORD', 'Admin2026!'))
             db.session.add(admin)
             db.session.commit()
             print("🆘 Base vide -> admin de secours créé : admin@cabinet-jmh.com / Admin2026!")
