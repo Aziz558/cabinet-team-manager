@@ -240,6 +240,40 @@
     @media (prefers-reduced-motion: reduce) {
         .avm-donut .fil, .avm-stack i, .view-swap, .avm-modal .modal-dialog { transition: none !important; animation: none !important; }
     }
+    /* ===== Thème CLAIR : overrides surfaces/bordures (dark intact) ===== */
+    [data-theme="light"] .av-tabs { background: var(--bg-darker); }
+    [data-theme="light"] .av-tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+    [data-theme="light"] .av-tab .count, [data-theme="light"] .av-tab:not(.active) .count { background: var(--bg-hover); color: var(--text-muted); }
+    [data-theme="light"] .av-tab.active .count { background: var(--orange-subtle); color: var(--orange-primary); }
+    [data-theme="light"] .kpi-chip { background: var(--bg-card); }
+    [data-theme="light"] .kpi-chip:hover { background: var(--bg-card-hover); }
+    [data-theme="light"] .member-card, [data-theme="light"] .avm-card, [data-theme="light"] .avm-kpi { background: var(--bg-card); }
+    [data-theme="light"] .avm-card:hover { background: var(--bg-card-hover); }
+    [data-theme="light"] .avm-card { border-color: var(--border-color); }
+    [data-theme="light"] .avm-card:hover { border-color: var(--border-strong); }
+    [data-theme="light"] .member-avatar { background: var(--bg-hover); border-color: var(--border-light); }
+    [data-theme="light"] .member-bar { background: var(--bg-card-active); }
+    [data-theme="light"] .avm-equipe, [data-theme="light"] .avm-counter, [data-theme="light"] .cal-badge-reste, [data-theme="light"] .cal-tab { border-color: var(--border-color); }
+    [data-theme="light"] .avm-modal .task-status { border-color: var(--border-color) !important; }
+    [data-theme="light"] .avm-counter:hover { border-color: var(--border-strong); }
+    /* Segment cal-tab */
+    [data-theme="light"] .cal-tab { background: var(--bg-card); color: var(--text-tertiary); }
+    [data-theme="light"] .cal-tab:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--bg-card-hover); }
+    [data-theme="light"] .cal-tab.active { background: var(--bg-card); border-color: var(--border-color); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+    [data-theme="light"] .cal-tab .count, [data-theme="light"] .cal-tab:not(.active) .count { background: var(--bg-hover); color: var(--text-muted); }
+    [data-theme="light"] .cal-mod-comptable { background: var(--bg-hover); }
+    /* Fenêtre détail membre */
+    [data-theme="light"] .avm-modal .modal-content { background: var(--bg-elevated); border: 1px solid var(--border-color); box-shadow: var(--shadow-xl); }
+    [data-theme="light"] .avm-modal .modal-header { border-bottom: 1px solid var(--border-color); }
+    [data-theme="light"] .avm-modal .table-premium thead th { background: var(--bg-elevated); border-bottom: 1px solid var(--border-color); }
+    [data-theme="light"] .avm-modal .table-premium tbody td { border-bottom: 1px solid var(--border-color); }
+    [data-theme="light"] .avm-modal .table-premium tbody tr:hover, [data-theme="light"] .cal-table tbody tr:hover { background: var(--bg-hover); }
+    [data-theme="light"] .avm-modal #ajoutBox { background: var(--bg-dark); border: 1px solid var(--border-color); box-shadow: none; }
+    [data-theme="light"] .avm-modal .select-premium, [data-theme="light"] .avm-modal .input-premium { background: var(--bg-dark) !important; border: 1px solid var(--border-light) !important; }
+    [data-theme="light"] .avm-modal .btn-premium-outline { background: var(--bg-hover) !important; border: 1px solid var(--border-color) !important; }
+    [data-theme="light"] .avm-modal .btn-premium-outline:hover { background: var(--bg-card-hover) !important; color: var(--text-primary) !important; }
+    /* Échéancier survol */
+    [data-theme="light"] .cal-table tbody tr:hover td { background: transparent; }
 </style>
 {% endblock %}
 
