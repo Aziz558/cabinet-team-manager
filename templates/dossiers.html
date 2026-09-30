@@ -203,6 +203,41 @@
     </div>
 </div>
 
+{% set orbit_tot = namespace(tva=0, reste=0) %}
+{% for d in dossiers %}
+    {% set orbit_tot.tva = orbit_tot.tva + (d._tva_taches_count if d._tva_taches_count is defined else 0) %}
+    {% set orbit_tot.reste = orbit_tot.reste + (d._tva_taches_restantes if d._tva_taches_restantes is defined else 0) %}
+{% endfor %}
+<!-- Barre d'outils Phase 4 : compteur, filtres actifs, densité, recherche -->
+<div class="orbit-toolbar" data-orbit-toolbar data-orbit-unit="dossiers affichés">
+    <span class="orbit-toolbar-count" data-orbit-count>—</span>
+    <span class="d-flex flex-wrap gap-1" data-orbit-chips></span>
+    <span class="orbit-toolbar-spacer"></span>
+    <button type="button" class="orbit-tool-btn" data-orbit-density title="Densité d'affichage (touche d)">
+        <i class="bi bi-arrows-angle-contract"></i> Compact
+    </button>
+    <button type="button" class="orbit-tool-btn" data-orbit-open-palette title="Recherche rapide (Ctrl + K)">
+        <i class="bi bi-search"></i> Rechercher
+    </button>
+</div>
+<script>
+// Chips de filtres : lisent l'état réel des filtres de la page
+function orbitChips() {
+    var out = [];
+    var rl = {ca3_mensuelle: 'CA3 Mensuelle', ca3_trimestrielle: 'CA3 Trimestrielle', ca12_annuel: 'CA12 Annuel', exonere: 'Exonéré'};
+    if (typeof activeRegime !== 'undefined' && activeRegime && activeRegime !== 'all') {
+        out.push({label: 'Régime : ' + (rl[activeRegime] || activeRegime), on: true, clear: "setRegimeFilter('all')"});
+    }
+    if (typeof activeDate !== 'undefined' && activeDate && activeDate.type && activeDate.type !== 'all') {
+        var dl = {today: "aujourd'hui", month: 'ce mois', late: 'en retard'};
+        out.push({label: 'Échéance : ' + (dl[activeDate.type] || activeDate.type), on: true, clear: "setDateFilter('all')"});
+    }
+    if (typeof activeMember !== 'undefined' && activeMember && activeMember !== 'all') {
+        out.push({label: 'Collaborateur #' + activeMember, on: true, clear: "filterByMember('all')"});
+    }
+    return out;
+}
+</script>
 <div class="card-premium animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
     <div class="card-body-premium p-0">
         <div class="table-responsive">
@@ -225,7 +260,14 @@
                 </thead>
                 <tbody>
                     {% for d in dossiers %}
-                    <tr data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime-combo="{{ d._regime_combo }}" data-date-iso="{{ d._date_iso }}">
+                    {% set orbit_collab = ((d.collaborateur.prenom ~ ' ' ~ d.collaborateur.nom) | trim) if d.collaborateur else '' %}
+                    {% set orbit_regime = {'ca3_mensuelle': 'CA3 Mensuelle', 'ca3_trimestrielle': 'CA3 Trimestrielle', 'ca12_annuel': 'CA12 Annuel', 'exonere': 'Exonéré'}.get(d._regime_combo, '—') %}
+                    {% set orbit_echeances = [] %}
+                    {% for e, n in d._echeances %}{% set _ = orbit_echeances.append(e.strftime('%d/%m/%Y') ~ ' ' ~ n) %}{% endfor %}
+                    {% set orbit_tva = d._tva_taches_count if d._tva_taches_count is defined else 0 %}
+                    {% set orbit_reste = d._tva_taches_restantes if d._tva_taches_restantes is defined else 0 %}
+                    {% set orbit_actions = [['Voir les tâches', url_for('voir_taches_dossier', dossier_id=d.id), '', 'bi-list-task'], ['Modifier', 'js:openEditDossier(' ~ d.id ~ ')', 'primary', 'bi-pencil'], ['Pennylane', url_for('pennylane_dossier', dossier_id=d.id), '', 'bi-link-45deg']] %}
+                    <tr tabindex="0" data-orbit-nav data-orbit-kind="Dossier" data-orbit-id="{{ d.id }}" data-orbit-title="{{ d.numero_dossier }} — {{ d.intitule }}" data-orbit-sub="{{ orbit_collab or 'Sans collaborateur' }}" data-orbit-f-collaborateur="{{ orbit_collab }}" data-orbit-f-equipe="{{ d.equipe.nom if d.equipe else '—' }}" data-orbit-f-regime="{{ orbit_regime }}" data-orbit-f-echeances="{{ orbit_echeances | join(' · ') if orbit_echeances else '—' }}" data-orbit-f-delai="{{ d._delai_label }}" data-orbit-f-tva="{{ orbit_tva }} tâche(s)" data-orbit-f-reste="{{ orbit_reste }} restante(s)" data-orbit-f-siren="{{ d.siren or '—' }}" data-orbit-actions='{{ orbit_actions | tojson }}' data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime-combo="{{ d._regime_combo }}" data-date-iso="{{ d._date_iso }}">
                         <td style="width:36px"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
                         <td><strong>{{ d.numero_dossier }}</strong></td>
                         <td>{{ d.intitule }}</td>
@@ -332,6 +374,15 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot class="orbit-tfoot">
+                    <tr>
+                        <td colspan="8"><strong>Total — {{ dossiers | length }} dossier(s)</strong></td>
+                        <td class="text-end"><strong>{{ orbit_tot.tva }}</strong></td>
+                        <td class="text-end"><strong>{{ orbit_tot.reste }}</strong></td>
+                        <td></td>
+                        {% if show_actions %}<td></td>{% endif %}
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>

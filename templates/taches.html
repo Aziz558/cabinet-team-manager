@@ -29,46 +29,52 @@
 {% endif %}
 
 <!-- Filtres -->
-<div class="card-premium mb-3 animate-fade-in-up">
+<div class="card-premium mb-3 animate-fade-in-up avm-bar">
     <div class="card-body-premium py-2">
         <div class="d-flex flex-wrap align-items-center gap-1 avm-iconbar">
             <button type="button" class="filter-btn avm-fico" data-filter="all" title="Toutes les taches" onclick="applyFilter('all')"><i class="bi bi-collection"></i></button>
             <button type="button" class="filter-btn avm-fico" data-filter="fiscal" title="Fiscalite" onclick="applyFilter('fiscal')"><i class="bi bi-percent"></i></button>
             <button type="button" class="filter-btn avm-fico" data-filter="regular" title="Generales" onclick="applyFilter('regular')"><i class="bi bi-card-checklist"></i></button>
             <span class="avm-fsep"></span>
-            <div class="dropdown">
-                <button type="button" class="avm-fico" id="icoNature" title="Nature — toutes" onclick="avmMenu('natureMenu', buildNatureMenu)"><i class="bi bi-tags"></i></button>
-                <ul class="dropdown-menu dropdown-menu-end avm-dd" id="natureMenu"></ul>
-            </div>
+            <label class="avm-select" id="icoNature" title="Nature — toutes">
+                <i class="bi bi-tags"></i>
+                <select id="filterNature" onchange="syncFilterIcons();applyFilter()">
+                    <option value="all">Toutes natures</option>
+                    <option value="tva">TVA</option>
+                    <option value="is">IS</option>
+                    <option value="cfe">CFE</option>
+                    <option value="dsn">DSN</option>
+                    <option value="paie">Paie</option>
+                    <option value="generale">Générales</option>
+                </select>
+                <i class="bi bi-chevron-down avm-caret"></i>
+            </label>
             <button type="button" class="avm-fico" id="icoAf" title="À faire" onclick="toggleTaskStatut('a_faire')"><i class="bi bi-hourglass"></i></button>
             <button type="button" class="avm-fico" id="icoEc" title="En cours" onclick="toggleTaskStatut('en_cours')"><i class="bi bi-arrow-repeat"></i></button>
             <button type="button" class="avm-fico" id="icoDone" title="Terminee" onclick="toggleTaskStatut('terminee')"><i class="bi bi-check2"></i></button>
             <span class="avm-fsep"></span>
-            <div class="dropdown">
-                <button type="button" class="avm-fico" id="icoMembre" title="Membre — tous" onclick="avmMenu('membreMenu', buildMembreMenu)"><i class="bi bi-person"></i></button>
-                <ul class="dropdown-menu dropdown-menu-end avm-dd" id="membreMenu"></ul>
-            </div>
-            <div class="dropdown">
-                <button type="button" class="avm-fico" id="icoDossier" title="Dossier — tous" onclick="avmMenu('dossierMenu', buildDossierMenu)"><i class="bi bi-folder"></i></button>
-                <ul class="dropdown-menu dropdown-menu-end avm-dd" id="dossierMenu"></ul>
-            </div>
+            <label class="avm-select" id="icoMembre" title="Membre — tous">
+                <i class="bi bi-person"></i>
+                <select id="filterMembre" onchange="syncFilterIcons();applyFilter()">
+                    <option value="all">Tous les membres</option>
+                    {% for m in membres %}<option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>{% endfor %}
+                </select>
+                <i class="bi bi-chevron-down avm-caret"></i>
+            </label>
+            <label class="avm-select" id="icoDossier" title="Dossier — tous">
+                <i class="bi bi-folder"></i>
+                <select id="filterDossier" data-prefiltre="{{ dossier_filtre or '' }}" onchange="syncFilterIcons();applyFilter()">
+                    <option value="all">Tous les dossiers</option>
+                    {% for d in dossiers %}<option value="{{ d.id }}" {% if dossier_filtre == d.id %}selected{% endif %}>{{ d.numero_dossier }} — {{ d.intitule[:25] }}</option>{% endfor %}
+                </select>
+                <i class="bi bi-chevron-down avm-caret"></i>
+            </label>
             <button type="button" class="avm-fico" id="icoDates" title="Periode" onclick="tglDates()"><i class="bi bi-calendar-range"></i></button>
             <input type="date" class="input-premium avm-search" id="filterDateDebut" onchange="applyFilter()" style="display:none;width:132px;">
             <input type="date" class="input-premium avm-search" id="filterDateFin" onchange="applyFilter()" style="display:none;width:132px;">
             <button type="button" class="avm-fico" id="icoSearch" title="Rechercher" onclick="tglSearch()"><i class="bi bi-search"></i></button>
             <input type="text" class="input-premium avm-search" id="filterSearch" placeholder="…" oninput="applyFilter()" style="display:none;width:150px;">
             <button type="button" class="avm-fico" title="Reinitialiser les filtres" onclick="resetFilters()"><i class="bi bi-arrow-counterclockwise"></i></button>
-            <span class="d-none" aria-hidden="true">
-                <select id="filterNature" onchange="syncFilterIcons();applyFilter()"><option value="all">Toutes</option><option value="tva">TVA</option><option value="is">IS</option><option value="cfe">CFE</option><option value="dsn">DSN</option><option value="paie">Paie</option><option value="generale">Generales</option></select>
-                <select id="filterMembre" onchange="syncFilterIcons();applyFilter()">
-                    <option value="all">Tous</option>
-                    {% for m in membres %}<option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>{% endfor %}
-                </select>
-                <select id="filterDossier" data-prefiltre="{{ dossier_filtre or '' }}" onchange="syncFilterIcons();applyFilter()">
-                    <option value="all">Tous</option>
-                    {% for d in dossiers %}<option value="{{ d.id }}" {% if dossier_filtre == d.id %}selected{% endif %}>{{ d.numero_dossier }} — {{ d.intitule[:25] }}</option>{% endfor %}
-                </select>
-            </span>
             <span class="avm-fcount ms-auto" id="tacheFCount"></span>
         </div>
         </div>
@@ -113,6 +119,48 @@
     </div>
 </div>
 
+<!-- Barre d'outils Phase 4 : compteur, filtres actifs, densité, recherche -->
+<div class="orbit-toolbar" data-orbit-toolbar data-orbit-unit="tâches affichées">
+    <span class="orbit-toolbar-count" data-orbit-count>—</span>
+    <span class="d-flex flex-wrap gap-1" data-orbit-chips></span>
+    <span class="orbit-toolbar-spacer"></span>
+    <button type="button" class="orbit-tool-btn" data-orbit-density title="Densité d'affichage (touche d)">
+        <i class="bi bi-arrows-angle-contract"></i> Compact
+    </button>
+    <button type="button" class="orbit-tool-btn" data-orbit-open-palette title="Recherche rapide (Ctrl + K)">
+        <i class="bi bi-search"></i> Rechercher
+    </button>
+</div>
+<script>
+// Chips de filtres : lisent l'état réel des filtres de la page
+function orbitChips() {
+    var out = [];
+    var statuts = {a_faire: 'À faire', en_cours: 'En cours', terminee: 'Terminée'};
+    if (typeof taskStatutSelected !== 'undefined' && taskStatutSelected && taskStatutSelected.length) {
+        taskStatutSelected.forEach(function (s) {
+            out.push({label: 'Statut : ' + (statuts[s] || s), on: true, clear: "toggleTaskStatut('" + s + "')"});
+        });
+    }
+    var act = document.querySelector('.filter-btn.active[data-filter]');
+    if (act && act.getAttribute('data-filter') !== 'all') {
+        out.push({label: 'Type : ' + (act.getAttribute('title') || act.getAttribute('data-filter')), on: true, clear: "applyFilter('all')"});
+    }
+    var natures = {all: 'Toutes', tva: 'TVA', is: 'IS', cfe: 'CFE', dsn: 'DSN', paie: 'Paie', generale: 'Générales'};
+    function chipFor(selectId, prefix, labels) {
+        var sel = document.getElementById(selectId);
+        if (!sel || !sel.value || sel.value === 'all') { return; }
+        var txt = labels ? (labels[sel.value] || sel.value) : (sel.options[sel.selectedIndex] || {}).text;
+        out.push({
+            label: prefix + ' : ' + txt, on: true,
+            clear: "(function(){var s=document.getElementById('" + selectId + "');s.value='all';applyFilter();})();"
+        });
+    }
+    chipFor('filterNature', 'Nature', natures);
+    chipFor('filterMembre', 'Membre', null);
+    chipFor('filterDossier', 'Dossier', null);
+    return out;
+}
+</script>
 <!-- Task Board -->
 <div class="task-board" id="taskBoard">
     {% set fiscal_keywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'] %}
@@ -129,7 +177,10 @@
     {% elif ' is ' in titre_low or titre_low.startswith('is ') %}{% set nature_tache = 'is' %}
     {% elif 'tva' in titre_low or 'ca3' in titre_low or 'ca12' in titre_low or 'dépôt' in titre_low or 'depot' in titre_low or 'déclaration' in titre_low %}{% set nature_tache = 'tva' %}
     {% else %}{% set nature_tache = 'generale' %}{% endif %}
-    <div class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}" data-statut="{{ t.statut }}" data-titre="{{ t.titre|lower }} {{ t.description|lower }}" data-assigne="{{ t.assigne_a }}" data-dossier="{{ t.dossier_id }}" data-echeance="{{ t.date_echeance }}" data-nature="{{ nature_tache }}">
+    {% set orbit_statut = 'À faire' if t.statut == 'a_faire' else ('En cours' if t.statut == 'en_cours' else 'Terminée') %}
+    {% set orbit_assigne = ((t.assigne.prenom ~ ' ' ~ t.assigne.nom) | trim) if t.assigne else 'Non assignée' %}
+    {% set orbit_actions = [['Ouvrir la tâche', url_for('vue_tache', tache_id=t.id), 'primary', 'bi-box-arrow-up-right']] %}
+    <div tabindex="0" data-orbit-nav data-orbit-kind="Tâche" data-orbit-id="{{ t.id }}" data-orbit-title="{{ t.titre }}" data-orbit-sub="{{ t.dossier.numero_dossier ~ ' — ' ~ t.dossier.intitule if t.dossier else 'Sans dossier' }}" data-orbit-f-dossier="{{ t.dossier.numero_dossier if t.dossier else '—' }}" data-orbit-f-assigne="{{ orbit_assigne }}" data-orbit-f-priorite="{{ t.priorite | capitalize }}" data-orbit-f-statut="{{ orbit_statut }}" data-orbit-f-echeance="{{ t.date_echeance.strftime('%d/%m/%Y') }}" data-orbit-f-nature="{{ nature_tache | capitalize }}" data-orbit-f-description="{{ t.description[:180] if t.description else '' }}" data-orbit-actions='{{ orbit_actions | tojson }}' class="task-card {{ 'task-overdue' if t.est_en_retard() else '' }}" data-priority="{{ t.priorite }}" data-statut="{{ t.statut }}" data-titre="{{ t.titre|lower }} {{ t.description|lower }}" data-assigne="{{ t.assigne_a }}" data-dossier="{{ t.dossier_id }}" data-echeance="{{ t.date_echeance }}" data-nature="{{ nature_tache }}">
         <div class="task-card-header">
             <span class="task-priority priority-{{ t.priorite }}">{{ t.priorite|capitalize }}</span>
             <span class="task-status status-{{ t.statut }}">{% if t.statut == 'a_faire' %}À faire{% elif t.statut == 'en_cours' %}En cours{% else %}Terminée{% endif %}</span>
@@ -424,7 +475,20 @@ function syncFilterIcons() {
         b.classList.toggle('on', b.classList.contains('active'));
     });
 }
-function tglFromSelect(id, fnPick) {
+    /* ===== Menus de filtres (Nature / Membre / Dossier) =====
+       Ces listes ne passent pas par le JS Bootstrap (pas de data-bs-toggle)
+       ET la carte de filtres crée un contexte d'empilement (transformissu de
+       l'animation) qui faisait passer les .task-card AU-DESSUS du menu.
+       Solution : la liste est ASCENDUE dans <body> (portail) et placée en
+       position:fixed => impossible à rogner ou à recouvrir. */
+    /* Filtres Nature / Membre / Dossier : ce sont désormais de simples
+       <select> natifs stylés (voir .avm-select dans workspace.css). Le menu
+       est dessiné par le navigateur : impossible à masquer, rogné ou
+       recouvrir par les cartes. Ces fonctions ne servent plus qu'à la
+       compatibilité avec les anciens pickNature / pickMembre / pickDossier. */
+    function closeAvmDropdowns() { /* no-op : le sélecteur natif se ferme seul */ }
+
+    function tglFromSelect(id, fnPick) {
     var sel = document.getElementById(id);
     var html = '';
     Array.prototype.forEach.call(sel.options, function(o) {

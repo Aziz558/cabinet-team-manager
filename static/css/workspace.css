@@ -1,0 +1,387 @@
+/* ============================================================
+   WORKSPACE — Phase 4 : répartition des données façon Pennylane
+   Chargée APRÈS polish.css. Tout est piloté par des attributs
+   data-orbit-* : aucun impact sur la logique métier existante.
+   ============================================================ */
+
+/* ---------- 1) LISTES : densité + navigation clavier ---------- */
+html.orbit-compact .table-premium tbody td { padding-top: 0.42rem; padding-bottom: 0.42rem; }
+html.orbit-compact .table-premium thead th { font-size: 0.66rem; padding: 0.5rem 0.6rem; }
+html.orbit-compact .task-card { padding: 0.7rem 0.85rem; }
+html.orbit-compact .task-card-body p { margin-bottom: 0.2rem; }
+html.orbit-compact .kpi-chip { padding: 0.6rem 0.75rem; }
+html.orbit-compact .stat-card { padding: 0.9rem; }
+
+[data-orbit-nav] { transition: box-shadow .15s ease, background-color .2s ease, transform .15s ease; }
+[data-orbit-nav].orbit-cursor {
+    box-shadow: inset 3px 0 0 var(--orange-primary);
+    background: var(--orange-subtle);
+}
+[data-orbit-nav].orbit-selected { background: var(--orange-subtle); }
+[data-orbit-nav].orbit-fav { background: linear-gradient(90deg, rgba(255, 140, 0, .10), transparent 40%); }
+
+/* ---------- 2) PANNEAU LATÉRAL (détail à la volée) ---------- */
+.orbit-drawer-backdrop {
+    position: fixed; inset: 0; z-index: 1040;
+    background: rgba(16, 24, 40, .34);
+    backdrop-filter: blur(2px);
+    opacity: 0; transition: opacity .28s ease;
+}
+.orbit-drawer-backdrop.is-open { opacity: 1; }
+html[data-theme="dark"] .orbit-drawer-backdrop { background: rgba(0, 0, 0, .58); }
+
+.orbit-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 1045;
+    width: min(460px, 92vw);
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -18px 0 48px -24px rgba(16, 24, 40, .35);
+    transform: translateX(102%);
+    transition: transform .32s cubic-bezier(.16, 1, .3, 1);
+    display: flex; flex-direction: column;
+}
+.orbit-drawer.is-open { transform: none; }
+.orbit-drawer-head {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: 1.1rem 1.25rem .9rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+.orbit-drawer-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .66rem; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--orange-primary); background: var(--orange-subtle);
+    padding: .18rem .5rem; border-radius: 999px; margin-bottom: .35rem;
+}
+.orbit-drawer-title { font-size: 1.1rem; font-weight: 650; letter-spacing: -.015em; color: var(--text-primary); }
+.orbit-drawer-sub { font-size: .85rem; color: var(--text-tertiary); margin-top: .15rem; }
+.orbit-drawer-close {
+    margin-left: auto; border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-secondary); width: 32px; height: 32px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, transform .18s ease;
+}
+.orbit-drawer-close:hover { background: var(--bg-card-hover); color: var(--text-primary); transform: scale(1.05); }
+.orbit-drawer-body { padding: 1rem 1.25rem 1.25rem; overflow-y: auto; flex: 1; }
+.orbit-drawer-row {
+    display: flex; gap: 1rem; align-items: baseline;
+    padding: .55rem 0; border-bottom: 1px dashed var(--border-color);
+}
+.orbit-drawer-row:last-child { border-bottom: 0; }
+.orbit-drawer-label { font-size: .76rem; color: var(--text-tertiary); min-width: 116px; flex-shrink: 0; }
+.orbit-drawer-value { font-size: .88rem; color: var(--text-primary); font-weight: 500; word-break: break-word; }
+.orbit-drawer-foot {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+    padding: .9rem 1.25rem; border-top: 1px solid var(--border-color); background: var(--bg-card);
+}
+.orbit-drawer-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-primary); border-radius: 9px; padding: .45rem .8rem;
+    font-size: .82rem; text-decoration: none; cursor: pointer;
+    transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.orbit-drawer-btn:hover { background: var(--bg-card-hover); border-color: var(--border-strong); transform: translateY(-1px); }
+.orbit-drawer-btn.is-primary { background: var(--orange-primary); border-color: var(--orange-primary); color: #fff; }
+.orbit-drawer-btn.is-primary:hover { filter: brightness(1.05); }
+body.orbit-drawer-open { overflow: hidden; }
+/*PART2*/
+
+
+/* ---------- 3) PALETTE DE COMMANDES (⇧K) ---------- */
+.orbit-palette-backdrop {
+    position: fixed; inset: 0; z-index: 1060;
+    background: rgba(16, 24, 40, .38); backdrop-filter: blur(3px);
+    opacity: 0; transition: opacity .2s ease;
+}
+.orbit-palette-backdrop.is-open { opacity: 1; }
+.orbit-palette {
+    position: fixed; z-index: 1065; top: 12vh; left: 50%;
+    width: min(620px, 94vw); transform: translate(-50%, -8px) scale(.985);
+    background: var(--bg-elevated); border: 1px solid var(--border-color);
+    border-radius: 16px; box-shadow: 0 30px 70px -28px rgba(16, 24, 40, .5);
+    overflow: hidden; opacity: 0; pointer-events: none;
+    transition: opacity .2s ease, transform .22s cubic-bezier(.16, 1, .3, 1);
+}
+.orbit-palette.is-open { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+.orbit-palette-input {
+    width: 100%; border: 0; background: transparent; color: var(--text-primary);
+    padding: 1rem 1.1rem; font-size: 1rem; outline: none;
+}
+.orbit-palette-input::placeholder { color: var(--text-muted); }
+.orbit-palette-hint {
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    padding: .55rem 1.1rem; border-top: 1px solid var(--border-color);
+    font-size: .72rem; color: var(--text-tertiary); background: var(--bg-card);
+}
+.orbit-palette-results { max-height: min(52vh, 460px); overflow-y: auto; padding: .4rem; }
+.orbit-palette-group {
+    font-size: .66rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted); padding: .5rem .6rem .3rem;
+}
+.orbit-palette-item {
+    display: flex; align-items: center; gap: .65rem; width: 100%;
+    padding: .5rem .6rem; border-radius: 9px; border: 0; background: transparent;
+    color: var(--text-primary); text-align: left; font-size: .88rem; cursor: pointer;
+    text-decoration: none;
+}
+.orbit-palette-item i { color: var(--text-tertiary); width: 1.1rem; text-align: center; }
+.orbit-palette-item .orbit-palette-sub { margin-left: auto; font-size: .74rem; color: var(--text-muted); }
+.orbit-palette-item.is-active, .orbit-palette-item:hover { background: var(--orange-subtle); color: var(--text-primary); }
+.orbit-palette-item.is-active i { color: var(--orange-primary); }
+.orbit-palette-empty { padding: 1.2rem; text-align: center; color: var(--text-tertiary); font-size: .86rem; }
+kbd.orbit-kbd {
+    display: inline-block; font-family: inherit; font-size: .68rem; font-weight: 600;
+    color: var(--text-secondary); background: var(--bg-card-hover);
+    border: 1px solid var(--border-color); border-bottom-width: 2px;
+    border-radius: 6px; padding: .1rem .38rem; min-width: 1.4rem; text-align: center;
+}
+
+/* ---------- 4) BARRE D'OUTILS COLLANTE (compteur, chips, actions) ---------- */
+.orbit-toolbar {
+    position: sticky; top: 56px; z-index: 20;
+    display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+    padding: .6rem .25rem; margin-bottom: .35rem;
+    background: color-mix(in srgb, var(--bg-dark) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-color);
+}
+html[data-theme="dark"] .orbit-toolbar { background: color-mix(in srgb, var(--bg-dark) 92%, transparent); }
+.orbit-toolbar-count { font-size: .82rem; color: var(--text-tertiary); }
+.orbit-toolbar-count strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.orbit-toolbar-spacer { margin-left: auto; }
+.orbit-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .74rem; font-weight: 500; color: var(--text-secondary);
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 999px; padding: .22rem .6rem;
+
+/* ---------- 5) FAVORIS (étoile) ---------- */
+.orbit-fav-btn {
+    border: 0; background: none; padding: 2px; cursor: pointer; line-height: 1;
+    color: var(--text-muted); font-size: .95rem; border-radius: 6px;
+    transition: color .18s ease, transform .18s cubic-bezier(.34, 1.56, .64, 1);
+}
+.orbit-fav-btn:hover { color: var(--orange-primary); transform: scale(1.18); }
+.orbit-fav-btn.is-on { color: var(--orange-primary); }
+
+/* ---------- 6) SIDEBAR REDIMENSIONNABLE ---------- */
+.orbit-resizer {
+    position: absolute; top: 0; right: -3px; bottom: 0; width: 7px;
+    cursor: col-resize; z-index: 15; background: transparent;
+    transition: background-color .18s ease;
+}
+.orbit-resizer:hover, .orbit-resizer.is-dragging { background: var(--orange-subtle); }
+body.orbit-resizing { cursor: col-resize; user-select: none; }
+
+/* ---------- 7) DATES RELATIVES ---------- */
+.orbit-rel {
+    display: inline-block; margin-left: .4rem; font-size: .7rem;
+    color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.orbit-rel.is-late { color: var(--danger); font-weight: 600; }
+
+/* ---------- 8) GUIDE DES RACCOURCIS ---------- */
+.orbit-help {
+    position: fixed; z-index: 1070; top: 50%; left: 50%;
+    transform: translate(-50%, -48%) scale(.98);
+    width: min(560px, 94vw); max-height: 84vh; overflow-y: auto;
+    background: var(--bg-elevated); border: 1px solid var(--border-color);
+    border-radius: 16px; box-shadow: 0 30px 70px -28px rgba(16, 24, 40, .5);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease, transform .22s cubic-bezier(.16, 1, .3, 1);
+}
+.orbit-help.is-open { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.orbit-help-head { display: flex; align-items: center; padding: 1rem 1.2rem; border-bottom: 1px solid var(--border-color); }
+.orbit-help-head h3 { margin: 0; font-size: 1rem; font-weight: 650; }
+.orbit-help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem 1.5rem; padding: 1rem 1.2rem 1.3rem; }
+@media (max-width: 560px) { .orbit-help-grid { grid-template-columns: 1fr; } }
+.orbit-help-row { display: flex; align-items: center; gap: .6rem; font-size: .84rem; color: var(--text-secondary); }
+.orbit-help-row .orbit-help-keys { margin-left: auto; display: flex; gap: .25rem; }
+
+/* ---------- 9) BOUTON ⇧K dans la barre supérieure ---------- */
+.orbit-search-btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-tertiary); border-radius: 9px; padding: .3rem .55rem;
+    font-size: .8rem; cursor: pointer; margin-right: 12px;
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.orbit-search-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+@media (max-width: 768px) { .orbit-search-btn .orbit-search-label { display: none; } }
+
+/* ---------- 10) TOTAL COLLANT en pied de tableau ---------- */
+.table-premium tfoot.orbit-tfoot {
+    position: sticky; bottom: 0; z-index: 10;
+    background: var(--bg-card); box-shadow: 0 -6px 14px -10px rgba(16, 24, 40, .35);
+}
+.table-premium tfoot.orbit-tfoot td { font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+    .orbit-drawer, .orbit-drawer-backdrop, .orbit-palette, .orbit-palette-backdrop, .orbit-help { transition: none !important; }
+}
+
+/* ---------- 12) BARRE DE FILTRES : le menu doit passer AU-DESSUS ----------
+   Deux bugs corrigés ici :
+   1) .card-premium a overflow:hidden (coins arrondis) -> le menu était rogné.
+   2) .animate-fade-in-up utilise animation-fill-mode:forwards, donc la carte
+      conserve un `transform` => contexte d'empilement : le menu restait piégé
+      dedans et passait DERRIÈRE les .task-card (plus bas dans le DOM, et
+      transform au survol). On remplace l'animation par un fondu SANS transform
+      et on donne explicitement à la barre un z-index prioritaire. */
+.card-premium.avm-bar,
+.card-premium.avm-bar .card-body-premium,
+.card-premium.avm-bar .avm-iconbar { overflow: visible; }
+.card-premium.avm-bar {
+    position: relative;
+    z-index: 1035;
+    transform: none;
+    animation: orbitBarIn .35s ease both;
+}
+@keyframes orbitBarIn { from { opacity: 0; } to { opacity: 1; } }
+.card-premium.avm-bar .avm-dd {
+    z-index: 1040;
+    box-shadow: var(--shadow-lg);
+}
+.card-premium.avm-bar .avm-dd .dropdown-item { font-size: .82rem; padding: .4rem .85rem; }
+.card-premium.avm-bar .avm-dd .dropdown-item.active {
+    background: var(--orange-subtle);
+    color: var(--orange-primary);
+    font-weight: 600;
+}
+
+/* La liste est ascendue dans <body> (portail) : son style ne dépend plus
+   d'un parent, on la style donc globalement. */
+.dropdown-menu.avm-dd.avm-portal {
+    position: fixed;
+    display: block;
+    z-index: 2147482000;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: .35rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-xl);
+    animation: orbitMenuIn .16s ease both;
+}
+@keyframes orbitMenuIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: none; }
+}
+.dropdown-menu.avm-dd .dropdown-item {
+    font-size: .82rem;
+    padding: .45rem .8rem;
+    border-radius: 8px;
+    color: var(--text-primary);
+}
+.dropdown-menu.avm-dd .dropdown-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.dropdown-menu.avm-dd .dropdown-item.active {
+    background: var(--orange-subtle);
+    color: var(--orange-primary);
+    font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+    .dropdown-menu.avm-dd.avm-portal { animation: none !important; }
+}
+
+/* ---------- 14) SELECTEURS DE FILTRE NATIFS (/taches) ----------
+   Remplacent les menus déroulants maison : la liste est dessinée par le
+   navigateur (aucun problème d'empilement possible) et le rendu est stylé
+   pour s'accorder à la barre d'icônes existante. */
+.avm-select {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 30px; padding: 0 24px 0 9px;
+    border: 1px solid var(--border-color); border-radius: 8px;
+    background: transparent; color: var(--text-muted);
+    font-size: .85rem; cursor: pointer; flex-shrink: 0;
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+.avm-select:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.avm-select:focus-within { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255, 140, 0, .14); }
+.avm-select.on {
+    border-color: var(--orange-primary);
+    background: var(--orange-subtle);
+    color: var(--orange-primary);
+}
+.avm-select > i:first-child { font-size: .85rem; }
+.avm-select .avm-caret {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    font-size: .6rem; pointer-events: none; color: inherit; opacity: .8;
+}
+.avm-select select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background: transparent; border: 0; outline: none;
+    color: var(--text-primary);
+    font-family: inherit; font-size: .78rem; font-weight: 500;
+    max-width: 132px; cursor: pointer;
+}
+.avm-select.on select { color: var(--orange-primary); font-weight: 600; }
+.avm-select select option { background: var(--bg-elevated); color: var(--text-primary); }
+@media (max-width: 575.98px) { .avm-select select { max-width: 96px; } }
+
+/* ---------- 13) PANNEAU DE FILTRES (/taches) ----------
+   Choix affiché DANS le flux de la page (pas de menu flottant) : il ne peut
+   donc être ni masqué, ni rogné, ni recouvert par les cartes du board. */
+.avm-panel {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+    margin: -.35rem 0 .6rem; padding: .7rem .8rem;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 12px; box-shadow: var(--shadow-md);
+    animation: orbitRise .22s cubic-bezier(.16, 1, .3, 1) both;
+}
+.avm-panel[hidden] { display: none; }
+.avm-panel-label {
+    font-size: .68rem; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary); margin-right: .25rem;
+}
+.avm-panel-chip {
+    border: 1px solid var(--border-color); background: var(--bg-elevated);
+    color: var(--text-secondary); border-radius: 999px;
+    padding: .3rem .78rem; font-size: .8rem; font-weight: 500; cursor: pointer;
+    transition: background-color .15s ease, color .15s ease,
+                border-color .15s ease, transform .15s ease;
+}
+.avm-panel-chip:hover {
+    border-color: var(--border-strong); color: var(--text-primary); transform: translateY(-1px);
+}
+.avm-panel-chip.is-on {
+    background: var(--orange-primary); border-color: var(--orange-primary);
+    color: #fff; font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) { .avm-panel { animation: none !important; } }
+
+/* ---------- 11) DASHBOARD : colonne principale + rail latéral ---------- */
+.orbit-dash {
+    display: grid;
+    gap: 1rem 1.25rem;
+    grid-template-columns: minmax(0, 1fr);
+}
+.orbit-dash > * { grid-column: 1; margin-bottom: 0 !important; }
+@media (min-width: 1200px) {
+    .orbit-dash {
+        grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+        align-items: start;
+    }
+    .orbit-dash > .dash-rail { grid-column: 2; }
+}
+@media (max-width: 1199.98px) {
+    .orbit-dash > .dash-rail { grid-column: 1; }
+}
+.orbit-dash .card-premium { height: 100%; }
+
+}
+.orbit-chip.is-active { border-color: var(--orange-primary); color: var(--orange-primary); background: var(--orange-subtle); }
+.orbit-chip button { border: 0; background: none; color: inherit; cursor: pointer; padding: 0; font-size: .8rem; line-height: 1; opacity: .6; }
+.orbit-chip button:hover { opacity: 1; }
+.orbit-tool-btn {
+    display: inline-flex; align-items: center; gap: .35rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-secondary); border-radius: 9px; padding: .32rem .6rem;
+    font-size: .76rem; cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.orbit-tool-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.orbit-tool-btn.is-active { border-color: var(--orange-primary); color: var(--orange-primary); background: var(--orange-subtle); }
+/*PART3*/

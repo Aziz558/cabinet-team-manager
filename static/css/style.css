@@ -1,16 +1,18 @@
 :root {
     /* ===== JMH Orbit — thème CLAIR par défaut (encre + orange, sobre) ===== */
-    /* Surfaces — fonds blancs / gris très clair */
-    --bg-dark: #f6f7f9;
-    --bg-darker: #eceef1;
-    --bg-hover: rgba(20, 22, 26, 0.04);
-    --bg-card: #ffffff;
-    --bg-card-hover: #f5f6f8;
-    --bg-card-active: #eef0f3;
-    --bg-sidebar: #ffffff;
-    --bg-sidebar-hover: #f2f3f5;
+    /* Surfaces — canvas grisé + surfaces legeres. Le blanc pur (#ffffff) est
+       reserve aux couches flottantes (--bg-elevated) : jamais sur les grandes
+       zones, c'est ce qui supprimait l'effet « soleil ». */
+    --bg-dark: #f3f4f6;
+    --bg-darker: #eaecf0;
+    --bg-hover: rgba(20, 22, 26, 0.045);
+    --bg-card: #fafafb;
+    --bg-card-hover: #f1f2f5;
+    --bg-card-active: #e9ebef;
+    --bg-sidebar: #f7f8fa;
+    --bg-sidebar-hover: #eef0f4;
     --bg-elevated: #ffffff;
-    --bg-glass: rgba(255, 255, 255, 0.85);
+    --bg-glass: rgba(250, 250, 251, 0.86);
 
     /* Accent JMH orange — usage ponctuel (nav active, focus, CTA clé) */
     --orange-primary: #FF8C00;
@@ -20,12 +22,13 @@
     --orange-glow: 0 0 0 rgba(255, 140, 0, 0);
     --orange-subtle: rgba(255, 140, 0, 0.08);
 
-    /* Texte — encre JMH, hiérarchie neutre */
-    --text-primary: #14161a;
-    --white: #14161a;
-    --text-secondary: #3c4149;
-    --text-tertiary: #6b7280;
-    --text-muted: #9aa1ab;
+    /* Texte — encre adoucie : contraste 14.8:1 (AAA) au lieu de 18.3:1,
+       soit AAA sans l'agressivite du noir pur sur blanc pur. */
+    --text-primary: #22262b;
+    --white: #22262b;
+    --text-secondary: #434b55;
+    --text-tertiary: #676f7c;
+    --text-muted: #8b93a0;
     --text-inverse: #ffffff;
 
     /* Status — calmes et professionnels (fond teinté doux) */
@@ -46,12 +49,13 @@
     --shadow-inner: inset 0 1px 2px rgba(20, 22, 26, 0.05);
     --shadow-orange: 0 4px 16px rgba(255, 140, 0, 0.14);
 
-    /* Bordures — gris pleins (plus propres que du rgba) */
-    --border-color: #ededf0;
-    --border-whisper: #ededf0;
-    --border-light: #e2e4e8;
-    --border-strong: #d4d7dd;
-    --border-color-hover: #d4d7dd;
+    /* Bordures — la structure vient du trait, pas de l'écart de luminance
+       (c'est ce qui permet de baisser le blanc sans perdre en lisibilité) */
+    --border-color: #e3e5e9;
+    --border-whisper: #e6e8ec;
+    --border-light: #dcdfe4;
+    --border-strong: #cdd1d7;
+    --border-color-hover: #cdd1d7;
     --border-active: rgba(255, 140, 0, 0.35);
 
     /* Radius */
@@ -3005,7 +3009,7 @@ h2.fw-semibold::before, h4.fw-semibold::before {
 /* Light theme adjustments supplementaires */
 [data-theme="light"] .btn-premium-secondary { border-color: var(--border-light); }
 [data-theme="light"] .badge-tertiary { background: rgba(0,0,0,0.06); color: #555; }
-[data-theme="light"] .dropdown-menu { background: #ffffff; border-color: var(--border-whisper); }
+[data-theme="light"] .dropdown-menu { background: var(--bg-elevated); border-color: var(--border-color); }
 
 /* ============================================================
    PREMIUM POLISH — effets « application haut de gamme »

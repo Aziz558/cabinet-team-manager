@@ -1,59 +1,66 @@
-/* ================= THEME CLAIR : HOMOGENEITE ================= */
+/* ================= THEME CLAIR : HOMOGENEITE =================
+   100% base sur les tokens de style.css (:root). Plus aucun blanc pur
+   en dur : les grandes surfaces restent en --bg-card (#fafafb), le blanc
+   (--bg-elevated) est reserve aux couches flottantes (dropdowns, modals). */
 
 /* Selects : options lisibles en theme clair */
 [data-theme="light"] .select-premium option {
-    background: #ffffff;
-    color: #1a1a1a;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
 }
 
 /* Brand logo : fond adapte */
 [data-theme="light"] .app-brand-logo {
-    background: #ffffff;
+    background: var(--bg-elevated);
 }
 
-/* Dropdowns : fonds blancs coherents */
+/* Dropdowns : couche flottante -> blanc eleve autorise */
 [data-theme="light"] .dropdown-menu {
-    background: #ffffff;
-    border: 1px solid var(--border-whisper);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 30px rgba(16, 24, 40, 0.12);
 }
-[data-theme="light"] .dropdown-menu .dropdown-item { color: #1a1a1a; }
+[data-theme="light"] .dropdown-menu .dropdown-item { color: var(--text-primary); }
 [data-theme="light"] .dropdown-menu .dropdown-item:hover,
 [data-theme="light"] .dropdown-menu .dropdown-item.active {
     background: var(--orange-subtle);
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
-/* Modals : fonds clairs */
+/* Modals : couches flottantes */
 [data-theme="light"] .modal-content-premium {
-    background: #ffffff;
-    border: 1px solid var(--border-whisper);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
 }
 [data-theme="light"] .modal-header-premium,
 [data-theme="light"] .modal-footer-premium {
-    border-color: var(--border-whisper);
+    border-color: var(--border-color);
 }
 
 /* Tableaux : survol adapte */
 [data-theme="light"] .table-premium tbody tr:hover td {
-    background: rgba(0,0,0,0.03);
+    background: var(--bg-hover);
 }
 
-/* Inputs et selects : coherence */
+/* Inputs et selects : coherence surface legere */
 [data-theme="light"] .input-premium,
 [data-theme="light"] .select-premium {
-    background: #ffffff;
+    background: var(--bg-card);
     border-color: var(--border-light);
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 /* Sidebar et topbar : bordure adaptee */
-[data-theme="light"] .sidebar { border-right: 1px solid var(--border-whisper); }
-[data-theme="light"] .app-topbar { border-bottom: 1px solid var(--border-whisper); }
+[data-theme="light"] .sidebar { border-right: 1px solid var(--border-color); }
+[data-theme="light"] .app-topbar { border-bottom: 1px solid var(--border-color); }
 
 /* Badges tertiaires */
-[data-theme="light"] .badge-tertiary { background: rgba(0,0,0,0.06); color: #555; }
+[data-theme="light"] .badge-tertiary {
+    background: var(--bg-card-active);
+    color: var(--text-secondary);
+}
 
-/* Cards secondaires (filtres) */
-[data-theme="light"] .card-premium { background: #ffffff; }
-[data-theme="light"] .card-body-premium { background: #ffffff; }
+/* Cards : surface legere, jamais de blanc pur */
+[data-theme="light"] .card-premium { background: var(--bg-card); }
+[data-theme="light"] .card-body-premium { background: var(--bg-card); }
+

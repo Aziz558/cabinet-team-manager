@@ -12,26 +12,52 @@
         try { localStorage.setItem('theme', t); document.cookie = 'theme=' + t + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {}
         document.documentElement.setAttribute('data-theme', t);
         window.ORBIT_THEME = t;
-        window.setOrbitTheme = function(theme, persist) {
+        window.setOrbitTheme = function(theme, persist, instant) {
             if (theme !== 'dark' && theme !== 'light') { theme = 'light'; }
-            document.documentElement.setAttribute('data-theme', theme);
-            window.ORBIT_THEME = theme;
             if (persist !== false) { try { localStorage.setItem('theme', theme); document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {} }
-            var r = document.getElementById('authThemeToggle');
-            if (r) {
-                r.innerHTML = '<i class="bi ' + (theme === 'light' ? 'bi-moon-stars-fill' : 'bi-sun-fill') + '"></i>';
-                r.style.background = theme === 'light' ? '#ffffff' : '#1a1c20';
-                r.style.borderColor = theme === 'light' ? '#e6e8ec' : 'rgba(255,255,255,0.14)';
-                r.style.color = theme === 'light' ? '#0f1115' : '#f5f6f8';
+
+            // Application effective du theme (appelee dans la transition)
+            var apply = function() {
+                document.documentElement.setAttribute('data-theme', theme);
+                window.ORBIT_THEME = theme;
+                var r = document.getElementById('authThemeToggle');
+                if (r) {
+                    r.innerHTML = '<i class="bi ' + (theme === 'light' ? 'bi-moon-stars-fill' : 'bi-sun-fill') + '"></i>';
+                    r.style.background = theme === 'light' ? 'var(--bg-elevated)' : '#1a1c20';
+                    r.style.borderColor = theme === 'light' ? 'var(--border-color)' : 'rgba(255,255,255,0.14)';
+                    r.style.color = theme === 'light' ? 'var(--text-primary)' : '#f5f6f8';
+                }
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) { meta.setAttribute('content', theme === 'light' ? '#f3f4f6' : '#08090a'); }
+            };
+
+            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduced || instant === true || !window.ORBIT_THEME_READY) { apply(); return; }
+
+            var root = document.documentElement;
+            var veil = document.getElementById('orbitThemeVeil');
+            if (!veil) { veil = document.createElement('div'); veil.id = 'orbitThemeVeil'; veil.className = 'orbit-theme-veil'; document.body.appendChild(veil); }
+            veil.style.background = theme === 'light' ? '#f3f4f6' : '#0f0f12';
+            veil.classList.remove('orbit-theme-veil--out');
+            void veil.offsetWidth;                       // reflow -> relance l'animation
+            veil.classList.add('orbit-theme-veil--out');
+
+            if (document.startViewTransition) {
+                document.startViewTransition(apply);
+            } else {
+                root.classList.add('orbit-theme-anim');  // repli : degrade CSS progressif
+                apply();
+                setTimeout(function() { root.classList.remove('orbit-theme-anim'); }, 470);
             }
         };
+        window.addEventListener('load', function() { window.ORBIT_THEME_READY = true; });
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('authThemeToggle')) return;
             var b = document.createElement('button');
             b.id = 'authThemeToggle';
             b.type = 'button';
             b.title = 'Changer de thème';
-            b.style.cssText = 'position:fixed;top:16px;right:16px;z-index:50;width:42px;height:42px;border-radius:50%;border:1px solid #e6e8ec;background:#ffffff;color:#0f1115;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(16,24,40,.10);';
+            b.style.cssText = 'position:fixed;top:16px;right:16px;z-index:50;width:42px;height:42px;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-elevated);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(16,24,40,.10);transition:background-color .42s ease,border-color .42s ease,color .42s ease;';
             b.addEventListener('click', function() { window.setOrbitTheme(window.ORBIT_THEME === 'light' ? 'dark' : 'light', true); });
             document.body.appendChild(b);
             window.setOrbitTheme(window.ORBIT_THEME, false);
@@ -216,25 +242,66 @@
             .teams-grid { grid-template-columns: 1fr; }
             .header h1 { font-size: 1.3rem; }
         }
-    /* ===== Thème CLAIR (refonte JMH Orbit) — actif uniquement si thème clair ===== */
-    html[data-theme="light"] body { background: #f6f7f9 !important; }
+    /* ===== Tokens du thème CLAIR (mêmes valeurs que static/css/style.css) =====
+       Ces pages sont autonomes (pas de lien vers style.css) : les tokens du
+       thème clair sont donc déclarés ici. Surfaces en #fafafb, blanc pur
+       réservé aux couches flottantes -> confort visuel sans éblouissement. */
+    html[data-theme="light"] {
+        --bg-dark: #f3f4f6;
+        --bg-darker: #eaecf0;
+        --bg-card: #fafafb;
+        --bg-card-hover: #f1f2f5;
+        --bg-card-active: #e9ebef;
+        --bg-elevated: #ffffff;
+        --bg-glass: rgba(250, 250, 251, 0.86);
+        --text-primary: #22262b;
+        --text-secondary: #434b55;
+        --text-tertiary: #676f7c;
+        --text-muted: #8b93a0;
+        --border-color: #e3e5e9;
+        --border-light: #dcdfe4;
+        --border-strong: #cdd1d7;
+        --orange-subtle: rgba(255, 140, 0, 0.08);
+    }
+
+    /* ===== Transition dégradée du thème (équivalent local de polish.css) ===== */
+    html.orbit-theme-anim, html.orbit-theme-anim *, html.orbit-theme-anim *::before, html.orbit-theme-anim *::after {
+        transition: background-color .42s cubic-bezier(.4,0,.2,1), border-color .42s cubic-bezier(.4,0,.2,1), color .3s cubic-bezier(.4,0,.2,1) !important;
+    }
+    .orbit-theme-veil { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; opacity: 0; }
+    .orbit-theme-veil--out { animation: orbitVeil .42s cubic-bezier(.4,0,.2,1) forwards; }
+    @keyframes orbitVeil { 0% { opacity: 0; } 35% { opacity: .5; } 100% { opacity: 0; } }
+    ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .42s; animation-timing-function: cubic-bezier(.4,0,.2,1); }
+    ::view-transition-old(root) { animation-name: orbitVtOut; }
+    ::view-transition-new(root) { animation-name: orbitVtIn; }
+    @keyframes orbitVtOut { to { opacity: 0; } }
+    @keyframes orbitVtIn { from { opacity: 0; } to { opacity: 1; } }
+    #authThemeToggle i { display: inline-block; transition: transform .42s cubic-bezier(.34,1.56,.64,1); }
+    .orbit-theme-anim #authThemeToggle i { transform: rotate(180deg) scale(.9); }
+    @media (prefers-reduced-motion: reduce) {
+        html.orbit-theme-anim, html.orbit-theme-anim * { transition: none !important; }
+        .orbit-theme-veil--out { animation: none !important; }
+        ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+    }
+    /* ===== Thème CLAIR (refonte JMH Orbit) — tokens, aucun blanc pur en dur ===== */
+    html[data-theme="light"] body { background: var(--bg-dark) !important; }
     html[data-theme="light"] .orb { opacity: 0.07 !important; }
     html[data-theme="light"] .grid-overlay { background-image: linear-gradient(rgba(15,17,21,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(15,17,21,0.03) 1px, transparent 1px); }
-    html[data-theme="light"] .header img { background: #ffffff !important; border: 1px solid #e6e8ec !important; }
-    html[data-theme="light"] .header h1 { color: #0f1115 !important; }
-    html[data-theme="light"] .header p { color: #6b7280 !important; }
-    html[data-theme="light"] .team-card { background: #ffffff !important; border: 1px solid #e6e8ec !important; box-shadow: 0 2px 8px -2px rgba(16,24,40,.08); }
+    html[data-theme="light"] .header img { background: var(--bg-elevated) !important; border: 1px solid var(--border-color) !important; }
+    html[data-theme="light"] .header h1 { color: var(--text-primary) !important; }
+    html[data-theme="light"] .header p { color: var(--text-tertiary) !important; }
+    html[data-theme="light"] .team-card { background: var(--bg-card) !important; border: 1px solid var(--border-color) !important; box-shadow: 0 2px 8px -2px rgba(16,24,40,.08); transition: background-color .42s ease, border-color .2s ease, box-shadow .25s ease, transform .25s ease; }
     html[data-theme="light"] .team-card:hover { border-color: rgba(255,122,0,.35) !important; box-shadow: 0 12px 30px -8px rgba(16,24,40,.18) !important; }
-    html[data-theme="light"] .team-avatar { background: #f3f4f7 !important; border-color: #e6e8ec !important; color: #6b7280 !important; }
-    html[data-theme="light"] .team-info h3 { color: #0f1115 !important; }
-    html[data-theme="light"] .team-info .meta { color: #6b7280 !important; }
-    html[data-theme="light"] .team-desc { color: #4b5563 !important; }
-    html[data-theme="light"] .team-footer { border-top: 1px solid #eceef1 !important; }
-    html[data-theme="light"] .team-footer span { color: #6b7280 !important; }
+    html[data-theme="light"] .team-avatar { background: var(--bg-card-hover) !important; border-color: var(--border-color) !important; color: var(--text-tertiary) !important; }
+    html[data-theme="light"] .team-info h3 { color: var(--text-primary) !important; }
+    html[data-theme="light"] .team-info .meta { color: var(--text-tertiary) !important; }
+    html[data-theme="light"] .team-desc { color: var(--text-secondary) !important; }
+    html[data-theme="light"] .team-footer { border-top: 1px solid var(--border-color) !important; }
+    html[data-theme="light"] .team-footer span { color: var(--text-tertiary) !important; }
     html[data-theme="light"] .enter-btn { color: #ff7a00 !important; }
-    html[data-theme="light"] .back-link { color: #6b7280 !important; }
+    html[data-theme="light"] .back-link { color: var(--text-tertiary) !important; }
     html[data-theme="light"] .back-link:hover { color: #ff7a00 !important; }
-    html[data-theme="light"] .teams-grid .text-center { color: #6b7280 !important; }
+    html[data-theme="light"] .teams-grid .text-center { color: var(--text-tertiary) !important; }
     </style>
 </head>
 <body>

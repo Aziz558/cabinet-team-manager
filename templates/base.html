@@ -22,42 +22,81 @@
         document.documentElement.setAttribute('data-theme', t);
         window.ORBIT_THEME = t;
 
-        window.setOrbitTheme = function(theme, persist) {
+        window.setOrbitTheme = function(theme, persist, instant) {
             if (theme !== 'dark' && theme !== 'light') { theme = 'light'; }
-            document.documentElement.setAttribute('data-theme', theme);
-            window.ORBIT_THEME = theme;
             if (persist !== false) {
                 try {
                     localStorage.setItem('theme', theme);
                     document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
                 } catch (e) {}
             }
-            var icon = document.getElementById('themeIcon');
-            if (icon) { icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill'; }
-            document.querySelectorAll('.sidebar-logo').forEach(function(img) {
-                img.src = theme === 'light'
-                    ? "{{ url_for('static', filename='img/logo-jmh-light.svg') }}"
-                    : "{{ url_for('static', filename='img/logo-jmh.svg') }}";
-            });
-            document.querySelectorAll('[data-theme-choice]').forEach(function(el) {
-                el.classList.toggle('active', el.getAttribute('data-theme-choice') === theme);
-            });
-            window.dispatchEvent(new CustomEvent('orbit:theme', { detail: theme }));
+
+            // Application effective du theme (appelee dans la transition)
+            var apply = function() {
+                document.documentElement.setAttribute('data-theme', theme);
+                window.ORBIT_THEME = theme;
+                var icon = document.getElementById('themeIcon');
+                if (icon) { icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill'; }
+                document.querySelectorAll('.sidebar-logo').forEach(function(img) {
+                    img.src = theme === 'light'
+                        ? "{{ url_for('static', filename='img/logo-jmh-light.svg') }}"
+                        : "{{ url_for('static', filename='img/logo-jmh.svg') }}";
+                });
+                document.querySelectorAll('[data-theme-choice]').forEach(function(el) {
+                    el.classList.toggle('active', el.getAttribute('data-theme-choice') === theme);
+                });
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) { meta.setAttribute('content', theme === 'light' ? '#f3f4f6' : '#0f0f12'); }
+                window.dispatchEvent(new CustomEvent('orbit:theme', { detail: theme }));
+            };
+
+            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            // Premier rendu / mouvement reduit / appel systeme : sans animation
+            if (reduced || instant === true || !window.ORBIT_THEME_READY) { apply(); return; }
+
+            var root = document.documentElement;
+            var veil = document.getElementById('orbitThemeVeil');
+            if (!veil) {
+                veil = document.createElement('div');
+                veil.id = 'orbitThemeVeil';
+                veil.className = 'orbit-theme-veil';
+                document.body.appendChild(veil);
+            }
+            veil.classList.remove('orbit-theme-veil--out');
+            void veil.offsetWidth;                          // force le reflow -> relance l'animation
+            veil.style.background = theme === 'light' ? '#f3f4f6' : '#0f0f12';
+            veil.classList.add('orbit-theme-veil--out');
+
+            if (document.startViewTransition) {
+                document.startViewTransition(apply);        // fondu croise global (Chrome/Edge/Safari)
+            } else {
+                root.classList.add('orbit-theme-anim');     // repli : degrade CSS progressif
+                apply();
+                setTimeout(function() { root.classList.remove('orbit-theme-anim'); }, 470);
+            }
         };
 
         window.toggleTheme = function() {
             window.setOrbitTheme(window.ORBIT_THEME === 'light' ? 'dark' : 'light', true);
         };
+
+        // N'animer qu'a partir du moment ou la page est chargee (jamais au 1er affichage)
+        window.addEventListener('load', function() {
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) { m.setAttribute('content', window.ORBIT_THEME === 'light' ? '#f3f4f6' : '#0f0f12'); }
+            window.ORBIT_THEME_READY = true;
+        });
     })();
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="{{ url_for('static', filename='css/style.css') }}?v=8" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=3" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/polish.css') }}?v=5" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=9" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=4" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/polish.css') }}?v=7" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/workspace.css') }}?v=7" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&display=swap" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#f6f7f9">
+    <meta name="theme-color" content="#f3f4f6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Cabinet JMH">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo-orbit.svg') }}">
@@ -96,6 +135,10 @@
         </div>
         <div class="app-topbar-right">
                 {% if current_user.is_authenticated %}
+                <!-- Recherche rapide (palette de commandes) -->
+                <button type="button" class="orbit-search-btn" data-orbit-open-palette title="Recherche rapide (Ctrl + K)">
+                    <i class="bi bi-search"></i><span class="orbit-search-label">Rechercher</span><kbd class="orbit-kbd">&#8984;K</kbd>
+                </button>
                 <!-- Theme toggle -->
                 <button id="themeToggle" style="background:none;border:none;color:var(--text-primary);font-size:18px;cursor:pointer;margin-right:12px;" onclick="toggleTheme()" title="Changer le thème">
                     <i id="themeIcon" class="bi bi-sun-fill"></i>
@@ -187,7 +230,7 @@
     <main class="container-fluid" style="padding-top: 72px;">
         <div class="row">
             {% if current_user.is_authenticated %}
-            <div class="col-auto h-100 d-none d-md-flex" id="sidebarCol" style="width: 220px;">
+            <div class="col-auto h-100 d-none d-md-flex" id="sidebarCol" style="width: 220px; position: relative;">
                 {% include 'includes/sidebar.html' %}
             </div>
             {% endif %}
@@ -365,7 +408,7 @@
 <script>
 // Applique l'icône + le logo du thème courant (socle défini dans <head>)
 (function() {
-    if (window.setOrbitTheme) { window.setOrbitTheme(window.ORBIT_THEME, false); }
+    if (window.setOrbitTheme) { window.setOrbitTheme(window.ORBIT_THEME, false, true); }
 })();
 </script>
 <script>
@@ -571,6 +614,60 @@ function changeNotifSound(value) {
     }
 })();
 </script>
+    <!-- ================= UI : micro-interactions (compteur KPI, topbar) ================= -->
+    <script>
+    (function() {
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        /* 1) Les valeurs KPI montent de 0 a leur valeur reelle (texte final identique) */
+        function countUp() {
+            var nodes = document.querySelectorAll('.stat-card-value');
+            for (var i = 0; i < nodes.length; i++) {
+                (function(el) {
+                    var raw = (el.textContent || '').trim();
+                    if (!raw || el.getAttribute('data-counted')) { return; }
+                    if (!/^-?\d+(?:[.,]\d+)?$/.test(raw)) { return; }   // valeur non numerique -> intacte
+                    el.setAttribute('data-counted', '1');
+                    if (reduce) { return; }
+                    var hasDec = raw.indexOf(',') > -1 || raw.indexOf('.') > -1;
+                    var dec = hasDec ? (raw.split(/[.,]/)[1] || '').length : 0;
+                    var target = parseFloat(raw.replace(',', '.'));
+                    if (isNaN(target)) { return; }
+                    var dur = 650, t0 = null;
+                    function step(ts) {
+                        if (t0 === null) { t0 = ts; }
+                        var p = Math.min(1, (ts - t0) / dur);
+                        var eased = 1 - Math.pow(1 - p, 3);            // easeOutCubic
+                        var v = target * eased;
+                        el.textContent = dec ? v.toFixed(dec).replace('.', ',') : String(Math.round(v));
+                        if (p < 1) { requestAnimationFrame(step); }
+                        else { el.textContent = raw; }                 // valeur d'origine restauree
+                    }
+                    requestAnimationFrame(step);
+                })(nodes[i]);
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', countUp);
+        } else { countUp(); }
+
+        /* 2) Barre superieure : se compacte des que la page defile */
+        var topbar = document.querySelector('.app-topbar');
+        if (topbar && !reduce) {
+            var pending = false;
+            var sync = function() {
+                topbar.classList.toggle('is-compact', (window.pageYOffset || document.documentElement.scrollTop || 0) > 24);
+                pending = false;
+            };
+            window.addEventListener('scroll', function() {
+                if (!pending) { pending = true; requestAnimationFrame(sync); }
+            }, { passive: true });
+            sync();
+        }
+    })();
+    </script>
+    <!-- Phase 4 : panneau latéral, palette ⇧K, clavier, favoris, densité -->
+    <script src="{{ url_for('static', filename='js/orbit-workspace.js') }}?v=1" defer></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

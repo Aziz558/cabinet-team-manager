@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cabinet-jmh-v3';
+const CACHE_NAME = 'cabinet-jmh-v4';
 
 self.addEventListener('install', event => {
   // Ne pré-cache plus aucune page HTML : le reseau est la seule source de verite.

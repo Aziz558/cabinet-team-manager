@@ -128,12 +128,14 @@
     </div>
 </div>
 
+<!-- Zone principale (gauche) + rail latéral (droite) -->
+<div class="orbit-dash">
 <!-- Triage Pennylane (à traiter par dossier) -->
 {% include '_pl_triage.html' %}
 
 <!-- Alertes -->
 {% if alertes %}
-<div class="card-premium mb-4 animate-fade-in-up stagger-2">
+<div class="card-premium mb-4 animate-fade-in-up stagger-2 dash-rail">
     <div class="card-header-premium d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2" style="color: var(--danger);"></i>Alertes — Tâches en retard</h5>
         <span class="badge badge-danger">{{ alertes|length }} alerte(s)</span>
@@ -163,7 +165,7 @@
 {% endif %}
 
 <!-- Notifications récentes -->
-<div class="card-premium mb-4 animate-fade-in-up stagger-3">
+<div class="card-premium mb-4 animate-fade-in-up stagger-3 dash-rail">
     <div class="card-header-premium d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-bell me-2" style="color: var(--orange-primary);"></i>Notifications récentes</h5>
         <a href="{{ url_for('notifications_page') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">Voir tout</a>
@@ -268,10 +270,8 @@
 </div>
 {% endif %}
 
-<!-- Vue Équipe & Tâches -->
-<div class="row mb-4">
-    <!-- Progress Rings Section -->
-    <div class="col-lg-4 mb-4">
+<!-- Avancement de l'équipe (rail latéral) -->
+<div class="dash-rail">
         <div class="card-premium h-100 animate-fade-in-up stagger-4">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-speedometer2 me-2" style="color: var(--orange-primary);"></i>Avancement de l'équipe</h5>
@@ -292,8 +292,8 @@
                 <p class="text-tertiary small">Sur {{ kpi.total_taches or 0 }} tâches au total</p>
             </div>
         </div>
-    </div>
-    <div class="col-lg-8 mb-4">
+    </div><!-- /dash-rail : avancement de l'équipe -->
+<div class="dash-main"><!-- Vue équipe -->
         <div class="card-premium h-100 animate-fade-in-up stagger-5">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-people me-2"></i>Vue équipe</h5>
@@ -345,11 +345,9 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- Tâches du jour & de la semaine -->
-<div class="row mb-4">
-    <div class="col-lg-6 mb-4">
+<!-- Tâches du jour (colonne principale) -->
+<div class="dash-main">
         <div class="card-premium mb-4 animate-fade-in-up stagger-5">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Tâches du jour</h5>
@@ -385,8 +383,8 @@
                 {% endif %}
             </div>
         </div>
-    </div>
-    <div class="col-lg-6 mb-4">
+    </div><!-- /dash-main : tâches du jour -->
+    <div class="dash-rail"><!-- Tâches de la semaine -->
         <div class="card-premium animate-fade-in-up stagger-6">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Tâches de la semaine</h5>
@@ -423,7 +421,7 @@
             </div>
         </div>
     </div>
-</div>
+</div><!-- fin de la grille (rail semaine) -->
 {% endblock %}
 
 {% block scripts %}
