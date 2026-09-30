@@ -98,9 +98,12 @@
     {% set ns = namespace(total=0, ca3=0, ca12=0, exo=0, proche=0) %}
     {% for d in dossiers %}
         {% set ns.total = ns.total + 1 %}
-        {% if d.regime_tva == 'ca3' %}{% set ns.ca3 = ns.ca3 + 1 %}
-        {% elif d.regime_tva == 'ca12' %}{% set ns.ca12 = ns.ca12 + 1 %}
-        {% elif d.regime_tva == 'exonere' %}{% set ns.exo = ns.exo + 1 %}
+        {# Le formulaire stocke 'mensuel'/'trimestriel'/'annuel'/'exonere' (et les
+           anciennes données 'ca3'/'ca12') : on accepte les deux écritures. #}
+        {% set _rt = (d.regime_tva or '')|lower %}
+        {% if _rt in ('ca3', 'mensuel', 'trimestriel') or _rt.startswith('ca3') %}{% set ns.ca3 = ns.ca3 + 1 %}
+        {% elif _rt in ('ca12', 'annuel') or _rt.startswith('ca12') %}{% set ns.ca12 = ns.ca12 + 1 %}
+        {% elif _rt == 'exonere' %}{% set ns.exo = ns.exo + 1 %}
         {% endif %}
         {% if d._delai_label and 'J-' in d._delai_label and d._delai_label|replace('J-','')|int >= 0 and d._delai_label|replace('J-','')|int < 30 %}{% set ns.proche = ns.proche + 1 %}{% endif %}
     {% endfor %}

@@ -3759,14 +3759,61 @@ def fiscal():
     ca12_dossiers = []
     is_dossiers = []
     cfe_dossiers = []
+
+    # --- Classification fiscale ROBUSTE (mots entiers, insensible aux accents) ---
+    # Avant : `'IS' in t.titre.upper()` matchait aussi MISE, SAISIE, AVIS, PRISE...
+    # et `d.regime_tva == 'ca3'` ne matchait jamais (le formulaire stocke
+    # 'mensuel'/'trimestriel'/'annuel'). On centralise ici la logique.
+    import re as _fiscal_re
+    _FISCAL_ACCENTS = str.maketrans('ÉÈÊËÀÂÎÏÔÛÜÇ', 'EEEEAAIIOOUC')
+    _FISCAL_DONE = ('terminee', 'terminée', 'termines', 'terminés', 'termine', 'achevee', 'achevée')
+
+    def _fiscal_kind(titre):
+        """Types fiscaux d'une tâche, testés sur MOT ENTIER (TVA, CA3, CA12, IS, CFE, ACOMPTE)."""
+        t = (titre or '').upper().translate(_FISCAL_ACCENTS)
+
+        def _has(mot):
+            return _fiscal_re.search(r'(?<![A-Z0-9])' + mot + r'(?![A-Z0-9])', t) is not None
+
+        return {
+            'tva': _has('TVA'),
+            'ca3': _has('CA3'),
+            'ca12': _has('CA12'),
+            'is': _has('IS') or _has('ACOMPTE') or _has('ACOMPTES'),
+            'cfe': _has('CFE'),
+        }
+
+    def _fiscal_subset(item, include, exclude=()):
+        """Copie de l'item limitée aux tâches des types demandés,
+        avec les compteurs RECALCULÉS sur ce sous-ensemble (sinon la colonne
+        TÂCHES du sous-onglet affichait le total toutes taxes confondues)."""
+        kinds = item.get('_kinds', {})
+
+        def _keep(t):
+            k = kinds.get(t.id, {})
+            return any(k.get(x) for x in include) and not any(k.get(x) for x in exclude)
+
+        subset = [t for t in item.get('_all_tasks', []) if _keep(t)]
+        copy = dict(item)
+        copy['tax_tasks'] = subset
+        _add_counts(copy)
+        return copy
+
+    def _regime_ca(_regime, famille):
+        """Le formulaire stocke 'mensuel'/'trimestriel'/'annuel', les anciennes
+        données 'ca3'/'ca12' : on accepte les deux."""
+        r = (_regime or '').lower()
+        if famille == 'ca3':
+            return r in ('ca3', 'mensuel', 'trimestriel') or r.startswith('ca3')
+        return r in ('ca12', 'annuel') or r.startswith('ca12')
     
     for d in all_dossiers:
         tasks = Tache.query.filter(Tache.dossier_id == d.id).all()
-        tax_tasks = [t for t in tasks if (
-                     'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper() or
-                      'IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper() or 'CFE' in t.titre.upper())]
-        pending_tasks = [t for t in tax_tasks if t.statut != 'terminee']
-        next_deadline = min([t.date_echeance for t in pending_tasks]) if pending_tasks else None
+        # Classification robuste (mots entiers + accents) : remplace le test naïf
+        kinds = {t.id: _fiscal_kind(t.titre) for t in tasks}
+        tax_tasks = [t for t in tasks if any(kinds[t.id].values())]
+        pending_tasks = [t for t in tax_tasks if (t.statut or '') not in _FISCAL_DONE]
+        next_deadline = min([t.date_echeance for t in pending_tasks if t.date_echeance]) if pending_tasks else None
         if any(t.statut == 'a_faire' for t in tax_tasks):
             status = 'a_faire'
             status_label = 'À faire'
@@ -3788,36 +3835,34 @@ def fiscal():
             'status': status,
             'status_label': status_label,
             'status_class': status_class,
-            'tax_tasks': tax_tasks
+            'tax_tasks': tax_tasks,
+            '_all_tasks': tasks,
+            '_kinds': kinds
         }
         dossier_data.append(item)
         
         _add_counts(item)
         
         # TVA tasks (only TVA, CA3, CA12)
-        tva_tasks = [t for t in tasks if 'TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper()]
+        tva_tasks = [t for t in tasks if kinds[t.id]['tva'] or kinds[t.id]['ca3'] or kinds[t.id]['ca12']]
         if tva_tasks:
-            tva_dossiers.append({**item, 'tax_tasks': tva_tasks})
+            tva_dossiers.append(_fiscal_subset(item, ('tva', 'ca3', 'ca12')))
         
         # CA3 tasks
-        if d.regime_tva == 'ca3' or any('CA3' in t.titre.upper() for t in tasks):
-            ca3_filtered = [t for t in tasks if ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper()) and 'CA12' not in t.titre.upper()]
-            ca3_dossiers.append({**item, 'tax_tasks': ca3_filtered})
+        if _regime_ca(d.regime_tva, 'ca3') or any(kinds[t.id]['ca3'] for t in tasks):
+            ca3_dossiers.append(_fiscal_subset(item, ('tva', 'ca3'), ('ca12',)))
         
         # CA12 tasks
-        if d.regime_tva == 'ca12' or any('CA12' in t.titre.upper() for t in tasks):
-            ca12_filtered = [t for t in tasks if 'CA12' in t.titre.upper()]
-            ca12_dossiers.append({**item, 'tax_tasks': ca12_filtered})
+        if _regime_ca(d.regime_tva, 'ca12') or any(kinds[t.id]['ca12'] for t in tasks):
+            ca12_dossiers.append(_fiscal_subset(item, ('ca12',)))
         
         # IS tasks
-        if d.regime_fiscale == 'IS' or any('IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper() for t in tasks):
-            is_filtered = [t for t in tasks if 'IS' in t.titre.upper() or 'ACOMPTE' in t.titre.upper()]
-            is_dossiers.append({**item, 'tax_tasks': is_filtered})
+        if d.regime_fiscale == 'IS' or any(kinds[t.id]['is'] for t in tasks):
+            is_dossiers.append(_fiscal_subset(item, ('is',)))
         
         # CFE tasks
-        if d.has_cfe or any('CFE' in t.titre.upper() for t in tasks):
-            cfe_filtered = [t for t in tasks if 'CFE' in t.titre.upper()]
-            cfe_dossiers.append({**item, 'tax_tasks': cfe_filtered})
+        if d.has_cfe or any(kinds[t.id]['cfe'] for t in tasks):
+            cfe_dossiers.append(_fiscal_subset(item, ('cfe',)))
     
     return render_template('fiscal.html', dossier_data=dossier_data, 
         tva_dossiers=tva_dossiers, ca3_dossiers=ca3_dossiers, ca12_dossiers=ca12_dossiers,

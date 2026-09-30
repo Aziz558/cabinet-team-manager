@@ -59,35 +59,35 @@
 
 <!-- Contenu TVA (tous) -->
 <div id="tab-tva" class="impot-content active">
-    {% with dossier_data=tva_dossiers %}
+    {% with dossier_data=tva_dossiers, subtab_key='tva', subtab_kind='tva' %}
     {% include '_fiscal_subtab.html' %}
     {% endwith %}
 </div>
 
 <!-- Contenu CA3 -->
 <div id="tab-ca3" class="impot-content">
-    {% with dossier_data=ca3_dossiers %}
+    {% with dossier_data=ca3_dossiers, subtab_key='ca3', subtab_kind='ca3' %}
     {% include '_fiscal_subtab.html' %}
     {% endwith %}
 </div>
 
 <!-- Contenu CA12 -->
 <div id="tab-ca12" class="impot-content">
-    {% with dossier_data=ca12_dossiers %}
+    {% with dossier_data=ca12_dossiers, subtab_key='ca12', subtab_kind='ca12' %}
     {% include '_fiscal_subtab.html' %}
     {% endwith %}
 </div>
 
 <!-- Contenu IS -->
 <div id="tab-is" class="impot-content">
-    {% with dossier_data=is_dossiers %}
+    {% with dossier_data=is_dossiers, subtab_key='is', subtab_kind='is' %}
     {% include '_fiscal_subtab.html' %}
     {% endwith %}
 </div>
 
 <!-- Contenu CFE -->
 <div id="tab-cfe" class="impot-content">
-    {% with dossier_data=cfe_dossiers %}
+    {% with dossier_data=cfe_dossiers, subtab_key='cfe', subtab_kind='cfe' %}
     {% include '_fiscal_subtab.html' %}
     {% endwith %}
 </div>
@@ -104,14 +104,34 @@ function switchTab(tabId) {
     document.getElementById(`tab-${tabId}`).classList.add('active');
 }
 
+/* Déplie/replie le détail des tâches. `key` = onglet (tva, ca3, ca12, is, cfe) :
+   les 5 onglets sont affichés en même temps, les identifiants DOIVENT donc être
+   uniques par onglet, sinon le clic ouvrait la ligne du premier onglet. */
+function toggleTasks(dossierId, key) {
+    var row = document.getElementById('tasks-' + key + '-' + dossierId);
+    var chevron = document.getElementById('chevron-' + key + '-' + dossierId);
+    if (!row) return;
+    var cache = (row.style.display === 'none' || row.style.display === '');
+    row.style.display = cache ? 'table-row' : 'none';
+    if (chevron) chevron.style.transform = cache ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    const rechercheInput = document.getElementById('rechercheFiscal');
+    var rechercheInput = document.getElementById('rechercheFiscal');
     if (!rechercheInput) return;
     rechercheInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase().trim();
-        document.querySelectorAll('.impot-content.active table tbody tr').forEach(row => {
-            const mots = row.getAttribute('data-mots') || '';
-            row.style.display = mots.includes(searchTerm) ? '' : 'none';
+        var q = this.value.toLowerCase().trim();
+        // 1) lignes de dossier seulement (celles qui portent data-mots)
+        document.querySelectorAll('.impot-content.active tr[data-mots]').forEach(function(row) {
+            var mots = row.getAttribute('data-mots') || '';
+            row.style.display = (!q || mots.indexOf(q) > -1) ? '' : 'none';
+        });
+        // 2) les lignes de détail restent TOUJOURS repliées
+        document.querySelectorAll('.impot-content.active tr.fiscal-tasks-row').forEach(function(r) {
+            r.style.display = 'none';
+        });
+        document.querySelectorAll('.impot-content.active .fiscal-chevron').forEach(function(c) {
+            c.style.transform = 'rotate(0deg)';
         });
     });
 });

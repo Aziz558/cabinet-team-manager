@@ -2,7 +2,7 @@
     <div class="card-body-premium p-0">
         {% if dossier_data and dossier_data|length > 0 %}
         <div class="table-responsive">
-            <table class="table-premium" id="tableFiscal">
+            <table class="table-premium" id="tableFiscal-{{ subtab_key }}">
                 <thead>
                     <tr>
                         <th style="width:32px"></th>
@@ -25,9 +25,9 @@
                     {% set a_retard = item.a_retard or 0 %}
                     {% set next_dl = item.next_deadline %}
                     
-                    <tr class="fiscal-dossier-row" style="cursor:pointer;" onclick="toggleTasks({{ d.id }})" data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '')).lower() }}">
+                    <tr class="fiscal-dossier-row" style="cursor:pointer;" onclick="toggleTasks({{ d.id }}, '{{ subtab_key }}')" data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.equipe.nom if d.equipe else '')).lower() }}">
                         <td class="text-center">
-                            <i class="bi bi-chevron-right fiscal-chevron" id="chevron-{{ d.id }}" style="transition:transform 0.2s;color:var(--text-tertiary);"></i>
+                            <i class="bi bi-chevron-right fiscal-chevron" id="chevron-{{ subtab_key }}-{{ d.id }}" style="transition:transform 0.2s;color:var(--text-tertiary);"></i>
                         </td>
                         <td><strong>{{ d.numero_dossier }}</strong><br><small class="text-tertiary">{{ d.intitule }}</small></td>
                         <td>
@@ -51,10 +51,31 @@
                         </td>
                         <td>{{ d.equipe.nom if d.equipe else '-' }}</td>
                         <td>
-                            {% if item.regime_fiscale == 'IS' %}<span class="badge badge-info">IS</span>
-                            {% elif item.regime_fiscale == 'IRPP' %}<span class="badge badge-warning">IRPP</span>
-                            {% else %}<span class="badge badge-tertiary">-</span>{% endif %}
-                            {% if item.has_cfe %}<span class="badge badge-success ms-1">CFE</span>{% endif %}
+                            {% if subtab_kind in ('tva', 'ca3', 'ca12') %}
+                                {# Onglets TVA : la colonne doit afficher le RÉGIME TVA du dossier #}
+                                {% set rt = (d.regime_tva or '') | lower %}
+                                {% set freq = (d.frequence_tva or '') | lower %}
+                                {% if rt == 'exonere' %}
+                                <span class="badge badge-success">Exonéré</span>
+                                {% elif rt in ('ca12', 'annuel') or rt.startswith('ca12') %}
+                                <span class="badge badge-primary">CA12 Annuel</span>
+                                {% elif rt in ('ca3', 'mensuel', 'trimestriel') or rt.startswith('ca3') %}
+                                    {% if freq == 'mensuelle' or rt == 'mensuel' %}
+                                    <span class="badge badge-info">CA3 Mensuelle</span>
+                                    {% elif freq == 'trimestrielle' or rt == 'trimestriel' %}
+                                    <span class="badge badge-warning">CA3 Trimestrielle</span>
+                                    {% else %}
+                                    <span class="badge badge-info">CA3</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="badge badge-tertiary">—</span>
+                                {% endif %}
+                            {% else %}
+                                {% if item.regime_fiscale == 'IS' %}<span class="badge badge-info">IS</span>
+                                {% elif item.regime_fiscale == 'IRPP' %}<span class="badge badge-warning">IRPP</span>
+                                {% else %}<span class="badge badge-tertiary">—</span>{% endif %}
+                                {% if item.has_cfe %}<span class="badge badge-success ms-1">CFE</span>{% endif %}
+                            {% endif %}
                         </td>
                         <td>
                             <span class="fw-medium">{{ tasks|length }}</span>
@@ -90,7 +111,7 @@
                         </td>
                     </tr>
                     <!-- Ligne des tâches détaillées (cachée par défaut) -->
-                    <tr class="fiscal-tasks-row" id="tasks-{{ d.id }}" style="display:none;">
+                    <tr class="fiscal-tasks-row" id="tasks-{{ subtab_key }}-{{ d.id }}" style="display:none;">
                         <td colspan="8" style="padding:0;background:var(--bg-tertiary);">
                             <div class="p-3" style="border-top:1px solid var(--border-color);">
                                 {% if tasks|length == 0 %}
@@ -142,13 +163,4 @@
     </div>
 </div>
 
-<script>
-function toggleTasks(dossierId) {
-    var row = document.getElementById('tasks-' + dossierId);
-    var chevron = document.getElementById('chevron-' + dossierId);
-    if (!row) return;
-    var visible = row.style.display !== 'none';
-    row.style.display = visible ? 'none' : 'table-row';
-    if (chevron) chevron.style.transform = visible ? 'rotate(0deg)' : 'rotate(90deg)';
-}
-</script>
+
