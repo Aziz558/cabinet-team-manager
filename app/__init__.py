@@ -3,6 +3,7 @@ from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 import os
+import secrets
 from datetime import date as _date, datetime as _datetime
 
 app = Flask(
@@ -169,10 +170,21 @@ with app.app_context():
                 nom='JMH', prenom='Admin',
                 role='admin', actif=True,
             )
-            admin.set_password(os.environ.get('BOOTSTRAP_ADMIN_PASSWORD', 'Admin2026!'))
+            _bootstrap_pwd = (os.environ.get('BOOTSTRAP_ADMIN_PASSWORD') or '').strip()
+            _pwd_generee = False
+            if not _bootstrap_pwd:
+                # Pas de mot de passe en dur dans le repo : generation aleatoire
+                # (a noter une seule fois) si la variable d'environnement est absente.
+                _bootstrap_pwd = secrets.token_urlsafe(14)
+                _pwd_generee = True
+            admin.set_password(_bootstrap_pwd)
             db.session.add(admin)
             db.session.commit()
-            print("🆘 Base vide -> admin de secours créé : admin@cabinet-jmh.com / Admin2026!")
+            if _pwd_generee:
+                print("🆘 Base vide -> admin de secours créé : admin@cabinet-jmh.com")
+                print(f"   Mot de passe GÉNÉRÉ (à enregistrer tout de suite) : {_bootstrap_pwd}")
+            else:
+                print("🆘 Base vide -> admin de secours créé : admin@cabinet-jmh.com (mot de passe = variable BOOTSTRAP_ADMIN_PASSWORD)")
             app.logger.info("Bootstrap admin créé (base vide)")
     except Exception as e:
         try:
@@ -187,18 +199,22 @@ with app.app_context():
         _reset_done = AppSetting.query.filter_by(
             cle='_pwd_reset_2026_09_incident').first()
         if not _reset_done:
-            _admin = User.query.filter_by(email='admin@cabinet-jmh.com').first()
-            if _admin is None:
-                _admin = User(email='admin@cabinet-jmh.com', nom='JMH',
-                              prenom='Admin', role='admin', actif=True)
-                db.session.add(_admin)
-            _admin.set_password('admin1234')
-            _admin.role = 'admin'
-            _admin.actif = True
-            db.session.add(AppSetting(cle='_pwd_reset_2026_09_incident',
-                                      valeur='done', service='general'))
-            db.session.commit()
-            print("🔑 Reset one-time admin appliqué : admin@cabinet-jmh.com / admin1234")
+            _reset_pwd = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
+            if _reset_pwd:
+                _admin = User.query.filter_by(email='admin@cabinet-jmh.com').first()
+                if _admin is None:
+                    _admin = User(email='admin@cabinet-jmh.com', nom='JMH',
+                                  prenom='Admin', role='admin', actif=True)
+                    db.session.add(_admin)
+                _admin.set_password(_reset_pwd)
+                _admin.role = 'admin'
+                _admin.actif = True
+                db.session.add(AppSetting(cle='_pwd_reset_2026_09_incident',
+                                          valeur='done', service='general'))
+                db.session.commit()
+                print("🔑 Reset one-time admin appliqué : admin@cabinet-jmh.com (mot de passe = variable ADMIN_RESET_PASSWORD)")
+            else:
+                print("ℹ️ Reset one-time admin ignoré : définir ADMIN_RESET_PASSWORD pour l'activer (aucun mot de passe en dur)")
     except Exception as e:
         try:
             db.session.rollback()

@@ -190,7 +190,7 @@
             '<div class="orbit-palette-hint"><kbd class="orbit-kbd">&#8593;</kbd><kbd class="orbit-kbd">&#8595;</kbd> naviguer &middot; <kbd class="orbit-kbd">Entr&eacute;e</kbd> ouvrir &middot; <kbd class="orbit-kbd">&Eacute;chap</kbd> fermer</div>';
         palInput = pal.querySelector('.orbit-palette-input');
         palResults = pal.querySelector('.orbit-palette-results');
-        palInput.addEventListener('input', function () { renderPalette(palInput.value); });
+        palInput.addEventListener('input', function () { renderPalette(palInput.value); scheduleRemote(palInput.value); });
         palInput.addEventListener('keydown', function (ev) {
             if (ev.key === 'ArrowDown') { ev.preventDefault(); movePalette(1); }
             else if (ev.key === 'ArrowUp') { ev.preventDefault(); movePalette(-1); }
@@ -203,6 +203,43 @@
     function norm(s) {
         var t = String(s === null || s === undefined ? '' : s).toLowerCase();
         try { return t.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) { return t; }
+    }
+    /* ---------- Recherche globale distante (/api/recherche-globale) ----------
+       En complément des items de la page, interroge le serveur (debounce 250 ms)
+       pour dossiers / tâches / membres — périmètre filtré côté serveur. */
+    var palRemote = [], remoteTimer = null, remoteSeq = 0;
+    function scheduleRemote(q) {
+        if (remoteTimer) { window.clearTimeout(remoteTimer); remoteTimer = null; }
+        var needle = (q || '').trim();
+        if (needle.length < 2) {
+            if (palRemote.length) { palRemote = []; if (pal) { renderPalette(palInput.value); } }
+            return;
+        }
+        var seq = ++remoteSeq;
+        remoteTimer = window.setTimeout(function () {
+            fetch('/api/recherche-globale?q=' + encodeURIComponent(needle), { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return (r && r.ok) ? r.json() : null; })
+                .then(function (j) {
+                    if (seq !== remoteSeq) { return; }
+                    palRemote = (j && j.ok && j.resultats) ? j.resultats.map(function (it) {
+                        return {
+                            remote: true,
+                            group: it.groupe || 'Résultats',
+                            icon: it.icone || 'bi-search',
+                            label: it.label || '',
+                            sub: it.sous || '',
+                            run: (function (h) { return function () { window.location.href = h; }; })(it.lien || '#')
+                        };
+                    }) : [];
+                    if (pal && pal.classList.contains('is-open')) { renderPalette(palInput.value); }
+                })
+                .catch(function () {});
+        }, 250);
+    }
+    function clearRemote() {
+        if (remoteTimer) { window.clearTimeout(remoteTimer); remoteTimer = null; }
+        remoteSeq++;
+        palRemote = [];
     }
     function palettePages() {
         var out = [], seen = {};
@@ -241,11 +278,11 @@
     }
     function renderPalette(q) {
         var needle = norm(q).trim();
-        var pool = palettePages().concat(paletteItems()).concat(paletteCommands());
+        var pool = palRemote.concat(palettePages()).concat(paletteItems()).concat(paletteCommands());
         var recents = store.get('orbitRecents', []);
         if (needle) {
             pool = pool.filter(function (it) {
-                return norm(it.label).indexOf(needle) > -1 || norm(it.sub).indexOf(needle) > -1;
+                return it.remote || norm(it.label).indexOf(needle) > -1 || norm(it.sub).indexOf(needle) > -1;
             });
         }
         pool.sort(function (a, b) {
@@ -294,6 +331,7 @@
     }
     function openPalette() {
         ensurePalette();
+        clearRemote();
         palInput.value = '';
         renderPalette('');
         palBackdrop.classList.add('is-open');
@@ -302,6 +340,7 @@
     }
     function closePalette() {
         if (!pal) { return; }
+        clearRemote();
         pal.classList.remove('is-open');
         palBackdrop.classList.remove('is-open');
     }

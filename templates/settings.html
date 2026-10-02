@@ -3,12 +3,8 @@
 {% block title %}Paramètres{% endblock %}
 
 {% block content %}
-<div class="row mb-4 animate-fade-in-up">
-    <div class="col-12">
-        <h2 class="text-gradient-animated"><i class="bi bi-gear me-2"></i>Paramètres</h2>
-        <p class="text-tertiary">Paramétrez vos intégrations : PennyLane, Outlook, Teams, SMTP.</p>
-    </div>
-</div>
+{% from 'includes/orbit_ui.html' import page_head with context %}
+{{ page_head('bi-gear', 'Paramètres', 'Intégrations : PennyLane, Outlook, Teams, SMTP') }}
 
 <div class="row mb-4">
     <!-- Apparence : choix de thème (appliqué à toute l'application) -->

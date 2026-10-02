@@ -3,12 +3,13 @@
 {% block title %}Équipe{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <h2 class="text-gradient-animated"><i class="bi bi-people me-2"></i>Membres</h2>
+{% from 'includes/orbit_ui.html' import page_head with context %}
+{% set actions %}
     <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalAjouter">
         <i class="bi bi-person-plus me-1"></i>Ajouter membre
     </button>
-</div>
+{% endset %}
+{{ page_head('bi-people', 'Membres', "Comptes de l'équipe et affectations", actions=actions) }}
 
 <!-- KPI band Membres -->
 {% set mns = namespace(total=0, actifs=0, mgr=0, adm=0, sans_eq=0) %}

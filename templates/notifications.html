@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Notifications{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <h2 class="fw-semibold"><i class="bi bi-bell me-2" style="color:var(--orange-primary)"></i>Notifications</h2>
-</div>
+{% from 'includes/orbit_ui.html' import page_head with context %}
+{{ page_head('bi-bell', 'Notifications', 'Activité de vos équipes et alertes') }}
 
 <!-- Stats -->
 <div class="row mb-4 g-3">

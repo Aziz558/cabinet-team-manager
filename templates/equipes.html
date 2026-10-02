@@ -2,14 +2,13 @@
 {% block title %}Équipes{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up stagger-1">
-    <h2 class="fw-semibold"><i class="bi bi-diagram-3 me-2" style="color:var(--orange-primary)"></i>Équipes</h2>
-    {% if current_user.role == 'admin' %}
+{% from 'includes/orbit_ui.html' import page_head with context %}
+{% set actions %}{% if current_user.role == 'admin' %}
     <button class="btn-premium btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalEquipe">
         <i class="bi bi-plus-lg me-1"></i>Nouvelle équipe
     </button>
-    {% endif %}
-</div>
+{% endif %}{% endset %}
+{{ page_head('bi-diagram-3', 'Équipes', 'Structure du cabinet et affectations', actions=actions) }}
 
 <!-- KPI band Équipes -->
 {% set ens = namespace(total=0, membres=0, avec_mgr=0, emails=0) %}

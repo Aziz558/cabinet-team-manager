@@ -801,6 +801,10 @@ function orbitChips() {
                 }
             });
         });
+
+        // Prefill depuis la recherche globale (palette Ctrl+K -> /dossiers?q=...)
+        var qUrl = new URLSearchParams(location.search).get('q');
+        if (qUrl) { rechercheInput.value = qUrl; rechercheInput.dispatchEvent(new Event('input')); }
     });
 
     // Batch delete: show/hide button, collect IDs, confirm

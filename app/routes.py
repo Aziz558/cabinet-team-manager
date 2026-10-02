@@ -2405,6 +2405,65 @@ def api_dossiers_membres():
         'membres': [{'id': m.id, 'label': f"{m.prenom} {m.nom}"} for m in membres]
     })
 
+
+@app.route('/api/recherche-globale')
+@login_required
+def recherche_globale():
+    """Recherche globale pour la palette Ctrl+K : dossiers, tâches, membres.
+    Respecte le périmètre de l'utilisateur (membre : son périmètre ;
+    manager : ses équipes ; admin : tout)."""
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify({'ok': True, 'resultats': []})
+    like = f'%{q}%'
+    role = getattr(current_user, 'role', 'membre')
+    resultats = []
+
+    dq = Dossier.query
+    tq = Tache.query
+    mq = User.query.filter(User.actif == True)
+
+    if role == 'membre':
+        dq = dq.filter(Dossier.collaborateur_id == current_user.id)
+        tq = tq.filter(or_(Tache.assigne_a == current_user.id, Tache.cree_par == current_user.id))
+        mq = mq.filter(User.id == current_user.id)
+    elif role == 'manager':
+        team_ids = {current_user.id}
+        for eq in Equipe.query.filter_by(manager_id=current_user.id).all():
+            team_ids.update(m.id for m in eq.membres.all())
+        dq = dq.filter(Dossier.collaborateur_id.in_(list(team_ids)))
+        tq = tq.filter(or_(Tache.assigne_a.in_(list(team_ids)), Tache.cree_par.in_(list(team_ids))))
+        mq = mq.filter(User.id.in_(list(team_ids)))
+
+    for d in dq.filter(or_(Dossier.numero_dossier.ilike(like), Dossier.intitule.ilike(like))) \
+               .order_by(Dossier.numero_dossier).limit(5).all():
+        resultats.append({
+            'groupe': 'Dossiers', 'icone': 'bi-folder2-open',
+            'label': f'{d.numero_dossier} — {d.intitule}',
+            'sous': 'Dossier',
+            'lien': url_for('dossiers', q=d.numero_dossier),
+        })
+
+    for t in tq.filter(Tache.titre.ilike(like)).order_by(Tache.id.desc()).limit(5).all():
+        resultats.append({
+            'groupe': 'Tâches', 'icone': 'bi-clipboard-check',
+            'label': t.titre,
+            'sous': 'Tâche · ' + (t.statut or '').replace('_', ' '),
+            'lien': url_for('vue_tache', tache_id=t.id),
+        })
+
+    if role != 'membre':
+        for m in mq.filter(or_(User.prenom.ilike(like), User.nom.ilike(like),
+                               User.email.ilike(like))).order_by(User.prenom).limit(5).all():
+            resultats.append({
+                'groupe': 'Équipe', 'icone': 'bi-person',
+                'label': f'{m.prenom} {m.nom}',
+                'sous': m.poste or 'Membre',
+                'lien': url_for('fiche_membre', user_id=m.id),
+            })
+
+    return jsonify({'ok': True, 'resultats': resultats[:15]})
+
 def _nettoyer_relations_dossier(dossier):
     """Supprime TOUTES les lignes rattachees a un dossier avant de le deletes
     (taches + notifications/commentaires + suggestions + items Pennylane +
