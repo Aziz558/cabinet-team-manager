@@ -26,8 +26,9 @@ html.orbit-compact .stat-card { padding: 0.9rem; }
     background: rgba(16, 24, 40, .34);
     backdrop-filter: blur(2px);
     opacity: 0; transition: opacity .28s ease;
+    pointer-events: none;
 }
-.orbit-drawer-backdrop.is-open { opacity: 1; }
+.orbit-drawer-backdrop.is-open { opacity: 1; pointer-events: auto; }
 html[data-theme="dark"] .orbit-drawer-backdrop { background: rgba(0, 0, 0, .58); }
 
 .orbit-drawer {
@@ -93,8 +94,9 @@ body.orbit-drawer-open { overflow: hidden; }
     position: fixed; inset: 0; z-index: 1060;
     background: rgba(16, 24, 40, .38); backdrop-filter: blur(3px);
     opacity: 0; transition: opacity .2s ease;
+    pointer-events: none;
 }
-.orbit-palette-backdrop.is-open { opacity: 1; }
+.orbit-palette-backdrop.is-open { opacity: 1; pointer-events: auto; }
 .orbit-palette {
     position: fixed; z-index: 1065; top: 12vh; left: 50%;
     width: min(620px, 94vw); transform: translate(-50%, -8px) scale(.985);
