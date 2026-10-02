@@ -1,0 +1,54 @@
+{# ============================================================
+   PARTIAL UI STANDARD JMH Orbit (V5)
+   - page_head : en-tête unifié (icône, titre, sous-titre, badges, actions)
+   - filter_bar : compteur de résultats + bouton réinitialiser
+   - empty_state : état vide cohérent avec bouton d'action
+   - status_badge : pastille de statut unifiée (st-*)
+   ============================================================ #}
+
+{% macro page_head(icon, title, subtitle, count=None, alert=None, actions='') -%}
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi {{ icon }}"></i></span>
+        <div class="page-head-titles">
+            <h2>{{ title }}{% if count is not none %}<span class="page-head-count">{{ count }}</span>{% endif %}</h2>
+            <p class="page-head-sub">{{ subtitle }}{% if alert %} · <span class="text-alert">{{ alert }}</span>{% endif %}</p>
+        </div>
+    </div>
+    {% if actions %}
+    <div class="page-head-actions">{{ actions }}</div>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro filter_bar(count_id='orbitResultCount', total=0, reset_fn='orbitResetFilters()') -%}
+<div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+    <span class="orbit-filter-count" id="{{ count_id }}"><strong>{{ total }}</strong> résultat(s)</span>
+    <button type="button" class="orbit-filter-reset" onclick="{{ reset_fn }}" title="Réinitialiser les filtres">
+        <i class="bi bi-arrow-counterclockwise"></i>Réinitialiser
+    </button>
+</div>
+{%- endmacro %}
+
+{% macro empty_state(icon='bi-inbox', title='Rien à afficher', text='', action_url='', action_label='', action_icon='bi-plus-lg') -%}
+<div class="orbit-empty">
+    <div class="orbit-empty-icon"><i class="bi {{ icon }}"></i></div>
+    <h4>{{ title }}</h4>
+    {% if text %}<p>{{ text }}</p>{% endif %}
+    {% if action_url and action_label %}
+    <a href="{{ action_url }}" class="btn-premium btn-premium-primary btn-press"><i class="bi {{ action_icon }} me-1"></i>{{ action_label }}</a>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro status_badge(value) -%}
+{%- set v = (value or '')|lower -%}
+{%- if v in ('a_faire', 'a faire', 'todo') -%}<span class="st st-todo">À faire</span>
+{%- elif v in ('en_cours', 'en cours', 'doing') -%}<span class="st st-doing">En cours</span>
+{%- elif v in ('terminee', 'terminée', 'termine', 'terminé', 'fait', 'done') -%}<span class="st st-done">Terminé</span>
+{%- elif v in ('retard', 'en_retard', 'late') -%}<span class="st st-late">En retard</span>
+{%- elif v in ("aujourd'hui", 'today', 'jour-j') -%}<span class="st st-today">Aujourd’hui</span>
+{%- elif v in ('proche', 'bientot', 'bientôt', 'soon') -%}<span class="st st-soon">Échéance proche</span>
+{%- else -%}<span class="st st-neutral">{{ value }}</span>
+{%- endif -%}
+{%- endmacro %}

@@ -232,9 +232,85 @@ html[data-theme="dark"] .card-premium:hover { border-color: rgba(255,255,255,.14
 .theme-choice.active { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255,122,0,.15); background: var(--orange-subtle); }
 
 /* ============================================================
-   V4.1 — DASHBOARD : bandeau « Aujourd'hui », actions rapides, jauges
+   V5 — STANDARDISATION UI GLOBALE : en-têtes, filtres, statuts,
+   états vides, tableaux responsives, KPI cliquables.
+   100% compatible clair/sombre, respecte prefers-reduced-motion.
    ============================================================ */
-.today-band { padding: 1.25rem 1.35rem; }
+
+/* ---------- 1) EN-TÊTE DE PAGE STANDARD ---------- */
+.page-head .page-head-titles h2 { letter-spacing: -0.02em; }
+.page-head-count {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.72rem; font-weight: 600; padding: 0.22rem 0.6rem;
+    border-radius: 999px; background: var(--orange-subtle);
+    color: var(--orange-primary); border: 1px solid var(--border-active);
+    margin-left: 0.6rem; vertical-align: middle; white-space: nowrap;
+}
+.page-head-sub .text-alert { color: var(--danger); font-weight: 600; }
+
+/* ---------- 2) BARRE DE FILTRES STANDARD : compteur + reset ---------- */
+.orbit-filter-count {
+    font-size: 0.76rem; color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.orbit-filter-count strong { color: var(--text-primary); }
+.orbit-filter-reset {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-secondary); border-radius: 9px; padding: 0.3rem 0.65rem;
+    font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.orbit-filter-reset:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: var(--border-strong); }
+/* ---------- 3) BADGES DE STATUT UNIFIÉS ---------- */
+.st {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    border-radius: 999px; padding: 0.28em 0.65em;
+    font-weight: 600; font-size: 0.72rem; letter-spacing: 0.01em;
+    border: 1px solid transparent; white-space: nowrap; line-height: 1.5;
+}
+.st::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.st-todo { background: var(--danger-bg); color: var(--danger); }
+.st-doing { background: var(--warning-bg); color: var(--warning); }
+.st-done { background: var(--success-bg); color: var(--success); }
+.st-late { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.st-today { background: var(--orange-subtle); color: var(--orange-primary); border-color: var(--border-active); }
+.st-soon { background: var(--info-bg); color: var(--info); }
+.st-neutral { background: var(--bg-card-hover); color: var(--text-tertiary); border-color: var(--border-color); }
+
+/* ---------- 4) ÉTAT VIDE STANDARD AVEC ACTION ---------- */
+.orbit-empty { text-align: center; padding: 2.5rem 1.5rem; }
+.orbit-empty-icon {
+    width: 56px; height: 56px; border-radius: 18px; margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--orange-subtle); color: var(--orange-primary); font-size: 1.5rem;
+}
+.orbit-empty h4 { font-size: 1.02rem; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 0.3rem; }
+.orbit-empty p { color: var(--text-tertiary); font-size: 0.86rem; margin-bottom: 1.1rem; }
+
+/* ---------- 5) TABLEAUX RESPONSIVES : cartes empilées sous 900px ---------- */
+@media (max-width: 900px) {
+    .table-responsive.orbit-stack table.table-premium thead { display: none; }
+    .table-responsive.orbit-stack table.table-premium,
+    .table-responsive.orbit-stack table.table-premium tbody,
+    .table-responsive.orbit-stack table.table-premium tr,
+    .table-responsive.orbit-stack table.table-premium td { display: block; width: 100%; }
+    .table-responsive.orbit-stack table.table-premium tr {
+        border: 1px solid var(--border-color); border-radius: 12px;
+        margin-bottom: 0.7rem; overflow: hidden; background: var(--bg-card);
+    }
+    .table-responsive.orbit-stack table.table-premium td {
+        border: none; border-bottom: 1px dashed var(--border-color);
+        padding: 0.6rem 0.9rem; text-align: left;
+    }
+    .table-responsive.orbit-stack table.table-premium td:last-child { border-bottom: none; }
+    .table-responsive.orbit-stack table.table-premium td[data-label]::before {
+        content: attr(data-label); display: block;
+        font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.2rem;
+    }
+    .table-responsive.orbit-stack table.table-premium td.orbit-hide-mobile { display: none; }
+}
 .today-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .today-hello { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
 .today-date { color: var(--text-muted); font-size: .85rem; }
@@ -303,9 +379,37 @@ html[data-theme="dark"] .stat-mini { background: rgba(255,255,255,.08); }
 .sidebar-collapsed .sidebar-group-title span,
 .sidebar-collapsed .sidebar-group-title .bi-chevron-down { display: none !important; }
 
+/* ---------- 6) KPI CLIQUABLES (filtres rapides) ---------- */
+a.kpi-chip, button.kpi-chip {
+    cursor: pointer; text-decoration: none; color: inherit;
+    display: block; text-align: left; width: 100%; font: inherit; background: none;
+}
+a.kpi-chip:hover, button.kpi-chip:hover { border-color: var(--orange-primary); background: var(--orange-subtle); }
+a.kpi-chip.is-active, button.kpi-chip.is-active { border-color: var(--orange-primary); box-shadow: 0 0 0 2px var(--orange-subtle); }
+
 /* ============================================================
-   V4.5 — ALERTE CONFIGURATION BASE DE DONNEES
+   V5.1 — LOGO ORBIT INTERACTIF : anneaux + particules, réagit au
+   survol, au clic (ouvre la palette) et suit le thème.
    ============================================================ */
+.orbit-logo { position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.orbit-logo svg { display: block; overflow: visible; }
+.orbit-logo .orbit-ring { fill: none; transform-origin: center; transform-box: fill-box; transition: stroke 0.3s ease, opacity 0.3s ease; }
+.orbit-logo .orbit-ring-a { animation: orbitSpinA 9s linear infinite; }
+.orbit-logo .orbit-ring-b { animation: orbitSpinB 14s linear infinite; }
+@keyframes orbitSpinA { to { transform: rotate(360deg); } }
+@keyframes orbitSpinB { to { transform: rotate(-360deg); } }
+.orbit-logo .orbit-core { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center; transform-box: fill-box; }
+.orbit-logo:hover .orbit-core { transform: scale(1.12); }
+.orbit-logo:active .orbit-core { transform: scale(0.94); }
+.orbit-logo .orbit-sat { transition: opacity 0.3s ease; transform-origin: center; transform-box: fill-box; }
+.orbit-logo:hover .orbit-sat { animation: orbitSatPulse 1.1s ease-in-out infinite; }
+@keyframes orbitSatPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.orbit-logo-burst { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: var(--orange-primary); pointer-events: none; z-index: 5; }
+.orbit-logo:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 3px; border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) {
+    .orbit-logo .orbit-ring-a, .orbit-logo .orbit-ring-b, .orbit-logo:hover .orbit-sat { animation: none; }
+}
+
 .orbit-db-warning { display: flex; align-items: flex-start; gap: .75rem; padding: .85rem 1rem; margin-bottom: 1rem; border-radius: 12px; border: 1px solid rgba(209,67,67,.35); background: var(--danger-bg); color: var(--danger); }
 .orbit-db-warning > i { font-size: 1.2rem; line-height: 1.2; margin-top: 1px; }
 .orbit-db-warning-text { display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; }

@@ -1,12 +1,9 @@
+{% from 'includes/orbit_logo.html' import orbit_logo with context %}
 {% if current_user.role in ('admin', 'manager') %}
 <div class="sidebar h-100">
     <!-- Brand -->
     <div class="sidebar-brand">
-        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="JMH" class="sidebar-logo">
-        <div class="sidebar-brand-text">
-            <span class="sidebar-title">Cabinet JMH</span>
-            <span class="sidebar-subtitle">Gestion d'équipe</span>
-        </div>
+        {{ orbit_logo(size=34, with_text=True) }}
     </div>
 
     <div class="sidebar-menu">
@@ -137,11 +134,7 @@
 <div class="sidebar h-100">
     <!-- Brand -->
     <div class="sidebar-brand">
-        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="JMH" class="sidebar-logo">
-        <div class="sidebar-brand-text">
-            <span class="sidebar-title">Cabinet JMH</span>
-            <span class="sidebar-subtitle">Gestion d'équipe</span>
-        </div>
+        {{ orbit_logo(size=34, with_text=True) }}
     </div>
 
     <div class="sidebar-menu">

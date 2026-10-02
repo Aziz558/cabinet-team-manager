@@ -511,6 +511,41 @@
     function toggleHelp() { if (help && help.classList.contains('is-open')) { closeHelp(); } else { openHelp(); } }
     function togglePalette() { if (pal && pal.classList.contains('is-open')) { closePalette(); } else { openPalette(); } }
 
+    /* ---------- 9) LOGO ORBIT INTERACTIF ----------
+       Clavier (Entrée/Espace) + explosion de particules au clic.
+       L'ouverture de la palette passe par [data-orbit-open-palette]
+       (déjà géré dans le gestionnaire de clic global). */
+    function initOrbitLogo() {
+        Array.prototype.forEach.call(doc.querySelectorAll('.orbit-logo'), function (logo) {
+            if (logo.dataset.orbitLogoInit) { return; }
+            logo.dataset.orbitLogoInit = '1';
+            logo.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openPalette(); }
+            });
+            logo.addEventListener('click', function () { logoBurst(logo); });
+        });
+    }
+    function logoBurst(logo) {
+        if (reduce) { return; }
+        try {
+            for (var i = 0; i < 10; i++) {
+                (function (k) {
+                    var p = doc.createElement('span');
+                    p.className = 'orbit-logo-burst';
+                    logo.appendChild(p);
+                    var ang = (k / 10) * Math.PI * 2 + Math.random() * 0.4;
+                    var dist = 22 + Math.random() * 20;
+                    var dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist;
+                    p.animate([
+                        { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+                        { transform: 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px)) scale(0.2)', opacity: 0 }
+                    ], { duration: 480 + Math.random() * 220, easing: 'cubic-bezier(.16,1,.3,1)' })
+                    .onfinish = function () { if (p.parentNode) { p.parentNode.removeChild(p); } };
+                })(i);
+            }
+        } catch (e) {}
+    }
+
     /* ---------- 8) RACCOURCIS GLOBAUX + INITIALISATION ---------- */
     function isTyping(el) {
         if (!el) { return false; }
@@ -558,6 +593,7 @@
         sortFavs();
         initRelativeDates();
         initToolbar();
+        initOrbitLogo();
         window.orbitWorkspace = {
             openPalette: openPalette, openDrawer: openDrawer,
             toggleDensity: toggleDensity, toggleHelp: toggleHelp

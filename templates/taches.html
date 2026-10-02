@@ -75,7 +75,7 @@
             <button type="button" class="avm-fico" id="icoSearch" title="Rechercher" onclick="tglSearch()"><i class="bi bi-search"></i></button>
             <input type="text" class="input-premium avm-search" id="filterSearch" placeholder="…" oninput="applyFilter()" style="display:none;width:150px;">
             <button type="button" class="avm-fico" title="Reinitialiser les filtres" onclick="resetFilters()"><i class="bi bi-arrow-counterclockwise"></i></button>
-            <span class="avm-fcount ms-auto" id="tacheFCount"></span>
+            <span class="avm-fcount ms-auto" id="orbitTaskCount"></span>
         </div>
         </div>
     </div>
@@ -122,6 +122,7 @@
 <!-- Barre d'outils Phase 4 : compteur, filtres actifs, densité, recherche -->
 <div class="orbit-toolbar" data-orbit-toolbar data-orbit-unit="tâches affichées">
     <span class="orbit-toolbar-count" data-orbit-count>—</span>
+    <button type="button" class="orbit-tool-btn" id="orbitUrgBtn" style="display:none;color:var(--danger);border-color:rgba(209,67,67,.35);" onclick="orbitShowUrgent()" title="N'afficher que les tâches en retard"><i class="bi bi-exclamation-triangle-fill"></i> <strong>0</strong> en retard</button>
     <span class="d-flex flex-wrap gap-1" data-orbit-chips></span>
     <span class="orbit-toolbar-spacer"></span>
     <button type="button" class="orbit-tool-btn" data-orbit-density title="Densité d'affichage (touche d)">
@@ -608,8 +609,54 @@ function applyFilter(typeFilter) {
     if (counter) counter.textContent = visibleCount + ' tâche(s)';
     var fc = document.getElementById('tacheFCount');
     if (fc) fc.textContent = visibleCount + '/' + cards.length;
+    /* V5 : compteur barre standard + pastille urgences */
+    var rc = document.getElementById('orbitTaskCount');
+    if (rc) rc.innerHTML = '<strong>' + visibleCount + '</strong> / ' + cards.length + ' tâche(s)';
+    try {
+        var todayISO = orbitTodayISO(), urg = 0;
+        cards.forEach(function(card) {
+            if (card.style.display === 'none') return;
+            var ech = card.dataset.echeance || '';
+            if (card.dataset.late === '1' || (card.dataset.statut !== 'terminee' && ech !== '' && ech < todayISO)) urg++;
+        });
+        var ub = document.getElementById('orbitUrgBtn');
+        if (ub) { ub.style.display = urg > 0 ? '' : 'none'; ub.querySelector('strong').textContent = urg; }
+    } catch (e) {}
     syncFilterIcons();
     saveFilters(typeFilter);
+}
+
+function orbitTodayISO() {
+    var d = new Date();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2), day = ('0' + d.getDate()).slice(-2);
+    return d.getFullYear() + '-' + m + '-' + day;
+}
+
+/* V5 : reinit standard des filtres (bouton barre standard) */
+function orbitResetFilters() {
+    if (typeof resetFilters === 'function') { resetFilters(); return; }
+    ['filterMembre','filterDossier','filterNature'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.value = 'all';
+    });
+    ['filterDateDebut','filterDateFin','filterSearch'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.value = '';
+    });
+    if (typeof applyFilter === 'function') applyFilter('all');
+}
+
+/* V5 : file des urgences — n'affiche que les taches en retard */
+function orbitShowUrgent() {
+    var today = orbitTodayISO();
+    var n = 0;
+    document.querySelectorAll('#taskBoard .task-card').forEach(function(card) {
+        var ech = card.dataset.echeance || '';
+        var late = card.dataset.late === '1' || (card.dataset.statut !== 'terminee' && ech !== '' && ech < today);
+        card.style.display = late ? '' : 'none';
+        if (late) n++;
+    });
+    var rc = document.getElementById('orbitTaskCount');
+    if (rc) rc.innerHTML = '<strong>' + n + '</strong> tâche(s) en retard';
+    if (window.showToast) showToast('File des urgences : ' + n + ' tâche(s) en retard', 'warning');
 }
 
 // Bouton 🔔 : notifier manuellement l'assigné (email + notification in-app)
