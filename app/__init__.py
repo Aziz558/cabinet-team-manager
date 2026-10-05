@@ -79,7 +79,8 @@ app.logger.info("[DB] DATABASE_URL set=%s scheme=%s use_postgres=%s",
 
 # For Render free tier, use a writable SQLite path by default
 # PostgreSQL can be enabled later by setting USE_POSTGRES=true
-db_path = os.path.join(basedir, '..', 'data', 'app.db')
+# ORBIT_SQLITE_PATH : override pour les tests (base SQLite jetable hors repo).
+db_path = os.environ.get('ORBIT_SQLITE_PATH') or os.path.join(basedir, '..', 'data', 'app.db')
 os.makedirs(os.path.dirname(db_path), exist_ok=True)
 if os.environ.get('USE_POSTGRES', 'false').lower() == 'true' and database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -121,50 +122,62 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Veuillez vous connecter.'
 
+# --- Flask-Migrate : gestion versionnee du schema (voir scripts/release_migrate.py) ---
+from flask_migrate import Migrate  # noqa: E402
+migrate = Migrate(app, db, compare_type=True)
+
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Auto-migrate DB schema on startup
-try:
-    from migrate_schema import migrate_description_column
-    migrate_description_column()
-except Exception as e:
-    print(f"⚠️ Schema migration failed: {e}")
-
-# Ensure DB tables exist and migrate
-try:
-    with app.app_context():
-        from sqlalchemy import inspect, text
-        inspector = inspect(db.engine)
-        for c in inspector.get_columns('suggestions_taches'):
-            if c['name'] == 'description_suggeree' and 'varchar' in str(c['type']).lower():
-                db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
-                print("✅ Migrated description_suggeree: varchar -> TEXT")
-            if c['name'] == 'mail_uid' and 'varchar' in str(c['type']).lower() and '50' in str(c['type']):
-                db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN mail_uid TYPE VARCHAR(100)"))
-                print("✅ Migrated mail_uid: varchar(50) -> varchar(100)")
-        db.session.commit()
-except Exception as e:
-    print(f"⚠️ Schema init failed: {e}")
+# ORBIT_SKIP_DB_INIT=1 : utilise par l'outilage (flask db migrate sur base vierge,
+# tests) pour ignorer create_all + les migrations ad hoc au chargement.
+# ORBIT_SQLITE_PATH : permet aux tests de pointer vers une base SQLite jetable.
+_SKIP_DB_INIT = os.environ.get('ORBIT_SKIP_DB_INIT', '').lower() in ('1', 'true')
+if _SKIP_DB_INIT:
+    app.logger.info("[DB] ORBIT_SKIP_DB_INIT actif : create_all + migrations ad hoc sautes")
+else:
     try:
-        db.session.rollback()
-    except:
-        pass
+        from migrate_schema import migrate_description_column
+        migrate_description_column()
+    except Exception as e:
+        print(f"⚠️ Schema migration failed: {e}")
+
+    # Ensure DB tables exist and migrate
+    try:
+        with app.app_context():
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            for c in inspector.get_columns('suggestions_taches'):
+                if c['name'] == 'description_suggeree' and 'varchar' in str(c['type']).lower():
+                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
+                    print("✅ Migrated description_suggeree: varchar -> TEXT")
+                if c['name'] == 'mail_uid' and 'varchar' in str(c['type']).lower() and '50' in str(c['type']):
+                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN mail_uid TYPE VARCHAR(100)"))
+                    print("✅ Migrated mail_uid: varchar(50) -> varchar(100)")
+            db.session.commit()
+    except Exception as e:
+        print(f"⚠️ Schema init failed: {e}")
+        try:
+            db.session.rollback()
+        except:
+            pass
 
 from app import routes  # noqa: F401
 from app import social_routes  # noqa: F401  (pole social : suivi DSN & écritures de paie)
 from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
 
 with app.app_context():
-    try:
-        db.create_all()
-    except Exception as e:
-        app.logger.warning(f"db.create_all failed: {e}")
+    if not _SKIP_DB_INIT:
+        try:
+            db.create_all()
+        except Exception as e:
+            app.logger.warning(f"db.create_all failed: {e}")
 
     # 🆘 Bootstrap admin de secours : si AUCUN utilisateur dans la base (ex: base
     # Render expirée/recréée), on crée automatiquement un compte admin pour
     # permettre le login et la recréation des équipes/dossiers.
     try:
-        if db.session.query(User).count() == 0:
+        if not _SKIP_DB_INIT and db.session.query(User).count() == 0:
             admin = User(
                 email='admin@cabinet-jmh.com',
                 nom='JMH', prenom='Admin',
@@ -196,7 +209,7 @@ with app.app_context():
     # 🔑 Reset one-time du mot de passe admin de secours (incidents DB) :
     # s'exécute UNE seule fois (marqueur stocké en base), puis jamais plus.
     try:
-        _reset_done = AppSetting.query.filter_by(
+        _reset_done = True if _SKIP_DB_INIT else AppSetting.query.filter_by(
             cle='_pwd_reset_2026_09_incident').first()
         if not _reset_done:
             _reset_pwd = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
@@ -500,6 +513,9 @@ def handle_all_exceptions(e):
 
 # APScheduler for daily notifications
 try:
+    # ORBIT_NO_SCHEDULER=1 : tests/CI — pas de taches de fond dans le processus.
+    if os.environ.get('ORBIT_NO_SCHEDULER', '').lower() in ('1', 'true'):
+        raise RuntimeError("ORBIT_NO_SCHEDULER actif (tests/CI)")
     from apscheduler.schedulers.background import BackgroundScheduler
     from datetime import date as dt_date
     

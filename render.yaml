@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:application
+    startCommand: python scripts/release_migrate.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:application
     envVars:
       - key: SECRET_KEY
         generateValue: true
