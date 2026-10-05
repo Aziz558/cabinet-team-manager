@@ -55,4 +55,6 @@ _cookie.txt
 # Analyse locale / sondes temporaires (racine, prefixe _)
 /_*
 data/app.db
+# Archives locales des scripts de diagnostic (jamais committer)
+scripts/legacy/
 data/
