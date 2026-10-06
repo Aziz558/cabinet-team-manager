@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 import os
 import secrets
+import logging
+from logging.handlers import SMTPHandler
 from datetime import date as _date, datetime as _datetime
 
 app = Flask(
@@ -12,6 +14,35 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'static')
 )
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# === Alertes erreurs 500 par email (SMTPHandler) ============================
+# Envoie un email aux admins quand une erreur 500 survient en production.
+# Nécessite MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD configurés.
+# Désactivé en debug / si MAIL_SERVER absent.
+if not app.debug and os.environ.get('MAIL_SERVER'):
+    try:
+        mail_handler = SMTPHandler(
+            mailhost=(os.environ.get('MAIL_SERVER', 'localhost'),
+                      int(os.environ.get('MAIL_PORT', 587))),
+            fromaddr=os.environ.get('MAIL_DEFAULT_SENDER', 'no-reply@cabinet-jmh.local'),
+            toaddrs=[e.strip() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()],
+            subject='🚨 Erreur 500 — Cabinet JMH',
+            credentials=(os.environ.get('MAIL_USERNAME'), os.environ.get('MAIL_PASSWORD'))
+            if os.environ.get('MAIL_USERNAME') else None,
+        )
+        mail_handler.setLevel(logging.ERROR)
+        mail_handler.setFormatter(logging.Formatter(
+            '''Type: %(levelname)s
+Location: %(pathname)s:%(lineno)d
+Module: %(module)s
+Function: %(funcName)s
+Message:
+%(message)s'''
+        ))
+        app.logger.addHandler(mail_handler)
+        app.logger.info("[ALERTES] SMTPHandler actif — erreurs 500 notifiées à ADMIN_EMAILS")
+    except Exception as e:
+        app.logger.warning(f"[ALERTES] SMTPHandler non configuré : {e}")
 
 # Service worker : servi sans cache HTTP, enregistre a la racine (scope = toute l'app).
 # Sans ceci, Chrome garde l'ancien sw.js (max-age statique) et les correctifs HTML ne
