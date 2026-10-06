@@ -3,9 +3,9 @@ import pytest
 from datetime import date, timedelta
 
 
-def test_est_en_retard(app):
+def test_est_en_retard(flask_app):
     """Une tâche est en retard si date_echeance < aujourd'hui et pas terminée."""
-    with app.app_context():
+    with flask_app.app_context():
         from app.models import Tache
         t = Tache(
             titre="Tâche de test",
@@ -17,17 +17,17 @@ def test_est_en_retard(app):
         assert t.statut != "terminee"
 
 
-def test_périmètre_membre(app):
+def test_périmètre_membre(flask_app):
     """Un membre ne voit que ses propres dossiers."""
-    with app.app_context():
+    with flask_app.app_context():
         from app.models import Dossier
         result = "perimeter check"
         assert result == "perimeter check"
 
 
-def test_checklist_compile(app):
+def test_checklist_compile(flask_app):
     """Les items de checklist s'ajoutent sans erreur Jinja."""
-    with app.app_context():
+    with flask_app.app_context():
         from app.models import Dossier
         dossier = Dossier.query.first()
         if dossier:

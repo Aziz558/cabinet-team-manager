@@ -289,6 +289,50 @@ def pennylane_delier_dossier():
                     'message': f"Dossier {d.numero_dossier} délié ({n_st} statut(s) PL, {n_ce} case(s) synchro supprimée(s))."})
 
 
+def _pennylane_stats(dossiers_pl):
+    """Stats réelles du dashboard Pennylane.
+
+    Returns:
+        (stats, nb_a_traiter, retard_ids)
+        - stats : {'connectes', 'total', 'a_traiter', 'en_retard', 'sync_ok'}
+        - nb_a_traiter : {dossier_id: nb items Pennylane à traiter}
+        - retard_ids : set(dossier_id) en retard TVA (déclaration échue non faite)
+    """
+    from app.models import PennylaneItem, TvaStatutPennylane
+    ids = [d.id for d in dossiers_pl]
+    nb_a_traiter = {}
+    retard_ids = set()
+    if ids:
+        # Items Pennylane "à traiter" par dossier
+        rows = (db.session.query(PennylaneItem.dossier_id, db.func.count())
+                .filter(PennylaneItem.dossier_id.in_(ids),
+                        PennylaneItem.statut == 'a_traiter')
+                .group_by(PennylaneItem.dossier_id).all())
+        nb_a_traiter = {r[0]: r[1] for r in rows}
+        # Dossiers en retard TVA : statut Pennylane "En retard" (to_do + deadline dépassée)
+        for st in (TvaStatutPennylane.query
+                   .filter(TvaStatutPennylane.dossier_id.in_(ids)).all()):
+            try:
+                if st.statut_affiche == 'En retard':
+                    retard_ids.add(st.dossier_id)
+            except Exception:
+                pass
+    connectes = sum(1 for d in dossiers_pl if d.pennylane_customer_id or d.pennylane_api_token)
+    # Dossiers dont la synchro TVA Pennylane a déjà écrit au moins un statut
+    sync_ok = 0
+    if ids:
+        sync_ok = (db.session.query(db.func.count(db.distinct(TvaStatutPennylane.dossier_id)))
+                   .filter(TvaStatutPennylane.dossier_id.in_(ids)).scalar() or 0)
+    stats = {
+        'connectes': connectes,
+        'total': len(dossiers_pl),
+        'a_traiter': sum(nb_a_traiter.values()),
+        'en_retard': len(retard_ids),
+        'sync_ok': sync_ok,
+    }
+    return stats, nb_a_traiter, retard_ids
+
+
 @app.route('/pennylane')
 @login_required
 def pennylane_page():
@@ -320,6 +364,14 @@ def pennylane_page():
         nom_eq = d.equipe.nom if d.equipe else 'Sans équipe'
         par_equipe.setdefault(nom_eq, []).append(d)
 
+    # Stats dashboard (données réelles) + infos par dossier pour la grille
+    stats, nb_a_traiter, retard_ids = _pennylane_stats(dossiers_pl)
+    collaborateurs = {}
+    for d in dossiers_pl:
+        if d.collaborateur_id and d.collaborateur:
+            collaborateurs[d.collaborateur_id] = f"{d.collaborateur.prenom} {d.collaborateur.nom}"
+    regimes = sorted({(d.regime_tva or '').strip() for d in dossiers_pl if (d.regime_tva or '').strip()})
+
     token = get_pennylane_token()
     configured = bool(token)
     test_result = None
@@ -346,7 +398,58 @@ def pennylane_page():
                            dossiers_associes=dossiers_associes, dossiers_non_associes=dossiers_non_associes,
                            par_equipe=par_equipe, equipes_list=equipes_list,
                            total_dossiers=len(dossiers_pl),
+                           stats=stats, nb_a_traiter=nb_a_traiter, retard_ids=retard_ids,
+                           collaborateurs=collaborateurs, regimes=regimes,
                            token_masque=('••••' + token[-4:]) if configured and len(token) > 4 else ('••••' if configured else ''))
+
+
+@app.route('/pennylane/data')
+@login_required
+def pennylane_data():
+    """JSON temps réel du dashboard (stats + compteurs par dossier) — rafraîchi sans reload."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+    if current_user.role == 'admin':
+        dossiers_pl = Dossier.query.order_by(Dossier.numero_dossier).all()
+    else:
+        equipe_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
+        dossiers_pl = (Dossier.query.filter(Dossier.equipe_id.in_(equipe_ids))
+                       .order_by(Dossier.numero_dossier).all())
+    stats, nb_a_traiter, retard_ids = _pennylane_stats(dossiers_pl)
+    return jsonify({'ok': True, 'stats': stats,
+                    'dossiers': [{'id': d.id,
+                                  'a_traiter': nb_a_traiter.get(d.id, 0),
+                                  'en_retard': d.id in retard_ids}
+                                 for d in dossiers_pl]})
+
+
+@app.route('/pennylane/dossier/<int:dossier_id>/marquer_traite', methods=['POST'])
+@login_required
+def pennylane_marquer_traite(dossier_id):
+    """Marque TOUS les items 'à traiter' d'un dossier comme traités (action rapide de la grille)."""
+    from app.models import PennylaneItem
+    d = Dossier.query.get_or_404(dossier_id)
+    if current_user.role != 'admin':
+        if current_user.role == 'manager':
+            equipe_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
+            if d.equipe_id not in equipe_ids:
+                return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+        elif d.collaborateur_id != current_user.id:
+            return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+    items = PennylaneItem.query.filter_by(dossier_id=d.id, statut='a_traiter').all()
+    for it in items:
+        it.statut = 'traite'
+        it.statut_par_id = current_user.id
+        it.statut_date = datetime.utcnow()
+    db.session.commit()
+    if items:
+        try:
+            from app.integrations.pennylane import invalidate_dossier_cache
+            invalidate_dossier_cache(d.id)
+        except Exception:
+            pass
+    return jsonify({'ok': True,
+                    'message': f'{len(items)} élément(s) marqué(s) traité(s) pour {d.numero_dossier}.'})
 
 
 @app.route('/pennylane/config', methods=['POST'])

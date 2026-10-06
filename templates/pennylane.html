@@ -11,6 +11,54 @@
     {% endif %}
 </div>
 
+<!-- Dashboard stats (données réelles) -->
+<div class="row g-3 mb-4" id="plStatsRow">
+    <div class="col-md-3 col-sm-6">
+        <div class="pl-stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="pl-stat-label">Dossiers connectés</div>
+                    <div class="pl-stat-value" id="plStatConnectes">{{ stats.connectes }}<span class="pl-stat-total">/{{ stats.total }}</span></div>
+                </div>
+                <div class="pl-stat-icon" style="background:rgba(255,140,0,.15);color:var(--orange-primary,#ff8c00);"><i class="bi bi-folder-check"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="pl-stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="pl-stat-label">À traiter</div>
+                    <div class="pl-stat-value" id="plStatAtraiter">{{ stats.a_traiter }}</div>
+                </div>
+                <div class="pl-stat-icon" style="background:rgba(13,110,253,.15);color:#0d6efd;"><i class="bi bi-hourglass-split"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="pl-stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="pl-stat-label">En retard TVA</div>
+                    <div class="pl-stat-value" id="plStatRetard">{{ stats.en_retard }}</div>
+                </div>
+                <div class="pl-stat-icon" style="background:rgba(220,53,69,.15);color:#dc3545;"><i class="bi bi-exclamation-triangle"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="pl-stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="pl-stat-label">Sync OK</div>
+                    <div class="pl-stat-value" id="plStatSync">{{ stats.sync_ok }}</div>
+                </div>
+                <div class="pl-stat-icon" style="background:rgba(25,135,84,.15);color:#198754;"><i class="bi bi-arrow-repeat"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if is_admin %}
 <div class="card-premium mb-4 animate-fade-in-up stagger-1">
     <div class="card-body-premium">
@@ -136,6 +184,42 @@
             {% endif %}
         </p>
 
+        <!-- Barre de recherche / filtres / tri temps réel -->
+        <div class="d-flex gap-2 align-items-center mb-3 flex-wrap" id="plToolbar">
+            <div class="input-group" style="max-width:300px;">
+                <span class="input-group-text bg-orange text-white"><i class="bi bi-search"></i></span>
+                <input type="text" id="plSearch" class="form-control form-control-sm"
+                       placeholder="Rechercher un dossier..." autocomplete="off">
+            </div>
+            <select id="plFilterCollab" class="form-select form-select-sm" style="max-width:210px;">
+                <option value="">Collaborateur (tous)</option>
+                {% for cid, cnom in collaborateurs.items() %}
+                <option value="{{ cid }}">{{ cnom }}</option>
+                {% endfor %}
+            </select>
+            <select id="plFilterRegime" class="form-select form-select-sm" style="max-width:180px;">
+                <option value="">Régime d'impôt (tous)</option>
+                {% for r in regimes %}
+                <option value="{{ r|lower }}">{{ r|upper }}</option>
+                {% endfor %}
+            </select>
+            <select id="plSort" class="form-select form-select-sm" style="max-width:170px;">
+                <option value="numero">Tri : N° dossier</option>
+                <option value="intitule">Tri : Intitulé</option>
+                <option value="collab">Tri : Collaborateur</option>
+                <option value="regime">Tri : Régime</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="plResetFilters"
+                    title="Réinitialiser les filtres">
+                <i class="bi bi-x-circle me-1"></i>Réinitialiser
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="plRefreshBtn"
+                    title="Rafraîchir les stats et badges sans recharger la page">
+                <i class="bi bi-arrow-clockwise me-1"></i>Rafraîchir
+            </button>
+            <span id="plVisibleCount" class="small text-tertiary ms-auto"></span>
+        </div>
+
         <!-- Sélection pour synchro TVA ciblée -->
         <div class="d-flex gap-2 align-items-center mb-3 flex-wrap">
             <label class="form-label-premium mb-0 small">Synchro TVA :</label>
@@ -148,22 +232,65 @@
         </div>
         <div id="plTvaSyncStatus" class="mb-3"></div>
 
+        <!-- Grille : box fixe (1 ligne de 4 dossiers) + défilement interne -->
+        <div class="pl-grid-scroll" id="plGridScroll">
+            <div class="pl-grid-skeleton" id="plGridSkeleton" style="display:none;">
+                <div class="row g-2">
+                    {% for _ in range(8) %}
+                    <div class="col-md-4 col-lg-3">
+                        <div class="pl-skeleton" style="height:76px;"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
         {% if par_equipe %}
+            <div id="plGridGroups">
             {% for eq_nom, dossiers_eq in par_equipe.items() %}
-            <div class="mb-4">
+            <div class="mb-4 pl-team-group" data-equipe="{{ eq_nom|lower }}">
                 <h6 class="text-gradient-animated fw-semibold mb-2"><i class="bi bi-people me-1"></i>{{ eq_nom }} ({{ dossiers_eq|length }})</h6>
                 <div class="row g-2">
                     {% for d in dossiers_eq %}
-                    <div class="col-md-4 col-lg-3">
-                        <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
-                            <div class="d-flex align-items-center gap-2">
-                                <input type="checkbox" class="pl-dossier-check" value="{{ d.id }}" onchange="updatePlSelectedCount()" style="accent-color:var(--orange-primary);">
-                                <div>
-                                    <strong class="small">{{ d.numero_dossier }}</strong>
-                                {% if d.pennylane_api_token and not d.pennylane_customer_id %}<span class="badge badge-success ms-1" style="font-size:0.55rem;">Token</span>{% endif %}
-                                <div class="small text-tertiary">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</div>
+                    {% set collab_nom = ((d.collaborateur.prenom ~ ' ' ~ d.collaborateur.nom) if d.collaborateur else '') %}
+                    <div class="col-md-4 col-lg-3 pl-dossier-card"
+                         data-id="{{ d.id }}"
+                         data-collab="{{ d.collaborateur_id or '' }}"
+                         data-collab-nom="{{ collab_nom|lower }}"
+                         data-regime="{{ (d.regime_tva or '')|lower }}"
+                         data-numero="{{ (d.numero_dossier or '')|lower }}"
+                         data-intitule="{{ (d.intitule or '')|lower }}"
+                         data-search="{{ (d.numero_dossier ~ ' ' ~ d.intitule ~ ' ' ~ collab_nom ~ ' ' ~ eq_nom ~ ' ' ~ (d.regime_tva or ''))|lower }}">
+                        <div class="p-3 rounded-3 d-flex justify-content-between align-items-center h-100" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
+                            <div class="d-flex align-items-center gap-2" style="min-width:0;">
+                                <input type="checkbox" class="pl-dossier-check" value="{{ d.id }}" style="accent-color:var(--orange-primary);">
+                                <div style="min-width:0;">
+                                    <div class="d-flex align-items-center gap-1 flex-wrap pl-badges">
+                                        <strong class="small">{{ d.numero_dossier }}</strong>
+                                        {% if nb_a_traiter.get(d.id, 0) %}
+                                        <span class="pl-badge pl-badge-todo" title="{{ nb_a_traiter[d.id] }} élément(s) Pennylane à traiter">{{ nb_a_traiter[d.id] }} à traiter</span>
+                                        {% endif %}
+                                        {% if d.id in retard_ids %}
+                                        <span class="pl-badge pl-badge-late" title="Déclaration TVA en retard dans Pennylane">Retard</span>
+                                        {% endif %}
+                                        {% if d.pennylane_api_token and not d.pennylane_customer_id %}<span class="badge badge-success" style="font-size:0.55rem;">Token</span>{% endif %}
+                                    </div>
+                                    <div class="small text-tertiary text-truncate" style="max-width:170px;">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</div>
+                                    {% if collab_nom %}<div class="text-tertiary" style="font-size:0.65rem;"><i class="bi bi-person me-1"></i>{{ collab_nom }}</div>{% endif %}
+                                </div>
                             </div>
-                            <div class="d-flex gap-1">
+                            <div class="d-flex gap-1 flex-shrink-0">
+                                <button type="button" class="btn-premium btn-premium-secondary btn-press"
+                                        title="Synchro TVA de ce dossier depuis Pennylane"
+                                        onclick="plSyncDossier({{ d.id }}, this);">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                {% if nb_a_traiter.get(d.id, 0) %}
+                                <button type="button" class="btn-premium btn-premium-secondary btn-press"
+                                        title="Marquer les {{ nb_a_traiter[d.id] }} élément(s) comme traités"
+                                        onclick="plMarquerTraite({{ d.id }}, this);">
+                                    <i class="bi bi-check2-all"></i>
+                                </button>
+                                {% endif %}
                                 {% if is_admin %}
                                 <button type="button" class="btn-premium btn-premium-secondary btn-press" title="Délier ce dossier de Pennylane (nettoie statuts + cases synchro)"
                                         onclick="if(confirm('Délier {{ d.numero_dossier }} de Pennylane ? Les statuts et cases posés par la synchro seront supprimés.')) plDelier({{ d.id }});">
@@ -180,12 +307,17 @@
                 </div>
             </div>
             {% endfor %}
+            </div>
         {% else %}
         <p class="text-tertiary small">
             Aucun dossier associé pour le moment.
             {% if is_admin and configured %}Cliquez sur « Synchroniser les dossiers » pour lancer l'association automatique.{% endif %}
         </p>
         {% endif %}
+        </div>
+        <div id="plNoResults" class="text-tertiary small text-center py-3" style="display:none;">
+            <i class="bi bi-search me-1"></i>Aucun dossier ne correspond aux filtres.
+        </div>
 
         {% if dossiers_non_associes and is_admin %}
         <div class="mt-4 pt-3" style="border-top:1px solid var(--border-color);">
@@ -372,7 +504,7 @@ function syncSelectedTva() {
     var checks = document.querySelectorAll('.pl-dossier-check:checked');
     var ids = [];
     checks.forEach(function(c) { ids.push(parseInt(c.value)); });
-    if (!ids.length) { alert('Sélectionnez au moins un dossier.'); return; }
+    if (!ids.length) { plToast('Sélectionnez au moins un dossier.', false); return; }
     if (!confirm('Synchroniser la TVA pour ' + ids.length + ' dossier(s) ?')) return;
     var statusEl = document.getElementById('plTvaSyncStatus');
     if (statusEl) statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--bg-card-hover);border:1px solid var(--orange-primary);"><i class="bi bi-hourglass-split me-2"></i>Synchro en cours...</div>';
@@ -408,6 +540,202 @@ function syncPl() {
         .then(r => r.json())
         .then(d => showPl(d.message || 'OK', d.ok))
         .catch(err => showPl('Erreur réseau: ' + err.message, false));
+}
+
+/* ===== Dashboard temps réel : toasts, recherche, filtres, tri ===== */
+function plToast(msg, ok) {
+    var host = document.getElementById('plToasts');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'plToasts';
+        document.body.appendChild(host);
+    }
+    var t = document.createElement('div');
+    t.className = 'pl-toast ' + (ok ? 'pl-toast-ok' : 'pl-toast-err');
+    t.innerHTML = '<i class="bi ' + (ok ? 'bi-check-circle-fill' : 'bi-x-circle-fill') + ' me-2"></i><span></span>';
+    t.querySelector('span').textContent = msg;
+    host.appendChild(t);
+    setTimeout(function () { t.classList.add('pl-toast-out'); }, 3600);
+    setTimeout(function () { t.remove(); }, 4000);
+}
+function plDebounce(fn, ms) {
+    var t;
+    return function () {
+        var a = arguments, c = this;
+        clearTimeout(t);
+        t = setTimeout(function () { fn.apply(c, a); }, ms);
+    };
+}
+function plApplyFilters() {
+    var searchEl = document.getElementById('plSearch');
+    var collabEl = document.getElementById('plFilterCollab');
+    var regimeEl = document.getElementById('plFilterRegime');
+    var q = ((searchEl && searchEl.value) || '').toLowerCase().trim();
+    var collab = collabEl ? collabEl.value : '';
+    var regime = regimeEl ? regimeEl.value : '';
+    var cards = document.querySelectorAll('.pl-dossier-card');
+    var visible = 0;
+    cards.forEach(function (card) {
+        var ok = true;
+        if (q && (card.dataset.search || '').indexOf(q) === -1) ok = false;
+        if (ok && collab && card.dataset.collab !== collab) ok = false;
+        if (ok && regime && card.dataset.regime !== regime) ok = false;
+        card.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+    });
+    document.querySelectorAll('.pl-team-group').forEach(function (g) {
+        var any = g.querySelector('.pl-dossier-card:not([style*="none"])');
+        g.style.display = any ? '' : 'none';
+    });
+    var countEl = document.getElementById('plVisibleCount');
+    if (countEl) countEl.textContent = visible + ' / ' + cards.length + ' dossier(s) affiché(s)';
+    var noRes = document.getElementById('plNoResults');
+    if (noRes) noRes.style.display = (cards.length > 0 && visible === 0) ? '' : 'none';
+}
+function plApplySort() {
+    var sortEl = document.getElementById('plSort');
+    var key = sortEl ? sortEl.value : 'numero';
+    document.querySelectorAll('#plGridGroups .row').forEach(function (row) {
+        var cols = Array.prototype.slice.call(row.querySelectorAll('.pl-dossier-card'));
+        cols.sort(function (a, b) {
+            var va, vb;
+            if (key === 'intitule') { va = a.dataset.intitule; vb = b.dataset.intitule; }
+            else if (key === 'collab') { va = a.dataset.collabNom || 'zzzz'; vb = b.dataset.collabNom || 'zzzz'; }
+            else if (key === 'regime') { va = a.dataset.regime; vb = b.dataset.regime; }
+            else { va = a.dataset.numero; vb = b.dataset.numero; }
+            return String(va || '').localeCompare(String(vb || ''), 'fr', { numeric: true });
+        });
+        cols.forEach(function (c, i) { c.style.order = i; });
+    });
+}
+(function plInitDashboard() {
+    var search = document.getElementById('plSearch');
+    if (search) search.addEventListener('input', plDebounce(plApplyFilters, 300));
+    ['plFilterCollab', 'plFilterRegime'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', plApplyFilters);
+    });
+    var sortEl = document.getElementById('plSort');
+    if (sortEl) sortEl.addEventListener('change', plApplySort);
+    var reset = document.getElementById('plResetFilters');
+    if (reset) reset.addEventListener('click', function () {
+        if (search) search.value = '';
+        var c = document.getElementById('plFilterCollab'); if (c) c.value = '';
+        var r = document.getElementById('plFilterRegime'); if (r) r.value = '';
+        if (sortEl) sortEl.value = 'numero';
+        plApplyFilters(); plApplySort();
+    });
+    var refresh = document.getElementById('plRefreshBtn');
+    if (refresh) refresh.addEventListener('click', function () { plRefreshData(); });
+    plApplyFilters();
+})();
+
+/* ===== Sélection : compteur + shift-click pour étendre la plage ===== */
+var plLastCheck = null, plShiftDown = false;
+document.addEventListener('mousedown', function (e) {
+    plShiftDown = !!(e.target.classList && e.target.classList.contains('pl-dossier-check') && e.shiftKey);
+});
+document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('pl-dossier-check')) return;
+    if (plShiftDown && plLastCheck) {
+        var checks = Array.prototype.slice.call(document.querySelectorAll('.pl-dossier-check'))
+            .filter(function (c) { var card = c.closest('.pl-dossier-card'); return !card || card.style.display !== 'none'; });
+        var a = checks.indexOf(plLastCheck), b = checks.indexOf(e.target);
+        if (a >= 0 && b >= 0) {
+            var lo = Math.min(a, b), hi = Math.max(a, b);
+            for (var i = lo; i <= hi; i++) checks[i].checked = e.target.checked;
+        }
+    }
+    plShiftDown = false;
+    plLastCheck = e.target;
+    updatePlSelectedCount();
+});
+
+/* ===== Actions dossier : synchro TVA (spinner) + marquer traité ===== */
+function plSetBtnLoading(btn, loading) {
+    if (loading) {
+        btn.dataset.plHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    } else {
+        btn.disabled = false;
+        if (btn.dataset.plHtml) btn.innerHTML = btn.dataset.plHtml;
+    }
+}
+function plSyncDossier(id, btn) {
+    plSetBtnLoading(btn, true);
+    fetch('/checklist/pl_sync_dossier/' + id, { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            plToast(d.message || (d.ok ? 'Synchro OK' : 'Erreur'), !!d.ok);
+            if (d.ok) plRefreshData(true);
+        })
+        .catch(function (err) { plToast('Erreur réseau: ' + err.message, false); })
+        .finally(function () { plSetBtnLoading(btn, false); });
+}
+function plMarquerTraite(id, btn) {
+    plSetBtnLoading(btn, true);
+    fetch('/pennylane/dossier/' + id + '/marquer_traite', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            plToast(d.message || (d.ok ? 'OK' : 'Erreur'), !!d.ok);
+            if (d.ok) plRefreshData(true);
+        })
+        .catch(function (err) { plToast('Erreur réseau: ' + err.message, false); })
+        .finally(function () { plSetBtnLoading(btn, false); });
+}
+
+/* ===== Rafraîchissement stats/badges avec skeleton pendant le fetch ===== */
+function plRefreshData(silent) {
+    var sk = document.getElementById('plGridSkeleton');
+    var groups = document.getElementById('plGridGroups');
+    if (sk) sk.style.display = '';
+    if (groups) groups.style.display = 'none';
+    return fetch('/pennylane/data')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (!d.ok) return;
+            var s = d.stats || {};
+            var elC = document.getElementById('plStatConnectes');
+            if (elC) elC.innerHTML = (s.connectes != null ? s.connectes : '-') +
+                '<span class="pl-stat-total">/' + (s.total != null ? s.total : '?') + '</span>';
+            var elA = document.getElementById('plStatAtraiter'); if (elA) elA.textContent = (s.a_traiter != null ? s.a_traiter : '-');
+            var elR = document.getElementById('plStatRetard'); if (elR) elR.textContent = (s.en_retard != null ? s.en_retard : '-');
+            var elS = document.getElementById('plStatSync'); if (elS) elS.textContent = (s.sync_ok != null ? s.sync_ok : '-');
+            (d.dossiers || []).forEach(function (it) {
+                var card = document.querySelector('.pl-dossier-card[data-id="' + it.id + '"]');
+                if (!card) return;
+                var badgeSlot = card.querySelector('.pl-badges');
+                if (!badgeSlot) return;
+                var todo = badgeSlot.querySelector('.pl-badge-todo');
+                if (it.a_traiter > 0) {
+                    if (!todo) {
+                        todo = document.createElement('span');
+                        todo.className = 'pl-badge pl-badge-todo';
+                        badgeSlot.appendChild(todo);
+                    }
+                    todo.textContent = it.a_traiter + ' à traiter';
+                    todo.title = it.a_traiter + ' élément(s) Pennylane à traiter';
+                } else if (todo) { todo.remove(); }
+                var late = badgeSlot.querySelector('.pl-badge-late');
+                if (it.en_retard) {
+                    if (!late) {
+                        late = document.createElement('span');
+                        late.className = 'pl-badge pl-badge-late';
+                        late.textContent = 'Retard';
+                        late.title = 'Déclaration TVA en retard dans Pennylane';
+                        badgeSlot.appendChild(late);
+                    }
+                } else if (late) { late.remove(); }
+            });
+            plApplyFilters();
+            if (!silent) plToast('Données rafraîchies', true);
+        })
+        .catch(function (err) { plToast('Erreur rafraîchissement: ' + err.message, false); })
+        .finally(function () {
+            if (sk) sk.style.display = 'none';
+            if (groups) groups.style.display = '';
+        });
 }
 </script>
 {% endblock %}
@@ -471,6 +799,117 @@ function syncPl() {
     @keyframes pl-shimmer {
         0% { background-position: -200% 0; }
         100% { background-position: 200% 0; }
+    }
+
+    /* ===== Cartes de stats du dashboard ===== */
+    .pl-stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 1rem 1.1rem;
+        height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .pl-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+    }
+    .pl-stat-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-tertiary, #888);
+        margin-bottom: 0.25rem;
+    }
+    .pl-stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--text, #eee);
+    }
+    .pl-stat-total {
+        font-size: 0.95rem;
+        font-weight: 500;
+        opacity: 0.55;
+    }
+    .pl-stat-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 0.65rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    /* ===== Box fixe de la grille : 1 ligne de dossiers + défilement ===== */
+    .pl-grid-scroll {
+        max-height: 130px; /* = 1 ligne de 4 dossiers (col-lg-3) */
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-right: 4px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--orange-primary, #ff8c00) transparent;
+    }
+    .pl-grid-scroll::-webkit-scrollbar { width: 8px; }
+    .pl-grid-scroll::-webkit-scrollbar-track { background: transparent; }
+    .pl-grid-scroll::-webkit-scrollbar-thumb {
+        background: var(--orange-primary, #ff8c00);
+        border-radius: 4px;
+        opacity: 0.7;
+    }
+    .pl-grid-scroll::-webkit-scrollbar-thumb:hover { opacity: 1; }
+    @media (max-width: 767.98px) {
+        /* Sur mobile les cartes sont en pleine largeur : 2 visibles avant défilement */
+        .pl-grid-scroll { max-height: 260px; }
+    }
+
+    /* ===== Badges de statut par dossier ===== */
+    .pl-badge-todo {
+        background: rgba(255, 140, 0, 0.16);
+        color: var(--orange-primary, #ff8c00);
+        border: 1px solid rgba(255, 140, 0, 0.35);
+    }
+    .pl-badge-late {
+        background: rgba(220, 53, 69, 0.16);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.35);
+    }
+
+    /* ===== Toasts (notifications en haut à droite) ===== */
+    #plToasts {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-width: 340px;
+        pointer-events: none;
+    }
+    .pl-toast {
+        display: flex;
+        align-items: center;
+        padding: 0.7rem 1rem;
+        border-radius: 0.6rem;
+        font-size: 0.875rem;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        animation: pl-toast-in 0.25s ease;
+        transition: opacity 0.4s ease, transform 0.4s ease;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        color: var(--text, #eee);
+    }
+    .pl-toast-ok { border-left: 4px solid #198754; }
+    .pl-toast-err { border-left: 4px solid #dc3545; }
+    .pl-toast-ok i { color: #198754; }
+    .pl-toast-err i { color: #dc3545; }
+    .pl-toast-out { opacity: 0; transform: translateX(24px); }
+    @keyframes pl-toast-in {
+        from { opacity: 0; transform: translateX(24px); }
+        to { opacity: 1; transform: translateX(0); }
     }
 </style>
 {% endblock %}
