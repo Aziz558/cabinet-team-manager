@@ -244,6 +244,20 @@ def _analyze_with_llm(llm, subject: str, body: str, team_name: str = "") -> Opti
     return None
 
 
+def get_label_from_mail(subject, body):
+    """Retourne un label prédéfini selon le type de contenu du mail."""
+    text = f"{(subject or '').lower()} {(body or '').lower()}"
+    if 'transaction' in text:
+        return 'Traitement'
+    if 'facture achat' in text or "facture d'achat" in text:
+        return 'Traitement des factures d\'achats'
+    if 'facture vente' in text or 'facture de vente' in text:
+        return 'Traitement des factures de vente'
+    if 'flux bancaire' in text or 'relevé' in text:
+        return 'Traitement des flux bancaires'
+    return 'Tâche depuis email'
+
+
 def process_webhook(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Process an inbound webhook payload and create a SuggestionTache.
@@ -320,12 +334,15 @@ def process_webhook(data: Dict[str, Any]) -> Dict[str, Any]:
         if equipe.manager_id:
             team_member_id = equipe.manager_id
 
+        # Label prédéfini selon le contenu du mail
+        mail_label = get_label_from_mail(subject, body)
+
         # Create suggestion
         suggestion = SuggestionTache(
             sujet=(subject or "")[:200],
             corps=body or "",
             dossier_id=client_id,
-            titre_suggere=(subject or "")[:200],
+            titre_suggere=f"{mail_label} — {(subject or '')[:100]}",
             description_suggeree=task_desc,
             mail_uid=uid,
             cree_par=team_member_id,
