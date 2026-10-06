@@ -17,39 +17,43 @@ depends_on = None
 
 
 def upgrade():
-    # Extension pg_trgm pour la recherche par similarité
-    op.execute('CREATE EXTENSION IF NOT EXISTS pg_trgm')
-    
-    # Index trigram sur les colonnes de recherche
-    op.execute(
-        'CREATE INDEX IF NOT EXISTS idx_dossiers_numero_trgm '
-        'ON dossiers USING gist (numero_dossier gist_trgm_ops)'
-    )
-    op.execute(
-        'CREATE INDEX IF NOT EXISTS idx_dossiers_intitule_trgm '
-        'ON dossiers USING gist (intitule gist_trgm_ops)'
-    )
-    op.execute(
-        'CREATE INDEX IF NOT EXISTS idx_taches_titre_trgm '
-        'ON taches USING gist (titre gist_trgm_ops)'
-    )
-    op.execute(
-        'CREATE INDEX IF NOT EXISTS idx_users_nom_trgm '
-        'ON users USING gist (nom gist_trgm_ops)'
-    )
-    op.execute(
-        'CREATE INDEX IF NOT EXISTS idx_users_prenom_trgm '
-        'ON users USING gist (prenom gist_trgm_ops)'
-    )
+    # Extension pg_trgm disponible uniquement sur PostgreSQL
+    connection = op.get_context().connection
+    dialect = connection.dialect.name
+    if dialect == 'postgresql':
+        op.execute('CREATE EXTENSION IF NOT EXISTS pg_trgm')
+        op.execute(
+            'CREATE INDEX IF NOT EXISTS idx_dossiers_numero_trgm '
+            'ON dossiers USING gist (numero_dossier gist_trgm_ops)'
+        )
+        op.execute(
+            'CREATE INDEX IF NOT EXISTS idx_dossiers_intitule_trgm '
+            'ON dossiers USING gist (intitule gist_trgm_ops)'
+        )
+        op.execute(
+            'CREATE INDEX IF NOT EXISTS idx_taches_titre_trgm '
+            'ON taches USING gist (titre gist_trgm_ops)'
+        )
+        op.execute(
+            'CREATE INDEX IF NOT EXISTS idx_users_nom_trgm '
+            'ON users USING gist (nom gist_trgm_ops)'
+        )
+        op.execute(
+            'CREATE INDEX IF NOT EXISTS idx_users_prenom_trgm '
+            'ON users USING gist (prenom gist_trgm_ops)'
+        )
 
 
 def downgrade():
-    # Suppression des index
-    op.execute('DROP INDEX IF EXISTS idx_dossiers_numero_trgm')
-    op.execute('DROP INDEX IF EXISTS idx_dossiers_intitule_trgm')
-    op.execute('DROP INDEX IF EXISTS idx_taches_titre_trgm')
-    op.execute('DROP INDEX IF EXISTS idx_users_nom_trgm')
-    op.execute('DROP INDEX IF EXISTS idx_users_prenom_trgm')
+    # Suppression des index (uniquement sur PostgreSQL)
+    connection = op.get_context().connection
+    dialect = connection.dialect.name
+    if dialect == 'postgresql':
+        op.execute('DROP INDEX IF EXISTS idx_dossiers_numero_trgm')
+        op.execute('DROP INDEX IF EXISTS idx_dossiers_intitule_trgm')
+        op.execute('DROP INDEX IF EXISTS idx_taches_titre_trgm')
+        op.execute('DROP INDEX IF EXISTS idx_users_nom_trgm')
+        op.execute('DROP INDEX IF EXISTS idx_users_prenom_trgm')
     
     # L'extension pg_trgm est partagée, on ne la supprime pas
     # (d'autres tables pourraient l'utiliser)
