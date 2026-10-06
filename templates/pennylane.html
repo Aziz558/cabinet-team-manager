@@ -411,3 +411,66 @@ function syncPl() {
 }
 </script>
 {% endblock %}
+
+{% block extra_css %}
+<style>
+    .text-gradient-animated {
+        background: linear-gradient(90deg, #ff8c00, #ffb347);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .card {
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    .pl-dossier-card {
+        transition: all 0.2s ease;
+    }
+    .pl-dossier-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+    }
+    .pl-badge {
+        font-size: 0.72rem;
+        padding: 0.25em 0.6em;
+        border-radius: 1rem;
+        font-weight: 600;
+    }
+    .pl-action-btn {
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+        opacity: 0.7;
+        transition: opacity 0.2s, background-color 0.2s;
+    }
+    .pl-action-btn:hover {
+        opacity: 1;
+        background-color: rgba(255, 140, 0, 0.12);
+        color: #ff8c00;
+    }
+    .pl-skeleton {
+        background: linear-gradient(90deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.10) 50%, rgba(0,0,0,0.05) 100%);
+        background-size: 200% 100%;
+        animation: pl-shimmer 1.5s infinite;
+        border-radius: 0.5rem;
+    }
+    @keyframes pl-shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+</style>
+{% endblock %}
