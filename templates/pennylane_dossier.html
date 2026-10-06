@@ -47,6 +47,9 @@
             <button id="btn-check-pl" class="btn btn-outline-orange" onclick="checkPennylane()">
                 <i class="bi bi-arrow-repeat me-1"></i>Vérifier maintenant
             </button>
+            <button id="btn-sync-tva" class="btn btn-outline-primary btn-sm" onclick="syncTvaDossier()">
+                <i class="bi bi-cloud-download me-1"></i>Synchro TVA
+            </button>
             <a href="{{ url_for('dossiers') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Retour</a>
         </div>
     </div>
@@ -61,6 +64,9 @@
     <div><strong>{{ data.resume_nouveaux }} nouveau(x)</strong> détecté(s) — marquez-les comme traités après vérification.</div>
 </div>
 {% endif %}
+
+<!-- Status TVA sync -->
+<div id="plTvaSyncStatus" class="mb-3"></div>
 
 <!-- ============ BARRE DE FILTRES ============ -->
 <div class="pl-filterbar animate-fade-in-up">
@@ -563,6 +569,35 @@ function resetFilters() {
 {% if data.lignes %}
 applyPlFilters();
 {% endif %}
+function syncTvaDossier() {
+    const btn = document.getElementById('btn-sync-tva');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Synchro TVA...';
+    btn.disabled = true;
+    fetch(`/pennylane/check/{{ dossier.id }}`, {method: 'POST'})
+    .then(r => r.json()).then(d => {
+        const st = document.getElementById('plTvaSyncStatus');
+        if (!st) { btn.innerHTML = orig; btn.disabled = false; return; }
+        if (d.tva_sync && d.tva_sync.ok) {
+            st.innerHTML = '<div class="p-3 rounded-3 mb-2" style="background:var(--success-bg);border:1px solid var(--success);">' +
+                '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' +
+                `TVA syncée : ${d.tva_sync.statuts} statut(s), ${d.tva_sync.synced} case(s) cochée(s), ` +
+                `${d.tva_sync.forces_annules} forçage(s) annulé(s).</div>`;
+        } else if (d.tva_sync && !d.tva_sync.ok) {
+            st.innerHTML = '<div class="p-3 rounded-3 mb-2" style="background:var(--danger-bg);border:1px solid var(--danger);">' +
+                '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' +
+                `TVA sync échouée : ${d.tva_sync.message}</div>`;
+        } else {
+            st.innerHTML = '';
+        }
+        btn.innerHTML = orig; btn.disabled = false;
+        if (d.ok && d.nouveaux && d.nouveaux.length > 0) alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
+        else if (d.ok) alert('✅ Aucun nouveau document.');
+        else alert(d.message || 'Erreur');
+        location.reload();
+    }).catch(() => { btn.innerHTML = orig; btn.disabled = false; location.reload(); });
+}
+
 // Lien profond depuis le dashboard (ex: ?ftab=a_traiter) -> preselectionne l'onglet
 (function() {
     var f = new URLSearchParams(location.search).get('ftab');

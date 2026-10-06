@@ -136,6 +136,18 @@
             {% endif %}
         </p>
 
+        <!-- Sélection pour synchro TVA ciblée -->
+        <div class="d-flex gap-2 align-items-center mb-3 flex-wrap">
+            <label class="form-label-premium mb-0 small">Synchro TVA :</label>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSelectAllDossiers()">Tout sélectionner</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelectAllDossiers()">Tout désélectionner</button>
+            <span id="plSelectedCount" class="small text-tertiary">0 dossier(s) sélectionné(s)</span>
+            <button type="button" class="btn btn-sm btn-primary" onclick="syncSelectedTva()">
+                <i class="bi bi-cloud-download me-1"></i>Synchroniser les TVA sélectionnées
+            </button>
+        </div>
+        <div id="plTvaSyncStatus" class="mb-3"></div>
+
         {% if par_equipe %}
             {% for eq_nom, dossiers_eq in par_equipe.items() %}
             <div class="mb-4">
@@ -144,8 +156,10 @@
                     {% for d in dossiers_eq %}
                     <div class="col-md-4 col-lg-3">
                         <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
-                            <div>
-                                <strong class="small">{{ d.numero_dossier }}</strong>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="checkbox" class="pl-dossier-check" value="{{ d.id }}" onchange="updatePlSelectedCount()" style="accent-color:var(--orange-primary);">
+                                <div>
+                                    <strong class="small">{{ d.numero_dossier }}</strong>
                                 {% if d.pennylane_api_token and not d.pennylane_customer_id %}<span class="badge badge-success ms-1" style="font-size:0.55rem;">Token</span>{% endif %}
                                 <div class="small text-tertiary">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</div>
                             </div>
@@ -340,6 +354,49 @@ function verifyPlTva(btn) {
         showPlTva('Erreur réseau: ' + err.message, false);
     });
 }
+
+function updatePlSelectedCount() {
+    var n = document.querySelectorAll('.pl-dossier-check:checked').length;
+    var el = document.getElementById('plSelectedCount');
+    if (el) el.textContent = n + ' dossier(s) sélectionné(s)';
+}
+function toggleSelectAllDossiers() {
+    document.querySelectorAll('.pl-dossier-check').forEach(function(c) { c.checked = true; });
+    updatePlSelectedCount();
+}
+function clearSelectAllDossiers() {
+    document.querySelectorAll('.pl-dossier-check').forEach(function(c) { c.checked = false; });
+    updatePlSelectedCount();
+}
+function syncSelectedTva() {
+    var checks = document.querySelectorAll('.pl-dossier-check:checked');
+    var ids = [];
+    checks.forEach(function(c) { ids.push(parseInt(c.value)); });
+    if (!ids.length) { alert('Sélectionnez au moins un dossier.'); return; }
+    if (!confirm('Synchroniser la TVA pour ' + ids.length + ' dossier(s) ?')) return;
+    var statusEl = document.getElementById('plTvaSyncStatus');
+    if (statusEl) statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--bg-card-hover);border:1px solid var(--orange-primary);"><i class="bi bi-hourglass-split me-2"></i>Synchro en cours...</div>';
+    fetch('/pennylane/tva_sync_selected', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({dossier_ids: ids})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (statusEl) {
+            if (d.ok) {
+                statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--success-bg);border:1px solid var(--success);"><i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + d.message + '</div>';
+            } else {
+                statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);"><i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + (d.message || 'Erreur') + '</div>';
+            }
+        }
+        if (d.ok) setTimeout(function() { location.reload(); }, 2000);
+    })
+    .catch(function(err) {
+        if (statusEl) statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);"><i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>Erreur réseau: ' + err.message + '</div>';
+    });
+}
+
 // Statut de la session au chargement de la page (cookies persistés en BDD)
 fetch('/pennylane/tva_session_status').then(r => r.json()).then(d => {
     if (d.configured) showPlTva(d.message || 'Session Pennylane configurée.', true);

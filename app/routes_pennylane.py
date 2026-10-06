@@ -591,7 +591,8 @@ def pennylane_items_statut_bulk():
 @app.route('/pennylane/check/<int:dossier_id>', methods=['POST'])
 @login_required
 def pennylane_check(dossier_id):
-    """Vérifie les nouveaux documents/transactions Pennylane d'un dossier (à la demande)."""
+    """Vérifie les nouveaux documents/transactions Pennylane d'un dossier (à la demande).
+    Lance aussi la synchro TVA pour ce dossier (checklist + notifications)."""
     dossier = Dossier.query.get_or_404(dossier_id)
 
     # Même scoping que pennylane_dossier
@@ -602,14 +603,218 @@ def pennylane_check(dossier_id):
 
     from app.integrations.pennylane import get_dossier_pennylane_data
     data = get_dossier_pennylane_data(dossier, force_refresh=True)
+
+    # --- SYNC TVA du dossier : déclenche checklist + notifications ---
+    tva_info = None
+    try:
+        from .integrations.pennylane_web import fetch_vat_forms, _vat_taxe_for, _extract_period, FILED_STATUSES
+        from app.models import ChecklistEntry, TvaStatutPennylane
+        from datetime import date as _date, datetime as _dt
+
+        if dossier.pennylane_customer_id:
+            res_vat = fetch_vat_forms(dossier.pennylane_customer_id)
+            if res_vat.get('ok') and (res_vat.get('vat_returns') or res_vat.get('future_vat_returns')):
+                taxe = _vat_taxe_for(dossier)
+                statuts = 0
+                synced = 0
+                forces_annules = 0
+                for vr in (res_vat['vat_returns'] + res_vat['future_vat_returns']):
+                    per = _extract_period(vr)
+                    if not per:
+                        continue
+                    y, mo = per
+                    if taxe == 'tva_trimestriel':
+                        mo = ((mo - 1) // 3) * 3 + 1
+                    st = (vr.get('status') or '').lower()
+                    st_row = TvaStatutPennylane.query.filter_by(dossier_id=dossier.id, annee=y, mois=mo).first()
+                    if not st_row:
+                        st_row = TvaStatutPennylane(dossier_id=dossier.id, annee=y, mois=mo)
+                        db.session.add(st_row)
+                    st_row.statut = st or 'unknown'
+                    st_row.deadline = vr.get('deadline') or None
+                    payable = vr.get('payable') or vr.get('amount_due') or vr.get('total_amount')
+                    try:
+                        st_row.montant = float(payable) if payable is not None else None
+                    except (TypeError, ValueError):
+                        st_row.montant = None
+                    st_row.date_sync = _dt.utcnow()
+                    statuts += 1
+                    old = ChecklistEntry.query.filter_by(dossier_id=dossier.id, taxe=taxe,
+                                                          annee=y, mois=mo, kind='depot').first()
+                    if old and old.pl_mode and not (old.declare or old.paye):
+                        db.session.delete(old)
+                        forces_annules += 1
+                for vr in res_vat['vat_returns']:
+                    st = (vr.get('status') or '').lower()
+                    if st not in FILED_STATUSES:
+                        continue
+                    per = _extract_period(vr)
+                    if not per:
+                        continue
+                    y, mo = per
+                    if taxe == 'tva_trimestriel':
+                        mo = ((mo - 1) // 3) * 3 + 1
+                    e = ChecklistEntry.query.filter_by(dossier_id=dossier.id, taxe=taxe,
+                                                        annee=y, mois=mo, kind='depot').first()
+                    if not e:
+                        e = ChecklistEntry(dossier_id=dossier.id, taxe=taxe, annee=y, mois=mo, kind='depot')
+                        db.session.add(e)
+                    e.declare = True
+                    e.paye = (st == 'paid')
+                    e.pl_mode = True
+                    synced += 1
+                    try:
+                        from .checklist_link import appliquer_case_a_taches as _lk
+                        _lk(dossier.id, taxe, y, mo, 'depot', True)
+                    except Exception:
+                        pass
+                db.session.commit()
+                tva_info = {'ok': True, 'statuts': statuts, 'synced': synced,
+                            'forces_annules': forces_annules}
+            else:
+                tva_info = {'ok': False, 'message': res_vat.get('message', 'Aucune période TVA')}
+        else:
+            tva_info = {'ok': False, 'message': 'Dossier non relié à Pennylane'}
+    except Exception as _e:
+        app.logger.warning(f"pennylane_check TVA sync error {dossier_id}: {_e}")
+        tva_info = {'ok': False, 'message': str(_e)}
+
     resp = {'ok': data.get('ok'),
             'nouveaux': data.get('nouveaux', []),
             'resume': data.get('resume_nouveaux', ''),
-            'message': data.get('message', '')}
+            'message': data.get('message', ''),
+            'tva_sync': tva_info}
     # SONDE TEMPORAIRE (diagnostic compteurs) — à retirer après diagnostic
     if data.get('debug_probe'):
         resp['debug_probe'] = data['debug_probe']
     return resp
+
+
+@app.route('/pennylane/tva_sync_selected', methods=['POST'])
+@login_required
+def pennylane_tva_sync_selected():
+    """Synchro TVA pour les dossiers sélectionnés (JSON list d'ids).
+    Admin + managers."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès réservé aux admins/managers.'}), 403
+    from app.integrations.pennylane_web import (has_web_session, fetch_vat_forms,
+                                                _vat_taxe_for, _extract_period,
+                                                FILED_STATUSES)
+    from app.models import ChecklistEntry, TvaStatutPennylane, Dossier
+    if not has_web_session():
+        return jsonify({'ok': False, 'message': 'Session web Pennylane non configurée.'}), 400
+
+    payload = request.get_json(silent=True) or {}
+    dossier_ids = payload.get('dossier_ids') or []
+    if not dossier_ids:
+        return jsonify({'ok': False, 'message': 'Aucun dossier sélectionné.'}), 400
+
+    # Scoping manager : ne voir que ses dossiers
+    if current_user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
+        equipe_ids = {eq.id for eq in mes_equipes}
+        dossiers_dispo = {d.id for d in Dossier.query.filter(
+            Dossier.equipe_id.in_(equipe_ids)).all()}
+        dossier_ids = [did for did in dossier_ids if did in dossiers_dispo]
+
+    total = len(dossier_ids)
+    synced = 0
+    statuts_total = 0
+    forces_annules = 0
+    erreurs = []
+    auto_associes = 0
+
+    for did in dossier_ids:
+        d = Dossier.query.get(did)
+        if not d:
+            erreurs.append(f'Dossier {did} introuvable')
+            continue
+        if not (d.pennylane_customer_id or '').strip():
+            # Auto-association
+            from app.integrations.pennylane import resolve_company_for_dossier
+            res_auto = resolve_company_for_dossier(d)
+            if res_auto.get('ok'):
+                d.pennylane_customer_id = res_auto['company_id']
+                db.session.commit()
+                auto_associes += 1
+            else:
+                erreurs.append(f'{d.numero_dossier}: pas de customer_id')
+                continue
+        res = fetch_vat_forms(d.pennylane_customer_id)
+        if not res.get('ok'):
+            erreurs.append(f'{d.numero_dossier}: {res.get("message", "erreur")}')
+            continue
+        if not (res.get('vat_returns') or res.get('future_vat_returns')):
+            continue
+        taxe = _vat_taxe_for(d)
+        d_statuts = 0
+        d_synced = 0
+        d_forces = 0
+        for vr in (res['vat_returns'] + res['future_vat_returns']):
+            per = _extract_period(vr)
+            if not per:
+                continue
+            y, mo = per
+            if taxe == 'tva_trimestriel':
+                mo = ((mo - 1) // 3) * 3 + 1
+            st = (vr.get('status') or '').lower()
+            st_row = TvaStatutPennylane.query.filter_by(dossier_id=d.id, annee=y, mois=mo).first()
+            if not st_row:
+                st_row = TvaStatutPennylane(dossier_id=d.id, annee=y, mois=mo)
+                db.session.add(st_row)
+            st_row.statut = st or 'unknown'
+            st_row.deadline = vr.get('deadline') or None
+            payable = vr.get('payable') or vr.get('amount_due') or vr.get('total_amount')
+            try:
+                st_row.montant = float(payable) if payable is not None else None
+            except (TypeError, ValueError):
+                st_row.montant = None
+            st_row.date_sync = datetime.utcnow()
+            d_statuts += 1
+            old = ChecklistEntry.query.filter_by(dossier_id=d.id, taxe=taxe,
+                                                         annee=y, mois=mo, kind='depot').first()
+            if old and old.pl_mode and not (old.declare or old.paye):
+                db.session.delete(old)
+                d_forces += 1
+        for vr in res['vat_returns']:
+            st = (vr.get('status') or '').lower()
+            if st not in FILED_STATUSES:
+                continue
+            per = _extract_period(vr)
+            if not per:
+                continue
+            y, mo = per
+            if taxe == 'tva_trimestriel':
+                mo = ((mo - 1) // 3) * 3 + 1
+            e = ChecklistEntry.query.filter_by(dossier_id=d.id, taxe=taxe,
+                                                    annee=y, mois=mo, kind='depot').first()
+            if not e:
+                e = ChecklistEntry(dossier_id=d.id, taxe=taxe, annee=y, mois=mo, kind='depot')
+                db.session.add(e)
+            e.declare = True
+            e.paye = (st == 'paid')
+            e.pl_mode = True
+            d_synced += 1
+            try:
+                from .checklist_link import appliquer_case_a_taches as _lk
+                _lk(d.id, taxe, y, mo, 'depot', True)
+            except Exception:
+                pass
+        db.session.commit()
+        synced += d
+        statuts_total += d_statuts
+        forces_annules += d_forces
+
+    msg = (f'{synced}/{total} dossier(s) synchro TVA — '
+           f'{statuts_total} statut(s) écrit, {forces_annules} forçage(s) annulé(s).')
+    if auto_associes:
+        msg += f' {auto_associes} auto-associé(s).'
+    if erreurs:
+        msg += f' {len(erreurs)} erreur(s).'
+
+    return jsonify({'ok': True, 'message': msg, 'synced': synced,
+                     'statuts': statuts_total, 'forces_annules': forces_annules,
+                     'erreurs': erreurs[:10], 'auto_associes': auto_associes})
 
 
 @app.route('/pennylane/probe', methods=['GET', 'POST'])
