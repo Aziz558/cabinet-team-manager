@@ -474,8 +474,19 @@ def inject_globals():
             ).all() if current_user.equipe_id else []
     else:
         all_equipes_for_switch = []
+    
+    # Nombre de validations en attente (pour le badge sidebar)
+    _pending_validations = 0
+    if current_user.is_authenticated:
+        try:
+            from .route_common import get_pending_validations_count_for_user
+            _pending_validations = get_pending_validations_count_for_user(current_user)
+        except Exception:
+            pass
+    
     return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch,
-                cache_buster=int(_datetime.utcnow().timestamp()))
+                cache_buster=int(_datetime.utcnow().timestamp()),
+                _pending_validations=_pending_validations)
 
 # Global error handlers to avoid silent 500s
 @app.errorhandler(404)

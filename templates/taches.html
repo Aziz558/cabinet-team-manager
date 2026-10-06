@@ -8,6 +8,9 @@
         <div class="page-head-titles">
             <h2>Tâches</h2>
             <p class="page-head-sub" id="taskCount">{{ taches|length }} tâche(s)</p>
+            {% if _pending_validations > 0 %}
+            <span class="sidebar-badge" style="margin-left:8px;">{{ _pending_validations }} validation{{ 's' if _pending_validations > 1 else '' }}</span>
+            {% endif %}
         </div>
     </div>
     <div class="page-head-actions">

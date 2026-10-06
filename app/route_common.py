@@ -160,3 +160,24 @@ def _nettoyer_relations_dossier(dossier):
     db.session.flush()
 
 
+def get_pending_validations_count_for_user(user):
+    """Compte les validations en attente pour l'utilisateur courant.
+    Retourne le nombre total de SuggestionTache en 'en_attente' que
+    l'utilisateur a le droit de valider (selon son rôle/équipe)."""
+    if user.role == 'admin':
+        return SuggestionTache.query.filter_by(statut='en_attente').count()
+    if user.role == 'manager':
+        mes_equipes = Equipe.query.filter_by(manager_id=user.id).all()
+        team_ids = {user.id}
+        for eq in mes_equipes:
+            team_ids.update(m.id for m in eq.membres.all())
+        return SuggestionTache.query.filter(
+            SuggestionTache.statut == 'en_attente',
+            SuggestionTache.cree_par.in_(team_ids)
+        ).count()
+    # membre : ne valide que ses propres suggestions
+    return SuggestionTache.query.filter_by(
+        cree_par=user.id, statut='en_attente'
+    ).count()
+
+

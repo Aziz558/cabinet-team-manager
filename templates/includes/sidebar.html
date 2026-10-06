@@ -77,6 +77,9 @@
         <a href="{{ url_for('suggestions_page') }}" class="sidebar-nav-item {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
             <i class="bi bi-lightbulb"></i>
             <span>Suggestions</span>
+            {% if current_user.is_authenticated and _pending_validations > 0 %}
+            <span class="sidebar-badge">{{ _pending_validations }}</span>
+            {% endif %}
         </a>
         <a href="{{ url_for('notifications_page') }}" class="sidebar-nav-item {% if request.endpoint == 'notifications_page' %}active{% endif %}">
             <i class="bi bi-bell"></i>
