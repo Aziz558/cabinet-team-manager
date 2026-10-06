@@ -4,15 +4,11 @@ from flask_login import login_user, logout_user, login_required, current_user
 from . import app, db
 from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 import json
 import os
 import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
-
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
-from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
 from sqlalchemy import or_
 import json
 import os
@@ -152,14 +148,15 @@ def dashboard():
         # Alertes : tâches en retard dans les 3 mois
         alertes = []
         if all_dossiers_ids:
-            taches_en_retard = Tache.query.filter(
+            taches_en_retard = db.session.query(Tache).options(
+                selectinload(Tache.dossier)
+            ).filter(
                 Tache.dossier_id.in_(all_dossiers_ids),
                 Tache.date_echeance.between(date.today() - timedelta(days=60), date.today()),
                 Tache.statut != 'terminee'
             ).order_by(Tache.date_echeance.asc()).limit(5).all()
             for t in taches_en_retard:
-                d = Dossier.query.get(t.dossier_id)
-                alertes.append({'tache': t, 'dossier': d})
+                alertes.append({'tache': t, 'dossier': t.dossier})
 
         # Suggestions
         suggestions = []
