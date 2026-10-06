@@ -167,8 +167,9 @@ def dashboard():
             from app.models import Suggestion
             suggestions = Suggestion.query.filter(Suggestion.cree_par.in_(team_member_ids))\
                 .order_by(Suggestion.date_creation.desc()).limit(10).all()
-        except Exception:
-            suggestions = []
+        except Exception as e:
+                app.logger.warning(f"Erreur chargement suggestions: {e}")
+                suggestions = []
 
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).order_by(User.nom).all()
         
@@ -188,8 +189,9 @@ def dashboard():
         notifications_non_lues = []
         try:
             notifications_non_lues = current_user.notifications.filter_by(lu=False).order_by(Notification.date_envoi.desc()).limit(5).all() if hasattr(current_user, 'notifications') else []
-        except Exception:
-            notifications_non_lues = []
+        except Exception as e:
+                app.logger.warning(f"Erreur chargement notifications non lues: {e}")
+                notifications_non_lues = []
 
         return render_template('dashboard_manager.html', kpi=kpi, alertes=alertes,
             suggestions=suggestions, membres=membres, taches_jour=taches_jour,

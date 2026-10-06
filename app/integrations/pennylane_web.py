@@ -129,6 +129,7 @@ _cookie_last_persist = [0.0]  # throttle persist BDD : max 1x / 10 min
 def _refresh_session_cookies(r):
     """Pennylane renvoie régulièrement des cookies de session frais (Set-Cookie).
     On les réinjecte automatiquement pour garder la session vivante sans intervention."""
+    global _pl_session_cookies, _pl_session_loaded
     import time as _time
     try:
         updates = {}

@@ -21,7 +21,7 @@ import re
 from typing import Any, Dict, Optional
 
 from app import app, db
-from app.models import SuggestionTache, AppSetting, Equipe
+from app.models import SuggestionTache, AppSetting, Equipe, User
 
 logger = logging.getLogger(__name__)
 

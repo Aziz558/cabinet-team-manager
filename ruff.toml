@@ -1,0 +1,13 @@
+# Ruff — demarrage prudent : uniquement les regles "pieges" (undefined names,
+# syntaxe runtime, comparaisons/iterations suspectes). Le style viendra plus tard.
+line-length = 120
+target-version = "py311"
+extend-exclude = ["venv", "scripts/legacy", "__pycache__", ".git"]
+
+[lint]
+select = [
+    "E9",   # erreurs de syntaxe runtime (E901-E902)
+    "F63",  # desunpacking / comparaisons de tuples dans assert
+    "F7",   # continue/break hors boucle, faux imports, ...
+    "F82",  # undefined names (F821-F823)
+]

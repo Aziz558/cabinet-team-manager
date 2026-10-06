@@ -342,7 +342,7 @@ def send_pennylane_new_docs_email_brevo(dossier, nouveaux: list, destinataire_id
 def send_email_notification_fallback(to_email, subject, body, html_content=None):
     """Fallback to SMTP if Brevo is not configured."""
     try:
-        from app.routes import get_mail_config
+        from app.routes_notifications import get_mail_config
         import smtplib
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart

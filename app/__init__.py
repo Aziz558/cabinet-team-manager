@@ -128,43 +128,17 @@ migrate = Migrate(app, db, compare_type=True)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Auto-migrate DB schema on startup
-# ORBIT_SKIP_DB_INIT=1 : utilise par l'outilage (flask db migrate sur base vierge,
-# tests) pour ignorer create_all + les migrations ad hoc au chargement.
-# ORBIT_SQLITE_PATH : permet aux tests de pointer vers une base SQLite jetable.
+# Le schema est gere par Flask-Migrate (voir migrations/ et
+# scripts/release_migrate.py execute au demarrage) : les migrations ad hoc
+# (migrate_schema.py, ALTER suggestions_taches) ont ete retirees — la baseline
+# 9be1d41da284 cree le schema complet depuis les models.
 _SKIP_DB_INIT = os.environ.get('ORBIT_SKIP_DB_INIT', '').lower() in ('1', 'true')
 if _SKIP_DB_INIT:
-    app.logger.info("[DB] ORBIT_SKIP_DB_INIT actif : create_all + migrations ad hoc sautes")
-else:
-    try:
-        from migrate_schema import migrate_description_column
-        migrate_description_column()
-    except Exception as e:
-        print(f"⚠️ Schema migration failed: {e}")
-
-    # Ensure DB tables exist and migrate
-    try:
-        with app.app_context():
-            from sqlalchemy import inspect, text
-            inspector = inspect(db.engine)
-            for c in inspector.get_columns('suggestions_taches'):
-                if c['name'] == 'description_suggeree' and 'varchar' in str(c['type']).lower():
-                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN description_suggeree TYPE TEXT"))
-                    print("✅ Migrated description_suggeree: varchar -> TEXT")
-                if c['name'] == 'mail_uid' and 'varchar' in str(c['type']).lower() and '50' in str(c['type']):
-                    db.session.execute(text("ALTER TABLE suggestions_taches ALTER COLUMN mail_uid TYPE VARCHAR(100)"))
-                    print("✅ Migrated mail_uid: varchar(50) -> varchar(100)")
-            db.session.commit()
-    except Exception as e:
-        print(f"⚠️ Schema init failed: {e}")
-        try:
-            db.session.rollback()
-        except:
-            pass
+    app.logger.info("[DB] ORBIT_SKIP_DB_INIT actif : create_all saute (outilage migrations)")
 
 from app import routes  # noqa: F401
 from app import social_routes  # noqa: F401  (pole social : suivi DSN & écritures de paie)
-from app.models import User, AppSetting, SuggestionTache, Equipe  # noqa: F401
+from app.models import User, AppSetting, SuggestionTache, Equipe, Notification  # noqa: F401
 
 with app.app_context():
     if not _SKIP_DB_INIT:

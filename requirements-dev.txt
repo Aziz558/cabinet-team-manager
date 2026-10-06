@@ -1,3 +1,4 @@
-# Dependances de developpement / CI (pytest)
+# Dependances de developpement / CI (pytest, ruff)
 -r requirements.txt
 pytest==9.1.1
+ruff==0.16.10

@@ -19,6 +19,9 @@ jobs:
       - name: Installer les dependances
         run: pip install -r requirements-dev.txt
 
+      - name: Lint Python (ruff — regles pieges)
+        run: ruff check .
+
       - name: Verifier la syntaxe JS
         run: |
           node --check static/js/orbit-workspace.js
