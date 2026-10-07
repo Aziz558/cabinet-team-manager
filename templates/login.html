@@ -388,6 +388,7 @@
         .orbit-premium .btn-login:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -12px rgba(255,140,0,.65); }
         .orbit-premium .btn-login:active { transform: translateY(0) scale(.99); }
     </style>
+<link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=2" rel="stylesheet">
 </head>
 <body class="orbit-premium">
     <!-- Animated orbs (improved) -->
@@ -524,5 +525,6 @@ document.addEventListener('click', function(e) {
     if (e.target && e.target.id === 'installPwaBtn' && deferredPrompt) { deferredPrompt.prompt(); }
 });
 </script>
+<script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=2" defer></script>
 </body>
 </html>

@@ -247,3 +247,18 @@ body::before {
 
 /* ripple host */
 .qa-btn, .btn-login { position: relative; overflow: hidden; }
+
+/* === V2 FLUIDITE ULTRA === */
+html { scrollbar-gutter: stable; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }
+.card-premium, .stat-card, .task-card { contain: layout style paint; }
+.btn-premium:active, .qa-btn:active, .btn-login:active { transform: scale(.98); transition-duration: .08s; }
+.table-premium tbody tr, .table-premium tbody tr td { transition: background-color .18s ease; }
+.table-premium tbody tr:hover td { background-color: var(--bg-hover); }
+.orbit-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: var(--orange-primary); z-index: 9999; transition: width .2s var(--orbit-ease); opacity: 0; pointer-events: none; }
+.orbit-progress.is-on { opacity: 1; }
+

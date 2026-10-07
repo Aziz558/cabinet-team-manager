@@ -87,12 +87,29 @@
             '            @keyframes orbitRipple { to { transform: scale(2.4); opacity: 0; } }',
             '            html.orbit-leaving { opacity: 0; transition: opacity .16s ease; }',
             '            @media (prefers-reduced-motion: reduce) { .orbit-reveal { opacity: 1 !important; transform: none !important; } }',
-        ].join('\\n');
+        ].join('\n');
         document.head.appendChild(style);
     }
 
+    function initPrefetch() {
+        var seen = {};
+        function add(href) { if (!href || seen[href] || href.indexOf('/') !== 0) return; seen[href]=1; var l=document.createElement('link'); l.rel='prefetch'; l.href=href; document.head.appendChild(l); }
+        document.addEventListener('mouseover', function(ev){ var a=ev.target.closest('a[href]'); if(a) add(a.getAttribute('href')); }, {passive:true});
+        document.addEventListener('focusin', function(ev){ var a=ev.target.closest('a[href]'); if(a) add(a.getAttribute('href')); });
+    }
+    function initProgress() {
+        var bar=document.createElement('div'); bar.className='orbit-progress'; bar.setAttribute('aria-hidden','true'); document.body.appendChild(bar);
+        document.addEventListener('click', function(ev){ var a=ev.target.closest('a[href]'); if(!a || a.target==='_blank') return; var h=a.getAttribute('href'); if(!h||h.charAt(0)==='#'||h.indexOf('javascript:')===0) return; bar.style.width='42%'; bar.classList.add('is-on'); }, {passive:true});
+        window.addEventListener('beforeunload', function(){ bar.style.width='100%'; });
+        window.addEventListener('pageshow', function(){ bar.style.width='0'; bar.classList.remove('is-on'); });
+    }
+    function initSmoothAnchors() {
+        if (reduce) return;
+        document.addEventListener('click', function(ev){ var a=ev.target.closest('a[href^=\"#\"]'); if(!a) return; var id=a.getAttribute('href'); if(id.length<2) return; var t=document.querySelector(id); if(!t) return; ev.preventDefault(); t.scrollIntoView({behavior:'smooth', block:'start'}); history.pushState(null,'',id); });
+    }
+
     function init() {
-        try { initToastDock(); initReveal(); initRipple(); initTilt(); initPageTransition(); }
+        try { initToastDock(); initReveal(); initRipple(); initTilt(); initPageTransition(); initPrefetch(); initProgress(); initSmoothAnchors(); }
         catch (e) { if (window.console && console.warn) { console.warn('[orbit-premium]', e); } }
     }
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }

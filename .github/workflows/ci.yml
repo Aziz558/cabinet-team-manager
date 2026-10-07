@@ -25,6 +25,7 @@ jobs:
       - name: Verifier la syntaxe JS
         run: |
           node --check static/js/orbit-workspace.js
+          node --check static/js/orbit-premium.js
           node --check static/js/app.js
 
       - name: Lancer les tests

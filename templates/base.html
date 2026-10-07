@@ -94,7 +94,7 @@
     <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=4" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/polish.css') }}?v=9" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/workspace.css') }}?v=8" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=1" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=2" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#f3f4f6">
@@ -671,7 +671,7 @@ function changeNotifSound(value) {
     <!-- Phase 4 : panneau latéral, palette ⇧K, clavier, favoris, densité -->
     <script src="{{ url_for('static', filename='js/orbit-workspace.js') }}?v=1" defer></script>
     <!-- Premium layer : micro-interactions studio (ripple, reveal, tilt) -->
-    <script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=1" defer></script>
+    <script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=2" defer></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
