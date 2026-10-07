@@ -253,56 +253,59 @@
                     {% for d in dossiers_eq %}
                     {% set collab_nom = ((d.collaborateur.prenom ~ ' ' ~ d.collaborateur.nom) if d.collaborateur else '') %}
                     <div class="col-md-4 col-lg-3 pl-dossier-card"
-                         data-id="{{ d.id }}"
-                         data-collab="{{ d.collaborateur_id or '' }}"
-                         data-collab-nom="{{ collab_nom|lower }}"
-                         data-regime="{{ (d.regime_tva or '')|lower }}"
-                         data-numero="{{ (d.numero_dossier or '')|lower }}"
-                         data-intitule="{{ (d.intitule or '')|lower }}"
-                         data-search="{{ (d.numero_dossier ~ ' ' ~ d.intitule ~ ' ' ~ collab_nom ~ ' ' ~ eq_nom ~ ' ' ~ (d.regime_tva or ''))|lower }}">
-                        <div class="p-3 rounded-3 d-flex justify-content-between align-items-center h-100" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
-                            <div class="d-flex align-items-center gap-2" style="min-width:0;">
-                                <input type="checkbox" class="pl-dossier-check" value="{{ d.id }}" style="accent-color:var(--orange-primary);">
-                                <div style="min-width:0;">
-                                    <div class="d-flex align-items-center gap-1 flex-wrap pl-badges">
-                                        <strong class="small">{{ d.numero_dossier }}</strong>
-                                        {% if nb_a_traiter.get(d.id, 0) %}
-                                        <span class="pl-badge pl-badge-todo" title="{{ nb_a_traiter[d.id] }} élément(s) Pennylane à traiter">{{ nb_a_traiter[d.id] }} à traiter</span>
-                                        {% endif %}
-                                        {% if d.id in retard_ids %}
-                                        <span class="pl-badge pl-badge-late" title="Déclaration TVA en retard dans Pennylane">Retard</span>
-                                        {% endif %}
-                                        {% if d.pennylane_api_token and not d.pennylane_customer_id %}<span class="badge badge-success" style="font-size:0.55rem;">Token</span>{% endif %}
-                                    </div>
-                                    <div class="small text-tertiary text-truncate" style="max-width:170px;">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</div>
-                                    {% if collab_nom %}<div class="text-tertiary" style="font-size:0.65rem;"><i class="bi bi-person me-1"></i>{{ collab_nom }}</div>{% endif %}
-                                </div>
-                            </div>
-                            <div class="d-flex gap-1 flex-shrink-0">
-                                <button type="button" class="btn-premium btn-premium-secondary btn-press"
-                                        title="Synchro TVA de ce dossier depuis Pennylane"
-                                        onclick="plSyncDossier({{ d.id }}, this);">
-                                    <i class="bi bi-arrow-repeat"></i>
-                                </button>
-                                {% if nb_a_traiter.get(d.id, 0) %}
-                                <button type="button" class="btn-premium btn-premium-secondary btn-press"
-                                        title="Marquer les {{ nb_a_traiter[d.id] }} élément(s) comme traités"
-                                        onclick="plMarquerTraite({{ d.id }}, this);">
-                                    <i class="bi bi-check2-all"></i>
-                                </button>
-                                {% endif %}
-                                {% if is_admin %}
-                                <button type="button" class="btn-premium btn-premium-secondary btn-press" title="Délier ce dossier de Pennylane (nettoie statuts + cases synchro)"
-                                        onclick="if(confirm('Délier {{ d.numero_dossier }} de Pennylane ? Les statuts et cases posés par la synchro seront supprimés.')) plDelier({{ d.id }});">
-                                    <i class="bi bi-link-slash"></i>
-                                </button>
-                                {% endif %}
-                                <a href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}" class="btn-premium btn-premium-secondary btn-press" title="Voir les données Pennylane">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
-                            </div>
-                        </div>
+                     data-id="{{ d.id }}"
+                     data-collab="{{ d.collaborateur_id or '' }}"
+                     data-collab-nom="{{ collab_nom|lower }}"
+                     data-regime="{{ (d.regime_tva or '')|lower }}"
+                     data-numero="{{ (d.numero_dossier or '')|lower }}"
+                     data-intitule="{{ (d.intitule or '')|lower }}"
+                     data-search="{{ (d.numero_dossier ~ ' ' ~ d.intitule ~ ' ' ~ collab_nom ~ ' ' ~ eq_nom ~ ' ' ~ (d.regime_tva or ''))|lower }}">
+                <div class="pl-dossier-top d-flex align-items-center gap-2">
+                    <input type="checkbox" class="pl-dossier-check" value="{{ d.id }}" style="accent-color:var(--orange-primary);">
+                    <div class="pl-dossier-main min-width-0 d-flex align-items-center gap-1">
+                        <strong class="pl-dossier-num small">{{ d.numero_dossier }}</strong>
+                        <span class="pl-dossier-title text-truncate" title="{{ d.intitule }}">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</span>
+                        {% if collab_nom %}
+                        <span class="pl-dossier-sub small text-tertiary" title="{{ collab_nom }}">{{ collab_nom }}</span>
+                        {% endif %}
                     </div>
+                    <div class="pl-dossier-status d-flex align-items-center gap-1">
+                        {% if nb_a_traiter.get(d.id, 0) %}
+                        <span class="pl-badge pl-badge-todo" title="{{ nb_a_traiter[d.id] }} élément(s) Pennylane à traiter">{{ nb_a_traiter[d.id] }}</span>
+                        {% endif %}
+                        {% if d.id in retard_ids %}
+                        <span class="pl-badge pl-badge-late" title="Déclaration TVA en retard dans Pennylane">Retard</span>
+                        {% endif %}
+                        {% if d.pennylane_api_token and not d.pennylane_customer_id %}
+                        <span class="badge badge-success" style="font-size:0.5rem;" title="Dossier avec token, sans customer Pennylane">Token</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="pl-dossier-actions d-flex gap-1">
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press pl-action-btn pl-action-btn-sm"
+                            title="Synchro TVA de ce dossier depuis Pennylane"
+                            onclick="plSyncDossier({{ d.id }}, this);">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                    {% if nb_a_traiter.get(d.id, 0) %}
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press pl-action-btn pl-action-btn-sm"
+                            title="Marquer les {{ nb_a_traiter[d.id] }} élément(s) comme traités"
+                            onclick="plMarquerTraite({{ d.id }}, this);">
+                        <i class="bi bi-check2-all"></i>
+                    </button>
+                    {% endif %}
+                    {% if is_admin %}
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press pl-action-btn pl-action-btn-sm" title="Déslier ce dossier de Pennylane (nettoie statuts + cases synchro)"
+                            onclick="if(confirm('Déslier {{ d.numero_dossier }} de Pennylane ? Les statuts et cases posés par la synchro seront supprimés.')) plDelier({{ d.id }});">
+                        <i class="bi bi-link-slash"></i>
+                    </button>
+                    {% endif %}
+                    <a href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}" class="btn-premium btn-premium-secondary btn-press pl-action-btn pl-action-btn-sm" title="Voir les données Pennylane">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+            </div>
+>
                     {% endfor %}
                 </div>
             </div>
@@ -705,7 +708,7 @@ function plRefreshData(silent) {
             (d.dossiers || []).forEach(function (it) {
                 var card = document.querySelector('.pl-dossier-card[data-id="' + it.id + '"]');
                 if (!card) return;
-                var badgeSlot = card.querySelector('.pl-badges');
+                var badgeSlot = card.querySelector('.pl-dossier-status');
                 if (!badgeSlot) return;
                 var todo = badgeSlot.querySelector('.pl-badge-todo');
                 if (it.a_traiter > 0) {
@@ -762,17 +765,87 @@ function plRefreshData(silent) {
         font-size: 0.875rem;
     }
     .pl-dossier-card {
-        transition: all 0.2s ease;
+        flex: 1 0 0;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        overflow: hidden;
+        background: var(--bg-card);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
     .pl-dossier-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 22px rgba(0,0,0,0.14);
+        border-color: var(--orange-primary);
+    }
+    .pl-dossier-top {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-wrap: nowrap;
+    }
+    .pl-dossier-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .pl-dossier-num {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: var(--orange-primary);
+        white-space: nowrap;
+    }
+    .pl-dossier-title {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pl-dossier-sub {
+        font-size: 0.6rem;
+        color: var(--text-tertiary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pl-dossier-status {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+        flex-wrap: nowrap;
+    }
+    .pl-dossier-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.1rem;
+        padding: 0.2rem 0.3rem 0.3rem;
+        flex-wrap: wrap;
+    }
+    .pl-action-btn-sm {
+        width: 28px;
+        height: 28px;
+        font-size: 0.72rem;
+        border-radius: 0.35rem;
+        opacity: 0.7;
+        transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+    }
+    .pl-action-btn-sm:hover {
+        opacity: 1;
+        background: rgba(255,140,0,0.12);
+        color: #ff8c00;
     }
     .pl-badge {
         font-size: 0.72rem;
         padding: 0.25em 0.6em;
         border-radius: 1rem;
         font-weight: 600;
+        white-space: nowrap;
     }
     .pl-action-btn {
         width: 36px;

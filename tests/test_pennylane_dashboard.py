@@ -6,7 +6,7 @@ MARKERS = [
     'pl-badge-todo', 'pl-badge-late',
     'plToast', 'plGridSkeleton',
     'plSyncDossier', 'plMarquerTraite',
-    'plNoResults', 'plRefreshData', 'pl-badges',
+    'plNoResults', 'plRefreshData', 'pl-dossier-status',
 ]
 
 
