@@ -85,8 +85,8 @@ html { scrollbar-gutter: stable; }
     var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     function init() {
         try {
-            initToastDock(); initReveal(); initRipple(); initTilt();
-            initPageTransition(); initPrefetch(); initProgress(); initSmoothAnchors();
+            initToastDock(); initReveal(); initRipple();
+            initPrefetch(); initProgress(); initSmoothAnchors();
         } catch (e) { if (window.console && console.warn) console.warn('[orbit-premium]', e); }
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -97,14 +97,22 @@ html { scrollbar-gutter: stable; }
 ### Modules
 | # | Module | Règle clé |
 |---|---|---|
-| 1 | `initReveal` | IO `threshold .08`, stagger 45ms, retire les classes après 900ms |
+| 1 | `initReveal` | **1re page/session seulement** (flag `sessionStorage.orbitIntro`), IO, stagger 30ms, classes retirées après 700ms — les pages suivantes s'affichent instantanément |
 | 2 | `initRipple` | `pointerdown` `passive:true` sur `.btn-premium/.qa-btn/.btn-login`, retiré à 650ms |
-| 3 | `initTilt` | guard `hover:none`, perspective 700px, max 6deg, `pointerleave` reset |
-| 4 | `initPageTransition` | classe `orbit-leaving` 160ms, skip `#`, `javascript:`, `form`, `data-no-transition=1`, cleanup `pageshow` |
-| 5 | `initToastDock` | injecte `<style>` — **toujours** `[...].join('\n')` (jamais de template multiline) |
-| 6 | `initPrefetch` | au `mouseover`/`focusin` d'un `a[href]` interne → `<link rel=prefetch>` (dédup `Set`, ignore `/#...`) |
-| 7 | `initProgress` | `.orbit-progress` : 42% au clic lien, 100% `beforeunload`, reset `pageshow` |
-| 8 | `initSmoothAnchors` | `a[href^="#"]` → `scrollIntoView({behavior:'smooth'})` si pas de `reduce` |
+| 3 | `initToastDock` | injecte `<style>` — **toujours** `[...].join('\n')` (jamais de template multiline) |
+| 4 | `initPrefetch` | au `mouseover`/`focusin` d'un `a[href]` interne → `<link rel=prefetch>` (dédup, ignore `/#...`) |
+| 5 | `initProgress` | `.orbit-progress` : 42% au clic lien, 100% `beforeunload`, reset `pageshow` |
+| 6 | `initSmoothAnchors` | `a[href^="#"]` → `scrollIntoView({behavior:'smooth'})` si pas de `reduce` |
+
+**RETIRES en V2.1 (feedback utilisateur) — ne pas réintroduire :**
+- `initPageTransition` : fondu `opacity:0` + 160ms avant navigation = **écran noir** pendant tout le rendu serveur. Remplacé par `@view-transition { navigation: auto; }` (natif, l'ancien écran reste visible pendant le chargement).
+- `initTilt` : `transform` continu sur `.stat-card` = hover instable sur les bords.
+
+**Règles hover non-négociables (anti-flicker) :**
+- Jamais de `transform` (translate/scale) sur une boîte au `:hover` — la boîte se déplace sous le curseur puis sort de la zone → oscillation infinie bord/arête.
+- Le feedback hover = **`box-shadow` + `background-color` seulement** (géométrie inchangée).
+- Pas de glow orange au hover ; l'orange reste réservé aux états actifs/focus/CTA.
+- Animations d'entrée : ≤ 0.3s, stagger ≤ 0.18s, sans `filter: blur` (coûteux).
 
 Piège récurrent : un `join('\\n')` (double backslash) casse silencieusement le CSS injecté → `node --check` ne le détecte **pas** (syntaxe valide). Vérifier le token après chaque édition.
 
@@ -112,9 +120,9 @@ Piège récurrent : un `join('\\n')` (double backslash) casse silencieusement le
 
 ```html
 <!-- </head> : après light-theme.css -->
-<link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=2" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=3" rel="stylesheet">
 <!-- </body> : après orbit-workspace.js -->
-<script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=2" defer></script>
+<script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=3" defer></script>
 ```
 
 Bump `?v=N` à chaque livraison (Render sert un cache agressif).
@@ -149,12 +157,15 @@ node --check 'C:\...\orbit-premium.js'          # doit être 0
 
 - **V1** ✅ reveal, ripple, tilt, page transition, toast dock
 - **V2** ✅ fluidité : scrollbar fine stable, smooth scroll, contain cartes, press feedback, prefetch, barre de progression, smooth anchors
+- **V2.1** ✅ correctifs feedback : écran noir inter-pages supprimé (→ `@view-transition` natif), tilt + hovers déplaçant la boîte supprimés (flicker d'arêtes), glow orange hover retiré, intro limitée à la 1re page/session, animations ≤ 0.3s
 - **V3** (demandé) : polish ciblé Dashboard / Tâches / Dossiers / Pennylane (tables, filtres animés, skeletons LCP)
 - **V4** : audit Lighthouse (LCP <1.8s, CLS 0, a11y 100)
 
 ## 10) Garde-fous
 
 - Toujours `prefers-reduced-motion` sur toute animation JS/CSS
+- Jamais de `transform` au `:hover` sur les conteneurs (voir §5 — flicker d'arêtes)
+- Jamais de fondu inter-pages en JS (voir §5 — écran noir) → `@view-transition { navigation: auto; }`
 - Toujours versionner `?v=N`
 - Ne jamais casser la logique métier ni les sélecteurs existants
 - Chaque itération : commit + vérif Render + mise à jour de ce plan

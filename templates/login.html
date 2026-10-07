@@ -215,7 +215,7 @@
             display: flex; align-items: center; justify-content: center; gap: 8px;
             position: relative; overflow: hidden;
         }
-        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,140,0,0.3); }
+        .btn-login:hover { box-shadow: 0 8px 30px rgba(255,140,0,0.3); }
         .btn-login:active { transform: translateY(0); }
         /* Shine effect premium */
         .btn-login::after {
@@ -385,10 +385,10 @@
         .orbit-premium .input-custom { border-radius: 12px !important; transition: border-color .22s ease, box-shadow .22s ease !important; }
         .orbit-premium .input-custom:focus { box-shadow: 0 0 0 4px rgba(255,140,0,.14) !important; border-color: rgba(255,140,0,.38) !important; }
         .orbit-premium .btn-login { border-radius: 12px !important; font-weight: 700; letter-spacing: -.01em; box-shadow: 0 8px 24px -10px rgba(255,140,0,.55); transition: transform .18s cubic-bezier(.16,1,.3,1), box-shadow .25s ease !important; }
-        .orbit-premium .btn-login:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -12px rgba(255,140,0,.65); }
+        .orbit-premium .btn-login:hover { box-shadow: 0 14px 32px -12px rgba(255,140,0,.65); }
         .orbit-premium .btn-login:active { transform: translateY(0) scale(.99); }
     </style>
-<link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=2" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=3" rel="stylesheet">
 </head>
 <body class="orbit-premium">
     <!-- Animated orbs (improved) -->
@@ -525,6 +525,6 @@ document.addEventListener('click', function(e) {
     if (e.target && e.target.id === 'installPwaBtn' && deferredPrompt) { deferredPrompt.prompt(); }
 });
 </script>
-<script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=2" defer></script>
+<script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=3" defer></script>
 </body>
 </html>
