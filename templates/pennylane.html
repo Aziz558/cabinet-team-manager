@@ -237,7 +237,7 @@
             <div class="pl-grid-skeleton" id="plGridSkeleton" style="display:none;">
                 <div class="row g-2">
                     {% for _ in range(8) %}
-                    <div class="col-md-4 col-lg-3">
+                    <div class="col-md-6 col-lg-4">
                         <div class="pl-skeleton" style="height:76px;"></div>
                     </div>
                     {% endfor %}
@@ -252,7 +252,7 @@
                 <div class="row g-2">
                     {% for d in dossiers_eq %}
                     {% set collab_nom = ((d.collaborateur.prenom ~ ' ' ~ d.collaborateur.nom) if d.collaborateur else '') %}
-                    <div class="col-md-4 col-lg-3 pl-dossier-card"
+                    <div class="col-md-6 col-lg-4 pl-dossier-card"
                      data-id="{{ d.id }}"
                      data-collab="{{ d.collaborateur_id or '' }}"
                      data-collab-nom="{{ collab_nom|lower }}"
@@ -264,7 +264,7 @@
                     <input type="checkbox" class="pl-dossier-check" value="{{ d.id }}" style="accent-color:var(--orange-primary);">
                     <div class="pl-dossier-main min-width-0 d-flex align-items-center gap-1">
                         <strong class="pl-dossier-num small">{{ d.numero_dossier }}</strong>
-                        <span class="pl-dossier-title text-truncate" title="{{ d.intitule }}">{{ d.intitule[:28] }}{% if d.intitule|length > 28 %}…{% endif %}</span>
+                        <span class="pl-dossier-title text-truncate" title="{{ d.intitule }}">{{ d.intitule[:40] }}{% if d.intitule|length > 40 %}…{% endif %}</span>
                         {% if collab_nom %}
                         <span class="pl-dossier-sub small text-tertiary" title="{{ collab_nom }}">{{ collab_nom }}</span>
                         {% endif %}
@@ -783,12 +783,12 @@ function plRefreshData(silent) {
     /* ===== Cartes de dossiers : taille naturelle, jamais compressées ===== */
     .pl-dossier-card {
         height: 100%;
-        min-height: 84px;
+        min-height: 96px;
     }
     .pl-dossier-top {
         flex-wrap: wrap;
         gap: 0.35rem 0.5rem;
-        min-height: 64px;
+        min-height: 72px;
         padding: 0.35rem 0.4rem;
     }
     .pl-dossier-main {
@@ -812,8 +812,8 @@ function plRefreshData(silent) {
     .pl-dossier-top {
         display: flex;
         align-items: center;
-        gap: 0.35rem;
-        flex-wrap: nowrap;
+        gap: 0.5rem;
+        flex-wrap: wrap;
     }
     .pl-dossier-main {
         flex: 1 1 auto;
@@ -829,12 +829,13 @@ function plRefreshData(silent) {
         white-space: nowrap;
     }
     .pl-dossier-title {
-        font-size: 0.72rem;
+        font-size: 0.78rem;
         font-weight: 600;
         color: var(--text);
-        white-space: nowrap;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        text-overflow: ellipsis;
     }
     .pl-dossier-sub {
         font-size: 0.6rem;
