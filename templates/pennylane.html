@@ -1,9 +1,15 @@
 {% extends "base.html" %}
+<!-- Test comment -->
 {% block title %}Pennylane{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
-    <h2 class="text-gradient-animated"><i class="bi bi-link-45deg me-2"></i>Intégration Pennylane</h2>
+<div class="pl-page">
+<div class="pl-hero d-flex justify-content-between align-items-center mb-4 animate-fade-in-up stagger-1">
+    <div>
+        <div class="pl-eyebrow"><i class="bi bi-stars me-2"></i>Connecteur comptable</div>
+        <h1 class="pl-hero-title text-gradient-animated"><i class="bi bi-link-45deg me-3"></i>Int\u00e9gration Pennylane</h1>
+        <p class="pl-hero-sub">Synchronisation automatisée de la TVA, triage intelligent et relances proactives.</p>
+    </div>
     {% if not configured %}
     <span class="badge badge-tertiary">Non connecté</span>
     {% else %}
