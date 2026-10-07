@@ -36,6 +36,21 @@ def test_pages_authentifiees(admin_client):
         assert not missing, f'{path}: marqueurs manquants {missing}'
 
 
+def test_ui_3_pages_marqueurs(admin_client):
+    """Marqueurs UI des 3 pages ciblees par le batch polish (page-head/KPI/toolbar/table)."""
+    pages = {
+        '/suivi_avancement': ['page-head', 'kpi-band', 'avm-kpis', 'av-tabs', 'kpiBar'],
+        '/taches/aujourdhui': ['page-head', 'kpi-band', 'orbit-toolbar', 'task-board', 'taskBoard'],
+        '/dossiers': ['page-head', 'kpi-band', 'orbit-toolbar', 'tableDossiers', 'emptyState'],
+    }
+    for path, marks in pages.items():
+        r = admin_client.get(path, follow_redirects=True)
+        html = r.get_data(as_text=True)
+        missing = [m for m in marks if m not in html]
+        assert r.status_code == 200, f'{path} -> {r.status_code}'
+        assert not missing, f'{path}: marqueurs UI manquants {missing}'
+
+
 def test_sidebar_structree(admin_client):
     """Le brand de la sidebar doit etre ferme avant le menu (regression </div>)."""
     import re

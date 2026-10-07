@@ -635,3 +635,161 @@ html[data-theme="dark"] .app-topbar.is-compact { box-shadow: 0 1px 0 rgba(255,25
     .dash-alert:hover, .dash-notif:hover { transform: none !important; }
     .orbit-dash .card-premium .card-header-premium::after { transition: none !important; }
 }
+
+/* ============================================================
+   10) UI PAGES — SUIVI / TÂCHES / DOSSIERS
+   Harmonise page-head, KPI, toolbars, tableaux, task board/cards
+   ============================================================ */
+
+/* Page head (défini en V4.2) : fond subtil pour mieux détacher l'en-tête */
+.page-head {
+    background: linear-gradient(180deg, transparent 0%, rgba(255,140,0,.03) 100%);
+    border-radius: 14px;
+    padding: .75rem 1rem .5rem;
+}
+html[data-theme="dark"] .page-head {
+    background: linear-gradient(180deg, transparent 0%, rgba(255,140,0,.08) 100%);
+}
+
+/* KPI band unifié (complète la règle « KPI cliquables » ci-dessus) */
+.kpi-band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: .75rem;
+    margin: .5rem 0 1rem;
+}
+.kpi-chip {
+    border-radius: 14px;
+    transition: transform .18s cubic-bezier(.16,1,.3,1), box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.kpi-chip:hover { transform: translateY(-2px); }
+.kpi-chip.is-active,
+a.kpi-chip.is-active,
+button.kpi-chip.is-active {
+    border-color: var(--orange-primary);
+    box-shadow: 0 0 0 2px var(--orange-subtle);
+    background: var(--orange-subtle);
+}
+
+/* Toolbar Orbit (compteur + chips + actions) */
+.orbit-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem .6rem;
+    padding: .45rem .6rem;
+    margin: .25rem 0 .75rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+}
+.orbit-toolbar-count { font-size: .88rem; color: var(--text-secondary); font-weight: 600; }
+.orbit-toolbar-spacer { flex: 1 1 auto; }
+.orbit-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .38rem .6rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: .82rem;
+    font-weight: 600;
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.orbit-tool-btn:hover { background: var(--bg-card-hover); border-color: var(--border-strong); }
+.orbit-tool-btn:active { transform: translateY(1px); }
+.orbit-toolbar [data-orbit-chips] { display: flex; flex-wrap: wrap; gap: .4rem; }
+.orbit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .28rem .55rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-active);
+    background: var(--orange-subtle);
+    color: var(--text-primary);
+    font-size: .72rem;
+    font-weight: 600;
+}
+.orbit-chip button { border: none; background: transparent; color: var(--text-tertiary); line-height: 1; padding: 0 .15rem; }
+.orbit-chip button:hover { color: var(--text-primary); }
+html[data-theme="dark"] .orbit-toolbar { box-shadow: none; }
+
+/* Task board + cartes (Tâches) */
+.task-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.task-card {
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+    transition: transform .2s cubic-bezier(.16,1,.3,1), box-shadow .2s ease, border-color .2s ease;
+    outline: none;
+}
+.task-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+.task-card:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 2px; box-shadow: 0 0 0 4px rgba(255,140,0,.16); }
+.task-card.task-overdue { border-color: rgba(209,67,67,.45); }
+.task-card-header { padding: .65rem .85rem .25rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.task-title { font-size: 1.02rem; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 .25rem; }
+.task-desc { color: var(--text-tertiary); font-size: .92rem; margin: 0 0 .5rem; }
+.task-meta { display: flex; flex-wrap: wrap; gap: .4rem .6rem; color: var(--text-muted); font-size: .8rem; }
+.task-meta-item { display: inline-flex; align-items: center; gap: .35rem; }
+.task-card-footer { padding: .5rem .85rem .75rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; border-top: 1px solid var(--border-color); background: linear-gradient(180deg, transparent 0%, var(--bg-card-hover) 100%); border-radius: 0 0 14px 14px; }
+.btn-task { border-radius: 10px; }
+@media (max-width: 767.98px) {
+    .task-board { grid-template-columns: 1fr; }
+    .orbit-toolbar { gap: .4rem; }
+}
+
+/* Tableaux respirants (Dossiers) */
+.table-premium-breathe tbody td { padding-top: .9rem; padding-bottom: .9rem; vertical-align: middle; }
+.table-premium thead th { background: var(--bg-card-hover); border-bottom: 1px solid var(--border-color); }
+.table-premium tbody tr:hover td { background: var(--bg-card-hover); }
+html[data-theme="dark"] .table-premium thead th { background: rgba(255,255,255,.04); }
+
+/* Filtres Dossiers (barre avm + panneaux) */
+.avm-bar .card-body-premium { padding: .4rem .6rem !important; }
+.avm-iconbar { gap: .25rem; }
+.avm-fico, .avm-select {
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.avm-fico:hover, .avm-select:hover { background: var(--bg-card-hover); border-color: var(--border-strong); }
+.avm-fico.on, .avm-select.on { border-color: var(--orange-primary); background: var(--orange-subtle); }
+
+/* États vides harmonisés */
+.task-empty,
+.empty-state,
+.orbit-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: .5rem;
+    padding: 2.25rem 1.25rem;
+    border-radius: 14px;
+    border: 1px dashed var(--border-color);
+    background: radial-gradient(120% 120% at 50% 0%, var(--bg-card) 0%, transparent 100%);
+}
+.task-empty i,
+.empty-state i,
+.orbit-empty-icon i { font-size: 2rem; color: var(--orange-primary); animation: orbitFloat 5s ease-in-out infinite; }
+.task-empty p,
+.empty-state p,
+.orbit-empty p { color: var(--text-tertiary); margin: 0; max-width: 360px; }
+@media (prefers-reduced-motion: reduce) {
+    .task-empty i,
+    .empty-state i,
+    .orbit-empty-icon i { animation: none !important; }
+}
+
