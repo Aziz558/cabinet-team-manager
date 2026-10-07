@@ -780,6 +780,35 @@ function plRefreshData(silent) {
         box-shadow: 0 10px 22px rgba(0,0,0,0.14);
         border-color: var(--orange-primary);
     }
+    /* ===== Cartes de dossiers : taille naturelle, jamais compressées ===== */
+    .pl-dossier-card {
+        height: 100%;
+        min-height: 84px;
+    }
+    .pl-dossier-top {
+        flex-wrap: wrap;
+        gap: 0.35rem 0.5rem;
+        min-height: 64px;
+        padding: 0.35rem 0.4rem;
+    }
+    .pl-dossier-main {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+    .pl-dossier-status {
+        flex-wrap: wrap;
+        gap: 0.2rem 0.4rem;
+        flex-shrink: 0;
+    }
+    .pl-dossier-actions {
+        flex-wrap: wrap;
+        padding: 0.3rem 0.4rem 0.25rem;
+    }
+    .pl-action-btn-sm {
+        width: 32px;
+        height: 32px;
+        font-size: 0.78rem;
+    }
     .pl-dossier-top {
         display: flex;
         align-items: center;
@@ -918,7 +947,6 @@ function plRefreshData(silent) {
 
     /* ===== Box fixe de la grille : 1 ligne de dossiers + défilement ===== */
     .pl-grid-scroll {
-        max-height: 130px; /* = 1 ligne de 4 dossiers (col-lg-3) */
         overflow-y: auto;
         overscroll-behavior: contain;
         padding-right: 4px;
@@ -935,7 +963,7 @@ function plRefreshData(silent) {
     .pl-grid-scroll::-webkit-scrollbar-thumb:hover { opacity: 1; }
     @media (max-width: 767.98px) {
         /* Sur mobile les cartes sont en pleine largeur : 2 visibles avant défilement */
-        .pl-grid-scroll { max-height: 260px; }
+        /* .pl-grid-scroll: hauteur libre, les dossiers s affichent bien plus de la page */
     }
 
     /* ===== Badges de statut par dossier ===== */
