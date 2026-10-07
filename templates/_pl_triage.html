@@ -1,14 +1,30 @@
-{# Récap triage Pennylane (factures/transactions À TRAITER par dossier) #}
+{# Recap triage Pennylane (factures/transactions a traiter par dossier) - carte repliable #}
 {% if pl_triage %}
 <div class="card-premium mb-4 animate-fade-in-up" id="plTriageCard">
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--orange-primary);"></i>Triage Pennylane — à traiter</h5>
+        <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--orange-primary);"></i>Triage Pennylane &mdash; à traiter</h5>
         <div class="d-flex align-items-center gap-2">
-            <span class="badge avm-chip-count" style="background:rgba(255,140,0,0.12);border:1px solid rgba(255,140,0,.45);color:var(--orange-primary);" title="Éléments à traiter au total">{{ pl_triage.total }}</span>
+            <span class="badge avm-chip-count" style="background:rgba(255,140,0,0.12);border:1px solid rgba(255,140,0,.45);color:var(--orange-primary);" title="Total d'éléments à traiter">{{ pl_triage.total }}</span>
+            <button class="pl-tr-toggle" type="button" id="plTriageToggle" data-bs-toggle="collapse" data-bs-target="#plTriageBody" aria-expanded="false" aria-controls="plTriageBody" title="Afficher ou masquer le détail par dossier">
+                <i class="bi bi-chevron-down"></i>
+            </button>
         </div>
     </div>
-    <div class="card-body-premium p-0">
+
         <style>
+            #plTriageCard .pl-tr-summary { display:flex; flex-wrap:wrap; gap:.45rem; padding:0 18px .9rem; }
+            #plTriageCard .pl-tr-sum { display:inline-flex; align-items:center; gap:.4rem; font-size:.74rem; line-height:1; font-weight:600; padding:.42rem .7rem; border-radius:9999px; border:1px solid var(--border-whisper); background:var(--bg-card); color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+            #plTriageCard .pl-tr-sum i { font-size:.85rem; }
+            #plTriageCard .pl-tr-sum.vente { color:var(--info, #0d6efd); background:rgba(13,110,253,.08); border-color:rgba(13,110,253,.28); }
+            #plTriageCard .pl-tr-sum.achat { color:var(--orange-dark, #e06600); background:rgba(255,140,0,.10); border-color:rgba(255,140,0,.35); }
+            #plTriageCard .pl-tr-sum.flux { color:var(--purple, #9B5DE5); background:rgba(155,93,229,.10); border-color:rgba(155,93,229,.30); }
+            #plTriageCard .pl-tr-sum.totaux { color:var(--orange-primary, #ff8c00); background:rgba(255,140,0,.14); border-color:rgba(255,140,0,.5); }
+            #plTriageCard .pl-tr-sum.dossiers { color:var(--text-tertiary); }
+            #plTriageCard .pl-tr-toggle { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; border:1px solid var(--border-whisper); background:var(--bg-card); color:var(--text-secondary); transition:background .15s ease, color .15s ease, border-color .15s ease; }
+            #plTriageCard .pl-tr-toggle:hover { background:rgba(255,140,0,.10); color:var(--orange-primary); border-color:rgba(255,140,0,.45); }
+            #plTriageCard .pl-tr-toggle i { font-size:.85rem; transition:transform .25s ease; }
+            #plTriageCard .pl-tr-toggle[aria-expanded="true"] i { transform:rotate(180deg); }
+            #plTriageCard .pl-tr-body { max-height:min(460px, 60vh); overflow-y:auto; overscroll-behavior:contain; }
             #plTriageCard .pl-tr-row { display:flex; align-items:center; gap:12px; padding:11px 18px; border-bottom:1px solid var(--border-whisper); text-decoration:none; color:inherit; transition:background .15s ease; }
             #plTriageCard .pl-tr-row:last-child { border-bottom:none; }
             #plTriageCard .pl-tr-row:hover { background: rgba(255,140,0,0.045); }
@@ -21,9 +37,19 @@
             #plTriageCard .pl-tr-chip i { font-size:.8rem; }
             #plTriageCard .pl-tr-chevron { color:var(--text-muted); flex-shrink:0; font-size:.8rem; transition:transform .15s ease; }
             #plTriageCard .pl-tr-row:hover .pl-tr-chevron { transform:translateX(3px); color:var(--orange-primary); }
-            #plTriageCard .pl-tr-empty { padding:18px; text-align:center; color:var(--text-tertiary); font-size:.85rem; }
+            @media (max-width: 575.98px) { #plTriageCard .pl-tr-summary { padding:0 14px .8rem; } }
         </style>
-        {% for it in pl_triage.lignes %}
+    {# Barre de synthese : totaux a traiter par nature (toujours visible, meme repliee) #}
+    <div class="pl-tr-summary" role="group" aria-label="Totaux à traiter par nature">
+        <span class="pl-tr-sum vente" title="Factures de vente à traiter"><i class="bi bi-arrow-up-right-square"></i><strong>{{ pl_triage.total_vente }}</strong> vente</span>
+        <span class="pl-tr-sum achat" title="Factures d'achat à traiter"><i class="bi bi-arrow-down-left-square"></i><strong>{{ pl_triage.total_achat }}</strong> achat</span>
+        <span class="pl-tr-sum flux" title="Transactions bancaires (flux) à traiter"><i class="bi bi-bank"></i><strong>{{ pl_triage.total_banque }}</strong> flux</span>
+        <span class="pl-tr-sum totaux" title="Total à traiter toutes natures confondues"><i class="bi bi-collection"></i><strong>{{ pl_triage.total }}</strong> total</span>
+        <span class="pl-tr-sum dossiers" title="Dossiers concernés"><i class="bi bi-folder2-open"></i>{{ pl_triage.lignes|length }} dossier(s)</span>
+    </div>
+
+    <div class="card-body-premium p-0 collapse pl-tr-body" id="plTriageBody">
+       {% for it in pl_triage.lignes %}
         <a class="pl-tr-row" href="{{ url_for('pennylane_dossier', dossier_id=it.dossier.id) }}?ftab=a_traiter"
            title="Ouvrir le triage du dossier">
             <span class="pl-tr-nom">
@@ -46,4 +72,23 @@
         {% endfor %}
     </div>
 </div>
+<script>
+(function () {
+    var card = document.getElementById('plTriageCard');
+    var body = document.getElementById('plTriageBody');
+    var btn = document.getElementById('plTriageToggle');
+    if (!card || !body || !btn) return;
+    var KEY = 'plTriageOpen';
+    function setOpen(open, save) {
+        body.classList.toggle('show', open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (save) { try { localStorage.setItem(KEY, open ? '1' : '0'); } catch (e) {} }
+    }
+    var saved = null;
+    try { saved = localStorage.getItem(KEY); } catch (e) {}
+    setOpen(saved === '1', false);
+    body.addEventListener('shown.bs.collapse', function () { setOpen(true, true); });
+    body.addEventListener('hidden.bs.collapse', function () { setOpen(false, true); });
+})();
+</script>
 {% endif %}

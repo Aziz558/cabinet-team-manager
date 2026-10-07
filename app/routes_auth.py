@@ -79,12 +79,21 @@ def dashboard():
             PennylaneItem.statut == 'a_traiter',
         ).group_by(PennylaneItem.dossier_id, PennylaneItem.item_type, PennylaneItem.statut).all()
         by_do = {}
+        total_vente = 0
+        total_achat = 0
+        total_banque = 0
         for did, itype, _st, cnt, mt in rows:
             e = by_do.setdefault(did, {'vente': 0, 'achat': 0, 'banque': 0, 'total': 0})
             key = {'facture_vente': 'vente', 'facture_achat': 'achat', 'transaction': 'banque'}.get(itype)
             if key:
                 e[key] += cnt
                 e['total'] += cnt
+                if key == 'vente':
+                    total_vente += cnt
+                elif key == 'achat':
+                    total_achat += cnt
+                elif key == 'banque':
+                    total_banque += cnt
         if not by_do:
             return None
         items = []
@@ -101,6 +110,9 @@ def dashboard():
         return {
             'lignes': items,
             'total': sum(i['total'] for i in items),
+            'total_vente': total_vente,
+            'total_achat': total_achat,
+            'total_banque': total_banque,
         }
     
     if current_user.role == 'manager':
