@@ -73,6 +73,25 @@
     <meta name="theme-color" content="#08090a">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo-orbit.svg') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo-orbit.png') }}">
+    <script>
+    /* ORBIT DOCKING — armement anticipé de la scène spatiale.
+       Masque le login classique le temps que la scène démarre (anti-flash),
+       et ne s'arme JAMAIS si mouvement réduit ou sans WebGL. Si la scène
+       n'est pas active en 3 s -> désarmement (rescue) = login classique. */
+    (function () {
+        try {
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { return; }
+            var probe = document.createElement('canvas');
+            if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) { return; }
+            document.documentElement.classList.add('orbit-space-armed');
+            setTimeout(function () {
+                if (!document.documentElement.classList.contains('orbit-space-active')) {
+                    document.documentElement.classList.remove('orbit-space-armed');
+                }
+            }, 3000);
+        } catch (e) {}
+    })();
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -389,8 +408,23 @@
         .orbit-premium .btn-login:active { transform: translateY(0) scale(.99); }
     </style>
 <link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=3" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/orbit-space.css') }}?v=1" rel="stylesheet">
 </head>
 <body class="orbit-premium">
+    <!-- ORBIT DOCKING : scène spatiale (masquée sans JS/WebGL) -->
+    <canvas id="orbitSpace" aria-hidden="true"></canvas>
+    <button type="button" class="orbit-planet-btn" id="orbitPlanetBtn" hidden
+            aria-label="Approcher la planète JMH pour ouvrir la connexion">
+        <span class="orbit-planet-hint" aria-hidden="true">
+            <span class="orbit-planet-name"><span class="orbit-planet-dot"></span>Planète JMH</span>
+            <span class="orbit-planet-cta">Cliquez pour approcher <i class="bi bi-arrow-right"></i></span>
+        </span>
+    </button>
+    <button type="button" class="orbit-back-btn" id="orbitBackBtn" hidden>
+        <i class="bi bi-arrow-left"></i> Retour à l'espace
+    </button>
+    <div class="orbit-space-flash" id="orbitFlash" aria-hidden="true"></div>
+
     <!-- Animated orbs (improved) -->
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -526,5 +560,6 @@ document.addEventListener('click', function(e) {
 });
 </script>
 <script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=3" defer></script>
+<script src="{{ url_for('static', filename='js/orbit-space.js') }}?v=1" data-three="{{ url_for('static', filename='js/vendor/three.module.min.js') }}" defer></script>
 </body>
 </html>

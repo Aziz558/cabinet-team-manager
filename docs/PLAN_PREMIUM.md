@@ -158,7 +158,8 @@ node --check 'C:\...\orbit-premium.js'          # doit être 0
 - **V1** ✅ reveal, ripple, tilt, page transition, toast dock
 - **V2** ✅ fluidité : scrollbar fine stable, smooth scroll, contain cartes, press feedback, prefetch, barre de progression, smooth anchors
 - **V2.1** ✅ correctifs feedback : écran noir inter-pages supprimé (→ `@view-transition` natif), tilt + hovers déplaçant la boîte supprimés (flicker d'arêtes), glow orange hover retiré, intro limitée à la 1re page/session, animations ≤ 0.3s
-- **V3** (demandé) : polish ciblé Dashboard / Tâches / Dossiers / Pennylane (tables, filtres animés, skeletons LCP)
+- **V3** ✅ login ORBIT DOCKING : scène spatiale Three.js (far/approach/docked/warp) — voir §11
+- **V3b** (demandé) : polish ciblé Dashboard / Tâches / Dossiers / Pennylane (tables, filtres animés, skeletons LCP)
 - **V4** : audit Lighthouse (LCP <1.8s, CLS 0, a11y 100)
 
 ## 10) Garde-fous
@@ -169,3 +170,38 @@ node --check 'C:\...\orbit-premium.js'          # doit être 0
 - Toujours versionner `?v=N`
 - Ne jamais casser la logique métier ni les sélecteurs existants
 - Chaque itération : commit + vérif Render + mise à jour de ce plan
+
+## 11) V3 — Login ORBIT DOCKING (scène spatiale Three.js)
+
+Référence : loehx.com (technique = **Three.js**, confirmé par leur post LinkedIn `cursor-threejs-astro`).
+
+### Concept
+1. **far** : starfield + nébuleuse + planètes ambient, planète JMH lointaine (orange, anneau, halo, lune) avec bouton-hint « Cliquez pour approcher »
+2. **approach** : clic/Enter → vol caméra ~1.35s (`easeInOutCubic`), boost étoiles
+3. **docked** : planète à gauche, panneau login décalé à droite (desktop), focus auto sur email
+4. **warp** : submit → étoiles étirées (`LineSegments`), fov kick, planète défilée, flash → portail existant (1400ms) → POST
+
+### Fichiers
+| Fichier | Rôle |
+|---|---|
+| `static/js/vendor/three.module.min.js` | Three **r160** pinné en local (670 Ko, aucun CDN à l'exécution) |
+| `static/js/orbit-space.js` | Scène + machine à états (import ESM **dynamique**) |
+| `static/css/orbit-space.css` | États, bouton-planète, retour, flash |
+| `templates/login.html` | Armement inline head + markup + tags `?v=1` |
+| `tests/test_login_space.py` | 3 tests (intégration, assets, fallback) |
+
+### Garde-fous (ne jamais retirer)
+- **Armement inline head** : masque le login classique (anti-flash) UNIQUEMENT si `!reduce` + WebGL OK ; **rescue 3000 ms** → si `orbit-space-active` absent → désarmement = login classique
+- **Import dynamique** avec `.catch` → échec = login classique (`disarm()`)
+- **Garde fps** : 90 premières frames, si moyenne < 35 fps → `fail()` → dispose + disarm
+- **`prefers-reduced-motion`** → jamais armé (login intact)
+- États en classes sur `<body>` : `orbit-state-far|approach|docked|static`
+- `static` = scène active mais login classique visible (armement expiré pendant le téléchargement)
+- Pause rAF sur `document.hidden` ; DPR ≤ 1.75 ; textures 100 % procédurales (canvas)
+- `visibility:hidden` en far/approach : jamais de tabulation dans un formulaire invisible
+
+### Pièges
+- `node --check` valide `import()` **dynamique** (jamais d'import statique dans ce fichier)
+- Three servi en local (pin) : ni CDN, ni dépendance réseau à l'exécution
+- Le portail (`z-index 1000`) est opaque → flash warp en `z-index 1002` (au-dessus) pour que le saut soit visible
+- Markup à conserver (asserté par les tests) : `orbitSpace`, `orbitPlanetBtn`, `orbitBackBtn`, `orbitFlash`

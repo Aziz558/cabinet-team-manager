@@ -1,0 +1,163 @@
+/* ============================================================
+   ORBIT DOCKING — scène spatiale du login (V1)
+   Progressif : sans JS/WebGL/reduced-motion, ce fichier ne fait
+   rien (toutes les règles sont scoppées sous .orbit-space-*).
+   États : armed (anti-flash) -> far -> approach -> docked
+           (+ static si armement expiré, + warp au submit)
+   ============================================================ */
+
+/* --- Canvas espace (affiché uniquement si la scène est active) --- */
+#orbitSpace {
+    display: none;
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+html.orbit-space-active #orbitSpace { display: block; }
+
+/* --- Masquage du login classique pendant l'armement (anti-flash) ---
+   Puis pilotage par l'état : far/approach cachent, docked/static affichent. */
+html.orbit-space-armed .login-container,
+html.orbit-space-active body.orbit-state-far .login-container,
+html.orbit-space-active body.orbit-state-approach .login-container {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(26px) !important;
+    pointer-events: none !important;
+    animation: none !important;
+}
+html.orbit-space-active .login-container {
+    transition: opacity .5s ease, transform .7s cubic-bezier(.16,1,.3,1), visibility 0s linear .5s !important;
+}
+html.orbit-space-active body.orbit-state-docked .login-container,
+html.orbit-space-active body.orbit-state-static .login-container {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    transition: opacity .5s ease .18s, transform .7s cubic-bezier(.16,1,.3,1) .18s, visibility 0s !important;
+}
+/* Docking desktop : planète à gauche, panneau décalé à droite */
+@media (min-width: 992px) {
+    html.orbit-space-active body.orbit-state-docked .login-container {
+        transform: translateX(clamp(150px, 19vw, 300px)) !important;
+    }
+}
+
+/* --- Les orbes/grille classiques laissent la place à l'espace --- */
+html.orbit-space-active .orb,
+html.orbit-space-active .grid-overlay {
+    opacity: 0 !important;
+    animation: none !important;
+    transition: opacity .8s ease;
+    pointer-events: none;
+}
+
+/* --- Bouton-planète (zone de clic = disque projeté sur la planète) --- */
+.orbit-planet-btn {
+    position: fixed; z-index: 4;
+    left: 50%; top: 40%;
+    transform: translate(-50%, -50%);
+    background: none; border: 0; padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.orbit-planet-btn[hidden] { display: none; }
+.orbit-planet-btn:focus-visible {
+    outline: 2px solid #FF8C00; outline-offset: 8px; border-radius: 50%;
+}
+.orbit-planet-hint {
+    position: absolute; left: 50%; top: calc(100% + 18px);
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    white-space: nowrap;
+    animation: orbitHintFloat 2.6s ease-in-out infinite;
+}
+.orbit-planet-name {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: rgba(255,255,255,.82);
+    background: rgba(10,12,18,.66);
+    border: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    padding: .34rem .7rem; border-radius: 999px;
+}
+.orbit-planet-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #FF8C00; box-shadow: 0 0 8px rgba(255,140,0,.9);
+    animation: orbitDotPulse 1.8s ease-in-out infinite;
+}
+.orbit-planet-cta {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .8rem; font-weight: 600; color: #111;
+    background: linear-gradient(135deg, #FF8C00, #FFA726);
+    padding: .46rem .95rem; border-radius: 999px;
+    box-shadow: 0 8px 26px -8px rgba(255,140,0,.65);
+    transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease;
+}
+.orbit-planet-btn:hover .orbit-planet-cta {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 34px -10px rgba(255,140,0,.8);
+}
+@keyframes orbitHintFloat {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-7px); }
+}
+@keyframes orbitDotPulse {
+    0%, 100% { opacity: 1; } 50% { opacity: .35; }
+}
+/* --- Bouton « Retour à l'espace » (état docked) --- */
+.orbit-back-btn {
+    position: fixed; top: 18px; left: 18px; z-index: 6;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: .5rem .95rem; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(12,14,20,.62);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: rgba(255,255,255,.78); font-size: .8rem; font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    opacity: 0; transform: translateY(-8px); pointer-events: none;
+    transition: opacity .35s ease, transform .35s ease, background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.orbit-back-btn[hidden] { display: none; }
+.orbit-back-btn:not([hidden]) {
+    opacity: 1; transform: none; pointer-events: auto;
+    transition-delay: .6s, .6s, 0s, 0s, 0s;  /* apparaît à la fin du docking */
+}
+.orbit-back-btn:hover {
+    background: rgba(22,26,36,.88); color: #fff; border-color: rgba(255,140,0,.45);
+}
+.orbit-back-btn:focus-visible { outline: 2px solid #FF8C00; outline-offset: 3px; }
+
+/* --- Flash du saut hyperespace (au-dessus du portail, z 1002) --- */
+.orbit-space-flash {
+    position: fixed; inset: 0; z-index: 1002;
+    pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at 50% 50%,
+        rgba(255,255,255,.98) 0%,
+        rgba(190,215,255,.75) 35%,
+        rgba(47,111,237,.28) 62%,
+        rgba(47,111,237,0) 85%);
+}
+.orbit-space-flash.on { animation: orbitWarpFlash 1.15s cubic-bezier(.35,0,.2,1) forwards; }
+@keyframes orbitWarpFlash {
+    0%   { opacity: 0; transform: scale(.6); }
+    55%  { opacity: 0; transform: scale(.8); }
+    75%  { opacity: .92; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.25); }
+}
+
+/* --- Mobile --- */
+@media (max-width: 991.98px) {
+    .orbit-planet-hint { top: calc(100% + 12px); }
+    .orbit-back-btn { top: 12px; left: 12px; }
+    .orbit-planet-cta { font-size: .76rem; padding: .42rem .85rem; }
+}
+
+/* --- Accessibilité : pas d'animation si mouvement réduit --- */
+@media (prefers-reduced-motion: reduce) {
+    .orbit-planet-hint, .orbit-planet-dot, .orbit-space-flash.on { animation: none !important; }
+    html.orbit-space-active .login-container { transition: none !important; }
+}
