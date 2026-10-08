@@ -160,6 +160,7 @@ node --check 'C:\...\orbit-premium.js'          # doit être 0
 - **V2.1** ✅ correctifs feedback : écran noir inter-pages supprimé (→ `@view-transition` natif), tilt + hovers déplaçant la boîte supprimés (flicker d'arêtes), glow orange hover retiré, intro limitée à la 1re page/session, animations ≤ 0.3s
 - **V3** ✅ login ORBIT DOCKING : scène spatiale Three.js (far/approach/docked/warp) — voir §11
 - **V3b** ✅ polish ciblé Dashboard / Tâches / Dossiers / Pennylane (tables, filtres animés, skeletons LCP) + neutralisation définitive des hover déplaçants + micro-opti perf
+- **V3c** 🟠 Micro-interactions enrichies : curseur stellaire implémenté — son optionnel à venir
 - **V4** : audit Lighthouse (LCP <1.8s, CLS 0, a11y 100)
 
 ## 10) Garde-fous

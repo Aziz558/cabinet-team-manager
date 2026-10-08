@@ -29,6 +29,22 @@
             io.observe(el);
         });
     }
+    
+    /* 7) STELLAR CURSOR — légère traîne de particules au curseur sur les éléments interactifs */
+    function initStellarCursor() {
+        if (reduce) return;
+        var canvas = document.createElement('canvas');
+        canvas.className = 'orbit-stellar-canvas';
+        canvas.style.cssText = 'position:fixed;pointer-events:none;top:0;left:0;width:100%;height:100%;z-index:9999';
+        document.body.appendChild(canvas);
+        var ctx = canvas.getContext('2d'), w, h, pts = [], max = 3, lx = 0, ly = 0, mx = 0, my = 0, over = false, lt = 0, fps = 60, fpsTimeout;
+        function rsz() { w = window.innerWidth; h = window.innerHeight; canvas.width = w * dpr; canvas.height = h * dpr; ctx.scale(dpr, dpr); }
+        var dpr = window.devicePixelRatio;
+        function intEl(el) { if (!el) return false; var tags = ['BUTTON','A','INPUT','SELECT','TEXTAREA']; if (tags.indexOf(el.tagName) !== -1) return true; var s = getComputedStyle(el); return s.cursor === 'pointer' || el.closest('.btn-premium,.qa-btn,.btn-login,.card-premium,.stat-card,.task-card,.kpi-chip,.badge,.sidebar-nav-item,.orbit-tool-btn,.avm-panel-chip,.theme-choice,.orbit-drawer-btn,.orbit-drawer-close,.orbit-fav-btn,.orbit-search-btn,.orbit-logo,.orbit-palette,.orbit-help,.orbit-theme') !== null; }
+        function onm(e) { mx = e.clientX; my = e.clientY; over = false; var t = e.target; while (t && t !== document.body) { if (intEl(t)) { over = true; break; } t = t.parentElement; } }
+        function rend(t) { if (!lt) lt = t; var d = t - lt; if (fpsTimeout) clearTimeout(fpsTimeout); fps = 1000/(d||16); fpsTimeout = setTimeout(()=>fps=60,1000); if (fps < 35) { ctx.clearRect(0,0,w,h); lt = t; requestAnimationFrame(rend); return; } lt = t; ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(0,0,w,h); if (over && pts.length < max) { var ox = (Math.random()-0.5)*2, oy = (Math.random()-0.5)*2; pts.push({x:mx+ox,y:my+oy,a:0.8,s:1+Math.random()*1.5}); } for (var i = pts.length-1; i >= 0; i--) { var p = pts[i]; p.a -= 0.02; if (p.a <= 0) { pts.splice(i,1); continue; } ctx.beginPath(); ctx.arc(p.x,p.y,p.s,0,Math.PI*2); ctx.fillStyle = 'rgba(255,140,0,'+p.a+')'; ctx.fill(); } requestAnimationFrame(rend); }
+        rsz(); window.addEventListener('resize',rsz); window.addEventListener('orientationchange',rsz); document.addEventListener('mousemove',onm); requestAnimationFrame(rend);
+    }
     /* 2) RIPPLE — effet onde au clic sur les boutons */
     function initRipple() {
         if (reduce) { return; }
@@ -78,7 +94,7 @@
     }
 
     function init() {
-        try { initToastDock(); initReveal(); initRipple(); initPrefetch(); initProgress(); initSmoothAnchors(); }
+        try { initToastDock(); initReveal(); initRipple(); initPrefetch(); initProgress(); initSmoothAnchors(); initStellarCursor(); }
         catch (e) { if (window.console && console.warn) { console.warn('[orbit-premium]', e); } }
     }
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
