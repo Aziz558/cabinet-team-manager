@@ -31,3 +31,22 @@ jobs:
 
       - name: Lancer les tests
         run: pytest -q
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger Render Deploy
+        run: |
+          curl -X POST "https://api.render.com/v1/services/srv-cabinet-team-manager/deploys" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -d '{"clearCache": true}'
+
+      - name: Wait for Deploy to Complete
+        run: |
+          sleep 30

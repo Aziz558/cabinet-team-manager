@@ -43,7 +43,10 @@
         sync: false
       - key: USE_POSTGRES
         value: "true"
-
+  deployHook:
+    # Deploy hook URL for GitHub Actions to trigger manual deploys
+    # This URL is provided by Render when you enable GitHub
+    # Integration
 # databases:
 #   (Render Postgres gratuit retire — expire au bout de 30 jours.
 #    La base est desormais chez Neon: ep-hidden-credit-b1b5lypv, region eu-central-1)

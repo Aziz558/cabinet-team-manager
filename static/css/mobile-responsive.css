@@ -1,0 +1,205 @@
+/* ============================================================
+   MOBILE RESPONSIVE STYLES - JMH Orbit (V1)
+   Optimisations spécifiques mobile pour une expérience utilisable
+  =========================================================== */
+
+/* ---------- 1) MEDIA QUERIES PRINCIPALES ---------- */
+@media (max-width: 991.98px) {
+    /* --- Viewport et base --- */
+    html {
+        font-size: 14px;
+    }
+    
+    /* --- Boutons et éléments interactifs --- */
+    .btn, button, .qa-btn, .stat-card, .task-item {
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+    }
+    
+    .qa-btn {
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 1rem 0.75rem;
+        text-align: center;
+    }
+    
+    /* --- Navigation et éléments fixes --- */
+    .app-topbar {
+        padding: 0.75rem 1rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    /* --- Cartes de statistiques --- */
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+        border-radius: var(--radius-md);
+    }
+    
+    /* --- Paniers latéraux (drawers) --- */
+    .orbit-drawer {
+        width: min(320px, 88vw);
+        border-left: none;
+        box-shadow: -12px 0 36px -12px rgba(16, 24, 40, 0.25);
+    }
+    
+    /* --- Barre de recherche et filtres --- */
+    .filter-bar {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    /* --- Listes et éléments de liste --- */
+    .today-list {
+        margin: 0 -1rem;
+    }
+    
+    .today-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    /* --- Formulaires --- */
+    input, select, textarea {
+        font-size: 16px;
+        padding: 0.875rem 1rem;
+        border-radius: var(--radius-md);
+    }
+    
+    /* --- Barre de navigation mobile --- */
+    .mobile-nav-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-elevated);
+        border-top: 1px solid var(--border-color);
+        padding: 0.5rem;
+        display: flex;
+        justify-content: space-around;
+        gap: 0.5rem;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+    }
+    
+    .mobile-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.75rem 0.5rem;
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+    }
+    
+    .mobile-nav-item:hover, .mobile-nav-item.active {
+        background: var(--bg-hover);
+        color: var(--orange-primary);
+    }
+    
+    .mobile-nav-icon {
+        font-size: 1.25rem;
+    }
+    
+    /* --- Zone de contenu pour éviter le recouvrement --- */
+    .content-with-mobile-nav {
+        padding-bottom: 4rem;
+    }
+    
+    /* --- États de survol sur mobile --- */
+    .btn, button, a, .touch-target {
+        -webkit-tap-highlight-color: transparent;
+        transition: all var(--transition-fast);
+    }
+    
+    .btn:active, button:active, a:active, .touch-target:active {
+        transform: scale(0.95);
+    }
+    
+    /* --- Surcharges pour petits écrans --- */
+    @media (max-width: 576px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .quick-actions-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+}
+
+    /* ---------- Drawer / tiroir mobile ---------- */
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(8, 9, 11, .55);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity .2s ease;
+        z-index: 1039;
+    }
+
+    @media (max-width: 767.98px) {
+        body.sidebar-open .sidebar-backdrop {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        #sidebarCol {
+            display: flex !important;
+            position: fixed !important;
+            top: 56px;
+            left: 0;
+            bottom: 0;
+            width: 240px !important;
+            max-width: 82vw;
+            padding: 0;
+            transform: translateX(-100%);
+            transition: transform .26s ease;
+            box-shadow: 0 0 40px rgba(0,0,0,.35);
+            z-index: 1040;
+        }
+
+        #sidebarCol .sidebar {
+            position: static;
+            width: 100% !important;
+            height: 100%;
+            box-shadow: none;
+        }
+
+        #sidebarCol .sidebar-nav-item span,
+        #sidebarCol .sidebar-section-title,
+        #sidebarCol .sidebar-brand-text,
+        #sidebarCol .sidebar-subtitle {
+            display: inline-block !important;
+        }
+
+        #sidebarCol .sidebar-nav-item {
+            justify-content: flex-start !important;
+            padding: .55rem .75rem !important;
+        }
+
+        body.sidebar-open #sidebarCol {
+            transform: translateX(0);
+        }
+
+        body.sidebar-open {
+            overflow: hidden;
+        }
+
+        /* Bouton hamburger réaffiché sur mobile */
+        .app-topbar-toggle {
+            display: flex !important;
+        }
+    }

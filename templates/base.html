@@ -90,8 +90,10 @@
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="{{ url_for('static', filename='css/style.css') }}?v=9" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/style.css') }}?v=9" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=4" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/mobile-responsive.css') }}" rel="stylesheet">
+    <!-- Mobile-responsive.css loaded last to override desktop styles on small screens -->
     <link href="{{ url_for('static', filename='css/polish.css') }}?v=9" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/workspace.css') }}?v=8" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=3" rel="stylesheet">
@@ -232,7 +234,7 @@
     <main class="container-fluid" style="padding-top: 72px;">
         <div class="row">
             {% if current_user.is_authenticated %}
-            <div class="col-auto h-100 d-none d-md-flex" id="sidebarCol" style="width: 220px; position: relative;">
+            <div class="col-auto h-100 d-block d-md-block" id="sidebarCol" style="width: 220px; position: relative;">
                 {% include 'includes/sidebar.html' %}
             </div>
             {% endif %}
@@ -673,6 +675,111 @@ function changeNotifSound(value) {
     
     <!-- Premium layer : micro-interactions studio (ripple, reveal, tilt) -->
     <script src="{{ url_for('static', filename='js/orbit-premium.js') }}?v=6" defer></script>
+<!-- Mobile Enhancement Script -->
+    <script>
+    (function() {
+        // Detects and adds mobile-specific enhancements
+        var isMobile = () => {
+            return (window.innerWidth <= 991.98) || 
+                   ('ontouchstart' in window) ||
+                   (navigator.maxTouchPoints > 0) ||
+                   (navigator.msMaxTouchPoints > 0);
+        };
+        
+        if (isMobile()) {
+            document.documentElement.classList.add('mobile-device');
+            
+            // Enhanced touch feedback
+            var style = document.createElement('style');
+            style.textContent = `
+                .mobile-device {
+                    /* Improve touch targets */
+                    --touch-min-height: 44px;
+                    --touch-min-width: 44px;
+                }
+                
+                .mobile-device .btn, 
+                .mobile-device button, 
+                .mobile-device a.touch-target {
+                    position: relative;
+                    min-height: var(--touch-min-height);
+                    min-width: var(--touch-min-width);
+                    -webkit-tap-highlight-color: transparent;
+                    touch-action: manipulation;
+                }
+                
+                .mobile-device .btn:active,
+                .mobile-device button:active,
+                .mobile-device a.touch-target:active {
+                    transform: scale(0.92);
+                    opacity: 0.8;
+                }
+                
+                /* Improve mobile scrolling */
+                .mobile-device body {
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior: contain;
+                }
+                
+                /* Prevent zoom on input focus (iOS) */
+                .mobile-device input[type="text"],
+                .mobile-device input[type="email"],
+                .mobile-device input[type="password"],
+                .mobile-device select,
+                .mobile-device textarea {
+                    font-size: 16px !important;
+                    border-radius: 8px;
+                    padding: 12px 14px;
+                    -webkit-appearance: none;
+                    appearance: none;
+                }
+                
+                /* Mobile drawer improvements */
+                .mobile-device .orbit-drawer,
+                .mobile-device .orbit-palette {
+                    transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
+                }
+                
+                /* Hide desktop-only elements on mobile */
+                .mobile-device .desktop-only {
+                    display: none !important;
+                }
+                
+                /* Show mobile-only elements on mobile */
+                .mobile-device .mobile-only {
+                    display: block !important;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Initialize mobile enhancements
+            setTimeout(function() {
+                var app = document.querySelector('.app-container');
+                if (app) {
+                    // Add mobile class for CSS targeting
+                    app.classList.add('mobile-optimized');
+                }
+                
+                // Prevent double-tap zoom on mobile
+                var lastTouchEnd = 0;
+                document.addEventListener('touchend', function(event) {
+                    var now = new Date().getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        event.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, false);
+                
+                // Improve mobile viewport handling
+                var viewport = document.querySelector('meta[name="viewport"]');
+                if (viewport && !viewport.content.includes('interactive-widget')) {
+                    viewport.setAttribute('content', 
+                        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                }
+            }, 100);
+        }
+    })();
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
