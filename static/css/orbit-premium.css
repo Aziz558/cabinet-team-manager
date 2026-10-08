@@ -256,3 +256,227 @@ html { scrollbar-gutter: stable; }
 .orbit-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: var(--orange-primary); z-index: 9999; transition: width .2s var(--orbit-ease); opacity: 0; pointer-events: none; }
 .orbit-progress.is-on { opacity: 1; }
 
+/* ============================================================
+   V3B — POLISH PAGES : Dashboard / Tâches / Dossiers / Pennylane
+   Règles §5 respectées : AUCUNE géométrie au hover (ombre/fond
+   seuls), animations <= .3s, aucun glow orange.
+   ============================================================ */
+
+/* --- Tâches : le socle a un hover qui DÉPLACE la carte (translateY)
+       -> flicker d'arêtes. Neutralisé + bordure neutre. --- */
+.task-card {
+  transition: box-shadow .25s var(--orbit-ease), border-color .25s var(--orbit-ease), background-color .25s var(--orbit-ease) !important;
+}
+.task-card:hover {
+  transform: none !important;
+  border-color: var(--border-strong);
+  box-shadow: var(--orbit-shadow-float);
+}
+/* Urgence : accent rouge + teinte de fond douce (fonctionnel, pas décoratif) */
+.task-card.task-overdue {
+  border-left: 3px solid var(--danger);
+  background: color-mix(in srgb, var(--danger-bg) 40%, var(--bg-card));
+}
+
+/* --- Tâches : filtres AVM — hover fond/bordure seule, puce sans translate --- */
+.avm-fico {
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease !important;
+}
+.avm-fico:hover { background: var(--bg-elevated); border-color: var(--border-strong); }
+.avm-panel-chip:hover { transform: none; }   /* le socle déplace la puce -> flicker */
+
+/* --- Tables (Dossiers & co) : chiffres tabulaires + zebra subtil +
+       entrée en fondu des 12 premières lignes (pas de tempête sur les grosses listes) --- */
+.table-premium td { font-variant-numeric: tabular-nums; }
+.table-premium tbody tr:nth-child(even):not(:hover) td {
+  background: color-mix(in srgb, var(--bg-card-hover) 55%, transparent);
+}
+.table-premium tbody tr:nth-child(-n+12) { animation: orbitRowIn .25s var(--orbit-ease) both; }
+@keyframes orbitRowIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- Toolbar sticky (Tâches/Dossiers) : verre plus net --- */
+.orbit-toolbar {
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/* --- Dashboard : le contenu KPI apparaît en fondu au sortir du skeleton
+       (l'animation ne joue que quand #kpiContent passe de none à grid) --- */
+#kpiContent { animation: orbitRise .3s var(--orbit-ease) both; }
+.skeleton-stat::after, .skeleton-card::after { animation-duration: .95s; }
+
+/* --- Pennylane : carte triage — hover neutre sur le détail --- */
+#plTriageCard .pl-tr-row { transition: background-color .18s ease; }
+#plTriageCard .pl-tr-row:hover { background: color-mix(in srgb, var(--orange-subtle) 55%, transparent); }
+#plTriageCard .pl-tr-toggle { transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+#plTriageCard .pl-tr-toggle:hover { box-shadow: 0 0 0 3px var(--bg-hover); }
+#plTriageCard .pl-tr-body { scrollbar-width: thin; }
+#plTriageCard .pl-tr-body::-webkit-scrollbar { width: 6px; }
+#plTriageCard .pl-tr-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+
+/* ============================================================
+   V3B — POLISH PAGES : Dashboard / Tâches / Dossiers / Pennylane (suite)
+   Neutralisation définitive de TOUS les hover déplaçants du socle
+   Règle or : AUCUNE géométrie au hover (ombre/fond seuls)
+   ============================================================ */
+
+/* --- BASE HOVER NEUTRALISATIONS (tout ce qui bouge encore) --- */
+.stat-card:hover,
+.dash-alert:hover,
+.dash-notif:hover,
+.task-card:hover,
+.task-item:hover,
+.badge:hover,
+.sidebar-nav-item:hover i,
+/* --- POLISH.CSS HOVER NEUTRALISATIONS --- */
+.btn-premium:hover,
+.btn-premium-primary:hover,
+.btn-premium-secondary:hover,
+.theme-choice:hover,
+.qa-btn:hover,
+.orbit-logo:hover .orbit-core,
+/* --- STYLE.CSS HOVER NEUTRALISATIONS --- */
+.btn-premium-success:hover,
+.btn-premium-warning:hover,
+.btn-premium-danger:hover,
+.btn-premium-info:hover,
+.hover-lift:hover,
+.tilt-card:hover,
+.interactive:hover,
+.suggestion-card:hover,
+.equipe-cards-container .card-premium:hover,
+/* --- UTILITAIRES & DIVERS --- */
+.avm-panel-chip:hover,
+.orbit-drawer-close:hover,
+.orbit-drawer-btn:hover,
+.orbit-fav-btn:hover,
+.orbit-tool-btn:hover,
+.kpi-chip:hover,
+.dash-alert:hover,
+.dash-notif:hover,
+/* ==== APPLICATION DE LA NEUTRALISATION ==== */
+{
+  transform: none !important;
+}
+
+/* --- Specific overrides where we keep color/shadow but KILL geometry --- */
+.dash-alert:hover {
+  box-shadow: 0 6px 16px -8px rgba(244,67,54,.45);
+  border-color: rgba(244,67,54,.45) !important;
+}
+.dash-notif:hover {
+  background: rgba(255,140,0,.10) !important;
+}
+.theme-choice:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.qa-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+.btn-premium:hover {
+  box-shadow: var(--orbit-shadow-card);
+  filter: brightness(1.02);
+}
+.btn-premium-primary:hover {
+  box-shadow: 0 10px 28px -10px rgba(255,140,0,.65) !important;
+}
+.btn-premium-secondary:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+}
+.btn-premium-success:hover,
+.btn-premium-warning:hover,
+.btn-premium-danger:hover,
+.btn-premium-info:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+}
+.hover-lift:hover,
+.tilt-card:hover,
+.interactive:hover,
+.suggestion-card:hover,
+.equipe-cards-container .card-premium:hover {
+  box-shadow: var(--orbit-shadow-float);
+}
+.badge:hover {
+  background: color-mix(in srgb, var(--orange-subtle) 15%, transparent);
+}
+.sidebar-nav-item:hover i {
+  color: var(--text-primary);
+}
+.avm-panel-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.orbit-drawer-close:hover,
+.orbit-drawer-btn:hover {
+  background: var(--bg-card-hover);
+}
+.orbit-fav-btn:hover {
+  color: var(--orange-primary);
+  transform: scale(1.18);
+}
+.orbit-tool-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+.kpi-chip:hover {
+  background: color-mix(in srgb, var(--orange-subtle) 55%, transparent);
+  border-color: var(--border-strong);
+}
+
+/* ============================================================
+   V3B-BIS — MICRO-OPTIMs PERF (reduire travail compositor)
+   ============================================================ */
+
+/* --- Réduire les peintures inutiles sur les grosses listes --- */
+.table-premium tbody tr {
+  will-change: background-color;
+}
+
+/* --- Animation KPI uniquement au besoin (pas en boucle) --- */
+#kpiContent {
+  animation-fill-mode: forwards;
+}
+
+/* --- Skeleton plus léger --- */
+.skeleton-stat::after,
+.skeleton-card::after {
+  animation-duration: 1.2s;
+}
+
+/* --- Désactiver les effets coûteux si batterie faible ou perf médiocre --- */
+@media (update: slow) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ============================================================
+   V3B-TER — NETTOYAGE & SÉCURITÉ
+   ============================================================ */
+
+/* --- Supprimer les pseudo-classes vides ou dangereux --- */
+body::before {
+  content: "" !important;
+}
+
+/* --- Empêcher les outline agressifs en navigation clavier --- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--orange-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255, 140, 0, .16);
+}
+
+/* --- Sécuriser les variables manquantes --- */
+:root {
+  --danger: #EF5350;
+  --danger-bg: rgba(239,83,80,.1);
+  --orange-subtle: rgba(255,140,0,.12);
+  --bg-elevated: rgba(255,255,255,.04);
+  --bg-card-hover: rgba(255,255,255,.03);
+  --orbit-ease: cubic-bezier(.16,1,.3,1);
+}
