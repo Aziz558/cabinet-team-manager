@@ -1,5 +1,5 @@
 ﻿/* ============================================================
-   ORBIT PREMIUM â€” micro-interactions studio (v2.1)
+   ORBIT PREMIUM â€” micro-interactions studio (v2.2)
    Intro animee 1re page/session, ripple, prefetch, barre de
    progression, ancres fluides.
    RETIRES (feedback utilisateur) : fondu inter-pages (ecran noir)
