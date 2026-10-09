@@ -11,7 +11,7 @@ def test_login_integre_la_scene_spatiale(client):
     html = r.get_data(as_text=True)
     assert r.status_code == 200
     assert 'orbit-space.css?v=1' in html
-    assert 'orbit-space.js?v=1' in html
+    assert 'orbit-space.js?v=2' in html
     assert 'id="orbitSpace"' in html
     assert 'id="orbitPlanetBtn"' in html
     assert 'id="orbitBackBtn"' in html
