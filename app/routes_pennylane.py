@@ -392,8 +392,33 @@ def pennylane_page():
                 pl_last_sync = _json.loads(_ls.valeur)
         except Exception:
             pl_last_sync = None
+
+    # --- Auto-vérification des NOUVEAUX documents à l'ouverture de la page ---
+    # Render free met l'app en veille après ~15 min : le cron horaire APScheduler
+    # ne tourne presque jamais. On relance donc la détection (notifications +
+    # emails) à chaque ouverture de /pennylane, au plus 1 fois toutes les 15 min.
+    pl_auto_check = None
+    if not app.config.get('TESTING'):
+        try:
+            import time as _time
+            from app.integrations.pennylane import allchk_status, check_all_dossiers_async
+            _st = allchk_status()
+            _last = 0.0
+            if _st.get('quand'):
+                from datetime import datetime as _dt
+                try:
+                    _last = _dt.fromisoformat(str(_st['quand']).replace('Z', '+00:00')).timestamp()
+                except Exception:
+                    _last = 0.0
+            if not _st.get('running') and (_time.time() - _last) > 900:
+                _res = check_all_dossiers_async()
+                if _res.get('launched'):
+                    pl_auto_check = 'Vérification automatique des nouveaux documents lancée.'
+        except Exception as _e:
+            app.logger.warning(f'pennylane auto-check: {_e}')
+
     return render_template('pennylane.html', configured=configured, test_result=test_result,
-                           pl_last_sync=pl_last_sync,
+                           pl_last_sync=pl_last_sync, pl_auto_check=pl_auto_check,
                            is_admin=is_admin,
                            dossiers_associes=dossiers_associes, dossiers_non_associes=dossiers_non_associes,
                            par_equipe=par_equipe, equipes_list=equipes_list,
@@ -477,6 +502,34 @@ def pennylane_sync():
         return jsonify(result)
     except Exception as e:
         return jsonify({'ok': False, 'message': f'Erreur synchro: {str(e)}'})
+
+
+@app.route('/pennylane/check_new_docs', methods=['POST'])
+@login_required
+def pennylane_check_new_docs():
+    """Bouton « Vérifier les nouveaux documents » : lance (en arrière-plan)
+    la détection des nouveaux documents/transactions sur TOUS les dossiers
+    connectés -> notifications in-app + emails Brevo pour manager/collab."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès réservé aux admins/managers.'}), 403
+    from app.integrations.pennylane import check_all_dossiers_async, allchk_status
+    res = check_all_dossiers_async()
+    if res.get('launched'):
+        return jsonify({'ok': True, 'running': True,
+                        'message': 'Vérification lancée — les notifications partent '
+                                   'au fur et à mesure de la détection.'})
+    return jsonify({'ok': True, 'running': True,
+                    'message': 'Une vérification est déjà en cours…'})
+
+
+@app.route('/pennylane/check_new_docs_status')
+@login_required
+def pennylane_check_new_docs_status():
+    """État de la vérification globale (pour le polling du bouton)."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+    from app.integrations.pennylane import allchk_status
+    return jsonify({'ok': True, 'etat': allchk_status()})
 
 
 @app.route('/pennylane/dossier/<int:dossier_id>')

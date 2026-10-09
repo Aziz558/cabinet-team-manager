@@ -17,6 +17,12 @@
 </div>
 
 <!-- Dashboard stats (données réelles) -->
+{% if pl_auto_check %}
+<div class="p-3 rounded-3 mb-3" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
+    <i class="bi bi-arrow-repeat me-2" style="color:var(--orange-primary);"></i>
+    <span class="small">{{ pl_auto_check }} — les notifications partent au fur et à mesure.</span>
+</div>
+{% endif %}
 <div class="row g-3 mb-4" id="plStatsRow">
     <div class="col-md-3 col-sm-6">
         <div class="pl-stat-card">
@@ -82,14 +88,18 @@
                 <small class="text-tertiary">Token actuel : <code>{{ token_masque }}</code> (laissez vide pour conserver)</small>
                 {% endif %}
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
                 <button type="submit" class="btn-premium btn-premium-primary btn-press">
                     <i class="bi bi-plug me-1"></i>Enregistrer & tester
                 </button>
                 <button type="button" class="btn-premium btn-premium-secondary btn-press" onclick="syncPl()">
                     <i class="bi bi-arrow-repeat me-1"></i>Synchroniser les dossiers
                 </button>
+                <button type="button" class="btn-premium btn-premium-secondary btn-press" id="plCheckNewBtn" onclick="plCheckNewDocs(this)">
+                    <i class="bi bi-bell me-1"></i>Vérifier les nouveaux documents
+                </button>
             </div>
+            <div id="plCheckNewStatus" class="mt-2"></div>
         </form>
 
         {% if test_result %}
@@ -548,6 +558,72 @@ function syncPl() {
         .then(r => r.json())
         .then(d => showPl(d.message || 'OK', d.ok))
         .catch(err => showPl('Erreur réseau: ' + err.message, false));
+}
+
+/* ===== Vérification manuelle des nouveaux documents (notifications + emails) =====
+   Lance la détection en arrière-plan puis interroge /check_new_docs_status
+   toutes les 3 s jusqu'à la fin (progression faits/dossiers + nb nouveaux). */
+function plCheckNewDocs(btn) {
+    var original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Vérification...';
+    var stEl = document.getElementById('plCheckNewStatus');
+    function paint(html, ok) {
+        if (!stEl) return;
+        stEl.innerHTML = '<div class="p-3 rounded-3" style="background:' +
+            (ok ? 'var(--success-bg);border:1px solid var(--success);' : 'var(--bg-card-hover);border:1px solid var(--border-color);') + '">' +
+            (ok ? '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' : '<i class="bi bi-hourglass-split me-2" style="color:var(--orange-primary);"></i>') +
+            html + '</div>';
+    }
+    fetch('/pennylane/check_new_docs', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            paint(d.message || (d.ok ? 'Vérification lancée…' : 'Erreur'), !!d.ok);
+            if (!d.ok) { btn.disabled = false; btn.innerHTML = original; return; }
+            var tries = 0;
+            var maxTries = 100; /* ~5 min max */
+            var iv = setInterval(function () {
+                tries++;
+                if (tries > maxTries) {
+                    clearInterval(iv);
+                    btn.disabled = false; btn.innerHTML = original;
+                    paint('Délai dépassé — rechargez la page pour voir l\u2019état final.', false);
+                    return;
+                }
+                fetch('/pennylane/check_new_docs_status')
+                    .then(r => r.json())
+                    .then(st => {
+                        var e = (st && st.etat) || {};
+                        if (e.running) {
+                            paint('<i class="bi bi-arrow-repeat me-1"></i>Vérification en cours : ' +
+                                  (e.faits || 0) + '/' + (e.dossiers || '?') + ' dossier(s) — ' +
+                                  (e.nouveaux || 0) + ' nouveau(x) détecté(s)…', false);
+                        } else {
+                            clearInterval(iv);
+                            btn.disabled = false; btn.innerHTML = original;
+                            if ((e.faits || 0) === 0 && !e.quand) {
+                                paint('Aucun résultat.', false);
+                                return;
+                            }
+                            var msg = 'Terminé : ' + (e.faits || 0) + ' dossier(s) vérifié(s), ' +
+                                      (e.nouveaux || 0) + ' nouveau(x) document(s) détecté(s)' +
+                                      ((e.erreurs || 0) ? ' — ' + e.erreurs + ' erreur(s)' : '') + '.';
+                            paint(msg, true);
+                            if ((e.nouveaux || 0) > 0) {
+                                plToast((e.nouveaux) + ' nouveau(x) document(s) — notifications envoyées.', true);
+                                setTimeout(function () { plRefreshData(true); }, 800);
+                            } else {
+                                plToast('Aucun nouveau document.', true);
+                            }
+                        }
+                    })
+                    .catch(function () { /* poll silencieux */ });
+            }, 3000);
+        })
+        .catch(err => {
+            paint('Erreur réseau: ' + err, false);
+            btn.disabled = false; btn.innerHTML = original;
+        });
 }
 
 /* ===== Dashboard temps réel : toasts, recherche, filtres, tri ===== */

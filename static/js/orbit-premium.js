@@ -30,7 +30,8 @@
         });
     }
     
-    /* 7) STELLAR CURSOR - SUPPRIME (assombrissement background) */\n    function initStellarCursor() { /* retired */ }
+    /* 7) STELLAR CURSOR - SUPPRIME (assombrissement background) */
+    function initStellarCursor() { /* retired */ }
     /* 2) RIPPLE â€” effet onde au clic sur les boutons */
     function initRipple() {
         if (reduce) { return; }

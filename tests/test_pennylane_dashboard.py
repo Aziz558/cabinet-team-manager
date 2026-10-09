@@ -44,3 +44,37 @@ def test_pennylane_marquer_traite_membre_refuse(membre_client, seed):
     """Un membre sans droits sur le dossier (d2 = collab 'autre') est refusé (403)."""
     r = membre_client.post(f"/pennylane/dossier/{seed['d2']}/marquer_traite")
     assert r.status_code == 403
+
+
+def test_pennylane_bouton_nouveaux_visible(admin_client):
+    """Le bouton « Vérifier les nouveaux documents » + sa zone de statut sont rendus."""
+    html = admin_client.get('/pennylane').get_data(as_text=True)
+    assert 'plCheckNewDocs' in html
+    assert 'plCheckNewStatus' in html
+    assert 'Vérifier les nouveaux documents' in html
+
+
+def test_check_new_docs_lance_la_verification(admin_client):
+    """POST /pennylane/check_new_docs lance (ou réutilise) la vérification globale
+    et répond avec running=True — pas d'appel bloquant à l'API Pennylane."""
+    r = admin_client.post('/pennylane/check_new_docs')
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j['ok'] is True
+    assert j['running'] is True
+    assert j['message']
+
+
+def test_check_new_docs_status_shape(admin_client):
+    """GET /pennylane/check_new_docs_status renvoie l'état persistant (dict)."""
+    r = admin_client.get('/pennylane/check_new_docs_status')
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j['ok'] is True
+    assert isinstance(j['etat'], dict)
+
+
+def test_check_new_docs_membre_refuse(membre_client):
+    """Un simple membre ne peut pas lancer la vérification globale (403)."""
+    r = membre_client.post('/pennylane/check_new_docs')
+    assert r.status_code == 403

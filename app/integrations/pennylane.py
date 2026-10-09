@@ -11,6 +11,7 @@ Base URL API   : https://api.pennylane.com
 import requests
 import logging
 import time
+import threading
 import json as _json
 from datetime import datetime, date
 
@@ -118,6 +119,109 @@ def _refresh_in_background(dossier_id):
 
     import threading
     threading.Thread(target=_work, daemon=True).start()
+
+
+# ---------------------------------------------------------------------------
+# Vérification GLOBALE des nouveaux documents (bouton « Vérifier maintenant »
+# + auto au chargement de /pennylane + cron horaire).
+# Sur Render free, l'instance se met en veille après ~15 min d'inactivité :
+# le cron APScheduler ne tourne donc presque jamais. Pour que les notifications
+# partent sans attendre, on déclenche la vérification dès l'ouverture de la
+# page Pennylane (au plus 1 fois / 15 min) et via un bouton manuel.
+# ---------------------------------------------------------------------------
+_ALLCHK_LOCK = threading.Lock()
+_ALLCHK_RUNNING = False
+ALLCHK_KEY = 'PENNYLANE_NEWDOCS_CHECK'
+
+
+def _allchk_save(payload: dict):
+    """Persiste l'état de la vérification globale (AppSetting partagé entre workers)."""
+    from app import db
+    from app.models import AppSetting
+    try:
+        data = dict(payload)
+        data['quand'] = datetime.utcnow().isoformat() + 'Z'
+        s = AppSetting.query.filter_by(cle=ALLCHK_KEY).first()
+        v = _json.dumps(data, ensure_ascii=False, default=str)
+        if not s:
+            s = AppSetting(cle=ALLCHK_KEY, valeur=v, type_valeur='json', service='pennylane')
+            db.session.add(s)
+        else:
+            s.valeur = v
+        db.session.commit()
+    except Exception as e:
+        logger.warning(f'allchk save: {e}')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def allchk_status() -> dict:
+    """État de la dernière/vérification en cours de vérification globale."""
+    from app.models import AppSetting
+    try:
+        s = AppSetting.query.filter_by(cle=ALLCHK_KEY).first()
+        if s and s.valeur:
+            return _json.loads(s.valeur)
+    except Exception:
+        pass
+    return {}
+
+
+def check_all_dossiers_async() -> dict:
+    """Lance (au plus 1 à la fois) la vérification force_refresh de TOUS les
+    dossiers connectés : détection des nouveaux documents -> notifications
+    in-app + emails Brevo. Non bloquant : l'état est suivi dans AppSetting
+    (PENNYLANE_NEWDOCS_CHECK) et l'UI le consulte via /pennylane/check_new_docs_status.
+    """
+    global _ALLCHK_RUNNING
+    with _ALLCHK_LOCK:
+        if _ALLCHK_RUNNING:
+            return {'launched': False, 'running': True}
+        _ALLCHK_RUNNING = True
+    _allchk_save({'running': True, 'faits': 0, 'dossiers': 0, 'nouveaux': 0, 'erreurs': 0})
+
+    def _work():
+        global _ALLCHK_RUNNING
+        from app import app as flask_app
+        from app.models import Dossier as _D
+        stats = {'running': True, 'faits': 0, 'dossiers': 0, 'nouveaux': 0, 'erreurs': 0}
+        try:
+            with flask_app.app_context():
+                conn = _D.query.filter(_D.pennylane_api_token.isnot(None),
+                                       _D.pennylane_api_token != '').all()
+                cust = _D.query.filter(
+                    _D.pennylane_customer_id.isnot(None),
+                    (_D.pennylane_api_token.is_(None)) | (_D.pennylane_api_token == '')
+                ).all()
+                tous = list(conn) + list(cust)
+                stats['dossiers'] = len(tous)
+                _allchk_save(stats)
+                logger.info(f'allchk: vérification de {len(tous)} dossier(s) lancée')
+                for d in tous:
+                    try:
+                        res = get_dossier_pennylane_data(d, force_refresh=True)
+                        if res.get('nouveaux'):
+                            stats['nouveaux'] += len(res['nouveaux'])
+                    except Exception as e:
+                        logger.warning(f'allchk dossier {d.id}: {e}')
+                        stats['erreurs'] += 1
+                    stats['faits'] += 1
+                    _allchk_save(stats)
+                logger.info(f'allchk terminé: {stats}')
+        except Exception as e:
+            logger.error(f'allchk global: {e}')
+            stats['erreurs'] += 1
+        finally:
+            stats['running'] = False
+            _allchk_save(stats)
+            with _ALLCHK_LOCK:
+                _ALLCHK_RUNNING = False
+
+    import threading as _threading
+    _threading.Thread(target=_work, daemon=True).start()
+    return {'launched': True, 'running': True}
 
 
 PENNYLANE_API_URL = 'https://app.pennylane.com/api/external'

@@ -1,6 +1,6 @@
-"""Premium layer V2 : tags ?v=N, assets statiques, ordre de chargement.
+﻿"""Premium layer V2 : tags ?v=N, assets statiques, ordre de chargement.
 
-Plan de reference : docs/PLAN_PREMIUM.md (§8 checklist).
+Plan de reference : docs/PLAN_PREMIUM.md (Â§8 checklist).
 """
 import pathlib
 
@@ -13,7 +13,7 @@ def test_login_charged_la_couche_premium(client):
     html = r.get_data(as_text=True)
     assert r.status_code == 200
     assert 'orbit-premium.css?v=3' in html
-    assert 'orbit-premium.js?v=3' in html
+    assert 'orbit-premium.js?v=7' in html
     assert 'class="orbit-premium"' in html
 
 
@@ -21,8 +21,8 @@ def test_pages_authentifiees_chargent_le_premium(admin_client):
     """base.html : premium charge en DERNIER (apres workspace), jamais avant."""
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
     assert 'orbit-premium.css?v=3' in html
-    assert 'orbit-premium.js?v=3' in html
-    # Ordre imparatif : la surcouche ecrase (ou complète) le socle.
+    assert 'orbit-premium.js?v=7' in html
+    # Ordre imparatif : la surcouche ecrase (ou complÃ¨te) le socle.
     assert html.index('workspace.css') < html.index('orbit-premium.css')
     assert html.index('orbit-workspace.js') < html.index('orbit-premium.js')
 
@@ -50,6 +50,6 @@ def test_asset_js_v21_modules(client):
     assert 'initPageTransition' not in body
     assert 'initTilt' not in body
     assert 'orbit-leaving' not in body
-    # Piege connu (PLAN §5) : un join('\\\\n') casserait silencieusement le
+    # Piege connu (PLAN Â§5) : un join('\\\\n') casserait silencieusement le
     # CSS injecte sans que node --check ne le voie. On exige '\n' (escape JS).
     assert "].join('\\n')" in body
