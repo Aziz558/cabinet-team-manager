@@ -39,6 +39,8 @@
     // repli sur le chemin statique si la page a été rendue sans attribut.
     var threeScript = document.currentScript;
     var THREE_URL = (threeScript && threeScript.getAttribute('data-three')) || '/static/js/vendor/three.module.min.js';
+    // Logo JMH 3D (PNG 256x256 avec fond sombre) : passé par le template via data-logo
+    var LOGO_URL = (threeScript && threeScript.getAttribute('data-logo')) || '/static/img/jmh-logo-3d.png';
     var ALL_STATES = ['far', 'approach', 'docked', 'static'];
     var state = 'boot';
 
@@ -64,8 +66,7 @@
     /* ---------- Scène ---------- */
     var THREE, renderer, scene, camera, clock;
     var starGeo, starLine, lineGeo;
-    var coinGroup, spinGroup, orbitRing, halo, envRT;
-    var minis = [];
+    var coinGroup, spinGroup, halo, envRT;
     var hoverT = 0;        // 0..1 survol de la médaille (halo chaud)
     var spinKick = 0;      // impulsion de rotation au clic
     var projV = null;
@@ -366,6 +367,22 @@
         return { map: tex, bump: bump };
     }
 
+    /* Rectangle arrondi (Shape) : sert à la plaque du logo */
+    function roundedRectShape(w, h, r) {
+        var s = new THREE.Shape();
+        var x = -w / 2, y = -h / 2;
+        s.moveTo(x + r, y);
+        s.lineTo(x + w - r, y);
+        s.quadraticCurveTo(x + w, y, x + w, y + r);
+        s.lineTo(x + w, y + h - r);
+        s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        s.lineTo(x + r, y + h);
+        s.quadraticCurveTo(x, y + h, x, y + h - r);
+        s.lineTo(x, y + r);
+        s.quadraticCurveTo(x, y, x + r, y);
+        return s;
+    }
+
     function buildCoin() {
         buildEnv();
 
@@ -380,32 +397,42 @@
         spinGroup = new THREE.Group();
         tilt.add(spinGroup);
 
-        var R = 6.2, TH = 0.62, SEG = 128;
-        var top = coinFaceTexture(false);
-        var bot = coinFaceTexture(true);
-        var edg = coinEdgeTexture();
+        // Plaque 3D du logo JMH : corps doré biseauté + logo sur les deux faces
+        var R = 6.2, TH = 0.62;                 // R = demi-côté total de la plaque
+        var BEV = 0.12;                         // épaisseur du biseau
+        var HALF = R - BEV;                     // demi-côté avant biseau
 
-        var sideMat = new THREE.MeshStandardMaterial({ map: edg.map, bumpMap: edg.bump, bumpScale: 0.5, metalness: 0.95, roughness: 0.42, envMapIntensity: 1.0 });
-        var topMat  = new THREE.MeshStandardMaterial({ map: top.map, bumpMap: top.bump, bumpScale: 0.6, metalness: 0.90, roughness: 0.33, envMapIntensity: 1.2 });
-        var botMat  = new THREE.MeshStandardMaterial({ map: bot.map, bumpMap: bot.bump, bumpScale: 0.6, metalness: 0.90, roughness: 0.33, envMapIntensity: 1.2 });
+        var bodyGeo = new THREE.ExtrudeGeometry(roundedRectShape(HALF * 2, HALF * 2, 1.25), {
+            depth: TH, bevelEnabled: true, bevelThickness: BEV, bevelSize: BEV,
+            bevelSegments: 4, curveSegments: 16
+        });
+        bodyGeo.translate(0, 0, -TH / 2);
+        var bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1c20, metalness: 0.55, roughness: 0.42, envMapIntensity: 0.9 });
+        spinGroup.add(new THREE.Mesh(bodyGeo, bodyMat));
 
-        var cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, TH, SEG, 1, false), [sideMat, topMat, botMat]);
-        cyl.rotation.x = Math.PI / 2;          // faces vers la caméra
-        spinGroup.add(cyl);
+        // Faces : logo JMH (recadré en UV 0..1 sur la plaque)
+        var FS = HALF * 2 - 0.06;
+        var faceGeo = new THREE.ShapeGeometry(roundedRectShape(FS, FS, 1.2), 16);
+        var fpos = faceGeo.attributes.position;
+        var fuv = faceGeo.attributes.uv;
+        for (var k = 0; k < fpos.count; k++) {
+            fuv.setXY(k, fpos.getX(k) / FS + 0.5, fpos.getY(k) / FS + 0.5);
+        }
+        var logoTex = new THREE.TextureLoader().load(LOGO_URL);
+        if (THREE.SRGBColorSpace) { logoTex.colorSpace = THREE.SRGBColorSpace; }
+        var faceMat = new THREE.MeshStandardMaterial({ map: logoTex, roughness: 0.35, metalness: 0.15, envMapIntensity: 0.8 });
+        var faceZ = TH / 2 + BEV + 0.01;
 
-        // Grain de bord poli (léger relief sur la tranche)
-        var bead = new THREE.Mesh(new THREE.TorusGeometry(R + 0.02, 0.09, 10, SEG),
-            new THREE.MeshStandardMaterial({ color: 0xd9a441, metalness: 0.98, roughness: 0.26, envMapIntensity: 1.25 }));
-        bead.rotation.x = Math.PI / 2;
-        spinGroup.add(bead);
+        var front = new THREE.Mesh(faceGeo, faceMat);
+        front.position.z = faceZ;
+        spinGroup.add(front);
 
-        // Anneau d'orbite (signature JMH Orbit)
-        orbitRing = new THREE.Mesh(new THREE.TorusGeometry(9.6, 0.055, 8, 160),
-            new THREE.MeshBasicMaterial({ color: 0xffb24d, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
-        orbitRing.rotation.x = Math.PI / 2.4;
-        tilt.add(orbitRing);
+        var back = new THREE.Mesh(faceGeo, faceMat);   // face arrière : logo lisible de l'autre côté
+        back.position.z = -faceZ;
+        back.rotation.y = Math.PI;
+        spinGroup.add(back);
 
-        // Halo chaud derrière la médaille
+        // Halo chaud derrière le logo
         halo = new THREE.Sprite(new THREE.SpriteMaterial({
             map: glowTexture('rgba(255,168,60,0.5)', 'rgba(255,140,0,0)'),
             blending: THREE.AdditiveBlending, depthWrite: false, transparent: true
@@ -413,21 +440,6 @@
         halo.scale.set(34, 34, 1);
         halo.position.z = -2.5;
         tilt.add(halo);
-
-        // Mini-médailles en orbite (remplace la lune)
-        var miniMat = new THREE.MeshStandardMaterial({ color: 0xe8b44e, metalness: 0.95, roughness: 0.3, envMapIntensity: 1.1 });
-        var defs = [
-            { r: 11.5, sp: 0.50, inc: 0.42, s: 0.95, ph: 0.0 },
-            { r: 13.6, sp: -0.36, inc: -0.30, s: 0.70, ph: 2.1 },
-            { r: 9.8, sp: 0.62, inc: 0.85, s: 0.55, ph: 4.0 }
-        ];
-        if (isMobile) { defs = defs.slice(0, 2); }
-        defs.forEach(function (d) {
-            var m = new THREE.Mesh(new THREE.CylinderGeometry(d.s, d.s, d.s * 0.15, 48), miniMat);
-            m.rotation.x = Math.PI / 2;
-            tilt.add(m);
-            minis.push({ mesh: m, r: d.r, sp: d.sp, inc: d.inc, ph: d.ph, a: Math.random() * 6.28 });
-        });
 
         // Éclairage dédié : éclat spéculaire chaud
         var spark = new THREE.PointLight(0xffd9a0, 40, 70, 2);
@@ -566,17 +578,9 @@
             starLine.visible = false;
         }
 
-        // Vie de la médaille : rotation, mini-médailles en orbite, halo qui pulse
+        // Vie du logo : rotation, halo qui pulse
         if (spinGroup) { spinGroup.rotation.y += dt * (0.5 + spinKick * 6); }
         if (spinKick > 0) { spinKick = Math.max(0, spinKick - dt * 2.2); }  // impulsion amortie
-        if (orbitRing) { orbitRing.rotation.z += dt * 0.25; }
-        for (var mi = 0; mi < minis.length; mi++) {
-            var mm = minis[mi];
-            mm.a += dt * mm.sp;
-            var x = Math.cos(mm.a + mm.ph) * mm.r;
-            var z = Math.sin(mm.a + mm.ph) * mm.r;
-            mm.mesh.position.set(x, Math.sin(mm.a * 1.3) * mm.inc * 2, z);
-        }
         if (halo) {
             // halo de base + éclat chaud au survol (hoverT lissé)
             var hover = hoverT; // déjà 0/1 ; lissage optionnel évité pour rester léger
