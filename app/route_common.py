@@ -64,12 +64,17 @@ def prochaine_echeance_theorique(dossier, today):
                     futurs.append(next_working_day(date(annee + 1, m, 15)))
     return min(futurs) if futurs else None
 
-def prochaine_echeance_par_nature(d, today):
-    """Prochaines échéances (date, nature) par nature d'impôt : TVA, IS, CFE."""
+def prochaine_echeance_par_nature(d, today, taches=None):
+    """Prochaines échéances (date, nature) par nature d'impôt : TVA, IS, CFE.
+
+    `taches` : liste déjà chargée des tâches du dossier (évite une requête SQL
+    par appel quand l'appelant boucle sur plusieurs dossiers). Sinon, lit d.taches.
+    """
     from .tva_scheduler import next_working_day
     import calendar
     resultats = []
-    taches_d = [t for t in d.taches if t.titre and 'Préparation' not in t.titre]
+    source = d.taches if taches is None else taches
+    taches_d = [t for t in source if t.titre and 'Préparation' not in t.titre]
 
     # --- TVA ---
     taches_tva = [t for t in taches_d if 'TVA' in t.titre or 'Dépôt' in t.titre]

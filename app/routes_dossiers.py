@@ -62,9 +62,18 @@ def dossiers():
             if d.id not in ids_vus:
                 all_dossiers.append(d)
 
+    # Charger en UNE requête les tâches de tous les dossiers affichés (évite le N+1 :
+    # d.taches est lazy='dynamic' et chaque lecture refaisait une requête SQL).
+    taches_par_dossier = {}
+    _ids_dossiers = [d.id for d in all_dossiers]
+    if _ids_dossiers:
+        for _t in Tache.query.filter(Tache.dossier_id.in_(_ids_dossiers)).all():
+            taches_par_dossier.setdefault(_t.dossier_id, []).append(_t)
+
     # Pre-calculate TVA task data for each dossier to avoid Jinja template errors
     for d in all_dossiers:
-        d._tva_taches = [t for t in d.taches if t.titre and ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper())]
+        _taches_d = taches_par_dossier.get(d.id, [])
+        d._tva_taches = [t for t in _taches_d if t.titre and ('TVA' in t.titre.upper() or 'CA3' in t.titre.upper() or 'CA12' in t.titre.upper())]
         d._tva_taches_count = len(d._tva_taches)
         d._tva_taches_restantes = sum(1 for t in d._tva_taches if t.statut not in ('terminee', 'terminée'))
         # Calcul du statut délai/retard
@@ -72,7 +81,7 @@ def dossiers():
         d._delai_class = 'text-tertiary'
         d._delai_icon = ''
         today = date.today()
-        depot_taches = [t for t in d.taches if t.titre and 'Préparation' not in t.titre and ('Dépôt' in t.titre or 'Déclaration' in t.titre or 'Acompte' in t.titre)]
+        depot_taches = [t for t in _taches_d if t.titre and 'Préparation' not in t.titre and ('Dépôt' in t.titre or 'Déclaration' in t.titre or 'Acompte' in t.titre)]
         if depot_taches:
             import calendar
             debut_mois = today.replace(day=1)
@@ -138,7 +147,7 @@ def dossiers():
         d._regime_norm = (d.regime_tva or '').lower()
         d._freq_norm = (d.frequence_tva or '').lower()
         d._date_iso = d.date_limite_declaration.strftime('%Y-%m-%d') if d.date_limite_declaration else ''
-        d._echeances = prochaine_echeance_par_nature(d, today)
+        d._echeances = prochaine_echeance_par_nature(d, today, taches=_taches_d)
         # data-date-iso ← première échéance (pour le filtre date)
         if d._echeances:
             d._date_iso = d._echeances[0][0].strftime('%Y-%m-%d')
