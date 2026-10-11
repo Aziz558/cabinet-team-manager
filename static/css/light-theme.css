@@ -64,3 +64,87 @@
 [data-theme="light"] .card-premium { background: var(--bg-card); }
 [data-theme="light"] .card-body-premium { background: var(--bg-card); }
 
+/* Champs de saisie et selects : fond et bordure clairs, texte lisible.
+   Les règles de style.css utilisent rgba(255,255,255,.04) (fond sombre). */
+[data-theme="light"] .input-premium-custom,
+[data-theme="light"] .input-premium-color,
+[data-theme="light"] .form-control,
+[data-theme="light"] .form-select {
+    background: var(--bg-card);
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+[data-theme="light"] .input-premium:focus,
+[data-theme="light"] .select-premium:focus,
+[data-theme="light"] .input-premium-custom:focus,
+[data-theme="light"] .form-control:focus {
+    background: var(--bg-elevated);
+    border-color: var(--orange-primary);
+}
+[data-theme="light"] .input-premium::placeholder,
+[data-theme="light"] .input-premium-custom::placeholder,
+[data-theme="light"] .form-control::placeholder {
+    color: var(--text-muted);
+}
+
+/* Menus, modales et popovers : couche flottante, blanc élevé + ombre douce */
+[data-theme="light"] .dropdown-menu,
+[data-theme="light"] .popover,
+[data-theme="light"] .tooltip-inner {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+[data-theme="light"] .popover-header { background: var(--bg-card); color: var(--text-primary); }
+[data-theme="light"] .popover-body { color: var(--text-secondary); }
+[data-theme="light"] .modal-content {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+[data-theme="light"] .modal-content-premium,
+[data-theme="light"] .modal-premium {
+    background: var(--bg-elevated);
+}
+
+/* Listes, groupes et options : pas de fond sombre hérité */
+[data-theme="light"] .list-group-premium,
+[data-theme="light"] .list-group-item {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+[data-theme="light"] .list-group-item:hover { background: var(--bg-card-hover); }
+[data-theme="light"] .select-premium option,
+[data-theme="light"] select option {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+/* Tables : en-tête et lignes sur surface claire */
+[data-theme="light"] .table-premium thead th {
+    background: var(--bg-card-hover);
+    color: var(--text-tertiary);
+    border-color: var(--border-color);
+}
+[data-theme="light"] .table-premium td,
+[data-theme="light"] .table-premium th {
+    border-color: var(--border-color);
+}
+
+/* Badges : fond neutre lisible, sans teinte sombre */
+[data-theme="light"] .badge-tertiary { background: var(--bg-card-active); color: var(--text-secondary); }
+
+/* Boutons secondaires et ghost : bordure et survol clairs */
+[data-theme="light"] .btn-premium-secondary {
+    background: var(--bg-card);
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+[data-theme="light"] .btn-premium-secondary:hover { background: var(--bg-card-hover); }
+
+/* Sidebar : titres de section et liens inactifs en encre adoucie */
+[data-theme="light"] .sidebar-section-title,
+[data-theme="light"] .sidebar-label { color: var(--text-tertiary); }
+

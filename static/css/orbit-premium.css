@@ -472,11 +472,17 @@ body::before {
 }
 
 /* --- Sécuriser les variables manquantes --- */
+/* Ne définir ici que les tokens communs aux deux thèmes.
+   --bg-elevated et --bg-card-hover sont propres à chaque thème (style.css) :
+   ne jamais les redéfinir en :root, sinon le thème clair perd ses surfaces. */
 :root {
   --danger: #EF5350;
   --danger-bg: rgba(239,83,80,.1);
   --orange-subtle: rgba(255,140,0,.12);
+  --orbit-ease: cubic-bezier(.16,1,.3,1);
+}
+/* Sombre : valeurs translucides d'origine, conservées à l'identique */
+[data-theme="dark"] {
   --bg-elevated: rgba(255,255,255,.04);
   --bg-card-hover: rgba(255,255,255,.03);
-  --orbit-ease: cubic-bezier(.16,1,.3,1);
 }

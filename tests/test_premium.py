@@ -12,7 +12,7 @@ def test_login_charged_la_couche_premium(client):
     r = client.get('/login')
     html = r.get_data(as_text=True)
     assert r.status_code == 200
-    assert 'orbit-premium.css?v=3' in html
+    assert 'orbit-premium.css?v=4' in html
     assert 'orbit-premium.js?v=8' in html
     assert 'class="orbit-premium"' in html
 
@@ -20,7 +20,7 @@ def test_login_charged_la_couche_premium(client):
 def test_pages_authentifiees_chargent_le_premium(admin_client):
     """base.html : premium charge en DERNIER (apres workspace), jamais avant."""
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
-    assert 'orbit-premium.css?v=3' in html
+    assert 'orbit-premium.css?v=4' in html
     assert 'orbit-premium.js?v=8' in html
     # Ordre imparatif : la surcouche ecrase (ou complÃ¨te) le socle.
     assert html.index('workspace.css') < html.index('orbit-premium.css')
