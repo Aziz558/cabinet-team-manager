@@ -1,0 +1,135 @@
+/* ==========================================================================
+   FILTRES PREMIUM — barres de filtres de /taches, /taches/aujourdhui et /dossiers
+   Chargé en dernier : surcharge les règles historiques sans les modifier.
+   ========================================================================== */
+
+/* ---------- Barre d'icônes : conteneur unifié ---------- */
+.card-premium.avm-bar,
+.card-premium.filter-bar-premium {
+    border-radius: 16px !important;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--orbit-shadow-card, 0 1px 2px rgba(16,24,40,.05));
+}
+.avm-bar .card-body-premium { padding: .55rem .7rem !important; }
+.avm-iconbar { gap: .35rem; row-gap: .45rem; }
+
+/* ---------- Boutons icône (filtres rapides) ---------- */
+.avm-fico {
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px !important;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: .95rem;
+    cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.avm-fico:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+.avm-fico.on,
+.filter-btn.active.avm-fico {
+    color: var(--orange-primary);
+    background: var(--orange-subtle);
+    border-color: var(--orange-primary);
+    box-shadow: 0 0 0 3px rgba(255,140,0,.12);
+}
+.avm-fico:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 2px; }
+
+/* ---------- Sélecteurs natifs stylés (Nature / Membre / Dossier) ---------- */
+.avm-select {
+    height: 34px;
+    padding: 0 26px 0 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: .82rem;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    transition: color .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+.avm-select:hover { background: var(--bg-card-hover); border-color: var(--border-strong); color: var(--text-primary); }
+.avm-select:focus-within { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255,140,0,.14); }
+.avm-select.on { background: var(--orange-subtle); border-color: var(--orange-primary); color: var(--orange-primary); }
+.avm-select select { font-size: .8rem; font-weight: 500; max-width: 150px; }
+.avm-select .avm-caret { right: 9px; opacity: .6; }
+.avm-fsep { height: 20px; margin: 0 6px; opacity: .8; }
+
+/* Champs de date / recherche de la barre */
+.card-premium.avm-bar .avm-search {
+    height: 34px;
+    border-radius: 10px !important;
+    font-size: .82rem;
+}
+
+/* Compteur à droite */
+.avm-fcount {
+    font-size: .74rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* ---------- Dossiers : boutons « Collaborateurs / Régime / Date » ---------- */
+.btn-filter-advanced {
+    display: inline-flex; align-items: center; gap: .45rem;
+    height: 36px;
+    padding: 0 .9rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: .82rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+.btn-filter-advanced i { font-size: .95rem; color: var(--text-tertiary); }
+.btn-filter-advanced:hover { background: var(--bg-card-hover); border-color: var(--border-strong); color: var(--text-primary); }
+.btn-filter-advanced.active {
+    background: var(--orange-subtle);
+    border-color: var(--orange-primary);
+    color: var(--orange-primary);
+    box-shadow: 0 0 0 3px rgba(255,140,0,.12);
+}
+.btn-filter-advanced.active i { color: var(--orange-primary); }
+.filter-badge { margin-left: .1rem; }
+
+/* Panneaux dépliés : fondu doux, sans transform (évite les décalages) */
+.filter-panel { animation: orbitFilterIn .2s ease both; }
+@keyframes orbitFilterIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Options de régime / date : pastilles arrondies */
+.btn-filter-option {
+    border-radius: 999px;
+    padding: .32rem .8rem;
+    font-size: .8rem;
+    font-weight: 500;
+    background: var(--bg-elevated);
+}
+.btn-filter-option:hover { background: var(--bg-card-hover); }
+.btn-filter-option.active { font-weight: 600; box-shadow: 0 0 0 3px rgba(255,140,0,.12); }
+
+/* Vignettes membres : cadre net et état actif lisible */
+.member-filter-item {
+    border: 1px solid transparent;
+    border-radius: 12px !important;
+    transition: background-color .18s ease, border-color .18s ease;
+}
+.member-filter-item:hover { background: var(--bg-card-hover); border-color: var(--border-color); }
+
+/* ---------- Barre d'outils (compteur, chips, recherche) ---------- */
+.orbit-toolbar { border-radius: 12px; }
+
+@media (max-width: 575.98px) {
+    .avm-select select { max-width: 110px; }
+    .avm-fico { width: 32px; height: 32px; }
+    .btn-filter-advanced { height: 34px; padding: 0 .7rem; font-size: .78rem; }
+}
+
