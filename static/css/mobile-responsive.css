@@ -203,3 +203,44 @@
             display: flex !important;
         }
     }
+
+    /* ---------- Barre du haut compacte (téléphone) ---------- */
+    @media (max-width: 575.98px) {
+        .app-topbar {
+            gap: 0.5rem;
+        }
+
+        .app-brand-text small,
+        .orbit-search-label,
+        .orbit-kbd {
+            display: none !important;
+        }
+
+        .orbit-search-btn {
+            min-width: 44px;
+            min-height: 44px;
+            justify-content: center;
+        }
+
+        .app-topbar-toggle,
+        #themeToggle,
+        .notif-bell-link {
+            min-width: 44px;
+            min-height: 44px;
+        }
+    }
+
+    /* ---------- Tableaux : défilement horizontal contenu dans leur conteneur ---------- */
+    @media (max-width: 991.98px) {
+        .table-responsive,
+        .table-wrap,
+        .dossiers-table-wrap {
+            -webkit-overflow-scrolling: touch;
+            overflow-x: auto;
+        }
+
+        /* Menu des colonnes : ne déborde pas de l'écran */
+        .dropdown-menu {
+            max-width: calc(100vw - 2rem);
+        }
+    }
