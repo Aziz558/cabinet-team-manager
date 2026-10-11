@@ -75,6 +75,19 @@
         display: inline-flex; align-items: center; justify-content: center;
         cursor: pointer; flex-shrink: 0; padding: 0; transition: all .15s ease; }
     .btn-pl-detail:hover { color: var(--orange-primary); border-color: var(--orange-primary); background: rgba(255,140,0,.08); }
+    /* Filtres : collaborateur, mois (multi), statut */
+    .cl-filters { border-bottom: 1px solid var(--border-color); }
+    .cl-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 14px; }
+    .cl-filter-row + .cl-filter-row { border-top: 1px dashed var(--border-color); }
+    .cl-filter-label { font-size: 0.68rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; min-width: 92px; }
+    .cl-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); font-size: 0.74rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+    .cl-chip:hover { border-color: var(--orange-primary); color: var(--orange-primary); }
+    .cl-chip.active { background: var(--orange-subtle); border-color: var(--orange-primary); color: var(--orange-primary); }
+    .cl-chip .cl-collab { width: 18px; height: 18px; font-size: 0.55rem; }
+    .cl-chip-reset { margin-left: auto; }
+    .cl-filter-count { font-size: 0.74rem; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+    .cl-hide { display: none !important; }
+    .cl-table td.cl-dim { opacity: 0.25; }
     .btn-pl-detail.active-detail { color: var(--orange-primary); border-color: var(--orange-primary); background: rgba(255,140,0,.12); }
 </style>
 {% endblock %}
@@ -219,6 +232,32 @@
     {% endif %}
 </div>
 {% endif %}
+    {% set mois_courts = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'] %}
+    {% set mois_longs = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
+    <div class="cl-filters" id="clFilters">
+        <div class="cl-filter-row">
+            <span class="cl-filter-label">Collaborateur</span>
+            <button type="button" class="cl-chip" data-f="moi" data-v="{{ current_user.id }}"><i class="bi bi-person-check"></i> Moi</button>
+            {% for c in data.collabs %}
+            <button type="button" class="cl-chip" data-f="collab" data-v="{{ c.id }}" title="{{ c.label }}"><span class="cl-collab">{{ c.initiales }}</span>{{ c.label }}</button>
+            {% endfor %}
+        </div>
+        <div class="cl-filter-row">
+            <span class="cl-filter-label">Mois</span>
+            {% for m in range(1, 13) %}
+            <button type="button" class="cl-chip" data-f="mois" data-v="{{ m }}" title="{{ mois_longs[m-1] }}">{{ mois_courts[m-1] }}</button>
+            {% endfor %}
+        </div>
+        <div class="cl-filter-row">
+            <span class="cl-filter-label">Statut</span>
+            <button type="button" class="cl-chip" data-f="statut" data-v="solde"><i class="bi bi-check-lg"></i> Déclarée &amp; payée</button>
+            <button type="button" class="cl-chip" data-f="statut" data-v="declare"><i class="bi bi-circle-half"></i> Déclarée</button>
+            <button type="button" class="cl-chip" data-f="statut" data-v="retard"><i class="bi bi-x-lg"></i> En retard</button>
+            <button type="button" class="cl-chip" data-f="statut" data-v="venir"><i class="bi bi-circle"></i> À venir</button>
+            <span class="cl-filter-count" id="clCount"></span>
+            <button type="button" class="cl-chip cl-chip-reset" data-f="reset"><i class="bi bi-x-circle"></i> Réinitialiser</button>
+        </div>
+    </div>
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — chaque colonne = la période déclarée (ex. juillet → dépôt 24 août) · cliquez sur un symbole pour changer son statut</h6>
         <div class="d-flex align-items-center gap-2">
@@ -244,13 +283,13 @@
                         <th>Régime</th>
                         <th>Jour d'échéance</th>
                         <th>Prochaine</th>
-                        {% for m in range(1, 13) %}<th title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][m-1] }}">{{ ['J','F','M','A','M','J','J','A','S','O','N','D'][m-1] }}</th>{% endfor %}
+                        {% for m in range(1, 13) %}<th data-mois="{{ m }}" title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][m-1] }}">{{ ['J','F','M','A','M','J','J','A','S','O','N','D'][m-1] }}</th>{% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for g in data.grille %}
                     {% set oblig_cols = g.cols | selectattr('oblig') | list %}
-                    <tr data-dossier="{{ g.dossier.id }}">
+                    <tr data-dossier="{{ g.dossier.id }}" data-collab="{{ g.collab.id if g.collab else 0 }}">
                         <td class="cl-td-dossier">
                             <div class="d-flex align-items-center gap-2">
                                 {% if g.initiales %}<span class="cl-collab" title="{{ g.collab.prenom }} {{ g.collab.nom }}">{{ g.initiales }}</span>{% endif %}
@@ -364,6 +403,105 @@
     }
     refreshRetard();
 
+    // ===== Filtres : collaborateur, mois (multi), statut =====
+    var FILTRES = { collab: [], mois: [], statut: [] };
+    var MOIS_LONGS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    var STATUT_VALEURS = ['solde', 'declare', 'retard', 'venir'];
+    var PL_CLS_STATUT = { 'sym-pl-ok': 'solde', 'sym-pl-late': 'retard', 'sym-pl-progress': 'declare', 'sym-pl-ready': 'declare', 'sym-pl-todo': 'venir' };
+    var filterBar = document.getElementById('clFilters');
+
+    function filtresDepuisURL() {
+        var p = new URLSearchParams(window.location.search);
+        function liste(k) { return (p.get(k) || '').split(',').filter(Boolean); }
+        FILTRES.collab = liste('collab');
+        FILTRES.mois = liste('mois').map(function(v) { return parseInt(v, 10); })
+            .filter(function(n) { return n >= 1 && n <= 12; }).map(String);
+        FILTRES.statut = liste('statut').filter(function(v) { return STATUT_VALEURS.indexOf(v) !== -1; });
+    }
+    function filtresVersURL() {
+        var p = new URLSearchParams(window.location.search);
+        ['collab', 'mois', 'statut'].forEach(function(k) {
+            if (FILTRES[k].length) { p.set(k, FILTRES[k].join(',')); } else { p.delete(k); }
+        });
+        var qs = p.toString();
+        window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+    }
+    // Statut effectif d'une cellule : 'solde' | 'declare' | 'retard' | 'venir' | 'na'
+    function statutCellule(td) {
+        if (td.dataset.kind === 'na') return 'na';
+        var sym = td.querySelector('.sym[data-field]');
+        if (!sym) return 'na';
+        if (sym.dataset.pl === '1') {
+            for (var cls in PL_CLS_STATUT) {
+                if (sym.classList.contains(cls)) return PL_CLS_STATUT[cls];
+            }
+        }
+        return sym.dataset.state || 'na';
+    }
+    function filtresChips() {
+        document.querySelectorAll('#clFilters [data-f]').forEach(function(b) {
+            var f = b.dataset.f;
+            if (f === 'reset') return;
+            var k = (f === 'moi') ? 'collab' : f;
+            b.classList.toggle('active', FILTRES[k].indexOf(b.dataset.v) !== -1);
+        });
+    }
+    function appliquerFiltres() {
+        var moisOK = function(m) { return !FILTRES.mois.length || FILTRES.mois.indexOf(String(m)) !== -1; };
+        grid.querySelectorAll('thead th[data-mois]').forEach(function(th) {
+            th.classList.toggle('cl-hide', !moisOK(th.dataset.mois));
+        });
+        var total = 0, visibles = 0;
+        grid.querySelectorAll('tbody tr[data-dossier]').forEach(function(tr) {
+            total++;
+            var okCollab = !FILTRES.collab.length || FILTRES.collab.indexOf(tr.dataset.collab) !== -1;
+            var okStatut = !FILTRES.statut.length;
+            tr.querySelectorAll('td[data-mois]').forEach(function(td) {
+                var visible = moisOK(td.dataset.mois);
+                td.classList.toggle('cl-hide', !visible);
+                var st = statutCellule(td);
+                var ok = visible && FILTRES.statut.indexOf(st) !== -1;
+                if (ok) okStatut = true;
+                td.classList.toggle('cl-dim', FILTRES.statut.length > 0 && visible && st !== 'na' && !ok);
+            });
+            var montre = okCollab && okStatut;
+            tr.classList.toggle('cl-hide', !montre);
+            if (montre) visibles++;
+        });
+        var vide = document.getElementById('clNoMatch');
+        if (!vide) {
+            vide = document.createElement('tr');
+            vide.id = 'clNoMatch';
+            vide.innerHTML = '<td colspan="16" class="text-center text-tertiary py-4">Aucun dossier ne correspond aux filtres</td>';
+            grid.querySelector('tbody').appendChild(vide);
+        }
+        vide.style.display = (total && !visibles) ? '' : 'none';
+        var cnt = document.getElementById('clCount');
+        if (cnt) cnt.textContent = visibles + ' / ' + total + ' dossier' + (total > 1 ? 's' : '');
+        filtresChips();
+        filtresVersURL();
+    }
+    function basculerFiltre(k, v) {
+        var i = FILTRES[k].indexOf(v);
+        if (i === -1) { FILTRES[k].push(v); } else { FILTRES[k].splice(i, 1); }
+        appliquerFiltres();
+    }
+    if (filterBar) {
+        filterBar.addEventListener('click', function(ev) {
+            var b = ev.target.closest('[data-f]');
+            if (!b) return;
+            var f = b.dataset.f;
+            if (f === 'reset') {
+                FILTRES.collab = []; FILTRES.mois = []; FILTRES.statut = [];
+                appliquerFiltres();
+                return;
+            }
+            basculerFiltre(f === 'moi' ? 'collab' : f, b.dataset.v);
+        });
+    }
+    filtresDepuisURL();
+    appliquerFiltres();
+
     function paint(sym, st, dec, pay) {
         sym.dataset.state = st;
         sym.dataset.declare = dec ? '1' : '0';
@@ -447,6 +585,8 @@
         else if (next === 'solde') paint(sym, 'solde', true, true);
         else paint(sym, 'venir', false, false);
         refreshRetard();
+
+        appliquerFiltres();
 
         fetch('/checklist/toggle', {
             method: 'POST',

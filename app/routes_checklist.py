@@ -279,6 +279,15 @@ def checklist():
     meta = TAXE_META.get(taxe)
     data = {'annee': annee, 'etape': etape, 'taxe': taxe, 'meta': meta, 'grille': grille,
             'type': type_sel, 'freq': freq_sel, 'taxes_dispo': taxes_dispo}
+    # Collaborateurs présents dans la grille (filtre « Collaborateur »)
+    collabs_map = {}
+    for g in grille:
+        c = g['collab']
+        key = c.id if c else 0
+        if key not in collabs_map:
+            label = f"{c.prenom or ''} {c.nom or ''}".strip() if c else 'Non assigné'
+            collabs_map[key] = {'id': key, 'label': label or '—', 'initiales': g['initiales'] or '—'}
+    data['collabs'] = sorted(collabs_map.values(), key=lambda x: x['label'].lower())
 
     # --- Statuts Pennylane (session web) pour affichage dans la grille TVA ---
     pl_last_sync = {}
