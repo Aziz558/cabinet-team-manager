@@ -235,7 +235,8 @@
             <span id="plVisibleCount" class="small text-tertiary ms-auto"></span>
         </div>
 
-        <!-- Sélection pour synchro TVA ciblée -->
+        <!-- Sélection pour synchro TVA ciblée (admin/manager uniquement) -->
+        {% if not read_only %}
         <div id="plTvaBar" class="d-flex gap-2 align-items-center mb-3 flex-wrap">
             <label class="form-label-premium mb-0 small">Synchro TVA :</label>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSelectAllDossiers()">Tout sélectionner</button>
@@ -245,6 +246,7 @@
                 <i class="bi bi-cloud-download me-1"></i>Synchroniser les TVA sélectionnées
             </button>
         </div>
+        {% endif %}
         <div id="plTvaSyncStatus" class="mb-3"></div>
 
         <!-- Grille : box fixe (1 ligne de 4 dossiers) + défilement interne -->
@@ -276,7 +278,9 @@
                      data-intitule="{{ (d.intitule or '')|lower }}"
                      data-search="{{ (d.numero_dossier ~ ' ' ~ d.intitule ~ ' ' ~ collab_nom ~ ' ' ~ eq_nom ~ ' ' ~ (d.regime_tva or ''))|lower }}">
                 <div class="pl-dossier-top d-flex align-items-center gap-2">
+                    {% if not read_only %}
                     <input type="checkbox" class="pl-dossier-check" value="{{ d.id }}" style="accent-color:var(--orange-primary);">
+                    {% endif %}
                     <div class="pl-dossier-main min-width-0 d-flex align-items-center gap-1">
                         <strong class="pl-dossier-num small">{{ d.numero_dossier }}</strong>
                         <span class="pl-dossier-title text-truncate" title="{{ d.intitule }}">{{ d.intitule[:40] }}{% if d.intitule|length > 40 %}…{% endif %}</span>
@@ -297,12 +301,14 @@
                     </div>
                 </div>
                 <div class="pl-dossier-actions d-flex gap-1">
+                    {% if not read_only %}
                     <button type="button" class="btn-premium btn-premium-secondary btn-press pl-action-btn pl-action-btn-sm"
                             title="Synchro TVA de ce dossier depuis Pennylane"
                             onclick="plSyncDossier({{ d.id }}, this);">
                         <i class="bi bi-arrow-repeat"></i>
                     </button>
-                    {% if nb_a_traiter.get(d.id, 0) %}
+                    {% endif %}
+                    {% if nb_a_traiter.get(d.id, 0) and not read_only %}
                     <button type="button" class="btn-premium btn-premium-secondary btn-press pl-action-btn pl-action-btn-sm"
                             title="Marquer les {{ nb_a_traiter[d.id] }} élément(s) comme traités"
                             onclick="plMarquerTraite({{ d.id }}, this);">

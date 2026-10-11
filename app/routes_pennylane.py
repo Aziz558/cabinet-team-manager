@@ -354,14 +354,21 @@ def pennylane_page():
        Manager : vue limitée aux dossiers de SES équipes (lecture seule)."""
     from app.integrations.pennylane import get_pennylane_token
     is_admin = current_user.role == 'admin'
-    if not is_admin and current_user.role != 'manager':
-        flash('Accès réservé aux administrateurs et managers.', 'danger')
+    # Membre : lecture seule sur SES dossiers (collaborateur = lui-même)
+    read_only = current_user.role == 'membre'
+    if not is_admin and current_user.role not in ('manager', 'membre'):
+        flash('Accès réservé aux administrateurs, managers et membres.', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Scoping des dossiers : admin voit tout, manager voit les dossiers de ses équipes
+    # Scoping des dossiers : admin voit tout, manager voit les dossiers de ses équipes,
+    # membre voit uniquement les dossiers dont il est le collaborateur
     if is_admin:
         dossiers_pl = Dossier.query.order_by(Dossier.numero_dossier).all()
         equipes_list = Equipe.query.order_by(Equipe.nom).all()
+    elif read_only:
+        dossiers_pl = (Dossier.query.filter_by(collaborateur_id=current_user.id)
+                       .order_by(Dossier.numero_dossier).all())
+        equipes_list = []
     else:
         mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
         equipe_ids = [eq.id for eq in mes_equipes]
@@ -410,7 +417,8 @@ def pennylane_page():
     # ne tourne presque jamais. On relance donc la détection (notifications +
     # emails) à chaque ouverture de /pennylane, au plus 1 fois toutes les 15 min.
     pl_auto_check = None
-    if not app.config.get('TESTING'):
+    # Auto-vérification globale réservée aux admins/managers (un membre n'y a pas accès)
+    if not app.config.get('TESTING') and not read_only:
         try:
             import time as _time
             from app.integrations.pennylane import allchk_status, check_all_dossiers_async
@@ -431,7 +439,7 @@ def pennylane_page():
 
     return render_template('pennylane.html', configured=configured, test_result=test_result,
                            pl_last_sync=pl_last_sync, pl_auto_check=pl_auto_check,
-                           is_admin=is_admin,
+                           is_admin=is_admin, read_only=read_only,
                            dossiers_associes=dossiers_associes, dossiers_non_associes=dossiers_non_associes,
                            par_equipe=par_equipe, equipes_list=equipes_list,
                            total_dossiers=len(dossiers_pl),
@@ -444,10 +452,13 @@ def pennylane_page():
 @login_required
 def pennylane_data():
     """JSON temps réel du dashboard (stats + compteurs par dossier) — rafraîchi sans reload."""
-    if current_user.role not in ('admin', 'manager'):
+    if current_user.role not in ('admin', 'manager', 'membre'):
         return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
     if current_user.role == 'admin':
         dossiers_pl = Dossier.query.order_by(Dossier.numero_dossier).all()
+    elif current_user.role == 'membre':
+        dossiers_pl = (Dossier.query.filter_by(collaborateur_id=current_user.id)
+                       .order_by(Dossier.numero_dossier).all())
     else:
         equipe_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
         dossiers_pl = (Dossier.query.filter(Dossier.equipe_id.in_(equipe_ids))
@@ -466,6 +477,9 @@ def pennylane_marquer_traite(dossier_id):
     """Marque TOUS les items 'à traiter' d'un dossier comme traités (action rapide de la grille)."""
     from app.models import PennylaneItem
     d = Dossier.query.get_or_404(dossier_id)
+    # Un membre est en lecture seule sur Pennylane : il ne marque rien comme traité.
+    if current_user.role == 'membre':
+        return jsonify({'ok': False, 'message': 'Accès refusé : lecture seule.'}), 403
     if current_user.role != 'admin':
         if current_user.role == 'manager':
             equipe_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
@@ -556,6 +570,11 @@ def pennylane_dossier(dossier_id):
         mes_equipes_ids = [eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()]
         if dossier.equipe_id not in mes_equipes_ids:
             flash('Accès refusé : ce dossier ne fait pas partie de vos équipes.', 'danger')
+            return redirect(url_for('dossiers'))
+    elif current_user.role == 'membre':
+        # Membre : lecture seule, uniquement sur ses propres dossiers
+        if dossier.collaborateur_id != current_user.id:
+            flash('Accès refusé : ce dossier ne vous est pas attribué.', 'danger')
             return redirect(url_for('dossiers'))
     else:
         flash('Accès refusé.', 'danger')
@@ -679,7 +698,8 @@ def pennylane_dossier(dossier_id):
         'nw': bool(l['nouveau']),
     } for l in lignes_filtrees], separators=(',', ':'), ensure_ascii=False)
 
-    return render_template('pennylane_dossier.html', dossier=dossier, data=data)
+    return render_template('pennylane_dossier.html', dossier=dossier, data=data,
+                           read_only=(current_user.role == 'membre'))
 
 
 
@@ -692,6 +712,8 @@ def pennylane_dossier(dossier_id):
 def pennylane_item_statut(item_db_id):
     """Change le statut de traitement d'un item Pennylane (a_traiter / traite / ignore)."""
     from app.models import PennylaneItem
+    if current_user.role == 'membre':
+        return jsonify({'ok': False, 'message': 'Accès refusé : lecture seule.'}), 403
     item = PennylaneItem.query.get_or_404(item_db_id)
     dossier = Dossier.query.get_or_404(item.dossier_id)
 
@@ -723,6 +745,8 @@ def pennylane_item_statut(item_db_id):
 def pennylane_items_statut_bulk():
     """Change le statut de plusieurs items Pennylane en une fois."""
     from app.models import PennylaneItem
+    if current_user.role == 'membre':
+        return jsonify({'ok': False, 'message': 'Accès refusé : lecture seule.'}), 403
     payload = request.get_json(silent=True) or {}
     ids = payload.get('ids') or []
     statut = payload.get('statut')

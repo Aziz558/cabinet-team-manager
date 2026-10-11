@@ -44,12 +44,14 @@
             </div>
         </div>
         <div class="d-flex gap-2 align-items-center">
+            {% if not read_only %}
             <button id="btn-check-pl" class="btn btn-outline-orange" onclick="checkPennylane()">
                 <i class="bi bi-arrow-repeat me-1"></i>Vérifier maintenant
             </button>
             <button id="btn-sync-tva" class="btn btn-outline-primary btn-sm" onclick="syncTvaDossier()">
                 <i class="bi bi-cloud-download me-1"></i>Synchro TVA
             </button>
+            {% endif %}
             <a href="{{ url_for('dossiers') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Retour</a>
         </div>
     </div>
@@ -126,12 +128,14 @@
                 <span class="pl-tab-cnt muted" id="cnt-archive">0</span>
             </button>
         </div>
+        {% if not read_only %}
         <div id="bulk-bar" class="d-none align-items-center gap-2">
             <span class="pl-bulk-info"><strong id="bulk-count">0</strong> sélectionné(s)</span>
             <button class="btn btn-sm btn-outline-orange" onclick="bulkSetStatut('traite')"><i class="bi bi-check-lg me-1"></i>Traiter</button>
             <button class="btn btn-sm btn-outline-secondary" onclick="bulkSetStatut('ignore')"><i class="bi bi-dash-lg me-1"></i>Ignorer</button>
             <button class="pl-reset" onclick="clearSelection()" title="Désélectionner"><i class="bi bi-x-lg"></i></button>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -397,6 +401,7 @@ function plDateMatch(ajoutDateStr, filterDate) {
 
 /* État des filtres client (nature + statut + date) — tout est instantané, zéro rechargement */
 let plNature = '';
+const PL_READ_ONLY = {{ 'true' if read_only else 'false' }};
 let PL_LINES = [];
 try { PL_LINES = JSON.parse(document.getElementById('pl-lines-json').textContent || '[]'); } catch (e) { PL_LINES = []; }
 
@@ -420,14 +425,14 @@ function plRowHtml(l) {
         : l.st === 'ignore' ? '<span class="badge badge-tertiary">Ignoré</span>'
         : l.f === 'archive' ? '<span class="badge badge-tertiary">Archivé</span>'
         : '<span class="badge badge-orange">À traiter</span>';
-    const btns = (l.id ? `
+    const btns = (l.id && !PL_READ_ONLY ? `
             <span class="pl-btns">
                 ${l.st !== 'traite' ? `<button class="btn-traite" title="Marquer traité" onclick="setStatut(${l.id}, 'traite')"><i class="bi bi-check-lg"></i></button>` : ''}
                 ${l.st !== 'ignore' ? `<button class="btn-ignore" title="Ignorer" onclick="setStatut(${l.id}, 'ignore')"><i class="bi bi-dash-lg"></i></button>` : ''}
                 ${l.st !== 'a_traiter' ? `<button title="Remettre à traiter" onclick="setStatut(${l.id}, 'a_traiter')"><i class="bi bi-arrow-counterclockwise"></i></button>` : ''}
             </span>` : '');
     return `<tr class="pl-row${nw}" data-nature="${l.n}" data-ftab="${l.f}" data-ajout="${esc((l.ad || '').replace(' ', 'T'))}">
-        <td class="pl-th-check">${l.id ? `<input type="checkbox" class="pl-check" value="${l.id}" onchange="updateBulkBar()">` : ''}</td>
+        <td class="pl-th-check">${l.id && !PL_READ_ONLY ? `<input type="checkbox" class="pl-check" value="${l.id}" onchange="updateBulkBar()">` : ''}</td>
         <td><span class="pl-status ${PL_FTAB_CLS[l.f] || 'todo'}"><span class="pl-status-dot"></span>${esc(l.sf || '—')}</span></td>
         <td><span class="pl-nature ${l.n}"><i class="bi ${PL_NATURE_ICON[l.n] || ''}"></i>${PL_NATURE_LABEL[l.n] || l.n}${l.nw ? ' <span class="pl-new-chip">NEW</span>' : ''}</span></td>
         <td><div class="pl-doc-title" title="${esc(l.num)}">${esc(String(l.num || '').slice(0, 46))}${String(l.num || '').length > 46 ? '…' : ''}</div></td>
