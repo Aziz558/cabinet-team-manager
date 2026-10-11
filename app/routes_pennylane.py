@@ -333,6 +333,19 @@ def _pennylane_stats(dossiers_pl):
     return stats, nb_a_traiter, retard_ids
 
 
+_PL_TEST_CACHE = {'token': None, 'ts': 0.0, 'res': None}
+
+
+def _pl_test_connexion_cached(token):
+    """Test de connexion Pennylane mis en cache 10 min : evite un appel HTTP externe a chaque ouverture de la page."""
+    import time
+    from app.integrations.pennylane import test_connexion
+    if (_PL_TEST_CACHE['res'] is None or _PL_TEST_CACHE['token'] != token
+            or time.time() - _PL_TEST_CACHE['ts'] > 600):
+        _PL_TEST_CACHE.update(token=token, ts=time.time(), res=test_connexion(token))
+    return _PL_TEST_CACHE['res']
+
+
 @app.route('/pennylane')
 @login_required
 def pennylane_page():
@@ -377,8 +390,7 @@ def pennylane_page():
     test_result = None
     if configured and is_admin:
         try:
-            from app.integrations.pennylane import test_connexion
-            test_result = test_connexion()
+            test_result = _pl_test_connexion_cached(token)
         except Exception:
             test_result = {'ok': False, 'message': 'Erreur lors du test de connexion.'}
     # Dernier passage de la synchro TVA (auto ou manuel) — carte admin

@@ -49,11 +49,15 @@ def notifications_page():
 @login_required
 def notifications_non_lues():
     """API JSON pour les notifications non lues."""
-    notifications = current_user.notifications.filter_by(lu=False).order_by(Notification.date_envoi.desc()).all() if hasattr(current_user, 'notifications') else []
+    if not hasattr(current_user, 'notifications'):
+        return jsonify({'count': 0, 'last_message': '', 'notifications': []})
+    base_q = current_user.notifications.filter_by(lu=False)
+    count = base_q.count()
+    notifications = base_q.order_by(Notification.date_envoi.desc()).limit(5).all()
     return jsonify({
-        'count': len(notifications),
+        'count': count,
         'last_message': notifications[0].message if notifications else '',
-        'notifications': [{'id': n.id, 'message': n.message, 'date': n.date_envoi.strftime('%d/%m/%Y %H:%M') if n.date_envoi else None} for n in notifications[:5]]
+        'notifications': [{'id': n.id, 'message': n.message, 'date': n.date_envoi.strftime('%d/%m/%Y %H:%M') if n.date_envoi else None} for n in notifications]
     })
 
 @app.route('/set-team/<int:equipe_id>')

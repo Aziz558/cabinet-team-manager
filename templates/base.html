@@ -281,10 +281,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- GSAP + ScrollTrigger for premium animations -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
     (function() {
         // Move flash toasts into the fixed toast container
@@ -326,27 +322,6 @@
         };
     })();
 
-    // Notification badge polling
-    (function() {
-        var badge = document.getElementById('notifBadge');
-        if (!badge) return;
-        function fetchNotifCount() {
-            fetch('/notifications/non_lues')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.count > 0) {
-                        badge.style.display = 'inline-block';
-                        badge.textContent = data.count > 99 ? '99+' : data.count;
-                    } else {
-                        badge.style.display = 'none';
-                    }
-                })
-                .catch(function() {});
-        }
-        // Check immediately, then every 30 seconds
-        fetchNotifCount();
-        setInterval(fetchNotifCount, 30000);
-    })();
 
     // Sidebar toggle
     (function() {
@@ -553,9 +528,14 @@ function playNotificationSound() {
         });
     } catch(e) {}
 }
-setInterval(function() {
+function pollNotifs() {
     fetch('/notifications/non_lues').then(function(r) { return r.json(); }).then(function(data) {
         var count = data.count || 0;
+        var badge = document.getElementById('notifBadge');
+        if (badge) {
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+            badge.textContent = count > 99 ? '99+' : count;
+        }
         if (count > lastNotifCount && count > 0) {
             if (localStorage.getItem('soundEnabled') !== 'false') {
                 playNotificationSound();
@@ -580,7 +560,9 @@ setInterval(function() {
         lastNotifCount = count;
         localStorage.setItem('notifCount', count);
     }).catch(function() {});
-}, 15000);
+}
+pollNotifs();
+setInterval(pollNotifs, 30000);
 
 // Sound toggle
 function toggleSound() {

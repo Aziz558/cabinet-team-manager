@@ -145,6 +145,9 @@ if orbit_db_warning:
     app.logger.error("[DB GUARD] %s", orbit_db_warning)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# pool_pre_ping : verifie la connexion au checkout (remplace le SELECT 1 execute a chaque requete).
+# pool_recycle : renouvelle les connexions avant qu'elles ne soient coupees (SSL Neon/Render).
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True, 'pool_recycle': 280}
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, '..', 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -501,21 +504,6 @@ def internal_error(error):
     except Exception:
         pass
     return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos équipes ont été notifiées."), 500
-
-# Reconnect DB pool on cold start / SSL drop
-@app.before_request
-def reconnect_db_on_ssl_error():
-    from sqlalchemy.exc import OperationalError
-    try:
-        db.session.execute(db.text("SELECT 1"))
-    except OperationalError:
-        db.session.rollback()
-        try:
-            db.session.execute(db.text("SELECT 1"))
-        except Exception:
-            pass
-    except Exception:
-        db.session.rollback()
 
 # Global exception handler for debugging
 @app.errorhandler(Exception)
