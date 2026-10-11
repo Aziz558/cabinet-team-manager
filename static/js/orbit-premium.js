@@ -1,5 +1,5 @@
 ﻿/* ============================================================
-   ORBIT PREMIUM â€” micro-interactions studio (v2.2)
+   ORBIT PREMIUM — micro-interactions studio (v2.2)
    Intro animee 1re page/session, ripple, prefetch, barre de
    progression, ancres fluides.
    RETIRES (feedback utilisateur) : fondu inter-pages (ecran noir)
@@ -10,7 +10,7 @@
     'use strict';
     var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-    /* 1) REVEAL â€” animee UNIQUEMENT a la premiere page de la session :
+    /* 1) REVEAL — animee UNIQUEMENT a la premiere page de la session :
        les naviguations suivantes s'affichent instantanement (aucun effet). */
     function initReveal() {
         var targets = document.querySelectorAll('.card-premium, .stat-card, .task-card, .quick-actions, .today-band');
@@ -32,7 +32,7 @@
     
     /* 7) STELLAR CURSOR - SUPPRIME (assombrissement background) */
     function initStellarCursor() { /* retired */ }
-    /* 2) RIPPLE â€” effet onde au clic sur les boutons */
+    /* 2) RIPPLE — effet onde au clic sur les boutons */
     function initRipple() {
         if (reduce) { return; }
         document.addEventListener('pointerdown', function (ev) {
@@ -50,7 +50,7 @@
         }, { passive: true });
     }
 
-    /* 3) TOAST POSITION â€” centrÃ© en bas sur mobile (dÃ©jÃ  stylÃ© par CSS) */
+    /* 3) TOAST POSITION — centré en bas sur mobile (déjà stylé par CSS) */
     function initToastDock() {
         var style = document.createElement('style');
         style.textContent = [
