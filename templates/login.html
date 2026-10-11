@@ -505,7 +505,12 @@
             ico.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
         });
 
+        let loginSubmitting = false;  // garde : une seule soumission (clic ou Entrée répétés)
         document.getElementById('loginForm').addEventListener('submit', function(e) {
+            if (loginSubmitting) { e.preventDefault(); return; }
+            loginSubmitting = true;
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) { loginBtn.disabled = true; }
             e.preventDefault();
             const card = document.getElementById('loginCard');
             const overlay = document.getElementById('portalOverlay');
