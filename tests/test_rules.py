@@ -121,3 +121,31 @@ def test_recherche_globale_rejet_mauvaise_requete(flask_app, seed, admin_client)
     r = admin_client.get('/api/recherche-globale?q=<script>alert(1)</script>')
     j = r.get_json()
     assert j['ok'] and isinstance(j['resultats'], list)
+
+
+def test_depot_sans_preparation_et_rappel_j2(flask_app, seed, monkeypatch):
+    """Pas de tâche « Préparation » ; rappel email seulement à J-2, sans doublon."""
+    from datetime import date, timedelta
+    from app import db
+    from app.models import Tache, Notification, Dossier
+    from app.tva_scheduler import make_task, envoyer_rappels_depot_j2, TYPE_RAPPEL_J2
+    import app.integrations.brevo as brevo
+
+    with flask_app.app_context():
+        dossier = Dossier.query.filter_by(numero_dossier='D-TEST-001').first()
+        echeance = date.today() + timedelta(days=2)
+        make_task('Dépôt TVA J2 test', 'desc', echeance, dossier.id, dossier.collaborateur_id, 'haute')
+        db.session.commit()
+
+        titres = [t.titre for t in Tache.query.filter_by(dossier_id=dossier.id).all()]
+        assert not any(t.startswith('Préparation') for t in titres), 'pas de tâche Préparation'
+
+        appels = []
+        monkeypatch.setattr(brevo, 'send_task_assigned_email_brevo',
+                            lambda t, uid: appels.append(t.titre) or True)
+
+        n1 = envoyer_rappels_depot_j2()
+        assert n1 >= 1 and 'Dépôt TVA J2 test' in appels
+        n2 = envoyer_rappels_depot_j2()
+        assert n2 == 0, 'pas de doublon de rappel'
+        assert Notification.query.filter_by(type_notification=TYPE_RAPPEL_J2).count() >= 1

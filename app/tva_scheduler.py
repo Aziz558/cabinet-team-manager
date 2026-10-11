@@ -17,11 +17,13 @@ def prev_working_day(d: date, offset=3) -> date:
     return result
 
 def make_task(title, description, deadline, dossier_id, collaborateur_id, priorite='moyenne'):
-    """Create a task + a prepa task 3 working days before."""
+    """Crée la tâche de DÉPÔT uniquement (pas de tâche « Préparation »).
+
+    Le rappel par email est envoyé 2 jours avant l'échéance par
+    envoyer_rappels_depot_j2()."""
     from app.models import Tache
     from app import db
-    
-    # Main task (dépôt)
+
     is_past = deadline < date.today()
     t = Tache(
         titre=title,
@@ -35,23 +37,6 @@ def make_task(title, description, deadline, dossier_id, collaborateur_id, priori
         date_completion=datetime.utcnow() if is_past else None,
     )
     db.session.add(t)
-    
-    # Prépa task 3 working days before
-    prepa_day = prev_working_day(deadline, 3)
-    prepa_title = f"Préparation {title}"
-    prepa_is_past = prepa_day < date.today()
-    prepa = Tache(
-        titre=prepa_title,
-        description=f"Préparer les documents pour : {description}",
-        statut='terminee' if prepa_is_past else 'a_faire',
-        priorite='moyenne',
-        date_echeance=prepa_day,
-        dossier_id=dossier_id,
-        assigne_a=collaborateur_id,
-        cree_par=None,
-        date_completion=datetime.utcnow() if prepa_is_past else None,
-    )
-    db.session.add(prepa)
 
 def _cleanup_existing_tasks(dossier_id, keywords):
     """Delete existing tasks matching keywords for a dossier."""
@@ -277,3 +262,58 @@ def planifier_tous_les_dossiers():
         except Exception as e:
             logger.error(f"Erreur planification dossier {d.id}: {e}")
     return count
+
+
+RAPPEL_J_AVANT = 2
+TYPE_RAPPEL_J2 = 'rappel_j2'
+
+
+def envoyer_rappels_depot_j2(aujourd_hui=None):
+    """Envoie à l'assigné un email de rappel 2 jours avant chaque dépôt fiscal.
+
+    Ne concerne que les tâches fiscales de DÉPÔT (TVA, IS, CFE, acomptes,
+    déclarations) : pas les « Préparation » ni les tâches DSN (pôle social).
+    Un marqueur Notification(type 'rappel_j2') empêche tout doublon d'envoi.
+    Retourne le nombre d'emails envoyés."""
+    from datetime import timedelta as _td
+    from app.models import Tache, Notification, User
+    from app import db
+    from app.integrations.brevo import send_task_assigned_email_brevo
+    from app.social_service import est_tache_sociale
+
+    ref = aujourd_hui or date.today()
+    cible = ref + _td(days=RAPPEL_J_AVANT)
+    taches = Tache.query.filter(
+        Tache.date_echeance == cible,
+        Tache.statut != 'terminee',
+        Tache.assigne_a.isnot(None),
+    ).all()
+
+    envoyes = 0
+    for t in taches:
+        titre = (t.titre or '').lower()
+        if titre.startswith('préparation') or titre.startswith('preparation'):
+            continue
+        if est_tache_sociale(t):
+            continue
+        deja = Notification.query.filter_by(
+            tache_id=t.id, type_notification=TYPE_RAPPEL_J2).first()
+        if deja:
+            continue
+        user = User.query.get(t.assigne_a)
+        if not user or not user.email:
+            continue
+        try:
+            ok = send_task_assigned_email_brevo(t, t.assigne_a)
+        except Exception as e:
+            logger.warning(f"Rappel J-2 échec tâche {t.id}: {e}")
+            continue
+        if ok:
+            db.session.add(Notification(
+                user_id=t.assigne_a, tache_id=t.id,
+                message=f"Rappel J-2 envoyé : {t.titre}",
+                type_notification=TYPE_RAPPEL_J2,
+            ))
+            envoyes += 1
+    db.session.commit()
+    return envoyes
