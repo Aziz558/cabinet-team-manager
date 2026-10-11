@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -56,11 +56,17 @@ def _service_worker():
     return resp
 
 # Pages HTML : jamais de cache navigateur (les correctifs UI doivent arriver immediatement).
+# CSS/JS versionnes (?v=N) : cache longue duree. Toute modification d'un fichier
+# DOIT incrementer son ?v= dans les templates, sinon les clients gardent l'ancienne version.
 @app.after_request
-def _no_cache_html(resp):
+def _cache_policy(resp):
     if resp.mimetype == 'text/html':
         resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         resp.headers['Pragma'] = 'no-cache'
+    elif (request.path.startswith('/static/')
+          and request.args.get('v')
+          and resp.mimetype in ('text/css', 'application/javascript', 'text/javascript')):
+        resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     return resp
 
 basedir = os.path.abspath(os.path.dirname(__file__))

@@ -13,7 +13,7 @@ def test_login_charged_la_couche_premium(client):
     html = r.get_data(as_text=True)
     assert r.status_code == 200
     assert 'orbit-premium.css?v=3' in html
-    assert 'orbit-premium.js?v=7' in html
+    assert 'orbit-premium.js?v=8' in html
     assert 'class="orbit-premium"' in html
 
 
@@ -21,10 +21,23 @@ def test_pages_authentifiees_chargent_le_premium(admin_client):
     """base.html : premium charge en DERNIER (apres workspace), jamais avant."""
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
     assert 'orbit-premium.css?v=3' in html
-    assert 'orbit-premium.js?v=7' in html
+    assert 'orbit-premium.js?v=8' in html
     # Ordre imparatif : la surcouche ecrase (ou complÃ¨te) le socle.
     assert html.index('workspace.css') < html.index('orbit-premium.css')
     assert html.index('orbit-workspace.js') < html.index('orbit-premium.js')
+
+
+def test_cache_statiques_versionnes(client):
+    """CSS/JS avec ?v= : cache longue duree. Sans ?v= : pas de cache long (fichier mutable)."""
+    r = client.get('/static/js/orbit-premium.js?v=8')
+    assert r.status_code == 200
+    assert 'max-age=31536000' in r.headers.get('Cache-Control', '')
+    r = client.get('/static/css/style.css?v=9')
+    assert 'max-age=31536000' in r.headers.get('Cache-Control', '')
+    r = client.get('/static/js/orbit-premium.js')
+    assert 'max-age' not in r.headers.get('Cache-Control', '')
+    r = client.get('/static/sw.js')
+    assert 'no-cache' in r.headers.get('Cache-Control', '')
 
 
 def test_asset_css_v2_complet(client):
