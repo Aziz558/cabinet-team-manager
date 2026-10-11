@@ -323,6 +323,9 @@ body.orbit-resizing { cursor: col-resize; user-select: none; }
 }
 .avm-select.on select { color: var(--orange-primary); font-weight: 600; }
 .avm-select select option { background: var(--bg-elevated); color: var(--text-primary); }
+/* Sombre : --bg-elevated est translucide (orbit-premium.css), la liste native
+   devenait claire avec texte clair. Fond opaque dedie au menu deroulant. */
+[data-theme="dark"] .avm-select select option { background: var(--bg-card); color: var(--text-primary); }
 @media (max-width: 575.98px) { .avm-select select { max-width: 96px; } }
 
 /* ---------- 13) PANNEAU DE FILTRES (/taches) ----------
