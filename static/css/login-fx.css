@@ -1,0 +1,102 @@
+/* ============================================================
+   LOGIN FX — habillage spatial aléatoire du login
+   Étoiles filantes, satellites, astronaute flottant.
+   Décor uniquement : pointer-events none, sous le formulaire.
+   Créés par static/js/login-fx.js (seulement si la scène est active).
+   ============================================================ */
+.login-fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+html:not(.orbit-space-active) .login-fx { display: none; }
+
+/* --- Étoile filante --- */
+.login-fx-shooting {
+    position: absolute; top: 0; left: 0;
+    width: 140px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,200,140,.95));
+    box-shadow: 0 0 8px rgba(255,160,60,.7);
+    transform-origin: 0 50%;
+    opacity: 0;
+    animation: loginFxShoot var(--dur, 1.6s) cubic-bezier(.3,.1,.6,1) forwards;
+}
+@keyframes loginFxShoot {
+    0%   { opacity: 0; transform: translate(var(--x0), var(--y0)) rotate(var(--ang)) scaleX(.2); }
+    12%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--x1), var(--y1)) rotate(var(--ang)) scaleX(1); }
+}
+
+/* --- Satellite (corps + panneaux) --- */
+.login-fx-sat {
+    position: absolute; top: 0; left: 0;
+    width: 46px; height: 22px;
+    opacity: 0;
+    animation: loginFxSatFly var(--dur, 34s) linear forwards;
+}
+.login-fx-sat .sat-body {
+    position: absolute; left: 17px; top: 5px; width: 12px; height: 12px;
+    border-radius: 3px; background: linear-gradient(135deg,#e9edf5,#9aa6bd);
+    box-shadow: 0 0 10px rgba(180,200,255,.45);
+}
+.login-fx-sat .sat-panel {
+    position: absolute; top: 7px; width: 15px; height: 8px;
+    background: linear-gradient(90deg,#1d3a7a,#3f6fd1);
+    border: 1px solid rgba(190,210,255,.5);
+}
+.login-fx-sat .sat-panel.l { left: 0; }
+.login-fx-sat .sat-panel.r { right: 0; }
+.login-fx-sat .sat-blink {
+    position: absolute; left: 22px; top: -2px; width: 3px; height: 3px; border-radius: 50%;
+    background: #ff5a5a; animation: loginFxBlink 1.8s ease-in-out infinite;
+}
+@keyframes loginFxSatFly {
+    0%   { opacity: 0;  transform: translate(var(--x0), var(--y0)); }
+    6%   { opacity: .9; }
+    94%  { opacity: .9; }
+    100% { opacity: 0;  transform: translate(var(--x1), var(--y1)); }
+}
+@keyframes loginFxBlink { 0%,100% { opacity: .15; } 50% { opacity: 1; } }
+
+/* --- Astronaute flottant --- */
+.login-fx-astro {
+    position: absolute; top: 0; left: 0;
+    width: 64px; height: 84px;
+    opacity: 0;
+    animation: loginFxAstroDrift var(--dur, 46s) ease-in-out forwards,
+               loginFxAstroBob 4.2s ease-in-out infinite;
+}
+.login-fx-astro .astro-helmet {
+    position: absolute; left: 14px; top: 0; width: 36px; height: 36px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffffff, #c9d3e6 60%, #8a97b3);
+    box-shadow: inset -4px -5px 10px rgba(0,0,0,.25);
+}
+.login-fx-astro .astro-visor {
+    position: absolute; left: 22px; top: 10px; width: 22px; height: 15px; border-radius: 50%;
+    background: linear-gradient(135deg,#ffb36b,#e0641c);
+    box-shadow: inset 2px 2px 4px rgba(255,255,255,.35);
+}
+.login-fx-astro .astro-body {
+    position: absolute; left: 12px; top: 34px; width: 40px; height: 34px; border-radius: 14px 14px 8px 8px;
+    background: linear-gradient(160deg,#f4f7fc,#b7c2d8);
+    box-shadow: inset -4px -4px 8px rgba(0,0,0,.2);
+}
+.login-fx-astro .astro-arm {
+    position: absolute; top: 40px; width: 10px; height: 22px; border-radius: 6px;
+    background: #d6deec; transform-origin: 50% 0;
+}
+.login-fx-astro .astro-arm.l { left: 2px;  animation: loginFxArmL 3.4s ease-in-out infinite; }
+.login-fx-astro .astro-arm.r { right: 2px; animation: loginFxArmR 3.4s ease-in-out infinite; }
+.login-fx-astro .astro-tether {
+    position: absolute; left: 32px; top: 66px; width: 2px; height: 22px;
+    background: repeating-linear-gradient(180deg, rgba(255,255,255,.55) 0 3px, transparent 3px 6px);
+}
+@keyframes loginFxAstroDrift {
+    0%   { opacity: 0; transform: translate(var(--x0), var(--y0)) rotate(var(--rot0)); }
+    8%   { opacity: .95; }
+    92%  { opacity: .95; }
+    100% { opacity: 0; transform: translate(var(--x1), var(--y1)) rotate(var(--rot1)); }
+}
+@keyframes loginFxAstroBob { 0%,100% { margin-top: 0; } 50% { margin-top: -10px; } }
+@keyframes loginFxArmL { 0%,100% { transform: rotate(18deg); } 50% { transform: rotate(-22deg); } }
+@keyframes loginFxArmR { 0%,100% { transform: rotate(-18deg); } 50% { transform: rotate(22deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .login-fx { display: none !important; }
+}
