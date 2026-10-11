@@ -14,7 +14,12 @@ from datetime import date, datetime, timedelta
 def taches_aujourdhui():
     """Tâches dont l'échéance est aujourd'hui (scoping : mes equipes / social)."""
     from .social_service import est_tache_sociale
-    today_taches = Tache.query.filter(Tache.date_echeance == date.today()).all()
+    from sqlalchemy.orm import selectinload
+    # selectinload : dossier + assigné chargés en 2 requêtes au total (au lieu d'une
+    # requête par tâche, lorsque le template lit t.dossier et t.assigne).
+    today_taches = (Tache.query
+                    .options(selectinload(Tache.dossier), selectinload(Tache.assigne))
+                    .filter(Tache.date_echeance == date.today()).all())
     if current_user.role == 'membre':
         mine = {current_user.id}
         today_taches = [t for t in today_taches if t.assigne_a in mine]
