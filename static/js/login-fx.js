@@ -1,10 +1,10 @@
 /* ============================================================
-   LOGIN FX — habillage spatial aléatoire du login
-   - Étoiles filantes (CSS, par groupes de 3)
-   - Satellite et astronaute en Three.js (canvas dédié) : éclairage,
-     matériaux métalliques, reflets d'environnement, fondus
-   Décor uniquement : pointer-events none, sous le formulaire.
-   Créé seulement si la scène spatiale est active.
+   LOGIN FX - habillage spatial aleatoire du login
+   - Etoiles filantes (CSS, par groupes de 3)
+   - Planetes lointaines en Three.js (canvas dedie) : textures
+     generees par procede, eclairage du soleil, reflets d'environnement
+   Decor uniquement : pointer-events none, sous le formulaire.
+   Cree seulement si la scene spatiale est active.
    ============================================================ */
 (function () {
     'use strict';
@@ -12,7 +12,7 @@
     var html = document.documentElement;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { return; }
 
-    // URL du Three local : passée par le template via data-three
+    // URL du Three local : passee par le template via data-three
     var threeScript = document.currentScript;
     var THREE_URL = (threeScript && threeScript.getAttribute('data-three')) || '/static/js/vendor/three.module.min.js';
 
@@ -31,22 +31,22 @@
 
     var THREE = null, renderer = null, scene = null, camera = null;
     var loading = null;
-    var items = [], raf = 0, lastT = 0, running = false;
+    var items = [], raf = 0, lastT = 0;
 
     function rnd(a, b) { return a + Math.random() * (b - a); }
     function smooth(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
 
-    /* Fondu entrée/sortie sur la durée de vie (p de 0 à 1). */
+    /* Fondu entree/sortie sur la duree de vie (p de 0 a 1). */
     function envelope(p) {
         if (p < 0.08) { return smooth(p / 0.08); }
         if (p > 0.92) { return smooth((1 - p) / 0.08); }
         return 1;
     }
 
-    /* Demi-hauteur visible à la profondeur z (caméra en z = CAM_Z). */
+    /* Demi-hauteur visible a la profondeur z (camera en z = CAM_Z). */
     function halfHeightAt(z) { return Math.tan(FOV * Math.PI / 360) * (CAM_Z - z); }
 
-    /* ---------- Étoiles filantes (CSS) : 3 par passage ---------- */
+    /* ---------- Etoiles filantes (CSS) : 3 par passage ---------- */
     function setVars(el, obj) {
         Object.keys(obj).forEach(function (k) { el.style.setProperty(k, obj[k]); });
     }
@@ -75,8 +75,7 @@
         }
     }
 
-
-    /* ---------- Three.js : chargement et environnement ---------- */
+    /* ---------- Three.js : environnement ---------- */
     function canvasTexture(w, h, draw) {
         var c = document.createElement('canvas');
         c.width = w; c.height = h;
@@ -95,7 +94,7 @@
         camera.updateProjectionMatrix();
     }
 
-    /* Environnement procédural (ciel sombre, soleil, softbox) pour les reflets métalliques. */
+    /* Environnement procedural (ciel sombre, soleil, softbox) pour les reflets. */
     function buildEnvironment() {
         var tex = canvasTexture(512, 256, function (g, w, h) {
             var grd = g.createLinearGradient(0, 0, 0, h);
@@ -117,8 +116,9 @@
         return env;
     }
 
-    /* Chargement unique et paresseux de Three.js. Échec = pas d'objets 3D,
-       les étoiles filantes CSS continuent de fonctionner. */
+
+    /* Chargement unique et paresseux de Three.js. Echec = pas d'objets 3D,
+       les etoiles filantes CSS continuent de fonctionner. */
     function loadThree() {
         if (!loading) {
             loading = import(THREE_URL).then(function (mod) {
@@ -138,11 +138,11 @@
                 camera = new THREE.PerspectiveCamera(FOV, window.innerWidth / window.innerHeight, 0.1, 400);
                 camera.position.set(0, 0, CAM_Z);
 
-                scene.add(new THREE.AmbientLight(0xc4d4f0, 0.35));
-                var sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
+                scene.add(new THREE.AmbientLight(0xc4d4f0, 0.3));
+                var sun = new THREE.DirectionalLight(0xfff1dc, 2.6);
                 sun.position.set(-40, 30, 50);
                 scene.add(sun);
-                var rim = new THREE.DirectionalLight(0x5b8cff, 0.8);
+                var rim = new THREE.DirectionalLight(0x5b8cff, 0.6);
                 rim.position.set(50, -20, -30);
                 scene.add(rim);
                 scene.environment = buildEnvironment();
@@ -157,7 +157,8 @@
     }
 
 
-    /* ---------- Matériaux, géométries et objets ---------- */
+
+    /* ---------- Materiaux et helpers ---------- */
     function mat(color, rough, metal, extra) {
         var m = new THREE.MeshStandardMaterial({
             color: color, roughness: rough, metalness: metal,
@@ -174,83 +175,139 @@
         return m;
     }
 
-    /* Satellite : corps métallique, deux ailes solaires texturées, antenne parabolique. */
-    function buildSatellite() {
-        var root = new THREE.Group();
-        var mats = [], geos = [];
-        var bodyM = mat(0xdfe6f2, 0.32, 0.85); mats.push(bodyM);
-        var goldM = mat(0xd8a24a, 0.35, 0.9); mats.push(goldM);
-        var panelTex = canvasTexture(256, 128, function (g, w, h) {
-            g.fillStyle = '#143a86'; g.fillRect(0, 0, w, h);
-            g.strokeStyle = 'rgba(160,190,240,0.75)'; g.lineWidth = 2;
-            for (var x = 0; x <= w; x += 32) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-            for (var y = 0; y <= h; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
-        });
-        var panelM = mat(0xffffff, 0.4, 0.35, { map: panelTex }); mats.push(panelM);
-
-        var bodyG = new THREE.BoxGeometry(2.2, 1.6, 1.6); geos.push(bodyG);
-        add(root, bodyG, bodyM, 0, 0, 0);
-        [-1, 1].forEach(function (s) {
-            var boomG = new THREE.BoxGeometry(1.6, 0.12, 0.12); geos.push(boomG);
-            add(root, boomG, goldM, s * 2.1, 0, 0);
-            var panelG = new THREE.BoxGeometry(3.6, 0.05, 1.8); geos.push(panelG);
-            var p = add(root, panelG, panelM, s * 3.9, 0, 0);
-            p.rotation.x = 0.08;
-        });
-        var dishG = new THREE.SphereGeometry(0.9, 28, 14, 0, Math.PI * 2, 0, 0.85); geos.push(dishG);
-        var d = add(root, dishG, bodyM, 0, 0.1, 1.05);
-        d.rotation.x = Math.PI / 2;
-        var antG = new THREE.CylinderGeometry(0.05, 0.05, 1.4, 8); geos.push(antG);
-        add(root, antG, goldM, 0, 1.2, 0);
-        root.scale.setScalar(2.4);
-        return { group: root, mats: mats, geos: geos, texs: [panelTex] };
+    /* Bruit de valeur periodique en x (raccord gauche/droite de la texture). */
+    function makeNoise(cols, rows) {
+        var g = [];
+        for (var i = 0; i < cols * rows; i++) { g.push(Math.random()); }
+        return function (u, v) {
+            var x = u * cols, y = v * (rows - 1);
+            var x0 = Math.floor(x), y0 = Math.floor(y);
+            var fx = smooth(x - x0), fy = smooth(y - y0);
+            var ax = ((x0 % cols) + cols) % cols, bx = (ax + 1) % cols;
+            var ay = Math.min(y0, rows - 1), by = Math.min(y0 + 1, rows - 1);
+            var a = g[ay * cols + ax], b = g[ay * cols + bx];
+            var c = g[by * cols + ax], d = g[by * cols + bx];
+            return (a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy;
+        };
     }
 
-    /* Astronaute : combinaison blanche, visière dorée réfléchissante, sac à dos,
-       bras et jambes articulés, câble coupé qui pend du sac. */
-    function buildAstronaut() {
+    /* Somme de quatre octaves de bruit (relief, nuages, cratères). */
+    function makeFbm() {
+        var layers = [makeNoise(4, 3), makeNoise(8, 5), makeNoise(16, 9), makeNoise(32, 17)];
+        var weights = [0.5, 0.3, 0.13, 0.07];
+        return function (u, v) {
+            var s = 0;
+            for (var i = 0; i < layers.length; i++) { s += weights[i] * layers[i](u, v); }
+            return s;
+        };
+    }
+
+    function mix(a, b, t) {
+        t = Math.max(0, Math.min(1, t));
+        return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    }
+
+    /* Couleur d'un texel : n = relief (0..1), v = latitude (0 haut, 1 bas). */
+    function colorAt(kind, n, v) {
+        var lat = Math.abs(v - 0.5) * 2;
+        if (kind === 'earth') {
+            if (lat > 0.9) { return [236, 242, 248]; }
+            if (n > 0.52) { return mix([58, 112, 56], [128, 106, 64], (n - 0.52) * 4); }
+            return mix([16, 58, 118], [38, 96, 156], n / 0.52);
+        }
+        if (kind === 'mars') {
+            if (lat > 0.94) { return [228, 222, 214]; }
+            if (n > 0.72) { return mix([120, 66, 40], [92, 50, 32], (n - 0.72) * 3); }
+            return mix([164, 84, 46], [196, 118, 66], n);
+        }
+        if (kind === 'jupiter') {
+            var band = Math.sin(v * Math.PI * 12 + (n - 0.5) * 2.5);
+            return mix([150, 98, 62], [226, 190, 146], (band + 1) / 2 * 0.85 + n * 0.15);
+        }
+        if (kind === 'saturn') {
+            var b2 = Math.sin(v * Math.PI * 9 + (n - 0.5) * 1.8);
+            return mix([196, 166, 110], [240, 220, 170], (b2 + 1) / 2 * 0.8 + n * 0.2);
+        }
+        /* lune glacee */
+        if (n > 0.7) { return mix([150, 152, 160], [110, 112, 122], (n - 0.7) * 3); }
+        return mix([196, 204, 216], [160, 168, 180], n);
+    }
+
+    /* Peint la surface d'une planete (texture equirectangulaire). */
+    function paintPlanet(g, w, h, kind) {
+        var fbm = makeFbm();
+        var img = g.createImageData(w, h);
+        var d = img.data;
+        for (var y = 0; y < h; y++) {
+            var v = y / (h - 1);
+            for (var x = 0; x < w; x++) {
+                var n = Math.max(0, Math.min(1, (fbm(x / w, v) - 0.5) * 2.4 + 0.5));
+                var c = colorAt(kind, n, v);
+                var k = (y * w + x) * 4;
+                d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = 255;
+            }
+        }
+        g.putImageData(img, 0, 0);
+    }
+
+
+
+    /* Anneaux : texture radiale, UV planaires de RingGeometry (rayon interne 161 px). */
+    function ringTexture() {
+        return canvasTexture(512, 512, function (g) {
+            g.clearRect(0, 0, 512, 512);
+            for (var rr = 161; rr < 256; rr++) {
+                var a = 0.25 + 0.4 * Math.abs(Math.sin(rr * 0.23) * Math.sin(rr * 0.071));
+                if (rr > 196 && rr < 202) { a = 0.04; }
+                g.strokeStyle = 'rgba(222,200,160,' + a.toFixed(3) + ')';
+                g.lineWidth = 1.2;
+                g.beginPath(); g.arc(256, 256, rr, 0, Math.PI * 2); g.stroke();
+            }
+        });
+    }
+
+    var KINDS = {
+        earth:   { halo: 0x3d7fe0, ring: false },
+        mars:    { halo: 0xc8643a, ring: false },
+        jupiter: { halo: 0xd9a46a, ring: false },
+        saturn:  { halo: 0xe6cf98, ring: true },
+        ice:     { halo: 0x9fb4d0, ring: false }
+    };
+
+    /* Planete de rayon 1 (mise a l'echelle ensuite) : surface, halo, anneaux eventuels. */
+    function buildPlanet(kind) {
+        var cfg = KINDS[kind];
         var root = new THREE.Group();
-        var mats = [], geos = [];
-        var suitM = mat(0xe9edf5, 0.6, 0.05); mats.push(suitM);
-        var packM = mat(0x9aa4b6, 0.45, 0.4); mats.push(packM);
-        var visorM = mat(0x2b1a08, 0.08, 1.0); mats.push(visorM);
-        var cordM = mat(0xf2c14e, 0.5, 0.1); mats.push(cordM);
+        var mats = [], geos = [], texs = [];
         function geo(g) { geos.push(g); return g; }
 
-        add(root, geo(new THREE.CapsuleGeometry(1.1, 1.6, 6, 14)), suitM, 0, 0, 0);
-        add(root, geo(new THREE.SphereGeometry(1.15, 28, 20)), suitM, 0, 2.3, 0);
-        add(root, geo(new THREE.SphereGeometry(0.78, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.9)), visorM, 0, 2.3, 0.45);
-        add(root, geo(new THREE.BoxGeometry(2.0, 2.5, 0.9)), packM, 0, 0.2, -1.2);
+        var bodyTex = canvasTexture(512, 256, function (g, w, h) { paintPlanet(g, w, h, kind); });
+        texs.push(bodyTex);
+        var bodyM = mat(0xffffff, 0.9, 0.0, { map: bodyTex });
+        mats.push(bodyM);
+        add(root, geo(new THREE.SphereGeometry(1, 64, 48)), bodyM, 0, 0, 0);
 
-        var arms = [], legs = [];
-        [-1, 1].forEach(function (s) {
-            var arm = new THREE.Group();
-            arm.position.set(s * 1.35, 1.2, 0);
-            add(arm, geo(new THREE.CapsuleGeometry(0.34, 1.6, 4, 10)), suitM, 0, -1.0, 0);
-            add(arm, geo(new THREE.SphereGeometry(0.42, 14, 10)), suitM, 0, -2.2, 0);
-            root.add(arm);
-            arms.push(arm);
+        /* Halo : coque un peu plus grande, seules ses faces arriere sont visibles (liseret). */
+        var haloM = mat(0x000000, 1, 0, { side: THREE.BackSide });
+        haloM.emissive.setHex(cfg.halo);
+        haloM.emissiveIntensity = 0.12;
+        mats.push(haloM);
+        add(root, geo(new THREE.SphereGeometry(1.04, 48, 32)), haloM, 0, 0, 0);
 
-            var leg = new THREE.Group();
-            leg.position.set(s * 0.55, -1.7, 0);
-            add(leg, geo(new THREE.CapsuleGeometry(0.4, 1.8, 4, 10)), suitM, 0, -1.2, 0);
-            add(leg, geo(new THREE.BoxGeometry(0.7, 0.45, 1.0)), suitM, 0, -2.4, 0.2);
-            root.add(leg);
-            legs.push(leg);
-        });
+        if (cfg.ring) {
+            var ringTex = ringTexture();
+            texs.push(ringTex);
+            var ringM = mat(0xffffff, 0.7, 0, { map: ringTex, side: THREE.DoubleSide });
+            mats.push(ringM);
+            var ring = add(root, geo(new THREE.RingGeometry(1.45, 2.3, 128)), ringM, 0, 0, 0);
+            ring.rotation.x = Math.PI / 2;
+        }
 
-        /* Câble coupé : pivot sur le sac, pend et oscille. */
-        var tether = new THREE.Group();
-        tether.position.set(0.7, 1.4, -1.9);
-        add(tether, geo(new THREE.CylinderGeometry(0.05, 0.05, 3.2, 6)), cordM, 0, -1.6, 0);
-        add(tether, geo(new THREE.SphereGeometry(0.1, 8, 6)), cordM, 0, -3.2, 0);
-        root.add(tether);
-
-        root.scale.setScalar(2.2);
-        return { group: root, mats: mats, geos: geos, texs: [], arms: arms, legs: legs, tether: tether };
+        root.rotation.z = rnd(0.2, 0.45);
+        return { group: root, mats: mats, geos: geos, texs: texs };
     }
 
-    /* Libère géométries, textures et matériaux à la fin de chaque passage. */
+    /* Libere geometries, textures et materiaux a la fin de chaque passage. */
     function disposeItem(it) {
         scene.remove(it.group);
         it.geos.forEach(function (g) { g.dispose(); });
@@ -262,18 +319,19 @@
         for (var i = 0; i < mats.length; i++) { mats[i].opacity = o; }
     }
 
+
+
     /* ---------- Boucle de rendu : tourne seulement tant qu'un objet existe ---------- */
     function frame(now) {
         raf = 0;
         if (!renderer) { return; }
         var t = now / 1000;
-        var dt = lastT ? Math.min(0.05, t - lastT) : 0;
         lastT = t;
         for (var i = items.length - 1; i >= 0; i--) {
             var it = items[i];
             var p = (now - it.t0) / it.dur;
             if (p >= 1) { disposeItem(it); items.splice(i, 1); continue; }
-            it.update(p, t, dt);
+            it.update(p, t);
             setOpacity(it.mats, envelope(p));
         }
         renderer.render(scene, camera);
@@ -290,7 +348,6 @@
         if (!raf) { raf = requestAnimationFrame(frame); }
     }
 
-
     /* ---------- Apparitions ---------- */
     function track(it, durMs) {
         it.t0 = performance.now();
@@ -299,68 +356,42 @@
         kick();
     }
 
-    /* Exécute fn une fois Three.js prêt (chargement unique). */
+    /* Execute fn une fois Three.js pret (chargement unique). */
     function whenReady(fn) {
         if (scene) { fn(); return; }
         loadThree().then(function () { if (scene) { fn(); } });
     }
 
-    /* Satellite : traverse la scène en profondeur, tumble lent, bords hors écran. */
-    function spawnSatellite() {
+    /* Planete lointaine : profondeur -160 a -110, petite, dérive lente et rotation. */
+    function spawnPlanet() {
         whenReady(function () {
-            var z = rnd(-28, -8);
+            var kinds = ['earth', 'mars', 'jupiter', 'saturn', 'ice'];
+            var kind = kinds[Math.floor(Math.random() * kinds.length)];
+            var z = rnd(-160, -110);
             var hh = halfHeightAt(z), hw = hh * camera.aspect;
-            var fromLeft = Math.random() < 0.5;
-            var sx = fromLeft ? -hw - 14 : hw + 14, ex = -sx;
-            var sy = rnd(-hh * 0.1, hh * 0.7);
-            var ey = sy + rnd(-hh * 0.25, hh * 0.25);
-            var o = buildSatellite();
-            o.group.position.set(sx, sy, z);
-            scene.add(o.group);
-            var phase = rnd(0, 6.28);
-            o.update = function (p, t) {
-                o.group.position.x = sx + (ex - sx) * p;
-                o.group.position.y = sy + (ey - sy) * p + Math.sin(t * 0.5 + phase) * 0.3;
-                o.group.rotation.y = 0.45 + 0.5 * Math.sin(t * 0.35 + phase);
-                o.group.rotation.x = 0.25 + 0.15 * Math.sin(t * 0.5);
-                o.group.rotation.z = -0.06 + 0.05 * Math.sin(t * 0.7);
-            };
-            track(o, rnd(28, 36) * 1000);
-        });
-    }
-
-    /* Astronaute en dérive : bras et jambes qui bougent, câble coupé qui pend et oscille. */
-    function spawnAstronaut() {
-        whenReady(function () {
-            var z = rnd(-12, -2);
-            var hh = halfHeightAt(z), hw = hh * camera.aspect;
-            var fromLeft = Math.random() < 0.5;
-            var sx = fromLeft ? -hw - 10 : hw + 10, ex = -sx;
-            var sy = rnd(-hh * 0.35, hh * 0.35);
-            var ey = sy + rnd(-hh * 0.15, hh * 0.15);
-            var rot0 = rnd(-0.4, 0.4), rot1 = rnd(-1.2, 1.2);
-            var o = buildAstronaut();
-            scene.add(o.group);
+            var r = rnd(4.5, 7.5) * (kind === 'saturn' ? 1.1 : 1);
+            var side = Math.random() < 0.5 ? -1 : 1;
+            var x0 = side * rnd(hw * 0.35, hw * 0.8);
+            var y0 = rnd(-hh * 0.45, hh * 0.45);
+            var dx = -side * rnd(hw * 0.08, hw * 0.2);
+            var dy = rnd(-hh * 0.08, hh * 0.08);
+            var spin = rnd(0.03, 0.08) * (Math.random() < 0.5 ? -1 : 1);
             var ph = rnd(0, 6.28);
+            var o = buildPlanet(kind);
+            o.group.scale.setScalar(r);
+            o.group.position.set(x0, y0, z);
+            scene.add(o.group);
             o.update = function (p, t) {
-                var e = smooth(p);
-                o.group.position.set(sx + (ex - sx) * e, sy + (ey - sy) * e + Math.sin(t * 0.9 + ph) * 0.5, z);
-                o.group.rotation.z = rot0 + (rot1 - rot0) * e + 0.08 * Math.sin(t * 0.7 + ph);
-                o.group.rotation.y = 0.6 * Math.sin(t * 0.4 + ph);
-                o.group.rotation.x = 0.2 * Math.sin(t * 0.3 + ph);
-                o.arms[0].rotation.z = -0.25 + 0.35 * Math.sin(t * 1.1 + ph);
-                o.arms[1].rotation.z = 0.2 - 0.35 * Math.sin(t * 0.9 + ph + 1);
-                o.legs[0].rotation.z = 0.15 * Math.sin(t * 0.8 + ph);
-                o.legs[1].rotation.z = -0.15 * Math.sin(t * 0.8 + ph + 1.2);
-                o.tether.rotation.z = 0.3 * Math.sin(t * 0.9 + ph);
-                o.tether.rotation.x = 0.15 * Math.sin(t * 0.6 + ph);
+                o.group.position.x = x0 + dx * p;
+                o.group.position.y = y0 + dy * p + Math.sin(t * 0.05 + ph) * 0.4;
+                o.group.rotation.y = t * spin;
             };
-            track(o, rnd(40, 58) * 1000);
+            track(o, rnd(50, 70) * 1000);
         });
     }
 
-    /* Boucle aléatoire : étoiles filantes toutes les 4–9 s, satellite toutes
-       les 18–30 s, astronaute toutes les 40–70 s. Rien ne se passe hors scène active. */
+    /* Boucle aleatoire : etoiles filantes toutes les 4-9 s, planete toutes
+       les 25-45 s. Rien ne se passe hors scene active. */
     function schedule(fn, minS, maxS, firstS) {
         function next(delay) {
             setTimeout(function () {
@@ -372,6 +403,5 @@
     }
 
     schedule(spawnShooting, 4, 9, 2.5);
-    schedule(spawnSatellite, 18, 30, 6);
-    schedule(spawnAstronaut, 40, 70, 14);
+    schedule(spawnPlanet, 25, 45, 8);
 })();
