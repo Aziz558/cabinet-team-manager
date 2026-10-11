@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Cabinet Manager{% endblock %}</title>
+    <!-- Fond du thème dès le 1er rendu : évite le flash blanc pendant le chargement des CSS -->
+    <style>html,body{background:#f3f4f6}html[data-theme="dark"],html[data-theme="dark"] body{background:#0f0f12}</style>
     <!-- Appliquer le thÃ¨me AVANT le premier rendu (Ã©vite flash/latence de changement de page) -->
     <script>
     // ===== Socle thÃ¨me JMH Orbit (source unique, appliquÃ© Ã  toutes les fenÃªtres) =====
