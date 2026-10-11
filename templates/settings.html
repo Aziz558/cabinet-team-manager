@@ -117,6 +117,21 @@
                 <div id="testMailResult" class="small mb-3"></div>
 
                 <hr style="border-color: var(--border-color);">
+                <h6 class="mt-3"><i class="bi bi-clock-history me-1" style="color:var(--orange-primary)"></i>Récapitulatif mail Pennylane</h6>
+                <p class="text-tertiary small">Les nouveaux documents et transactions détectés sont regroupés en un seul mail par créneau, au lieu d'un mail à chaque détection. Heures séparées par des virgules, heure de Paris (0 à 23). Laissez vide pour désactiver les mails : les notifications restent dans l'application.</p>
+                <form id="digestForm" class="mb-3">
+                    <div class="mb-2">
+                        <label class="form-label">Heures d'envoi</label>
+                        {% set digest = settings|selectattr('cle','equalto','PENNYLANE_DIGEST_HEURES')|list|first %}
+                        <input type="text" name="PENNYLANE_DIGEST_HEURES" class="input-premium" value="{{ (digest.valeur or '') if digest else '9,13,17' }}" placeholder="ex: 9,13,17">
+                    </div>
+                    <button type="submit" class="btn-premium btn-premium-success btn-press w-100 mb-2">
+                        <i class="bi bi-save me-1"></i>Enregistrer la fréquence
+                    </button>
+                </form>
+                <div id="digestResult" class="small mb-3"></div>
+
+                <hr style="border-color: var(--border-color);">
                 <h6 class="mt-3" id="mailbox"><i class="bi bi-envelope me-1" style="color:var(--orange-primary)"></i>Boîte mail Gmail (IMAP)</h6>
                 <p class="text-tertiary small">Configurez une boîte Gmail dédiée. L'application lira les emails reçus et créera des suggestions de tâches via l'IA.</p>
                 <form id="mailboxForm" class="mb-3">
@@ -334,6 +349,31 @@ document.getElementById('smtpForm').addEventListener('submit', function(e) {
         } else {
             box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
         }
+    });
+});
+
+// Recapitulatif Pennylane : frequence d'envoi
+document.getElementById('digestForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const valeur = (new FormData(this).get('PENNYLANE_DIGEST_HEURES') || '').trim();
+    const box = document.getElementById('digestResult');
+    box.textContent = 'Enregistrement...';
+    fetch('/api/settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cle: 'PENNYLANE_DIGEST_HEURES', valeur: valeur, service: 'mail', type_valeur: 'string', masque: false}),
+    }).then(r => r.json()).then(res => {
+        const span = document.createElement('span');
+        if (res.ok) {
+            span.style.color = 'var(--success)';
+            span.textContent = valeur
+                ? 'Récapitulatif programmé à ' + valeur + ' h (heure de Paris).'
+                : 'Envoi désactivé : les nouveaux documents restent visibles dans l\'application.';
+        } else {
+            span.style.color = 'var(--danger)';
+            span.textContent = res.message || 'Erreur lors de l\'enregistrement.';
+        }
+        box.replaceChildren(span);
     });
 });
 

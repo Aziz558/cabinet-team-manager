@@ -339,6 +339,52 @@ def send_pennylane_new_docs_email_brevo(dossier, nouveaux: list, destinataire_id
     )
 
 
+def send_pennylane_digest_email_brevo(user, par_dossier, creneau: str) -> bool:
+    """Recapitulatif groupe des nouveaux documents Pennylane (un mail par destinataire et par creneau).
+
+    par_dossier : liste de tuples (dossier, [PennylaneItem, ...]).
+    """
+    from html import escape
+    if not user or not user.email or not par_dossier:
+        return False
+
+    labels = {'facture_vente': 'Vente', 'facture_achat': 'Achat', 'transaction': 'Banque'}
+    total = sum(len(items) for _, items in par_dossier)
+    rows = []
+    for dossier, items in par_dossier:
+        lignes = []
+        for it in items[:8]:
+            montant = (f"{it.montant:,.2f}".replace(',', ' ') + ' €') if it.montant is not None else '—'
+            lignes.append(
+                f"{escape(labels.get(it.item_type, it.item_type))} — "
+                f"{escape(it.reference or '(sans référence)')} — {montant}"
+            )
+        if len(items) > 8:
+            lignes.append(f"… et {len(items) - 8} autre(s)")
+        rows.append((escape(dossier.numero_dossier), '<br>'.join(lignes)))
+
+    template = _email_layout(
+        header_title=f"Recapitulatif Pennylane — {creneau}",
+        header_emoji="🆕",
+        intro_html=(
+            f'<p style="color:#e0e0e0;font-size:15px;margin:0 0 4px 0;">Bonjour <strong style="color:#FF8C00;">{user.prenom} {user.nom}</strong>,</p>'
+            f'<p style="color:#9a9a9a;font-size:13px;margin:0;">'
+            f'<strong style="color:#fff;">{total}</strong> nouveau(x) document(s) detecte(s) sur Pennylane depuis le dernier recapitulatif :</p>'
+        ),
+        rows=rows,
+        cta_url=f"{APP_URL}/pennylane",
+        cta_text="Ouvrir Pennylane",
+        footer_note="Recapitulatif envoye selon les creneaux definis dans Parametres. Vous recevez cet email car vous etes manager ou collaborateur de ces dossiers.",
+    )
+
+    return send_email_via_brevo_api(
+        to_email=user.email,
+        subject=f"🆕 {total} nouveau(x) document(s) Pennylane — recapitulatif {creneau}",
+        body=f"Bonjour {user.prenom}, {total} nouveau(x) document(s) Pennylane detecte(s). Consultez : {APP_URL}/pennylane",
+        html_content=template,
+    )
+
+
 def send_email_notification_fallback(to_email, subject, body, html_content=None):
     """Fallback to SMTP if Brevo is not configured."""
     try:

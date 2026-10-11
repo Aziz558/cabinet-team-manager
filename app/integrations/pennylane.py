@@ -838,6 +838,7 @@ def _detecter_nouveaux_items(dossier, invs, sinvs, txs) -> list:
                     dossier_id=dossier.id, item_type=item_type, item_id=iid,
                     reference=ref[:120], montant=montant, date_item=date_item[:30],
                     api_statut=api_statut[:30], statut=initial_statut,
+                    digest_envoye=(initial_statut == 'traite'),
                 )
                 db.session.add(row)
                 existing[(item_type, iid)] = row
@@ -910,16 +911,112 @@ def _notifier_nouveaux_items(dossier, nouveaux: list):
         db.session.rollback()
         logger.warning(f'notif nouveaux: {e}')
 
-    # Email Brevo (best-effort, jamais bloquant)
+    # Pas d'email immediat : les nouveaux items sont regroupes dans le
+    # recapitulatif envoye par envoyer_digest_pennylane() aux heures configurees.
+
+
+# ---------------------------------------------------------------------------
+# Recapitulatif Pennylane : un seul mail par destinataire et par creneau
+# (au lieu d'un mail a chaque detection). Creneaux reglables dans Parametres.
+# ---------------------------------------------------------------------------
+DIGEST_CLE = 'PENNYLANE_DIGEST_HEURES'
+DIGEST_HEURES_DEFAUT = (9, 13, 17)
+DIGEST_FUSEAU = 'Europe/Paris'
+
+
+def normaliser_heures_digest(valeur) -> str:
+    """'17, 9,13' -> '9,13,17'. Chaine vide = envoi desactive. Leve ValueError si invalide."""
+    texte = '' if valeur is None else str(valeur).strip()
+    if not texte:
+        return ''
+    heures = set()
+    for morceau in texte.split(','):
+        morceau = morceau.strip()
+        if not morceau.isdigit() or not 0 <= int(morceau) <= 23:
+            raise ValueError('Heure invalide : indiquez des heures entre 0 et 23, separees par des virgules (ex : 9,13,17).')
+        heures.add(int(morceau))
+    return ','.join(str(h) for h in sorted(heures))
+
+
+def get_digest_heures() -> list:
+    """Heures d'envoi configurees (heure de Paris). Liste vide = envoi desactive."""
+    from app.models import AppSetting
+    setting = AppSetting.query.filter_by(cle=DIGEST_CLE).first()
+    if setting is None:
+        return list(DIGEST_HEURES_DEFAUT)
     try:
-        from app.integrations.brevo import send_pennylane_new_docs_email_brevo
-        for uid in destinataires:
-            try:
-                send_pennylane_new_docs_email_brevo(dossier, nouveaux, uid)
-            except Exception as e:
-                logger.warning(f'email nouveauxPennylane user {uid}: {e}')
-    except Exception as e:
-        logger.warning(f'email nouveaux (import brevo): {e}')
+        texte = normaliser_heures_digest(setting.valeur)
+    except ValueError:
+        return list(DIGEST_HEURES_DEFAUT)
+    return [int(h) for h in texte.split(',') if h]
+
+
+def envoyer_digest_pennylane(force: bool = False) -> dict:
+    """Envoie le recapitulatif des nouveaux documents non encore notifies par mail.
+
+    Appele chaque heure par le scheduler : n'envoie que si l'heure courante (Paris)
+    fait partie des creneaux configurés, sauf si force=True.
+    Un seul mail par destinataire (manager + collaborateur) et par creneau.
+    Un item est marque digest_envoye des qu'au moins un destinataire a recu le mail.
+    """
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+    from app import db
+    from app.models import Dossier, PennylaneItem, User
+    from app.integrations.brevo import send_pennylane_digest_email_brevo
+
+    heures = get_digest_heures()
+    maintenant = _dt.now(ZoneInfo(DIGEST_FUSEAU))
+    if not force and maintenant.hour not in heures:
+        return {'ok': True, 'skipped': True, 'sent': 0, 'items': 0}
+
+    en_attente = (PennylaneItem.query.filter_by(digest_envoye=False)
+                  .order_by(PennylaneItem.dossier_id, PennylaneItem.id).all())
+    if not en_attente:
+        return {'ok': True, 'skipped': False, 'sent': 0, 'items': 0}
+
+    dossiers = {}
+    users = {}
+    cibles = {}    # item.id -> set(user_id) joignables par email
+    par_user = {}  # user_id -> {dossier_id: [items]}
+    for it in en_attente:
+        if it.dossier_id not in dossiers:
+            dossiers[it.dossier_id] = db.session.get(Dossier, it.dossier_id)
+        d = dossiers[it.dossier_id]
+        cibles[it.id] = set()
+        if d is None:
+            continue
+        eq = getattr(d, 'equipe', None)
+        manager = getattr(eq, 'manager', None) if eq else None
+        collab = getattr(d, 'collaborateur', None)
+        for u in (manager, collab):
+            if u and u.email:
+                users[u.id] = u
+                cibles[it.id].add(u.id)
+                par_user.setdefault(u.id, {}).setdefault(d.id, []).append(it)
+
+    creneau = f"{maintenant.hour:02d}h"
+    reussis = set()
+    mails = 0
+    for uid, par_dossier in par_user.items():
+        liste = [(dossiers[did], items) for did, items in sorted(par_dossier.items())]
+        try:
+            if send_pennylane_digest_email_brevo(users[uid], liste, creneau):
+                reussis.add(uid)
+                mails += 1
+            else:
+                logger.warning(f'digest Pennylane: envoi refuse pour user {uid}')
+        except Exception as e:
+            logger.warning(f'digest Pennylane user {uid}: {e}')
+
+    marques = 0
+    for it in en_attente:
+        if not cibles[it.id] or cibles[it.id] & reussis:
+            it.digest_envoye = True
+            marques += 1
+    db.session.commit()
+    logger.info(f'digest Pennylane {creneau}: {mails} mail(s), {marques}/{len(en_attente)} item(s) marques')
+    return {'ok': True, 'skipped': False, 'sent': mails, 'items': len(en_attente)}
 
 
 def get_dossier_pennylane_data(dossier, token: str = None, force_refresh: bool = False) -> dict:

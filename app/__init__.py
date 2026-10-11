@@ -727,12 +727,22 @@ try:
             except Exception as e:
                 app.logger.error(f"TVA auto-sync error: {e}")
 
+    def envoyer_digest_pennylane_job():
+        """Recapitulatif Pennylane (creneaux configures dans Parametres, heure de Paris)."""
+        with app.app_context():
+            try:
+                from app.integrations.pennylane import envoyer_digest_pennylane
+                envoyer_digest_pennylane()
+            except Exception as e:
+                app.logger.error(f"Digest Pennylane error: {e}")
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
     scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)
     scheduler.add_job(regenerer_taches_fiscales, 'cron', day=1, hour=6, minute=0)  # 1er du mois à 06:00
     scheduler.add_job(generer_taches_dsn, 'cron', hour=6, minute=30)  # chaque jour 06:30 (horizon 20j)
     scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0)  # toutes les heures
+    scheduler.add_job(envoyer_digest_pennylane_job, 'cron', minute=5)  # recapitulatif mail, filtre par creneaux (5 min apres la sync)
     scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10)  # toutes les heures (:10)
     scheduler.start()
     app.logger.info("APScheduler started: daily 08:00, recurring 07:00, fiscal 1st 06:00, pennylane hourly, TVA hourly (:10)")

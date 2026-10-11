@@ -35,6 +35,12 @@ def api_settings():
     cle = (data.get('cle') or '').strip()
     if not cle:
         return jsonify({'ok': False, 'message': 'Clé manquante.'}), 400
+    if cle == 'PENNYLANE_DIGEST_HEURES' and data.get('valeur') is not None:
+        from app.integrations.pennylane import normaliser_heures_digest
+        try:
+            data['valeur'] = normaliser_heures_digest(data.get('valeur'))
+        except ValueError as e:
+            return jsonify({'ok': False, 'message': str(e)}), 400
     setting = AppSetting.query.filter_by(cle=cle).first()
     if setting is None:
         setting = AppSetting(cle=cle)
