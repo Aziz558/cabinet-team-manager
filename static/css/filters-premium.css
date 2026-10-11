@@ -45,14 +45,14 @@
     height: 34px;
     padding: 0 26px 0 10px;
     border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    border: 1px solid transparent;
+    background: transparent;
     color: var(--text-secondary);
     font-size: .82rem;
-    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    box-shadow: none;
     transition: color .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
 }
-.avm-select:hover { background: var(--bg-card-hover); border-color: var(--border-strong); color: var(--text-primary); }
+.avm-select:hover { background: transparent; border-color: var(--border-color); color: var(--text-primary); }
 .avm-select:focus-within { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255,140,0,.14); }
 .avm-select.on { background: var(--orange-subtle); border-color: var(--orange-primary); color: var(--orange-primary); }
 .avm-select select { font-size: .8rem; font-weight: 500; max-width: 150px; }
@@ -71,7 +71,7 @@
     font-size: .74rem;
     padding: .2rem .55rem;
     border-radius: 999px;
-    background: var(--bg-elevated);
+    background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
 }
@@ -83,15 +83,15 @@
     padding: 0 .9rem;
     border-radius: 10px;
     border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    background: transparent;
     color: var(--text-secondary);
     font-size: .82rem;
     font-weight: 500;
-    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    box-shadow: none;
     transition: background-color .18s ease, border-color .18s ease, color .18s ease;
 }
 .btn-filter-advanced i { font-size: .95rem; color: var(--text-tertiary); }
-.btn-filter-advanced:hover { background: var(--bg-card-hover); border-color: var(--border-strong); color: var(--text-primary); }
+.btn-filter-advanced:hover { background: transparent; border-color: var(--border-strong); color: var(--text-primary); }
 .btn-filter-advanced.active {
     background: var(--orange-subtle);
     border-color: var(--orange-primary);
@@ -111,9 +111,9 @@
     padding: .32rem .8rem;
     font-size: .8rem;
     font-weight: 500;
-    background: var(--bg-elevated);
+    background: transparent;
 }
-.btn-filter-option:hover { background: var(--bg-card-hover); }
+.btn-filter-option:hover { background: transparent; }
 .btn-filter-option.active { font-weight: 600; box-shadow: 0 0 0 3px rgba(255,140,0,.12); }
 
 /* Vignettes membres : cadre net et état actif lisible */
@@ -122,7 +122,7 @@
     border-radius: 12px !important;
     transition: background-color .18s ease, border-color .18s ease;
 }
-.member-filter-item:hover { background: var(--bg-card-hover); border-color: var(--border-color); }
+.member-filter-item:hover { background: transparent; border-color: var(--border-color); }
 
 /* ---------- Barre d'outils (compteur, chips, recherche) ---------- */
 .orbit-toolbar { border-radius: 12px; }
