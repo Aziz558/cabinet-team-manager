@@ -15,13 +15,15 @@ class _Resp:
         raise ValueError('pas du JSON')
 
 
-def test_erreur_http_journalisee_sans_cle(monkeypatch, caplog):
+def test_erreur_http_journalisee_sans_cle(monkeypatch):
+    messages = []
     monkeypatch.setattr('app.integrations.openrouter.requests.post',
                         lambda *a, **k: _Resp(401, '{"error": "invalid api key"}'))
+    monkeypatch.setattr('app.integrations.openrouter.logger.error',
+                        lambda msg, *args: messages.append(msg % args))
     client = OpenRouterClient(api_key=CLE, model='m:free')
-    with caplog.at_level(logging.ERROR, logger='app.integrations.openrouter'):
-        assert client.chat([{'role': 'user', 'content': 'hi'}]) is None
-    texte = caplog.text
+    assert client.chat([{'role': 'user', 'content': 'hi'}]) is None
+    texte = ' '.join(messages)
     assert 'HTTP 401' in texte
     assert 'invalid api key' in texte
     assert CLE not in texte

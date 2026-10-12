@@ -13,7 +13,7 @@ from sqlalchemy import or_
 from .models import User, Tache
 from .route_common import membres_visibles_query, dossiers_visibles_query, _ids_equipes_manager
 
-ASSISTANT_MODEL = os.environ.get('ASSISTANT_MODEL', 'meta-llama/llama-3.3-70b-instruct:free')
+ASSISTANT_MODEL = os.environ.get('ASSISTANT_MODEL', 'meta-llama/llama-3.3-70b-instruct')
 STATUTS_TERMINES = ('terminee', 'terminée')
 MAX_HISTORIQUE = 10
 EMAIL_RE = re.compile(r'<EMAIL>(.*?)</EMAIL>', re.S)

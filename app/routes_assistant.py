@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 
 from . import app
 from .assistant_service import (construire_prompt, historique_propre,
-                                extraire_brouillon, destinataire_autorise, ASSISTANT_MODEL)
+                                extraire_brouillon, destinataire_autorise)
 
 
 @app.route('/api/assistant/message', methods=['POST'])
@@ -29,7 +29,8 @@ def assistant_message():
     messages = ([{'role': 'system', 'content': construire_prompt(current_user)}]
                 + historique_propre(data.get('historique'))
                 + [{'role': 'user', 'content': message}])
-    raw = llm.chat(messages, model=ASSISTANT_MODEL)
+    # Modèle : OPENROUTER_MODEL (env) > réglage enregistré > défaut du client.
+    raw = llm.chat(messages)
     if not raw:
         return jsonify({'ok': False, 'error': "L'assistant n'a pas répondu. Réessayez dans un instant."}), 502
 
