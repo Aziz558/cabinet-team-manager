@@ -14,10 +14,13 @@ Reads default model from:
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -50,15 +53,25 @@ class OpenRouterClient:
         }
         try:
             resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=20)
-            resp.raise_for_status()
+        except Exception as exc:
+            logger.error("OpenRouter: requête échouée (%s): %s", type(exc).__name__, exc)
+            return None
+        if resp.status_code >= 400:
+            # Statut et début du corps seulement : jamais la clé.
+            logger.error("OpenRouter: HTTP %s model=%s corps=%s",
+                         resp.status_code, payload["model"], resp.text[:300])
+            return None
+        try:
             data = resp.json()
             choices = data.get("choices") or []
             if choices:
                 content = choices[0].get("message", {}).get("content")
                 if content:
                     return content.strip()
-        except Exception:
-            return None
+            logger.error("OpenRouter: réponse sans contenu model=%s corps=%s",
+                         payload["model"], resp.text[:300])
+        except Exception as exc:
+            logger.error("OpenRouter: réponse illisible (%s): %s", type(exc).__name__, exc)
         return None
 
     def list_models(self, provider: Optional[str] = None) -> List[str]:
