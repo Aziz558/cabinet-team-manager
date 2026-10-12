@@ -10,13 +10,15 @@ from datetime import date, timedelta
 
 from sqlalchemy import or_
 
-from .models import User, Tache
+from .models import User, Tache, Notification
 from .route_common import membres_visibles_query, dossiers_visibles_query, _ids_equipes_manager
 
 ASSISTANT_MODEL = os.environ.get('ASSISTANT_MODEL', 'meta-llama/llama-3.3-70b-instruct')
 STATUTS_TERMINES = ('terminee', 'terminée')
 MAX_HISTORIQUE = 10
 EMAIL_RE = re.compile(r'<EMAIL>(.*?)</EMAIL>', re.S)
+TACHE_RE = re.compile(r'<TACHE>(.*?)</TACHE>', re.S)
+PRIORITES = ('haute', 'moyenne', 'basse')
 
 
 def taches_visibles_query(user):
@@ -91,6 +93,11 @@ def construire_prompt(user):
         '<EMAIL>{"to_user_id": <id d\'un membre listé>, "subject": "...", "body": "..."}</EMAIL>\n'
         "Tu n'envoies jamais l'email toi-même : l'utilisateur doit le confirmer. "
         "N'utilise que les identifiants listés.\n\n"
+        "Pour proposer la création d'une tâche, ajoute à la fin de ta réponse un bloc exact au format :\n"
+        '<TACHE>{"titre": "...", "description": "...", "assigne_a_id": <id d\'un membre listé ou null>, '
+        '"priorite": "haute|moyenne|basse", "date_echeance": "AAAA-MM-JJ"}</TACHE>\n'
+        "Ne propose une tâche que si l'utilisateur la demande. Si la date d'échéance manque, demande-la "
+        "au lieu de l'inventer. Tu ne crées jamais la tâche toi-même : l'utilisateur doit la confirmer.\n\n"
     )
     instructions = instructions_personnalisees()
     if instructions:
@@ -141,3 +148,107 @@ def historique_propre(brut):
             if contenu:
                 propre.append({'role': m['role'], 'content': contenu})
     return propre
+
+
+def valider_tache(data, user):
+    """Contrôle une tâche proposée (LLM ou formulaire). Retourne (tache, None) ou (None, erreur).
+
+    Mêmes règles que /taches : un membre n'assigne qu'à lui-même, un manager reste dans ses équipes.
+    """
+    if not isinstance(data, dict):
+        return None, 'données invalides'
+    titre = str(data.get('titre') or '').strip()[:200]
+    if not titre:
+        return None, 'titre manquant'
+    description = str(data.get('description') or '').strip()[:2000]
+    priorite = str(data.get('priorite') or 'moyenne').strip().lower()
+    if priorite not in PRIORITES:
+        priorite = 'moyenne'
+    try:
+        echeance = date.fromisoformat(str(data.get('date_echeance') or '').strip())
+    except ValueError:
+        return None, "date d'échéance absente ou invalide"
+
+    brut = data.get('assigne_a_id')
+    if brut in (None, ''):
+        assigne = user
+    else:
+        try:
+            uid = int(brut)
+        except (TypeError, ValueError):
+            return None, 'assigné invalide'
+        if user.role == 'membre' and uid != user.id:
+            return None, 'vous ne pouvez assigner une tâche qu\u2019à vous-même'
+        assigne = membres_visibles_query(user).filter(User.id == uid).first()
+        if not assigne:
+            return None, 'assigné hors de votre périmètre'
+
+    return {'titre': titre, 'description': description, 'assigne_a_id': assigne.id,
+            'assigne_nom': assigne.nom_complet(), 'priorite': priorite,
+            'date_echeance': echeance.isoformat()}, None
+
+
+def extraire_proposition_tache(raw, user):
+    """Sépare le bloc <TACHE> de la réponse. La proposition n'est retenue que si elle est valide."""
+    texte = TACHE_RE.sub('', raw).strip()
+    m = TACHE_RE.search(raw)
+    if not m:
+        return texte, None
+    try:
+        data = json.loads(m.group(1).strip())
+    except ValueError:
+        return texte, None
+    tache, erreur = valider_tache(data, user)
+    if erreur:
+        return texte + f"\n\n(Tâche non proposée : {erreur}.)", None
+    return texte, tache
+
+
+def creer_tache_assistant(user, data):
+    """Crée la tâche après confirmation. data doit déjà être validé par valider_tache."""
+    from . import db
+    from datetime import date as _date
+    t = Tache(
+        titre=data['titre'],
+        description=data['description'],
+        assigne_a=data['assigne_a_id'],
+        cree_par=user.id,
+        priorite=data['priorite'],
+        statut='a_faire',
+        date_echeance=_date.fromisoformat(data['date_echeance']),
+    )
+    db.session.add(t)
+    db.session.flush()
+    if t.assigne_a and t.assigne_a != user.id:
+        db.session.add(Notification(
+            user_id=t.assigne_a, tache_id=t.id,
+            message=f"Nouvelle tâche (via l'assistant) : {t.titre}",
+            type_notification='assignation',
+        ))
+    db.session.commit()
+    return t
+
+
+def _ligne_resume(t):
+    return {'id': t.id, 'titre': t.titre,
+            'echeance': t.date_echeance.strftime('%d/%m/%Y') if t.date_echeance else '',
+            'assigne': t.assigne.nom_complet() if t.assigne else 'personne'}
+
+
+def resume_du_jour(user):
+    """Résumé déterministe (sans LLM) : retards, échéances du jour et de demain dans le périmètre."""
+    today = date.today()
+    demain = today + timedelta(days=1)
+    ouvertes = taches_visibles_query(user).filter(~Tache.statut.in_(STATUTS_TERMINES))
+    en_retard = ouvertes.filter(Tache.date_echeance < today).order_by(Tache.date_echeance).limit(10).all()
+    du_jour = ouvertes.filter(Tache.date_echeance == today).order_by(Tache.titre).limit(10).all()
+    de_demain = ouvertes.filter(Tache.date_echeance == demain).order_by(Tache.titre).limit(10).all()
+    return {
+        'date': today.isoformat(),
+        'nb_en_retard': ouvertes.filter(Tache.date_echeance < today).count(),
+        'nb_du_jour': ouvertes.filter(Tache.date_echeance == today).count(),
+        'nb_demain': ouvertes.filter(Tache.date_echeance == demain).count(),
+        'en_retard': [_ligne_resume(t) for t in en_retard],
+        'du_jour': [_ligne_resume(t) for t in du_jour],
+        'demain': [_ligne_resume(t) for t in de_demain],
+    }

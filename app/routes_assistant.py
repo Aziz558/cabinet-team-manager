@@ -8,7 +8,9 @@ from flask_login import login_required, current_user
 
 from . import app
 from .assistant_service import (construire_prompt, historique_propre,
-                                extraire_brouillon, destinataire_autorise)
+                                extraire_brouillon, destinataire_autorise,
+                                extraire_proposition_tache, valider_tache,
+                                creer_tache_assistant, resume_du_jour)
 
 
 @app.route('/api/assistant/message', methods=['POST'])
@@ -35,7 +37,28 @@ def assistant_message():
         return jsonify({'ok': False, 'error': "L'assistant n'a pas répondu. Réessayez dans un instant."}), 502
 
     texte, brouillon = extraire_brouillon(raw, current_user)
-    return jsonify({'ok': True, 'reponse': texte, 'brouillon': brouillon})
+    texte, tache = extraire_proposition_tache(texte, current_user)
+    return jsonify({'ok': True, 'reponse': texte, 'brouillon': brouillon, 'tache': tache})
+
+
+@app.route('/api/assistant/creer_tache', methods=['POST'])
+@login_required
+def assistant_creer_tache():
+    """Crée une tâche DÉJÀ confirmée par l'utilisateur. Revalidée côté serveur."""
+    data = request.get_json(silent=True) or {}
+    tache, erreur = valider_tache(data, current_user)
+    if erreur:
+        return jsonify({'ok': False, 'error': f'Tâche refusée : {erreur}.'}), 403
+    t = creer_tache_assistant(current_user, tache)
+    app.logger.info(f"assistant tache from={current_user.id} tache={t.id}")
+    return jsonify({'ok': True, 'message': f"Tâche créée : {t.titre} (échéance {t.date_echeance.strftime('%d/%m/%Y')})."})
+
+
+@app.route('/api/assistant/resume', methods=['GET'])
+@login_required
+def assistant_resume():
+    """Résumé du jour, sans LLM : fonctionne même si OpenRouter est indisponible."""
+    return jsonify({'ok': True, 'resume': resume_du_jour(current_user)})
 
 
 @app.route('/api/assistant/envoyer_email', methods=['POST'])
