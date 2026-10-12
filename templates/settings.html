@@ -4,355 +4,228 @@
 
 {% block content %}
 {% from 'includes/orbit_ui.html' import page_head with context %}
-{{ page_head('bi-gear', 'Paramètres', 'Intégrations : PennyLane, Outlook, Teams, SMTP') }}
+{{ page_head('bi-gear', 'Paramètres', 'Email, assistant IA et notifications') }}
 
-<div class="row mb-4">
-    <!-- Apparence : choix de thème (appliqué à toute l'application) -->
+<div class="row g-4 mb-4">
+    <!-- Apparence -->
     <div class="col-12">
         <div class="card-premium animate-fade-in-up">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-palette me-2" style="color: var(--orange-primary);"></i>Apparence</h5>
             </div>
             <div class="card-body-premium">
-                <p class="text-tertiary small mb-3">Choisissez le thème de l'interface. Votre choix s'applique immédiatement à <strong>toutes les fenêtres</strong> de JMH Orbit (y compris la connexion) et reste mémorisé.</p>
+                <p class="text-tertiary small mb-3">Le thème s'applique à toutes les fenêtres de JMH Orbit et reste mémorisé sur cet appareil.</p>
                 <div class="theme-choice-group" role="group" aria-label="Choix du thème">
-                    <button type="button" class="theme-choice" data-theme-choice="light" onclick="setOrbitTheme('light')">
+                    <button type="button" class="theme-choice" data-theme-choice="light" onclick="setOrbitTheme('light', true)">
                         <i class="bi bi-sun-fill"></i>
                         <span>Clair</span>
                         <small>Fonds blancs, idéal en journée</small>
                     </button>
-                    <button type="button" class="theme-choice" data-theme-choice="dark" onclick="setOrbitTheme('dark')">
+                    <button type="button" class="theme-choice" data-theme-choice="dark" onclick="setOrbitTheme('dark', true)">
                         <i class="bi bi-moon-stars-fill"></i>
                         <span>Sombre</span>
                         <small>Fonds encre, reposant le soir</small>
                     </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="row mb-4">
-    <!-- SMTP Configuration -->
-    <div class="col-md-4">
+<div class="row g-4 mb-4">
+    <!-- Envoi d'emails (SMTP) -->
+    <div class="col-lg-6">
         <div class="card-premium h-100 animate-fade-in-up stagger-1">
             <div class="card-header-premium">
-                <h5 class="mb-0"><i class="bi bi-envelope me-2" style="color: var(--danger);"></i>SMTP / Outlook</h5>
+                <h5 class="mb-0"><i class="bi bi-envelope me-2" style="color: var(--danger);"></i>Envoi d'emails (SMTP)</h5>
             </div>
             <div class="card-body-premium">
-                <p class="text-tertiary small mb-3">Configurez l'envoi d'emails via Outlook/Office 365.</p>
-                <form id="smtpForm" class="mb-3">
-                    <div class="mb-2">
-                        <label class="form-label">Serveur SMTP</label>
-                        {% set smtp_server = settings|selectattr('cle','equalto','MAIL_SERVER')|list|first %}
-                        <input type="text" name="MAIL_SERVER" class="input-premium" value="{{ smtp_server.valeur if smtp_server else 'smtp.office365.com' }}">
+                <p class="text-tertiary small mb-3">Serveur utilisé pour les notifications lorsque Brevo n'est pas configuré.</p>
+                <form id="smtpForm">
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <label class="form-label" for="mailServer">Serveur SMTP</label>
+                            <input id="mailServer" type="text" name="MAIL_SERVER" class="input-premium" value="{{ values.get('MAIL_SERVER', 'smtp.office365.com') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="mailPort">Port</label>
+                            <input id="mailPort" type="number" name="MAIL_PORT" class="input-premium" value="{{ values.get('MAIL_PORT', '587') }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="mailUser">Identifiant</label>
+                            <input id="mailUser" type="text" name="MAIL_USERNAME" class="input-premium" value="{{ values.get('MAIL_USERNAME', '') }}" autocomplete="username">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="mailPass">Mot de passe</label>
+                            <input id="mailPass" type="password" name="MAIL_PASSWORD" class="input-premium" placeholder="{{ 'Enregistré : laisser vide pour conserver' if secrets_enregistres.MAIL_PASSWORD else 'Non renseigné' }}" autocomplete="new-password">
+                        </div>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label">Port</label>
-                        {% set smtp_port = settings|selectattr('cle','equalto','MAIL_PORT')|list|first %}
-                        <input type="number" name="MAIL_PORT" class="input-premium" value="{{ smtp_port.valeur if smtp_port else '587' }}">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Identifiant</label>
-                        {% set smtp_user = settings|selectattr('cle','equalto','MAIL_USERNAME')|list|first %}
-                        <input type="text" name="MAIL_USERNAME" class="input-premium" value="{{ smtp_user.valeur if smtp_user else '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Mot de passe</label>
-                        {% set smtp_pass = settings|selectattr('cle','equalto','MAIL_PASSWORD')|list|first %}
-                        <input type="password" name="MAIL_PASSWORD" class="input-premium" value="{{ smtp_pass.valeur if smtp_pass else '' }}">
-                    </div>
-                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer SMTP</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mt-3">Enregistrer SMTP</button>
                 </form>
-                <div id="smtpResult" class="small mb-3"></div>
-                
-                <hr style="border-color: var(--border-color);">
-                <h6 class="mt-3">OpenRouter / LLM</h6>
-                <p class="text-tertiary small">Utilisé pour améliorer la détection des tâches dans les mails.</p>
-                <form id="openrouterForm" class="mb-3">
-                    <div class="mb-3">
-                        <label class="form-label">Clé API OpenRouter</label>
-                        {% set openrouter_key = settings|selectattr('cle','equalto','OPENROUTER_API_KEY')|list|first %}
-                        <input type="password" name="OPENROUTER_API_KEY" class="input-premium" value="{{ openrouter_key.valeur if openrouter_key else '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Provider</label>
-                        {% set openrouter_provider = settings|selectattr('cle','equalto','OPENROUTER_PROVIDER')|list|first %}
-                        <input type="text" name="OPENROUTER_PROVIDER" class="input-premium" value="{{ openrouter_provider.valeur if openrouter_provider else '' }}" placeholder="ex: stepfun, openai, google, anthropic, nvidia, kilocode">
-                        <div class="form-text text-tertiary">Laisser vide pour tous les modèles. Sinon, utilisez le préfixe du modèle (ex: stepfun/, openai/).</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Modèle LLM par défaut</label>
-                        <select name="OPENROUTER_MODEL" class="select-premium" id="openrouterModelSelect">
-                            <option value="">Chargement...</option>
-                        </select>
-                        <div class="form-text text-tertiary">Modèle choisi parmi ceux disponibles pour votre clé.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Instructions personnalisées LLM</label>
-                        <textarea name="LLM_CUSTOM_INSTRUCTIONS" class="input-premium" rows="4" placeholder="Instructions à inclure dans chaque prompt LLM pour améliorer l'extraction...">{{ llm_custom.valeur if llm_custom else '' }}</textarea>
-                        <div class="form-text text-tertiary">Ces instructions seront ajoutées au prompt système à chaque analyse d'email. Ex: "Le sujet concerne toujours des déclarations fiscales. Ignore les emails marketing."</div>
-                    </div>
-                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer OpenRouter</button>
-                </form>
-                <div id="openrouterResult" class="small mb-3"></div>
-
-                <hr style="border-color: var(--border-color);">
-                <h6 class="mt-3"><i class="bi bi-envelope-paper me-1" style="color:var(--info)"></i>Brevo (Sendinblue) — Notifications tâches</h6>
-                <p class="text-tertiary small">Envoyer les notifications de tâches via Brevo au lieu de SMTP. Créez une clé API sur <a href="https://app.brevo.com/settings/keys/api" target="_blank">brevey.com/settings/keys/api</a>.</p>
-                <form id="brevoForm" class="mb-3">
-                    <div class="mb-2">
-                        <label class="form-label">Clé API Brevo</label>
-                        {% set brevo_key = settings|selectattr('cle','equalto','BREVO_API_KEY')|list|first %}
-                        <input type="password" name="BREVO_API_KEY" class="input-premium" value="{{ brevo_key.valeur if brevo_key else '' }}">
-                    </div>
-                    <button type="submit" class="btn-premium btn-premium-success btn-press w-100 mb-2">
-                        <i class="bi bi-envelope-paper me-1"></i>Enregistrer Brevo
-                    </button>
-                </form>
-                <div id="brevoResult" class="small mb-3"></div>
-                <button type="button" id="btnTestMail" class="btn-premium btn-premium-secondary btn-press w-100 mb-2">
-                    <i class="bi bi-send me-1"></i>Tester l'envoi (m'envoyer un email de test)
+                <div id="smtpResult" class="small mt-2" aria-live="polite"></div>
+                <button type="button" id="btnTestMail" class="btn-premium btn-premium-secondary btn-press w-100 mt-2">
+                    <i class="bi bi-send me-1"></i>M'envoyer un email de test
                 </button>
-                <div id="testMailResult" class="small mb-3"></div>
-
-                <hr style="border-color: var(--border-color);">
-                <h6 class="mt-3"><i class="bi bi-clock-history me-1" style="color:var(--orange-primary)"></i>Récapitulatif mail Pennylane</h6>
-                <p class="text-tertiary small">Les nouveaux documents et transactions détectés sont regroupés en un seul mail par créneau, au lieu d'un mail à chaque détection. Heures séparées par des virgules, heure de Paris (0 à 23). Laissez vide pour désactiver les mails : les notifications restent dans l'application.</p>
-                <form id="digestForm" class="mb-3">
-                    <div class="mb-2">
-                        <label class="form-label">Heures d'envoi</label>
-                        {% set digest = settings|selectattr('cle','equalto','PENNYLANE_DIGEST_HEURES')|list|first %}
-                        <input type="text" name="PENNYLANE_DIGEST_HEURES" class="input-premium" value="{{ (digest.valeur or '') if digest else '9,13,17' }}" placeholder="ex: 9,13,17">
-                    </div>
-                    <button type="submit" class="btn-premium btn-premium-success btn-press w-100 mb-2">
-                        <i class="bi bi-save me-1"></i>Enregistrer la fréquence
-                    </button>
-                </form>
-                <div id="digestResult" class="small mb-3"></div>
-
-                <hr style="border-color: var(--border-color);">
-                <h6 class="mt-3" id="mailbox"><i class="bi bi-envelope me-1" style="color:var(--orange-primary)"></i>Boîte mail Gmail (IMAP)</h6>
-                <p class="text-tertiary small">Configurez une boîte Gmail dédiée. L'application lira les emails reçus et créera des suggestions de tâches via l'IA.</p>
-                <form id="mailboxForm" class="mb-3">
-                    <div class="mb-2">
-                        <label class="form-label">Adresse email</label>
-                        {% set mailbox_user = settings|selectattr('cle','equalto','MAILBOX_USER')|list|first %}
-                        <input type="email" name="MAILBOX_USER" class="input-premium" value="{{ mailbox_user.valeur if mailbox_user else '' }}" placeholder="cabinet@outlook.com">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Mot de passe (app password)</label>
-                        {% set mailbox_pass = settings|selectattr('cle','equalto','MAILBOX_PASSWORD')|list|first %}
-                        <input type="password" name="MAILBOX_PASSWORD" class="input-premium" value="{{ mailbox_pass.valeur if mailbox_pass else '' }}">
-                        <div class="form-text text-tertiary">Activez 2FA sur Outlook et créez un mot de passe d'application.</div>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Serveur IMAP</label>
-                        {% set mailbox_server = settings|selectattr('cle','equalto','MAILBOX_SERVER')|list|first %}
-                        <input type="text" name="MAILBOX_SERVER" class="input-premium" value="{{ mailbox_server.valeur if mailbox_server else 'imap.gmail.com' }}">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Dossier IMAP</label>
-                        {% set mailbox_folder = settings|selectattr('cle','equalto','MAILBOX_FOLDER')|list|first %}
-                        <input type="text" name="MAILBOX_FOLDER" class="input-premium" value="{{ mailbox_folder.valeur if mailbox_folder else '[Gmail]/Tous les messages' }}">
-                        <div class="form-text text-tertiary">Gmail: [Gmail]/Tous les messages</div>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Expéditeurs autorisés</label>
-                        {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
-                        <textarea name="MAILBOX_ALLOWED_SENDERS" class="input-premium" rows="2" placeholder="ex: client1@exemple.com, client2@exemple.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
-                        <div class="form-text text-tertiary">Laisser vide pour accepter tous. Séparés par des virgules.</div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn-premium btn-premium-primary btn-press flex-grow-1">Enregistrer</button>
-                        <button type="button" class="btn-premium btn-premium-secondary btn-press" id="testMailboxBtn"><i class="bi bi-plug me-1"></i>Tester</button>
-                    </div>
-                </form>
-                <div id="mailboxResult" class="small mb-3"></div>
-                <button class="btn-premium btn-premium-success btn-press w-100" id="processMailboxBtn">
-                    <i class="bi bi-arrow-repeat me-1"></i>Vérifier les nouveaux emails
-                </button>
-                <button class="btn-premium btn-premium-outline btn-premium-secondary btn-press w-100 mt-2" id="processAllMailboxBtn">
-                    <i class="bi bi-diagram-3 me-1"></i>Relancer l'analyse sur toute la boîte
-                </button>
-                <button class="btn-premium btn-premium-outline btn-premium-danger btn-press w-100 mt-2" id="processDirectMailboxBtn">
-                    <i class="bi bi-bug me-1"></i>Debug: analyser les 3 derniers emails
-                </button>
-                <div id="processMailboxResult" class="small mt-2"></div>
-                <div id="processDirectResult" class="small mt-2" style="font-family:monospace;white-space:pre-wrap;"></div>
-                <button class="btn-premium btn-premium-outline btn-premium-secondary btn-press w-100 mt-2" id="debugMailboxBtn">
-                    <i class="bi bi-bug me-1"></i>Debug IMAP
-                </button>
-                <pre id="debugMailboxResult" class="small mt-2 bg-dark text-light p-2 rounded" style="white-space:pre-wrap;display:none;"></pre>
-
-                <hr style="border-color: var(--border-color);">
-                <h6 class="mt-3">Réception Cloudflare Email Routing</h6>
-                <p class="text-tertiary small">Routez vos emails via <a href="https://dash.cloudflare.com" target="_blank">Cloudflare Email Routing</a> vers <code>/api/mailbox/inbound</code>. Les tâches sont extraites automatiquement par l'IA.</p>
-                <form id="inboundForm" class="mb-3">
-                <div class="mb-2">
-                    <label class="form-label">Mode inbound</label>
-                    {% set inbound_mode = settings|selectattr('cle','equalto','MAILBOX_INBOUND_MODE')|list|first %}
-                    <select name="MAILBOX_INBOUND_MODE" class="select-premium">
-                        <option value="false" {{ 'selected' if (inbound_mode.valeur if inbound_mode else 'false')|lower != 'true' else '' }}>Désactivé</option>
-                        <option value="true" {{ 'selected' if (inbound_mode.valeur if inbound_mode else 'false')|lower == 'true' else '' }}>Activé</option>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Secret de vérification</label>
-                    {% set inbound_secret = settings|selectattr('cle','equalto','MAILBOX_INBOUND_SECRET')|list|first %}
-                    <input type="password" name="MAILBOX_INBOUND_SECRET" class="input-premium" value="{{ inbound_secret.valeur if inbound_secret else '' }}">
-                    <div class="form-text text-tertiary">Clé secrète partagée avec votre Worker Cloudflare.</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Expéditeurs autorisés</label>
-                    {% set mailbox_allowed = settings|selectattr('cle','equalto','MAILBOX_ALLOWED_SENDERS')|list|first %}
-                    <textarea name="MAILBOX_ALLOWED_SENDERS" class="input-premium" rows="2" placeholder="ex: client1@example.com, client2@example.com">{{ mailbox_allowed.valeur if mailbox_allowed else '' }}</textarea>
-                    <div class="form-text text-tertiary">Laisser vide pour accepter tous les expéditeurs. Sinon, séparez les adresses par des virgules.</div>
-                </div>
-                <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mb-2">Enregistrer inbound</button>
-                </form>
-                <div id="inboundResult" class="small mb-3"></div>
-
-                <hr style="border-color: var(--border-color);">
-                <h6 class="mt-3">Tests de connexion</h6>
-                <div class="d-grid gap-2">
-                    <button class="btn-premium btn-premium-secondary btn-press" id="testPennyLaneBtn">
-                        <i class="bi bi-lightning me-1"></i>Tester PennyLane
-                    </button>
-                    <button class="btn-premium btn-premium-secondary btn-press" id="testTeamsBtn">
-                        <i class="bi bi-chat-dots me-1"></i>Tester Teams
-                    </button>
-                    <button class="btn-premium btn-premium-secondary btn-press" id="testOpenRouterBtn">
-                        <i class="bi bi-cpu me-1"></i>Tester OpenRouter
-                    </button>
-                </div>
-                <div id="testIntegrationResult" class="small mt-2"></div>
+                <div id="testMailResult" class="small mt-2" aria-live="polite"></div>
             </div>
         </div>
     </div>
 
-    <!-- API Keys -->
-    <div class="col-md-8">
-        <div class="card-premium animate-fade-in-up stagger-2">
-            <div class="card-header-premium d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0"><i class="bi bi-key me-2" style="color: var(--info);"></i>Clés et paramètres</h5>
-                <button class="btn-premium btn-premium-primary btn-press" id="addSettingBtn"><i class="bi bi-plus-lg me-1"></i>Ajouter</button>
+    <!-- Assistant IA (OpenRouter) -->
+    <div class="col-lg-6">
+        <div class="card-premium h-100 animate-fade-in-up stagger-2">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-cpu me-2" style="color: var(--info);"></i>Assistant IA (OpenRouter)</h5>
             </div>
             <div class="card-body-premium">
-                <div class="table-responsive">
-                    <table class="table-premium" id="settingsTable">
-                        <thead>
-                            <tr>
-                                <th>Service</th>
-                                <th>Clé</th>
-                                <th>Valeur</th>
-                                <th>Type</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for s in settings %}
-                            <tr>
-                                <td><span class="badge badge-secondary">{{ s.service }}</span></td>
-                                <td>{{ s.cle }}</td>
-                                <td>{{ s.valeur if not s.masque else '••••••••' }}</td>
-                                <td>{{ s.type_valeur }}</td>
-                                <td class="text-end">
-                                    <button class="btn-premium btn-premium-secondary btn-press delete-setting" data-id="{{ s.id }}" style="padding: 0.375rem 0.75rem; font-size: 0.8rem;">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="5" class="text-center text-tertiary">Aucun paramètre enregistré.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <p class="text-tertiary small mb-3">Clé utilisée par l'assistant de la bulle et par l'analyse des emails. Créez une clé sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+                <form id="openrouterForm">
+                    <div class="mb-3">
+                        <label class="form-label" for="orKey">Clé API OpenRouter</label>
+                        <input id="orKey" type="password" name="OPENROUTER_API_KEY" class="input-premium" placeholder="{{ 'Enregistrée : laisser vide pour conserver' if secrets_enregistres.OPENROUTER_API_KEY else 'sk-or-v1-…' }}" autocomplete="new-password">
+                        <div class="form-text text-tertiary">Statut : {{ 'clé enregistrée' if secrets_enregistres.OPENROUTER_API_KEY else 'aucune clé configurée' }}.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="orModel">Modèle</label>
+                        <input id="orModel" type="text" name="OPENROUTER_MODEL" class="input-premium" value="{{ values.get('OPENROUTER_MODEL', '') }}" placeholder="meta-llama/llama-3.3-70b-instruct:free">
+                        <div class="form-text text-tertiary">Laisser vide pour utiliser le modèle par défaut.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="llmInstructions">Instructions personnalisées</label>
+                        <textarea id="llmInstructions" name="LLM_CUSTOM_INSTRUCTIONS" class="input-premium" rows="4" placeholder="Ex : ignorer les emails marketing.">{{ values.get('LLM_CUSTOM_INSTRUCTIONS', '') }}</textarea>
+                        <div class="form-text text-tertiary">Ajoutées au prompt lors de l'analyse des emails.</div>
+                    </div>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100">Enregistrer l'IA</button>
+                </form>
+                <div id="openrouterResult" class="small mt-2" aria-live="polite"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal add setting -->
-<div class="modal fade" id="modalSetting" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);" id="settingForm">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                <h5 class="modal-title">Ajouter un paramètre</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" style="color: var(--text-primary);">
-                <div class="mb-3">
-                    <label class="form-label">Service</label>
-                    <select name="service" class="select-premium">
-                        <option value="general">Général</option>
-                        <option value="pennylane">PennyLane</option>
-                        <option value="outlook">Outlook</option>
-                        <option value="teams">Teams</option>
-                        <option value="mail">Mail SMTP</option>
-                        <option value="llm">LLM</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Clé</label>
-                    <input type="text" name="cle" class="input-premium" required placeholder="ex: PENNYLANE_API_KEY">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Valeur</label>
-                    <input type="text" name="valeur" class="input-premium" required placeholder="valeur ou token">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Type</label>
-                    <select name="type_valeur" class="select-premium">
-                        <option value="string">string</option>
-                        <option value="password">password</option>
-                        <option value="json">json</option>
-                    </select>
-                </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" name="masque" id="masqueCheck" value="1">
-                    <label class="form-check-label" for="masqueCheck">Masquer la valeur</label>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
-                <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn-premium btn-premium-primary btn-press">Enregistrer</button>
+        </div>
+    </div>
+</div>
+<div class="row g-4 mb-4">
+    <!-- Notifications : récapitulatif et Brevo -->
+    <div class="col-lg-6">
+        <div class="card-premium h-100 animate-fade-in-up stagger-3">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-bell me-2" style="color: var(--orange-primary);"></i>Notifications</h5>
             </div>
-        </form>
+            <div class="card-body-premium">
+                <form id="digestForm" class="mb-4">
+                    <label class="form-label" for="digestHeures">Récapitulatif Pennylane (heures d'envoi)</label>
+                    <div class="d-flex gap-2">
+                        <input id="digestHeures" type="text" name="PENNYLANE_DIGEST_HEURES" class="input-premium" value="{{ values.get('PENNYLANE_DIGEST_HEURES', '9,13,17') }}" placeholder="ex: 9,13,17">
+                        <button type="submit" class="btn-premium btn-premium-success btn-press">Enregistrer</button>
+                    </div>
+                    <div class="form-text text-tertiary">Heures séparées par des virgules (heure de Paris, 0 à 23). Laisser vide pour désactiver les mails : les notifications restent dans l'application.</div>
+                </form>
+                <div id="digestResult" class="small mb-3" aria-live="polite"></div>
+
+                <form id="brevoForm">
+                    <label class="form-label" for="brevoKey">Clé API Brevo</label>
+                    <input id="brevoKey" type="password" name="BREVO_API_KEY" class="input-premium" placeholder="{{ 'Enregistrée : laisser vide pour conserver' if secrets_enregistres.BREVO_API_KEY else 'xkeysib-…' }}" autocomplete="new-password">
+                    <div class="form-text text-tertiary mb-2">Si renseignée, les notifications de tâches passent par Brevo plutôt que par SMTP.</div>
+                    <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer Brevo</button>
+                </form>
+                <div id="brevoResult" class="small mt-2" aria-live="polite"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statut de la configuration (lecture seule) -->
+    <div class="col-lg-6">
+        <div class="card-premium h-100 animate-fade-in-up stagger-4">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-shield-check me-2" style="color: var(--success);"></i>Connexion de l'assistant</h5>
+            </div>
+            <div class="card-body-premium">
+                <p class="text-tertiary small mb-3">Statut des clés utilisées par l'application. Les valeurs ne sont jamais affichées.</p>
+                <ul class="list-unstyled small mb-0">
+                    <li class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--border-color) !important;">
+                        <span>OpenRouter (assistant IA)</span>
+                        <span>{{ '✔ configurée' if secrets_enregistres.OPENROUTER_API_KEY else '✖ absente' }}</span>
+                    </li>
+                    <li class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--border-color) !important;">
+                        <span>Brevo (notifications)</span>
+                        <span>{{ '✔ configurée' if secrets_enregistres.BREVO_API_KEY else '✖ absente' }}</span>
+                    </li>
+                    <li class="d-flex justify-content-between py-2">
+                        <span>SMTP (secours)</span>
+                        <span>{{ '✔ configuré' if secrets_enregistres.MAIL_PASSWORD else '✖ absent' }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// SMTP form
+// Affiche un message dans une zone de résultat (textContent : aucune interprétation HTML).
+function showResult(box, color, text) {
+    const span = document.createElement('span');
+    span.style.color = color;
+    span.textContent = text;
+    box.replaceChildren(span);
+}
+
+// Enregistre une liste de réglages, puis affiche le résultat dans la zone donnée.
+// Un champ secret vide n'est pas envoyé : la valeur déjà enregistrée est conservée.
+function saveSettings(entries, box, okMessage) {
+    box.textContent = 'Enregistrement...';
+    const requests = entries
+        .filter(item => !(item.secret && item.valeur === ''))
+        .map(item => fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(item),
+        }).then(r => r.json()));
+    if (requests.length === 0) {
+        showResult(box, 'var(--text-muted)', 'Aucune modification à enregistrer.');
+        return;
+    }
+    Promise.all(requests).then(results => {
+        const failed = results.find(r => !r.ok);
+        if (!failed) {
+            showResult(box, 'var(--success)', okMessage);
+        } else {
+            showResult(box, 'var(--danger)', failed.message || 'Erreur lors de l\'enregistrement.');
+        }
+    }).catch(err => {
+        showResult(box, 'var(--danger)', 'Erreur réseau : ' + err.message);
+    });
+}
+
 document.getElementById('smtpForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const formData = new FormData(this);
-    const entries = [
-        {cle: 'MAIL_SERVER', valeur: formData.get('MAIL_SERVER'), service: 'mail', type_valeur: 'string', masque: false},
-        {cle: 'MAIL_PORT', valeur: formData.get('MAIL_PORT'), service: 'mail', type_valeur: 'string', masque: false},
-        {cle: 'MAIL_USERNAME', valeur: formData.get('MAIL_USERNAME'), service: 'mail', type_valeur: 'string', masque: true},
-        {cle: 'MAIL_PASSWORD', valeur: formData.get('MAIL_PASSWORD'), service: 'mail', type_valeur: 'password', masque: true},
-    ];
-    const box = document.getElementById('smtpResult');
-    box.textContent = 'Enregistrement...';
-    Promise.all(entries.map(item => fetch('/api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(item),
-    }).then(r => r.json()))).then(results => {
-        const failed = results.filter(r => !r.ok);
-        if (failed.length === 0) {
-            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>SMTP enregistré.</span>';
-        } else {
-            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
-        }
-    });
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'MAIL_SERVER', valeur: f.get('MAIL_SERVER'), service: 'mail', type_valeur: 'string', masque: false},
+        {cle: 'MAIL_PORT', valeur: f.get('MAIL_PORT'), service: 'mail', type_valeur: 'string', masque: false},
+        {cle: 'MAIL_USERNAME', valeur: f.get('MAIL_USERNAME'), service: 'mail', type_valeur: 'string', masque: false},
+        {cle: 'MAIL_PASSWORD', valeur: f.get('MAIL_PASSWORD'), service: 'mail', type_valeur: 'password', masque: true, secret: true},
+    ], document.getElementById('smtpResult'), 'SMTP enregistré.');
 });
 
-// Recapitulatif Pennylane : frequence d'envoi
+document.getElementById('openrouterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'OPENROUTER_API_KEY', valeur: f.get('OPENROUTER_API_KEY'), service: 'llm', type_valeur: 'password', masque: true, secret: true},
+        {cle: 'OPENROUTER_MODEL', valeur: f.get('OPENROUTER_MODEL'), service: 'llm', type_valeur: 'string', masque: false},
+        {cle: 'LLM_CUSTOM_INSTRUCTIONS', valeur: f.get('LLM_CUSTOM_INSTRUCTIONS'), service: 'llm', type_valeur: 'string', masque: false},
+    ], document.getElementById('openrouterResult'), 'Assistant IA enregistré.');
+});
+
+document.getElementById('brevoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'BREVO_API_KEY', valeur: f.get('BREVO_API_KEY'), service: 'mail', type_valeur: 'password', masque: true, secret: true},
+    ], document.getElementById('brevoResult'), 'Brevo enregistré.');
+});
+
 document.getElementById('digestForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const valeur = (new FormData(this).get('PENNYLANE_DIGEST_HEURES') || '').trim();
@@ -377,410 +250,24 @@ document.getElementById('digestForm').addEventListener('submit', function(e) {
     });
 });
 
-// Brevo form
-document.getElementById('brevoForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const entries = [
-        {cle: 'BREVO_API_KEY', valeur: formData.get('BREVO_API_KEY'), service: 'mail', type_valeur: 'password', masque: true},
-    ];
-    const box = document.getElementById('brevoResult');
-    box.textContent = 'Enregistrement...';
-    Promise.all(entries.map(item => fetch('/api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(item),
-    }).then(r => r.json()))).then(results => {
-        const failed = results.filter(r => !r.ok);
-        if (failed.length === 0) {
-            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Brevo enregistré. Les notifications de tâches utiliseront Brevo.</span>';
-        } else {
-            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
-        }
-    });
-});
-
-// Test mail
 document.getElementById('btnTestMail').addEventListener('click', function() {
     const btn = this;
     const box = document.getElementById('testMailResult');
     btn.disabled = true;
     box.textContent = 'Envoi du test...';
-    fetch('/api/test/mail', { method: 'POST' })
+    fetch('/api/test/mail', {method: 'POST'})
         .then(r => r.json())
         .then(data => {
             btn.disabled = false;
-            if (data.ok) {
-                box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + (data.message || 'Email de test envoyé.') + '</span>';
-            } else {
-                box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + (data.message || 'Échec — vérifiez la configuration.') + '</span>';
-            }
+            const span = document.createElement('span');
+            span.style.color = data.ok ? 'var(--success)' : 'var(--danger)';
+            span.textContent = data.message || (data.ok ? 'Email de test envoyé.' : 'Échec : vérifiez la configuration.');
+            box.replaceChildren(span);
         })
         .catch(err => {
             btn.disabled = false;
-            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur : ' + err.message + '</span>';
+            box.textContent = 'Erreur : ' + err.message;
         });
-});
-
-// Mailbox form
-document.getElementById('mailboxForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const entries = [
-        {cle: 'MAILBOX_USER', valeur: formData.get('MAILBOX_USER'), service: 'mailbox', type_valeur: 'string', masque: false},
-        {cle: 'MAILBOX_PASSWORD', valeur: formData.get('MAILBOX_PASSWORD'), service: 'mailbox', type_valeur: 'password', masque: true},
-        {cle: 'MAILBOX_SERVER', valeur: formData.get('MAILBOX_SERVER'), service: 'mailbox', type_valeur: 'string', masque: false},
-        {cle: 'MAILBOX_ALLOWED_SENDERS', valeur: formData.get('MAILBOX_ALLOWED_SENDERS'), service: 'mailbox', type_valeur: 'string', masque: false},
-    ];
-    const box = document.getElementById('mailboxResult');
-    box.textContent = 'Enregistrement...';
-    Promise.all(entries.map(item => fetch('/api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(item),
-    }).then(r => r.json()))).then(results => {
-        const failed = results.filter(r => !r.ok);
-        if (failed.length === 0) {
-            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Boîte mail enregistrée.</span>';
-        } else {
-            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
-        }
-    });
-});
-
-document.getElementById('testMailboxBtn').addEventListener('click', function() {
-    const box = document.getElementById('mailboxResult');
-    box.textContent = 'Test en cours...';
-    fetch('/api/test/mailbox', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => {
-            if (res.ok) {
-                let html = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
-                if (res.samples && res.samples.length) {
-                    html += '<ul class="small mb-0 mt-1">';
-                    res.samples.forEach(s => {
-                        html += '<li><strong>' + (s.subject || 'Sans sujet') + '</strong> — ' + s.from + '</li>';
-                    });
-                    html += '</ul>';
-                }
-                box.innerHTML = html;
-            } else {
-                box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
-            }
-        });
-});
-
-document.getElementById('processMailboxBtn').addEventListener('click', function() {
-    const btn = this;
-    const box = document.getElementById('processMailboxResult');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Vérification...';
-    box.textContent = '';
-    fetch('/api/mailbox/process', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Vérifier les nouveaux emails';
-            if (res.ok) {
-                box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
-                if (res.count > 0) {
-                    window.showToast(res.count + ' suggestion(s) créée(s) ! Allez dans Suggestions pour les voir.', 'success');
-                }
-            } else {
-                box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
-            }
-        });
-});
-
-document.getElementById('processAllMailboxBtn').addEventListener('click', function() {
-    const btn = this;
-    const box = document.getElementById('processMailboxResult');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Analyse en cours...';
-    box.textContent = '';
-    fetch('/api/mailbox/process-all', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-diagram-3 me-1"></i>Relancer l\'analyse sur toute la boîte';
-            if (res.ok) {
-                box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
-                if (res.count > 0) {
-                    window.showToast(res.count + ' suggestion(s) créée(s) !', 'success');
-                }
-            } else {
-                box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
-            }
-        });
-});
-
-document.getElementById('processDirectMailboxBtn').addEventListener('click', function() {
-    const btn = this;
-    const box = document.getElementById('processDirectResult');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Debug...';
-    box.textContent = '';
-    fetch('/api/mailbox/process-direct', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-bug me-1"></i>Debug: analyser les 3 derniers emails';
-            if (res.ok) {
-                box.textContent = 'DEBUG:\n' + res.debug + '\n\n' + (res.trace || '');
-            } else {
-                box.textContent = 'ERROR: ' + res.message;
-            }
-        });
-});
-
-document.getElementById('debugMailboxBtn').addEventListener('click', function() {
-    const btn = this;
-    const box = document.getElementById('debugMailboxResult');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Diagnostic...';
-    box.style.display = 'block';
-    box.textContent = '';
-    fetch('/api/test/mailbox-debug', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-bug me-1"></i>Debug IMAP';
-            if (res.ok) {
-                let text = 'Dossier sélectionné: ' + (res.selected_mailbox || 'INBOX') + '\n';
-                text += 'INBOX count: ' + (res.inbox_count ?? '?') + '\n\n';
-                text += 'Dossiers IMAP:\n';
-                (res.folders || []).forEach(f => { text += f + '\n'; });
-                text += '\nDerniers emails INBOX:\n';
-                (res.samples || []).forEach(s => { text += '- ' + (s.subject || '(pas de sujet)') + ' | ' + s.from + '\n'; });
-                box.textContent = text;
-            } else {
-                box.textContent = 'Erreur: ' + res.message;
-            }
-        });
-});
-
-// OpenRouter form
-document.getElementById('openrouterForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const entries = [
-        {cle: 'OPENROUTER_API_KEY', valeur: formData.get('OPENROUTER_API_KEY'), service: 'llm', type_valeur: 'password', masque: true},
-        {cle: 'OPENROUTER_MODEL', valeur: formData.get('OPENROUTER_MODEL'), service: 'llm', type_valeur: 'string', masque: false},
-        {cle: 'OPENROUTER_PROVIDER', valeur: formData.get('OPENROUTER_PROVIDER'), service: 'llm', type_valeur: 'string', masque: false},
-        {cle: 'LLM_CUSTOM_INSTRUCTIONS', valeur: formData.get('LLM_CUSTOM_INSTRUCTIONS'), service: 'llm', type_valeur: 'string', masque: false},
-    ];
-    const box = document.getElementById('openrouterResult');
-    box.textContent = 'Enregistrement...';
-    Promise.all(entries.map(item => fetch('/api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(item),
-    }).then(r => r.json()))).then(results => {
-        const failed = results.filter(r => !r.ok);
-        if (failed.length === 0) {
-            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>OpenRouter enregistré.</span>';
-        } else {
-            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
-        }
-    });
-});
-
-function loadOpenRouterModels() {
-    const providerInput = document.querySelector('input[name="OPENROUTER_PROVIDER"]');
-    const select = document.getElementById('openrouterModelSelect');
-    const resultBox = document.getElementById('openrouterResult');
-    if (!select) return;
-    
-    const provider = providerInput ? providerInput.value.trim() : '';
-    const providerLabel = provider || 'tous';
-    
-    select.innerHTML = '<option value="">Chargement...</option>';
-    
-    const url = '/api/openrouter/models' + (provider ? '?provider=' + encodeURIComponent(provider) : '');
-    fetch(url)
-        .then(r => r.json())
-        .then(data => {
-            if (!data.ok) {
-                const errorMsg = data.message || 'Erreur inconnue';
-                select.innerHTML = '<option value="">Erreur chargement</option>';
-                if (resultBox) {
-                    resultBox.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur: ' + errorMsg + '</span>';
-                }
-                console.error('OpenRouter models error:', data);
-                return;
-            }
-            const models = data.models || [];
-            select.innerHTML = '';
-            
-            if (resultBox && data.stage === 'models') {
-                resultBox.innerHTML = '<span style="color: var(--info);"><i class="bi bi-info-circle me-1"></i>' + models.length + ' modèle(s) chargé(s) pour provider: ' + providerLabel + '</span>';
-            }
-            
-            if (!models.length) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.textContent = 'Aucun modèle pour ce provider';
-                select.appendChild(opt);
-                console.warn('No models found for provider:', provider);
-                return;
-            }
-            
-            // Sort and add models
-            models.sort().forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                select.appendChild(opt);
-            });
-
-            // Restore previously saved model
-            const savedModel = '{{ openrouter_model or "" }}';
-            if (savedModel) {
-                select.value = savedModel;
-            }
-            
-            console.log('Loaded', models.length, 'models for provider:', providerLabel);
-        })
-        .catch(err => {
-            const select = document.getElementById('openrouterModelSelect');
-            if (select) select.innerHTML = '<option value="">Erreur</option>';
-            if (resultBox) {
-                resultBox.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur réseau: ' + err.message + '</span>';
-            }
-            console.error('OpenRouter models fetch error:', err);
-        });
-}
-
-const providerInput = document.querySelector('input[name="OPENROUTER_PROVIDER"]');
-if (providerInput) {
-    providerInput.addEventListener('change', loadOpenRouterModels);
-    providerInput.addEventListener('blur', loadOpenRouterModels);
-}
-
-// Load models on page load
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadOpenRouterModels);
-} else {
-    loadOpenRouterModels();
-}
-
-function showIntegrationResult(html, isSuccess) {
-    const box = document.getElementById('testIntegrationResult');
-    if (isSuccess) {
-        box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + html + '</span>';
-    } else {
-        box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + html + '</span>';
-    }
-}
-
-// Test mail form
-document.getElementById('testMailForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const data = {
-        sender: formData.get('sender'),
-        recipient: formData.get('recipient'),
-        subject: formData.get('subject'),
-        body: formData.get('body'),
-    };
-    const box = document.getElementById('testMailResult');
-    box.textContent = 'Envoi en cours...';
-    fetch('/api/mail/test', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data),
-    }).then(r => r.json()).then(res => {
-        if (res.ok) {
-            box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>' + res.message + '</span>';
-        } else {
-            box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>' + res.message + '</span>';
-        }
-    });
-});
-
-document.getElementById('addSettingBtn').addEventListener('click', function() {
-    new bootstrap.Modal(document.getElementById('modalSetting')).show();
-});
-
-document.getElementById('settingForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const data = {
-        service: formData.get('service'),
-        cle: formData.get('cle'),
-        valeur: formData.get('valeur'),
-        type_valeur: formData.get('type_valeur'),
-        masque: document.getElementById('masqueCheck').checked ? 1 : 0,
-    };
-    fetch('/api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data),
-    }).then(r => r.json()).then(res => {
-        if (res.ok) {
-            location.reload();
-        } else {
-            alert('Erreur: ' + (res.message || 'Inconnue'));
-        }
-    });
-});
-
-// Delete setting
-document.querySelectorAll('.delete-setting').forEach(btn => {
-    btn.addEventListener('click', function() {
-        if (!confirm('Supprimer ce paramètre ?')) return;
-        fetch('/api/settings/' + this.dataset.id, { method: 'DELETE' })
-            .then(r => r.json())
-            .then(res => {
-                if (res.ok) location.reload();
-                else alert('Erreur: ' + (res.message || 'Inconnue'));
-            });
-    });
-});
-
-// Inbound webhook settings
-document.getElementById('inboundForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const entries = [
-        {cle: 'MAILBOX_INBOUND_MODE', valeur: formData.get('MAILBOX_INBOUND_MODE'), service: 'mailbox', type_valeur: 'string', masque: false},
-        {cle: 'MAILBOX_INBOUND_SECRET', valeur: formData.get('MAILBOX_INBOUND_SECRET'), service: 'mailbox', type_valeur: 'password', masque: true},
-        {cle: 'MAILBOX_ALLOWED_SENDERS', valeur: formData.get('MAILBOX_ALLOWED_SENDERS'), service: 'mailbox', type_valeur: 'string', masque: false},
-    ];
-    const box = document.getElementById('inboundResult');
-    box.textContent = 'Enregistrement...';
-    Promise.all(entries.map(item => fetch('/api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(item),
-    }))).then(() => {
-        box.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Paramètres inbound enregistrés.</span>';
-    }).catch(() => {
-        box.innerHTML = '<span style="color: var(--danger);"><i class="bi bi-x-circle me-1"></i>Erreur lors de l\'enregistrement.</span>';
-    });
-});
-
-// Other test buttons
-document.getElementById('testPennyLaneBtn').addEventListener('click', function() {
-    const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Test en cours...';
-    fetch('/api/test/pennylane', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => showIntegrationResult(res.message, res.ok));
-});
-document.getElementById('testTeamsBtn').addEventListener('click', function() {
-    const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Test en cours...';
-    fetch('/api/test/teams', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => showIntegrationResult(res.message, res.ok));
-});
-document.getElementById('testOpenRouterBtn').addEventListener('click', function() {
-    const box = document.getElementById('testIntegrationResult');
-    box.textContent = 'Test en cours...';
-    fetch('/api/test/openrouter', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => showIntegrationResult(res.message, res.ok));
 });
 </script>
 {% endblock %}

@@ -10,6 +10,10 @@ import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
 from .route_common import membres_visibles_query, dossiers_visibles_query
 
+# Réglages dont la valeur n'est JAMAIS renvoyée au navigateur (ni dans le HTML, ni dans le JSON).
+_CLES_SECRETES = ('MAIL_PASSWORD', 'BREVO_API_KEY', 'OPENROUTER_API_KEY')
+
+
 @app.route('/settings')
 @login_required
 def settings():
@@ -17,7 +21,13 @@ def settings():
     if current_user.role != 'admin':
         return redirect(url_for('profil'))
     from app.models import AppSetting
-    return render_template('settings.html', settings=AppSetting.query.all())
+    lignes = {s.cle: (s.valeur or '') for s in AppSetting.query.all()}
+    valeurs = {cle: val for cle, val in lignes.items() if cle not in _CLES_SECRETES}
+    # Une clé est « enregistrée » si elle est en base OU en variable d'environnement (Render).
+    secrets_enregistres = {
+        cle: bool(lignes.get(cle) or os.environ.get(cle)) for cle in _CLES_SECRETES
+    }
+    return render_template('settings.html', values=valeurs, secrets_enregistres=secrets_enregistres)
 
 
 @app.route('/api/settings', methods=['GET', 'POST'])
@@ -48,10 +58,12 @@ def api_settings():
         db.session.add(setting)
     valeur = data.get('valeur')
     if valeur is not None:
-        setting.valeur = str(valeur)
+        if not (cle in _CLES_SECRETES and str(valeur) == ''):
+            # Champ secret laissé vide = on conserve la valeur déjà enregistrée
+            setting.valeur = str(valeur)
     setting.service = data.get('service') or setting.service or 'general'
     setting.type_valeur = data.get('type_valeur') or setting.type_valeur or 'string'
-    setting.masque = bool(data.get('masque', setting.masque))
+    setting.masque = bool(data.get('masque', setting.masque)) or cle in _CLES_SECRETES
     db.session.commit()
     return jsonify({'ok': True, 'cle': cle})
 
