@@ -677,6 +677,17 @@ try:
             except Exception as e:
                 app.logger.error(f"Rappels dépôt J-2 error: {e}")
 
+    def creer_rappels_echeances_job():
+        """Notifications in-app pour les échéances d'aujourd'hui et de demain."""
+        with app.app_context():
+            try:
+                from app.rappels_notifications import creer_rappels_echeances
+                n = creer_rappels_echeances()
+                if n:
+                    app.logger.info(f"Notifications d'échéance créées: {n}")
+            except Exception as e:
+                app.logger.error(f"Echeance notifications error: {e}")
+
     def generer_taches_dsn():
         """Crée les tâches « Dépôt DSN » arrivant à échéance (horizon 20 j)."""
         with app.app_context():
@@ -747,6 +758,7 @@ try:
     scheduler.add_job(regenerer_taches_fiscales, 'cron', day=1, hour=6, minute=0)  # 1er du mois à 06:00
     scheduler.add_job(generer_taches_dsn, 'cron', hour=6, minute=30)  # chaque jour 06:30 (horizon 20j)
     scheduler.add_job(envoyer_rappels_depot_j2_job, 'cron', hour=8, minute=15)  # rappel J-2 des dépôts fiscaux
+    scheduler.add_job(creer_rappels_echeances_job, 'cron', hour=8, minute=30)  # notifications in-app J et J+1
     scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0)  # toutes les heures
     scheduler.add_job(envoyer_digest_pennylane_job, 'cron', minute=5)  # recapitulatif mail, filtre par creneaux (5 min apres la sync)
     scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10)  # toutes les heures (:10)

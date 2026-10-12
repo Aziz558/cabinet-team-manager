@@ -141,6 +141,36 @@ def test_envoi_email_champs_obligatoires(flask_app, asst):
     assert r.status_code == 400
 
 
+def test_instructions_personnalisees_dans_prompt(flask_app, asst, llm):
+    from app import db
+    from app.models import AppSetting
+    with flask_app.app_context():
+        s = AppSetting.query.filter_by(cle='LLM_CUSTOM_INSTRUCTIONS').first()
+        if not s:
+            s = AppSetting(cle='LLM_CUSTOM_INSTRUCTIONS', type_valeur='string')
+            db.session.add(s)
+        s.valeur = 'Ne jamais inventer une echeance.'
+        db.session.commit()
+    try:
+        c = _client(flask_app, 'asst.mgra@test.local')
+        c.post('/api/assistant/message', json={'message': 'bonjour'})
+        prompt = llm['messages'][-1][0]['content']
+        assert 'Ne jamais inventer une echeance.' in prompt
+        assert prompt.index('INSTRUCTIONS DU CABINET') < prompt.index('DONNÉES DU PÉRIMÈTRE')
+    finally:
+        with flask_app.app_context():
+            s = AppSetting.query.filter_by(cle='LLM_CUSTOM_INSTRUCTIONS').first()
+            if s:
+                s.valeur = ''
+                db.session.commit()
+
+
+def test_instructions_vides_absentes_du_prompt(flask_app, asst, llm):
+    c = _client(flask_app, 'asst.mgra@test.local')
+    c.post('/api/assistant/message', json={'message': 'bonjour'})
+    assert 'INSTRUCTIONS DU CABINET' not in llm['messages'][-1][0]['content']
+
+
 def test_membre_ne_voit_que_lui_dans_le_contexte(flask_app, asst, llm):
     c = _client(flask_app, 'asst.ma@test.local')
     c.post('/api/assistant/message', json={'message': 'mes tâches ?'})

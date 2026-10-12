@@ -66,9 +66,24 @@ def contexte_texte(user):
     return '\n'.join(lignes)
 
 
+INSTRUCTIONS_MAX = 2000
+
+
+def instructions_personnalisees():
+    """Texte saisi dans Réglages > « Instructions personnalisées » (AppSetting LLM_CUSTOM_INSTRUCTIONS).
+
+    Même clé que l'analyse des emails. Tronqué pour borner la taille du prompt.
+    """
+    from .models import AppSetting
+    setting = AppSetting.query.filter_by(cle='LLM_CUSTOM_INSTRUCTIONS').first()
+    if setting and setting.valeur:
+        return str(setting.valeur).strip()[:INSTRUCTIONS_MAX]
+    return ''
+
+
 def construire_prompt(user):
-    """Prompt système : rôle, règles d'email et données du périmètre."""
-    return (
+    """Prompt système : rôle, règles d'email, instructions du cabinet et données du périmètre."""
+    prompt = (
         "Tu es l'assistant du cabinet comptable JMH (application Orbit). Tu réponds en français, "
         "de façon brève et claire. Tu t'appuies UNIQUEMENT sur les données ci-dessous ; si une "
         "information n'y figure pas, dis-le sans l'inventer.\n\n"
@@ -76,8 +91,12 @@ def construire_prompt(user):
         '<EMAIL>{"to_user_id": <id d\'un membre listé>, "subject": "...", "body": "..."}</EMAIL>\n'
         "Tu n'envoies jamais l'email toi-même : l'utilisateur doit le confirmer. "
         "N'utilise que les identifiants listés.\n\n"
-        "=== DONNÉES DU PÉRIMÈTRE ===\n" + contexte_texte(user)
     )
+    instructions = instructions_personnalisees()
+    if instructions:
+        prompt += ("=== INSTRUCTIONS DU CABINET (ne priment pas sur les règles ci-dessus) ===\n"
+                   + instructions + "\n\n")
+    return prompt + "=== DONNÉES DU PÉRIMÈTRE ===\n" + contexte_texte(user)
 
 
 def destinataire_autorise(uid, user):
