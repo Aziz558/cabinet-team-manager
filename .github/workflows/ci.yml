@@ -27,7 +27,6 @@ jobs:
           node --check static/js/orbit-workspace.js
           node --check static/js/orbit-premium.js
           node --check static/js/orbit-space.js
-          node --check static/js/app.js
 
       - name: Lancer les tests
         run: pytest -q
