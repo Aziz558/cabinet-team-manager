@@ -28,6 +28,7 @@ def changer_statut_tache(tache_id):
         return redirect(url_for('taches'))
     
     tache.statut = nouveau_statut
+    tache.statut_source = 'manuel' if nouveau_statut == 'terminee' else None
     if nouveau_statut == 'terminee':
         tache.date_completion = datetime.utcnow()
         if not tache.date_prise_en_charge:
@@ -97,6 +98,7 @@ def terminer_tache(tache_id):
         return redirect(url_for('taches'))
     
     tache.statut = 'terminee'
+    tache.statut_source = 'manuel'
     tache.date_completion = datetime.utcnow()
     if not tache.date_prise_en_charge:
         tache.date_prise_en_charge = datetime.utcnow()

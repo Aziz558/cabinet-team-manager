@@ -168,6 +168,8 @@ class Tache(db.Model):
     frequence_repetition = db.Column(db.String(20), nullable=True)  # daily | weekly | monthly | yearly
     fin_repetition = db.Column(db.Date, nullable=True)  # date de fin de répétition
     template_id = db.Column(db.Integer, db.ForeignKey('taches.id'), nullable=True)  # ID de la tâche modèle
+    # Origine de l'état « terminée » : manuel | auto_checklist | auto_pennylane (NULL = inconnu/historique)
+    statut_source = db.Column(db.String(20), nullable=True)
 
     def est_en_retard(self):
         if self.statut == 'terminee':

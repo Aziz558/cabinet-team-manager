@@ -75,18 +75,21 @@ def _taches_pour_case(dossier_id, taxe, annee, mois, kind):
     return out
 
 
-def appliquer_case_a_taches(dossier_id, taxe, annee, mois, kind, declare, paye=False):
+def appliquer_case_a_taches(dossier_id, taxe, annee, mois, kind, declare, paye=False,
+                            source='auto_checklist'):
     """Case cochee -> taches terminee ; case videe -> taches a_faire.
     Retourne le nb de taches mises a jour."""
     n = 0
     for t in _taches_pour_case(dossier_id, taxe, annee, mois, kind):
         if declare and t.statut != 'terminee':
             t.statut = 'terminee'
+            t.statut_source = source
             if not t.date_completion:
                 t.date_completion = datetime.utcnow()
             n += 1
         elif not declare and t.statut == 'terminee':
             t.statut = 'a_faire'
+            t.statut_source = None
             t.date_completion = None
             n += 1
     return n

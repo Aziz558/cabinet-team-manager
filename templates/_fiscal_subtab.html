@@ -126,7 +126,7 @@
                                             <span style="font-size:0.82rem;font-weight:500;line-height:1.3;flex:1;">{{ t.titre }}</span>
                                             <span style="white-space:nowrap;font-size:0.75rem;">
                                                 {% if t.statut == 'terminee' or t.statut == 'terminée' %}
-                                                <span class="badge badge-success">Fait</span>
+                                                <span class="badge badge-success">Fait</span>{% if t.statut_source == 'manuel' %} <i class="bi bi-hand-index-thumb" title="Traitée manuellement"></i>{% elif t.statut_source in ('auto_checklist', 'auto_pennylane') %} <i class="bi bi-lightning-charge" title="Traitée automatiquement"></i>{% endif %}
                                                 {% elif t.statut == 'en_cours' %}
                                                 <span class="badge badge-warning">En cours</span>
                                                 {% else %}

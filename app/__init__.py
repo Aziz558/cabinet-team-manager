@@ -397,7 +397,7 @@ with app.app_context():
         inspector = db.inspect(db.engine)
         if 'taches' in inspector.get_table_names():
             taches_cols = [c['name'] for c in inspector.get_columns('taches')]
-            for col in ['frequence_repetition', 'fin_repetition', 'template_id']:
+            for col in ['frequence_repetition', 'fin_repetition', 'template_id', 'statut_source']:
                 if col not in taches_cols:
                     try:
                         with db.engine.begin() as conn:

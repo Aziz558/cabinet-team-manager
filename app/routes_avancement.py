@@ -256,6 +256,7 @@ def suivi_changer_statut(tache_id):
         flash('Statut invalide.', 'warning')
         return redirect(url_for('suivi_avancement'))
     tache.statut = nouveau
+    tache.statut_source = 'manuel' if nouveau == 'terminee' else None
     if nouveau == 'terminee':
         tache.date_completion = datetime.utcnow()
     elif nouveau == 'a_faire':
