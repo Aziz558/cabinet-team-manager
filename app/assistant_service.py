@@ -252,3 +252,69 @@ def resume_du_jour(user):
         'du_jour': [_ligne_resume(t) for t in du_jour],
         'demain': [_ligne_resume(t) for t in de_demain],
     }
+
+
+def _normaliser(texte):
+    """Minuscules, sans accents, espaces simplifiés : pour le routage par mots-clés."""
+    import unicodedata
+    sans_accents = unicodedata.normalize('NFKD', texte or '').encode('ascii', 'ignore').decode('ascii')
+    return ' '.join(sans_accents.lower().replace("'", ' ').replace('\u2019', ' ').split())
+
+
+def detecter_intention(message):
+    """Routeur par règles (sans LLM). Retourne 'resume', 'retard', 'demain', 'jour' ou None.
+
+    None = question libre : le modèle de réponse prend le relais.
+    """
+    m = _normaliser(message)
+    if not m:
+        return None
+    if any(k in m for k in ('resume', 'bilan', 'quoi de neuf', 'ma journee')):
+        return 'resume'
+    if 'retard' in m:
+        return 'retard'
+    if 'demain' in m:
+        return 'demain'
+    if 'aujourd' in m or 'du jour' in m:
+        return 'jour'
+    return None
+
+
+def _ligne_texte(t):
+    return f"- {t['titre']} (échéance {t['echeance']}, assignée à {t['assigne']})"
+
+
+def reponse_directe(user, intention):
+    """Réponse construite depuis la base, sans LLM. Mêmes données que resume_du_jour."""
+    r = resume_du_jour(user)
+    if intention == 'resume':
+        lignes = [f"Aujourd'hui ({r['date']}) : {r['nb_du_jour']} échéance(s), "
+                  f"{r['nb_demain']} demain, {r['nb_en_retard']} en retard."]
+        if r['en_retard']:
+            lignes.append('En retard :')
+            lignes += [_ligne_texte(t) for t in r['en_retard'][:5]]
+        if r['du_jour']:
+            lignes.append("Échéances d'aujourd'hui :")
+            lignes += [_ligne_texte(t) for t in r['du_jour'][:5]]
+        return '\n'.join(lignes)
+    if intention == 'retard':
+        if not r['nb_en_retard']:
+            return 'Aucune tâche en retard.'
+        lignes = [f"{r['nb_en_retard']} tâche(s) en retard :"]
+        lignes += [_ligne_texte(t) for t in r['en_retard']]
+        if r['nb_en_retard'] > len(r['en_retard']):
+            lignes.append(f"… et {r['nb_en_retard'] - len(r['en_retard'])} autre(s).")
+        return '\n'.join(lignes)
+    if intention == 'demain':
+        if not r['nb_demain']:
+            return 'Aucune échéance demain.'
+        lignes = [f"{r['nb_demain']} échéance(s) demain :"]
+        lignes += [_ligne_texte(t) for t in r['demain']]
+        return '\n'.join(lignes)
+    if intention == 'jour':
+        if not r['nb_du_jour']:
+            return "Aucune échéance aujourd'hui."
+        lignes = [f"{r['nb_du_jour']} échéance(s) aujourd'hui :"]
+        lignes += [_ligne_texte(t) for t in r['du_jour']]
+        return '\n'.join(lignes)
+    return None

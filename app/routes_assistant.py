@@ -10,7 +10,8 @@ from . import app
 from .assistant_service import (construire_prompt, historique_propre,
                                 extraire_brouillon, destinataire_autorise,
                                 extraire_proposition_tache, valider_tache,
-                                creer_tache_assistant, resume_du_jour)
+                                creer_tache_assistant, resume_du_jour,
+                                 detecter_intention, reponse_directe)
 
 
 @app.route('/api/assistant/message', methods=['POST'])
@@ -21,6 +22,12 @@ def assistant_message():
     message = (data.get('message') or '').strip()[:2000]
     if not message:
         return jsonify({'ok': False, 'error': 'Message vide.'}), 400
+
+    # Routage par règles : les questions factuelles sont répondues depuis la base, sans LLM.
+    intention = detecter_intention(message)
+    if intention:
+        return jsonify({'ok': True, 'reponse': reponse_directe(current_user, intention),
+                        'brouillon': None, 'tache': None, 'source': 'regles'})
 
     from .integrations.openrouter import OpenRouterClient
     llm = OpenRouterClient()
