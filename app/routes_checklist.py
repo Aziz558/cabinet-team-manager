@@ -379,7 +379,8 @@ def checklist_toggle():
     # de la meme periode, la decocher la remet a faire.
     try:
         from .checklist_link import appliquer_case_a_taches
-        if appliquer_case_a_taches(dossier_id, taxe, annee, mois, kind, declare or paye, paye):
+        if appliquer_case_a_taches(dossier_id, taxe, annee, mois, kind, declare or paye, paye,
+                                   acteur=current_user):
             db.session.commit()
     except Exception as _lk_e:
         db.session.rollback()
@@ -401,7 +402,8 @@ def checklist_relink_all():
     n = 0
     for e in ChecklistEntry.query.all():
         n += appliquer_case_a_taches(e.dossier_id, e.taxe, e.annee, e.mois, e.kind,
-                                     bool(e.declare or e.paye), bool(e.paye))
+                                     bool(e.declare or e.paye), bool(e.paye),
+                                     email=False)
     db.session.commit()
     app.logger.info(f"checklist_relink_all: {n} tache(s) ajustee(s) par {current_user.email}")
     return jsonify({'ok': True, 'taches_ajustees': n})

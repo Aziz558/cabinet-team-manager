@@ -145,6 +145,61 @@ def _tache_accessible(tache, user):
     return False
 
 
+def _ids_equipes_manager(user):
+    """Ids du manager lui-meme + de tous les membres des equipes qu'il dirige."""
+    ids = {user.id}
+    for eq in Equipe.query.filter_by(manager_id=user.id).all():
+        ids.update(m.id for m in eq.membres.all())
+    return ids
+
+
+def _ids_visibles(user):
+    """Ids des utilisateurs visibles par user (sans filtre d'activite).
+    - admin : None (= tout le monde)
+    - manager : ses equipes + les admins + les referents sociaux qui suivent
+      un dossier d'un membre de ses equipes (seul lien inter-equipes)
+    - membre : lui-meme uniquement
+    """
+    if user.role == 'admin':
+        return None
+    if user.role != 'manager':
+        return {user.id}
+    team = _ids_equipes_manager(user)
+    visibles = set(team)
+    visibles.update(u.id for u in User.query.filter_by(role='admin').all())
+    for d in Dossier.query.filter(Dossier.collaborateur_id.in_(list(team)),
+                                  Dossier.collaborateur_social_id.isnot(None)).all():
+        visibles.add(d.collaborateur_social_id)
+    return visibles
+
+
+def dossiers_visibles_query(user):
+    """Dossiers visibles : ceux dont le comptable OU le referent social est dans l'equipe de user."""
+    if user.role == 'admin':
+        return Dossier.query
+    if user.role == 'manager':
+        team = list(_ids_equipes_manager(user))
+    else:
+        team = [user.id]
+    return Dossier.query.filter(or_(Dossier.collaborateur_id.in_(team),
+                                    Dossier.collaborateur_social_id.in_(team)))
+
+
+def membres_visibles_query(user):
+    """Utilisateurs actifs visibles par user (liste membres, assignation, recherche)."""
+    q = User.query.filter(User.actif == True)
+    ids = _ids_visibles(user)
+    if ids is None:
+        return q
+    return q.filter(User.id.in_(list(ids)))
+
+
+def membre_visible(cible_id, viewer):
+    """True si l'utilisateur cible_id fait partie du perimetre de viewer."""
+    ids = _ids_visibles(viewer)
+    return ids is None or cible_id in ids
+
+
 def _nettoyer_relations_dossier(dossier):
     """Supprime TOUTES les lignes rattachees a un dossier avant de le deletes
     (taches + notifications/commentaires + suggestions + items Pennylane +

@@ -765,6 +765,10 @@ function changeNotifSound(value) {
         }
     })();
     </script>
+    {% if current_user.is_authenticated %}
+    {% include 'includes/assistant_widget.html' %}
+    <script src="{{ url_for('static', filename='js/assistant.js') }}?v=1" defer></script>
+    {% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>

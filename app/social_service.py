@@ -37,15 +37,11 @@ def dossiers_suivis_par(user):
     q = Dossier.query
     if user.role == 'admin':
         return q.all()
-    ids = [user.id]
     if user.role == 'manager':
-        # managers du pole social : + les referents sociaux des équipes dont il a la main ?
-        # (Un social peut couvrir des dossiers d'equipes comptables differentes : on se
-        # base sur collaborateur_social_id, pas sur l'equipe.)
-        ids = [u.id for u in User.query.filter(
-            User.pole.in_(['social', 'les_deux']), User.actif == True).all()] \
-            if user.pole in ('social', 'les_deux') else [user.id]
-    return q.filter(Dossier.collaborateur_social_id.in_(ids)).all()
+        # Isolation par equipe : dossiers de ses equipes (comptable ou referent social)
+        from .route_common import dossiers_visibles_query
+        return dossiers_visibles_query(user).all()
+    return q.filter(Dossier.collaborateur_social_id == user.id).all()
 
 
 def effectif_nbre(dossier):

@@ -9,7 +9,8 @@ import os
 import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
 from .route_common import (prochaine_echeance_theorique, prochaine_echeance_par_nature,
-                            _tache_accessible, _nettoyer_relations_dossier)
+                            _tache_accessible, _nettoyer_relations_dossier,
+                            dossiers_visibles_query, membres_visibles_query)
 
 @app.route('/dossiers')
 @login_required
@@ -39,8 +40,8 @@ def dossiers():
         team_member_ids = [current_user.id]
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
-        all_dossiers = Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()
-        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+        all_dossiers = dossiers_visibles_query(current_user).all()
+        membres = membres_visibles_query(current_user).all()
     else:
         mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []
         all_equipes_for_switch = mes_equipes
@@ -52,7 +53,7 @@ def dossiers():
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
     
     # Pole social : etendre aux dossiers dont on est le referent social (equipes comptables differentes)
-    if current_user.role != 'admin' and current_user.dans_pole_social:
+    if current_user.role not in ('admin', 'manager') and current_user.dans_pole_social:
         ids_vus = {d.id for d in all_dossiers}
         ids_sociaux = [current_user.id]
         if current_user.role == 'manager':

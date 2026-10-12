@@ -116,6 +116,7 @@ def dashboard():
         }
     
     if current_user.role == 'manager':
+        from .route_common import dossiers_visibles_query, membres_visibles_query
         # Compute real KPIs for manager
         mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
         team_member_ids = [current_user.id]
@@ -123,8 +124,8 @@ def dashboard():
             team_member_ids.extend([m.id for m in eq.membres.all()])
         team_member_ids = list(set(team_member_ids))
 
-        membres_actifs = User.query.filter(User.id.in_(team_member_ids), User.actif==True).count()
-        all_dossiers_ids = [d.id for d in Dossier.query.filter(Dossier.collaborateur_id.in_(team_member_ids)).all()]
+        membres_actifs = membres_visibles_query(current_user).count()
+        all_dossiers_ids = [d.id for d in dossiers_visibles_query(current_user).all()]
         dossiers_en_cours = len(all_dossiers_ids)
         
         taches_retard = 0
@@ -180,7 +181,7 @@ def dashboard():
                 app.logger.warning(f"Erreur chargement suggestions: {e}")
                 suggestions = []
 
-        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).order_by(User.nom).all()
+        membres = membres_visibles_query(current_user).order_by(User.nom).all()
         
         taches_jour = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),

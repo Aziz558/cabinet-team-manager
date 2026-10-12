@@ -8,6 +8,7 @@ import json
 import os
 import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
+from .route_common import membres_visibles_query, dossiers_visibles_query
 
 @app.route('/settings')
 @login_required
@@ -143,12 +144,12 @@ def api_dossiers_membres():
        Si ?membre_id=X est fourni, ne retourne que les dossiers de ce membre."""
     membre_id = request.args.get('membre_id', type=int)
     
-    query = Dossier.query.order_by(Dossier.numero_dossier)
+    query = dossiers_visibles_query(current_user).order_by(Dossier.numero_dossier)
     if membre_id:
         query = query.filter_by(collaborateur_id=membre_id)
     dossiers = query.all()
     
-    membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
+    membres = membres_visibles_query(current_user).order_by(User.prenom).all()
     
     return jsonify({
         'ok': True,
@@ -182,9 +183,9 @@ def recherche_globale():
         team_ids = {current_user.id}
         for eq in Equipe.query.filter_by(manager_id=current_user.id).all():
             team_ids.update(m.id for m in eq.membres.all())
-        dq = dq.filter(Dossier.collaborateur_id.in_(list(team_ids)))
+        dq = dossiers_visibles_query(current_user)
         tq = tq.filter(or_(Tache.assigne_a.in_(list(team_ids)), Tache.cree_par.in_(list(team_ids))))
-        mq = mq.filter(User.id.in_(list(team_ids)))
+        mq = membres_visibles_query(current_user)
 
     for d in dq.filter(or_(Dossier.numero_dossier.ilike(like), Dossier.intitule.ilike(like))) \
                .order_by(Dossier.numero_dossier).limit(5).all():

@@ -8,6 +8,7 @@ import json
 import os
 import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
+from .route_common import membres_visibles_query
 
 @app.route('/taches', methods=['GET', 'POST'])
 @login_required
@@ -165,7 +166,7 @@ def taches():
         team_member_ids = [current_user.id]
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
-        membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
+        membres = membres_visibles_query(current_user).all()
         all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
     else:
         mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []

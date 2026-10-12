@@ -165,7 +165,7 @@ def checklist_pl_sync_dossier(dossier_id):
             y, mo = per
             if taxe == 'tva_trimestriel':
                 mo = ((mo - 1) // 3) * 3 + 1
-            n_lk += _lk(d.id, taxe, y, mo, 'depot', True, source='auto_pennylane')
+            n_lk += _lk(d.id, taxe, y, mo, 'depot', True, source='auto_pennylane', email=False)
         if n_lk:
             db.session.commit()
             msg += f" {n_lk} tâche(s) deadline auto-terminée(s)."
@@ -857,7 +857,7 @@ def pennylane_check(dossier_id):
                     synced += 1
                     try:
                         from .checklist_link import appliquer_case_a_taches as _lk
-                        _lk(dossier.id, taxe, y, mo, 'depot', True, source='auto_pennylane')
+                        _lk(dossier.id, taxe, y, mo, 'depot', True, source='auto_pennylane', email=False)
                     except Exception:
                         pass
                 db.session.commit()
@@ -989,7 +989,7 @@ def pennylane_tva_sync_selected():
             d_synced += 1
             try:
                 from .checklist_link import appliquer_case_a_taches as _lk
-                _lk(d.id, taxe, y, mo, 'depot', True, source='auto_pennylane')
+                _lk(d.id, taxe, y, mo, 'depot', True, source='auto_pennylane', email=False)
             except Exception:
                 pass
         db.session.commit()

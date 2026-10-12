@@ -8,6 +8,7 @@ import json
 import os
 import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
+from .route_common import membres_visibles_query, membre_visible
 
 @app.route('/equipes', methods=['GET', 'POST'])
 @login_required
@@ -76,7 +77,7 @@ def set_team(equipe_id):
 def membres():
     """Page de gestion des membres - corrig\u00e9e avec toutes les variables attendues par le template."""
     from app.models import User, Equipe
-    membres_list = User.query.filter_by(actif=True).order_by(User.nom).all()
+    membres_list = membres_visibles_query(current_user).order_by(User.nom).all()
     toutes_equipes = Equipe.query.order_by(Equipe.nom).all()
     mes_equipes = []
     if current_user.role == 'manager':
@@ -93,6 +94,9 @@ def liste_membres():
 def fiche_membre(user_id):
     """Page de fiche détaillée d'un membre."""
     user = User.query.get_or_404(user_id)
+    if not membre_visible(user.id, current_user):
+        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        return redirect(url_for('dashboard'))
     from datetime import date
     from datetime import timedelta
     

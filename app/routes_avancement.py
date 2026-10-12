@@ -3,6 +3,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, s
 from flask_login import login_user, logout_user, login_required, current_user
 from . import app, db
 from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
+from .route_common import membres_visibles_query, membre_visible
 from sqlalchemy import or_
 import json
 import os
@@ -51,11 +52,7 @@ def api_avancement_membre(membre_id):
     """
     # Vérification du périmètre
     if current_user.role == 'manager':
-        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
-        team_ids = {current_user.id}
-        for eq in mes_equipes:
-            team_ids.update(m.id for m in eq.membres.all())
-        if membre_id not in team_ids:
+        if not membre_visible(membre_id, current_user):
             return jsonify({'ok': False, 'error': 'Accès refusé'}), 403
     elif current_user.role != 'admin':
         if membre_id != current_user.id:
@@ -184,12 +181,8 @@ def suivi_avancement():
     if current_user.role == 'admin':
         membres = User.query.filter_by(actif=True).order_by(User.prenom).all()
     elif current_user.role == 'manager':
-        mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
-        team_ids = [current_user.id]
-        for eq in mes_equipes:
-            team_ids.extend([m.id for m in eq.membres.all()])
-        # Isolation par equipe : le manager ne voit que les membres de ses equipes
-        membres = User.query.filter(User.id.in_(team_ids), User.actif==True).order_by(User.prenom).all()
+        # Isolation : membres de ses equipes + admins + referents sociaux partages
+        membres = membres_visibles_query(current_user).order_by(User.prenom).all()
     else:
         membres = [current_user]
     

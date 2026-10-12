@@ -28,7 +28,8 @@ def suggestions_page():
         suggestions_list = Suggestion.query.filter_by(cree_par=current_user.id).order_by(Suggestion.date_creation.desc()).all()
     
     # Pass users and dossiers for the modal form
-    all_users = User.query.filter_by(actif=True).order_by(User.nom).all()
+    from app.route_common import membres_visibles_query
+    all_users = membres_visibles_query(current_user).order_by(User.nom).all()
     all_dossiers = Dossier.query.order_by(Dossier.numero_dossier).all()
     
     return render_template('suggestions.html', suggestions=suggestions_list, users=all_users, dossiers=all_dossiers)

@@ -72,6 +72,10 @@ def suivi_social():
 
     membres_social = User.query.filter(User.pole.in_(['social', 'les_deux']), User.actif == True)\
         .order_by(User.nom).all()
+    if current_user.role != 'admin':
+        from .route_common import membres_visibles_query
+        _visibles = {u.id for u in membres_visibles_query(current_user).all()}
+        membres_social = [u for u in membres_social if u.id in _visibles]
     filtre_social = request.args.get('social', type=int)
     if filtre_social:
         lignes = [l for l in lignes if l['d'].collaborateur_social_id == filtre_social]
@@ -106,8 +110,8 @@ def dsn_set():
         est_social = (d.collaborateur_social_id == current_user.id)
         est_manager_social = False
         if current_user.role == 'manager' and d.collaborateur_social_id:
-            cible = User.query.get(d.collaborateur_social_id)
-            est_manager_social = bool(cible and (cible.pole or '') in ('social', 'les_deux'))
+            from .route_common import _ids_equipes_manager
+            est_manager_social = d.collaborateur_social_id in _ids_equipes_manager(current_user)
         est_comptable = (champ == 'ecritures' and d.collaborateur_id == current_user.id)
         if not (est_social or est_manager_social or est_comptable):
             return jsonify({'ok': False, 'error': 'Dossier hors de votre périmètre social.'}), 403

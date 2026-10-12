@@ -70,3 +70,43 @@ def test_liste_taches_affiche_le_badge_source(flask_app, admin_client):
     _, tid = _dossier_et_tache(flask_app, 'D-LINK-004')
     r = admin_client.get('/taches')
     assert r.status_code == 200
+
+
+def test_notification_responsable_sur_changement_auto(flask_app, seed, monkeypatch):
+    from app import db
+    from app.models import Tache, Notification, User
+    from app.checklist_link import appliquer_case_a_taches
+    monkeypatch.setattr('app.integrations.brevo.send_email_via_brevo_api', lambda **kw: True)
+    did, tid = _dossier_et_tache(flask_app, 'D-LINK-005')
+    with flask_app.app_context():
+        admin = User.query.filter_by(email='admin@test.local').first()
+        Tache.query.get(tid).cree_par = admin.id
+        db.session.commit()
+        appliquer_case_a_taches(did, 'tva_mensuel', 2026, 8, 'depot', True, source='auto_pennylane')
+        db.session.commit()
+        notifs = Notification.query.filter_by(user_id=admin.id, tache_id=tid).all()
+        assert len(notifs) == 1
+        assert 'synchro Pennylane' in notifs[0].message
+        assert notifs[0].type_notification == 'systeme'
+        # case decochee -> nouvelle notification « remise a faire »
+        appliquer_case_a_taches(did, 'tva_mensuel', 2026, 8, 'depot', False)
+        db.session.commit()
+        notifs = Notification.query.filter_by(user_id=admin.id, tache_id=tid).order_by(Notification.id).all()
+        assert len(notifs) == 2
+        assert 'a faire' in notifs[-1].message
+
+
+def test_pas_de_notification_si_le_responsable_est_l_acteur(flask_app, seed, monkeypatch):
+    from app import db
+    from app.models import Tache, Notification, User
+    from app.checklist_link import appliquer_case_a_taches
+    monkeypatch.setattr('app.integrations.brevo.send_email_via_brevo_api', lambda **kw: True)
+    did, tid = _dossier_et_tache(flask_app, 'D-LINK-006')
+    with flask_app.app_context():
+        admin = User.query.filter_by(email='admin@test.local').first()
+        Tache.query.get(tid).cree_par = admin.id
+        db.session.commit()
+        appliquer_case_a_taches(did, 'tva_mensuel', 2026, 8, 'depot', True, acteur=admin)
+        db.session.commit()
+        assert Tache.query.get(tid).statut == 'terminee'
+        assert Notification.query.filter_by(tache_id=tid).count() == 0

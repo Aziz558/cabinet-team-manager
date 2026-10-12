@@ -567,7 +567,7 @@ def sync_checklist_tva() -> dict:
             # dans Pennylane est auto-terminee (ex. aout -> "Dépôt TVA mensuel").
             try:
                 from ..checklist_link import appliquer_case_a_taches
-                t_lk = appliquer_case_a_taches(d.id, taxe, y, mo, 'depot', True, source='auto_pennylane')
+                t_lk = appliquer_case_a_taches(d.id, taxe, y, mo, 'depot', True, source='auto_pennylane', email=False)
                 if t_lk:
                     taches_liees += t_lk
             except Exception as _lk_e:

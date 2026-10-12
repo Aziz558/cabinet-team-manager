@@ -18,3 +18,4 @@ from . import routes_notifications  # noqa: F401 — notifications, commentaires
 from . import routes_admin  # noqa: F401 — profil, reset admin, photos admin, debug
 from . import routes_fiscal  # noqa: F401 — page fiscal + creation dossier + config equipes
 from . import routes_pennylane  # noqa: F401 — integration Pennylane + error handlers
+from . import routes_assistant  # noqa: F401 — assistant IA (bulle, périmètre utilisateur)
