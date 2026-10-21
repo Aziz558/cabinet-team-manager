@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr" data-theme="{{ request.cookies.get('theme') or 'light' }}">
 <head>
     <meta charset="UTF-8">
@@ -40,9 +40,7 @@
                 var icon = document.getElementById('themeIcon');
                 if (icon) { icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill'; }
                 document.querySelectorAll('.sidebar-logo').forEach(function(img) {
-                    img.src = theme === 'light'
-                        ? "{{ url_for('static', filename='img/logo-jmh-light.svg') }}"
-                        : "{{ url_for('static', filename='img/logo-jmh.svg') }}";
+                    img.src = "{{ url_for('static', filename='img/logo-jmh-orbit-symbole.svg') }}";
                 });
                 document.querySelectorAll('[data-theme-choice]').forEach(function(el) {
                     el.classList.toggle('active', el.getAttribute('data-theme-choice') === theme);
@@ -154,6 +152,9 @@
             <a href="{{ url_for('notifications_page') }}" class="notif-bell-link" style="margin-right:12px;position:relative;text-decoration:none;color:var(--text-primary);font-size:18px;">
                 <i class="bi bi-bell"></i>
                 <span class="notif-badge" id="notifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:8px;padding:0 4px;">0</span>
+            </a>
+            <a href="{{ url_for('rappels_suivi') }}" style="margin-right:12px;text-decoration:none;color:var(--text-primary);font-size:18px;" title="Mes rappels">
+                <i class="bi bi-alarm"></i>
             </a>
             {% if current_equipe or all_equipes_for_switch %}
             <div class="dropdown">
@@ -552,7 +553,7 @@ function pollNotifs() {
                 try {
                     var n = new Notification('Cabinet JMH', {
                         body: data.last_message || count + ' nouvelle(s) notification(s)',
-                        icon: '/static/img/logo-jmh.png',
+                        icon: '/static/img/logo-jmh-orbit.png',
                         tag: 'cabinet-jmh-notif',
                         silent: true
                     });
@@ -767,8 +768,9 @@ function changeNotifSound(value) {
     </script>
     {% if current_user.is_authenticated %}
     {% include 'includes/assistant_widget.html' %}
-    <script src="{{ url_for('static', filename='js/assistant.js') }}?v=2" defer></script>
+    <script src="{{ url_for('static', filename='js/assistant.js') }}?v=3" defer></script>
     {% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+

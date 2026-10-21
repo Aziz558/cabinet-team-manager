@@ -244,6 +244,29 @@ class AppSetting(db.Model):
         return f'<AppSetting {self.cle}>'
 
 
+class Rappel(db.Model):
+    """Rappel utilisateur : notification in-app immédiate, puis email J+1 si non lu,
+    et email à la date d'échéance. Créable via l'assistant IA ou manuellement."""
+    __tablename__ = 'rappels'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    titre = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    date_echeance = db.Column(db.Date, nullable=False)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_envoi_notification = db.Column(db.DateTime, nullable=True)
+    lu = db.Column(db.Boolean, default=False)  # marqué comme "NOTE" / consulté
+    date_lu = db.Column(db.DateTime, nullable=True)
+    email_j1_envoye = db.Column(db.Boolean, default=False)
+    email_echeance_envoye = db.Column(db.Boolean, default=False)
+    archive = db.Column(db.Boolean, default=False)
+    source = db.Column(db.String(30), default='manuel')  # manuel | assistant
+    user = db.relationship('User', backref='rappels')
+
+    def __repr__(self):
+        return f'<Rappel {self.id} user={self.user_id} echeance={self.date_echeance}>'
+
+
 class PennylaneItem(db.Model):
     """Item Pennylane (facture client/fournisseur, transaction) vu pour un dossier.
        Permet de détecter les NOUVEAUX items et de suivre leur traitement."""

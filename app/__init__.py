@@ -688,6 +688,28 @@ try:
             except Exception as e:
                 app.logger.error(f"Echeance notifications error: {e}")
 
+    def verifier_rappels_j1_job():
+        """Email J+1 pour les rappels non lus depuis plus de 24h."""
+        with app.app_context():
+            try:
+                from app.rappels_notifications import verifier_rappels_j1
+                n = verifier_rappels_j1()
+                if n:
+                    app.logger.info(f"Emails rappel J+1 envoyés: {n}")
+            except Exception as e:
+                app.logger.error(f"Rappel J+1 email error: {e}")
+
+    def verifier_rappels_echeance_job():
+        """Email à la date d'échéance pour les rappels non lus."""
+        with app.app_context():
+            try:
+                from app.rappels_notifications import verifier_rappels_echeance
+                n = verifier_rappels_echeance()
+                if n:
+                    app.logger.info(f"Emails rappel échéance envoyés: {n}")
+            except Exception as e:
+                app.logger.error(f"Rappel échéance email error: {e}")
+
     def generer_taches_dsn():
         """Crée les tâches « Dépôt DSN » arrivant à échéance (horizon 20 j)."""
         with app.app_context():
@@ -759,6 +781,8 @@ try:
     scheduler.add_job(generer_taches_dsn, 'cron', hour=6, minute=30)  # chaque jour 06:30 (horizon 20j)
     scheduler.add_job(envoyer_rappels_depot_j2_job, 'cron', hour=8, minute=15)  # rappel J-2 des dépôts fiscaux
     scheduler.add_job(creer_rappels_echeances_job, 'cron', hour=8, minute=30)  # notifications in-app J et J+1
+    scheduler.add_job(verifier_rappels_j1_job, 'cron', hour=9, minute=0)  # email J+1 rappels non lus
+    scheduler.add_job(verifier_rappels_echeance_job, 'cron', hour=9, minute=15)  # email date échéance
     scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0)  # toutes les heures
     scheduler.add_job(envoyer_digest_pennylane_job, 'cron', minute=5)  # recapitulatif mail, filtre par creneaux (5 min apres la sync)
     scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10)  # toutes les heures (:10)

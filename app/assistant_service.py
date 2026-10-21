@@ -18,6 +18,7 @@ STATUTS_TERMINES = ('terminee', 'terminée')
 MAX_HISTORIQUE = 10
 EMAIL_RE = re.compile(r'<EMAIL>(.*?)</EMAIL>', re.S)
 TACHE_RE = re.compile(r'<TACHE>(.*?)</TACHE>', re.S)
+RAPPEL_RE = re.compile(r'<RAPPEL>(.*?)</RAPPEL>', re.S)
 PRIORITES = ('haute', 'moyenne', 'basse')
 
 
@@ -98,6 +99,11 @@ def construire_prompt(user):
         '"priorite": "haute|moyenne|basse", "date_echeance": "AAAA-MM-JJ"}</TACHE>\n'
         "Ne propose une tâche que si l'utilisateur la demande. Si la date d'échéance manque, demande-la "
         "au lieu de l'inventer. Tu ne crées jamais la tâche toi-même : l'utilisateur doit la confirmer.\n\n"
+        "Pour planifier un rappel, ajoute à la fin de ta réponse un bloc exact au format :\n"
+        '<RAPPEL>{"titre": "...", "message": "...", "date_echeance": "AAAA-MM-JJ"}</RAPPEL>\n'
+        "Un rappel crée une notification in-app immédiate pour l'utilisateur. S'il n'est pas marqué "
+        "comme lu (NOTE) sous 24h, un email de relance est envoyé. Un email est aussi envoyé à la "
+        "date d'échéance. Ne propose un rappel que si l'utilisateur le demande.\n\n"
     )
     instructions = instructions_personnalisees()
     if instructions:
@@ -227,6 +233,64 @@ def creer_tache_assistant(user, data):
         ))
     db.session.commit()
     return t
+
+
+def valider_rappel(data, user):
+    """Contrôle un rappel proposé. Retourne (rappel, None) ou (None, erreur)."""
+    if not isinstance(data, dict):
+        return None, 'données invalides'
+    titre = str(data.get('titre') or '').strip()[:200]
+    if not titre:
+        return None, 'titre manquant'
+    message = str(data.get('message') or '').strip()[:2000]
+    if not message:
+        return None, 'message manquant'
+    try:
+        echeance = date.fromisoformat(str(data.get('date_echeance') or '').strip())
+    except ValueError:
+        return None, "date d'échéance absente ou invalide"
+    if echeance < date.today():
+        return None, "la date d'échéance ne peut pas être dans le passé"
+    return {'titre': titre, 'message': message, 'date_echeance': echeance.isoformat()}, None
+
+
+def extraire_proposition_rappel(raw, user):
+    """Sépare le bloc <RAPPEL> de la réponse. La proposition n'est retenue que si elle est valide."""
+    texte = RAPPEL_RE.sub('', raw).strip()
+    m = RAPPEL_RE.search(raw)
+    if not m:
+        return texte, None
+    try:
+        data = json.loads(m.group(1).strip())
+    except ValueError:
+        return texte, None
+    rappel, erreur = valider_rappel(data, user)
+    if erreur:
+        return texte + f"\n\n(Rappel non proposé : {erreur}.)", None
+    return texte, rappel
+
+
+def creer_rappel_assistant(user, data):
+    """Crée un rappel et envoie la notification in-app immédiate."""
+    from . import db
+    from .models import Rappel, Notification
+    r = Rappel(
+        user_id=user.id,
+        titre=data['titre'],
+        message=data['message'],
+        date_echeance=date.fromisoformat(data['date_echeance']),
+        source='assistant',
+    )
+    db.session.add(r)
+    db.session.flush()
+    db.session.add(Notification(
+        user_id=user.id,
+        message=f"Rappel créé : {r.titre} — échéance le {r.date_echeance.strftime('%d/%m/%Y')}\n{r.message}",
+        type_notification='rappel',
+        tache_id=None,
+    ))
+    db.session.commit()
+    return r
 
 
 def _ligne_resume(t):

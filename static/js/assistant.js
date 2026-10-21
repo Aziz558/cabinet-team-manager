@@ -95,6 +95,79 @@
         box.scrollTop = box.scrollHeight;
     }
 
+    function ajouterRappel(rappel) {
+        var card = document.createElement('div');
+        card.className = 'ap-draft';
+
+        var titre = document.createElement('div');
+        titre.className = 'ap-draft-subject';
+        titre.textContent = 'Nouveau rappel : ' + rappel.titre;
+
+        var detail = document.createElement('div');
+        detail.className = 'ap-draft-to';
+        detail.textContent = 'Échéance le ' + rappel.date_echeance;
+
+        var msg = document.createElement('div');
+        msg.className = 'ap-draft-body';
+        msg.textContent = rappel.message;
+
+        var actions = document.createElement('div');
+        actions.className = 'ap-draft-actions';
+
+        var ok = document.createElement('button');
+        ok.type = 'button';
+        ok.textContent = 'Créer le rappel';
+
+        var annuler = document.createElement('button');
+        annuler.type = 'button';
+        annuler.className = 'secondary';
+        annuler.textContent = 'Annuler';
+
+        ok.addEventListener('click', function () {
+            ok.disabled = true;
+            annuler.disabled = true;
+            fetch('/api/assistant/creer_rappel', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    titre: rappel.titre,
+                    message: rappel.message,
+                    date_echeance: rappel.date_echeance
+                })
+            }).then(function (r) { return r.json().then(function (j) { return {status: r.status, j: j}; }); })
+              .then(function (res) {
+                  if (res.j && res.j.ok) {
+                      card.remove();
+                      ajouterMessage('assistant', res.j.message || 'Rappel créé.');
+                  } else {
+                      ok.disabled = false;
+                      annuler.disabled = false;
+                      ajouterMessage('error', (res.j && res.j.error) || 'Rappel refusé.');
+                  }
+              })
+              .catch(function () {
+                  ok.disabled = false;
+                  annuler.disabled = false;
+                  ajouterMessage('error', 'Erreur réseau pendant la création du rappel.');
+              });
+        });
+
+        annuler.addEventListener('click', function () {
+            card.remove();
+            ajouterMessage('assistant', 'Rappel annulé.');
+        });
+
+        actions.appendChild(ok);
+        actions.appendChild(annuler);
+        card.appendChild(titre);
+        card.appendChild(detail);
+        card.appendChild(msg);
+        card.appendChild(actions);
+        box.appendChild(card);
+        box.scrollTop = box.scrollHeight;
+    }
+
     function ajouterTache(tache) {
         var card = document.createElement('div');
         card.className = 'ap-draft';
@@ -238,6 +311,7 @@
                   ajouterMessage('assistant', reponse || '(réponse vide)');
                   if (res.j.brouillon) ajouterBrouillon(res.j.brouillon);
                   if (res.j.tache) ajouterTache(res.j.tache);
+                  if (res.j.rappel) ajouterRappel(res.j.rappel);
               } else {
                   ajouterMessage('error', (res.j && res.j.error) || 'Erreur de l\u2019assistant.');
               }
