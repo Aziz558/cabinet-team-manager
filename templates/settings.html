@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Paramètres{% endblock %}
+{% block title %}ParamÃ¨tres{% endblock %}
 
 {% block content %}
 {% from 'includes/orbit_ui.html' import page_head with context %}
-{{ page_head('bi-gear', 'Paramètres', 'Email, assistant IA et notifications') }}
+{{ page_head('bi-gear', 'ParamÃ¨tres', 'Email, assistant IA et notifications') }}
 
 <div class="row g-4 mb-4">
     <!-- Apparence -->
@@ -14,12 +14,12 @@
                 <h5 class="mb-0"><i class="bi bi-palette me-2" style="color: var(--orange-primary);"></i>Apparence</h5>
             </div>
             <div class="card-body-premium">
-                <p class="text-tertiary small mb-3">Le thème s'applique à toutes les fenêtres de JMH Orbit et reste mémorisé sur cet appareil.</p>
-                <div class="theme-choice-group" role="group" aria-label="Choix du thème">
+                <p class="text-tertiary small mb-3">Le thÃ¨me s'applique Ã  toutes les fenÃªtres de JMH Orbit et reste mÃ©morisÃ© sur cet appareil.</p>
+                <div class="theme-choice-group" role="group" aria-label="Choix du thÃ¨me">
                     <button type="button" class="theme-choice" data-theme-choice="light" onclick="setOrbitTheme('light', true)">
                         <i class="bi bi-sun-fill"></i>
                         <span>Clair</span>
-                        <small>Fonds blancs, idéal en journée</small>
+                        <small>Fonds blancs, idÃ©al en journÃ©e</small>
                     </button>
                     <button type="button" class="theme-choice" data-theme-choice="dark" onclick="setOrbitTheme('dark', true)">
                         <i class="bi bi-moon-stars-fill"></i>
@@ -35,7 +35,7 @@
                 <h5 class="mb-0"><i class="bi bi-envelope me-2" style="color: var(--danger);"></i>Envoi d'emails (SMTP)</h5>
             </div>
             <div class="card-body-premium">
-                <p class="text-tertiary small mb-3">Serveur utilisé pour les notifications lorsque Brevo n'est pas configuré.</p>
+                <p class="text-tertiary small mb-3">Serveur utilisÃ© pour les notifications lorsque Brevo n'est pas configurÃ©.</p>
                 <form id="smtpForm">
                     <div class="row g-2">
                         <div class="col-md-8">
@@ -52,7 +52,7 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label" for="mailPass">Mot de passe</label>
-                            <input id="mailPass" type="password" name="MAIL_PASSWORD" class="input-premium" placeholder="{{ 'Enregistré : laisser vide pour conserver' if secrets_enregistres.MAIL_PASSWORD else 'Non renseigné' }}" autocomplete="new-password">
+                            <input id="mailPass" type="password" name="MAIL_PASSWORD" class="input-premium" placeholder="{{ 'EnregistrÃ© : laisser vide pour conserver' if secrets_enregistres.MAIL_PASSWORD else 'Non renseignÃ©' }}" autocomplete="new-password">
                         </div>
                     </div>
                     <button type="submit" class="btn-premium btn-premium-primary btn-press w-100 mt-3">Enregistrer SMTP</button>
@@ -73,22 +73,31 @@
                 <h5 class="mb-0"><i class="bi bi-cpu me-2" style="color: var(--info);"></i>Assistant IA (OpenRouter)</h5>
             </div>
             <div class="card-body-premium">
-                <p class="text-tertiary small mb-3">Clé utilisée par l'assistant de la bulle et par l'analyse des emails. Créez une clé sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+                <p class="text-tertiary small mb-3">ClÃ© utilisÃ©e par l'assistant de la bulle et par l'analyse des emails. CrÃ©ez une clÃ© sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
                 <form id="openrouterForm">
                     <div class="mb-3">
-                        <label class="form-label" for="orKey">Clé API OpenRouter</label>
-                        <input id="orKey" type="password" name="OPENROUTER_API_KEY" class="input-premium" placeholder="{{ 'Enregistrée : laisser vide pour conserver' if secrets_enregistres.OPENROUTER_API_KEY else 'sk-or-v1-…' }}" autocomplete="new-password">
-                        <div class="form-text text-tertiary">Statut : {{ 'clé enregistrée' if secrets_enregistres.OPENROUTER_API_KEY else 'aucune clé configurée' }}.</div>
+                        <label class="form-label" for="orKey">ClÃ© API OpenRouter</label>
+                        <input id="orKey" type="password" name="OPENROUTER_API_KEY" class="input-premium" placeholder="{{ 'EnregistrÃ©e : laisser vide pour conserver' if secrets_enregistres.OPENROUTER_API_KEY else 'sk-or-v1-â€¦' }}" autocomplete="new-password">
+                        <div class="form-text text-tertiary">Statut : {{ 'clÃ© enregistrÃ©e' if secrets_enregistres.OPENROUTER_API_KEY else 'aucune clÃ© configurÃ©e' }}.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="orModel">Modèle</label>
+                        <label class="form-label" for="orModel">ModÃ¨le</label>
                         <input id="orModel" type="text" name="OPENROUTER_MODEL" class="input-premium" value="{{ values.get('OPENROUTER_MODEL', '') }}" placeholder="meta-llama/llama-3.3-70b-instruct:free">
-                        <div class="form-text text-tertiary">Laisser vide pour utiliser le modèle par défaut.</div>
+                        <div class="form-text text-tertiary">Laisser vide pour utiliser le modÃ¨le par dÃ©faut.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="llmInstructions">Instructions personnalisées</label>
+                        <label class="form-label" for="llmInstructions">Instructions personnalisÃ©es</label>
                         <textarea id="llmInstructions" name="LLM_CUSTOM_INSTRUCTIONS" class="input-premium" rows="4" placeholder="Ex : ignorer les emails marketing.">{{ values.get('LLM_CUSTOM_INSTRUCTIONS', '') }}</textarea>
-                        <div class="form-text text-tertiary">Ajoutées au prompt lors de l'analyse des emails.</div>
+                        <div class="form-text text-tertiary">AjoutÃ©es au prompt lors de l'analyse des emails.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="llmPrimaire">Provider IA principal</label>
+                        <select id="llmPrimaire" name="LLM_PROVIDER_PRIMAIRE" class="input-premium">
+                            <option value="openrouter">OpenRouter (par défaut)</option>
+                            <option value="nvidia">NVIDIA NIM</option>
+                            <option value="gemini">Google Gemini</option>
+                        </select>
+                        <div class="form-text text-tertiary">Le provider choisi est appelé en premier. OpenRouter reste le secours automatique en cas d'échec.</div>
                     </div>
                     <button type="submit" class="btn-premium btn-premium-primary btn-press w-100">Enregistrer l'IA</button>
                 </form>
@@ -104,7 +113,7 @@
     </div>
 </div>
 <div class="row g-4 mb-4">
-    <!-- Notifications : récapitulatif et Brevo -->
+    <!-- Notifications : rÃ©capitulatif et Brevo -->
     <div class="col-lg-6">
         <div class="card-premium h-100 animate-fade-in-up stagger-3">
             <div class="card-header-premium">
@@ -112,19 +121,19 @@
             </div>
             <div class="card-body-premium">
                 <form id="digestForm" class="mb-4">
-                    <label class="form-label" for="digestHeures">Récapitulatif Pennylane (heures d'envoi)</label>
+                    <label class="form-label" for="digestHeures">RÃ©capitulatif Pennylane (heures d'envoi)</label>
                     <div class="d-flex gap-2">
                         <input id="digestHeures" type="text" name="PENNYLANE_DIGEST_HEURES" class="input-premium" value="{{ values.get('PENNYLANE_DIGEST_HEURES', '9,13,17') }}" placeholder="ex: 9,13,17">
                         <button type="submit" class="btn-premium btn-premium-success btn-press">Enregistrer</button>
                     </div>
-                    <div class="form-text text-tertiary">Heures séparées par des virgules (heure de Paris, 0 à 23). Laisser vide pour désactiver les mails : les notifications restent dans l'application.</div>
+                    <div class="form-text text-tertiary">Heures sÃ©parÃ©es par des virgules (heure de Paris, 0 Ã  23). Laisser vide pour dÃ©sactiver les mails : les notifications restent dans l'application.</div>
                 </form>
                 <div id="digestResult" class="small mb-3" aria-live="polite"></div>
 
                 <form id="brevoForm">
-                    <label class="form-label" for="brevoKey">Clé API Brevo</label>
-                    <input id="brevoKey" type="password" name="BREVO_API_KEY" class="input-premium" placeholder="{{ 'Enregistrée : laisser vide pour conserver' if secrets_enregistres.BREVO_API_KEY else 'xkeysib-…' }}" autocomplete="new-password">
-                    <div class="form-text text-tertiary mb-2">Si renseignée, les notifications de tâches passent par Brevo plutôt que par SMTP.</div>
+                    <label class="form-label" for="brevoKey">ClÃ© API Brevo</label>
+                    <input id="brevoKey" type="password" name="BREVO_API_KEY" class="input-premium" placeholder="{{ 'EnregistrÃ©e : laisser vide pour conserver' if secrets_enregistres.BREVO_API_KEY else 'xkeysib-â€¦' }}" autocomplete="new-password">
+                    <div class="form-text text-tertiary mb-2">Si renseignÃ©e, les notifications de tÃ¢ches passent par Brevo plutÃ´t que par SMTP.</div>
                     <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer Brevo</button>
                 </form>
                 <div id="brevoResult" class="small mt-2" aria-live="polite"></div>
@@ -139,30 +148,76 @@
                 <h5 class="mb-0"><i class="bi bi-shield-check me-2" style="color: var(--success);"></i>Connexion de l'assistant</h5>
             </div>
             <div class="card-body-premium">
-                <p class="text-tertiary small mb-3">Statut des clés utilisées par l'application. Les valeurs ne sont jamais affichées.</p>
+                <p class="text-tertiary small mb-3">Statut des clÃ©s utilisÃ©es par l'application. Les valeurs ne sont jamais affichÃ©es.</p>
                 <ul class="list-unstyled small mb-0">
                     <li class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--border-color) !important;">
                         <span>OpenRouter (assistant IA)</span>
-                        <span>{{ '✔ configurée' if secrets_enregistres.OPENROUTER_API_KEY else '✖ absente' }}</span>
+                        <span>{{ 'âœ” configurÃ©e' if secrets_enregistres.OPENROUTER_API_KEY else 'âœ– absente' }}</span>
                     </li>
                     <li class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--border-color) !important;">
                         <span>Brevo (notifications)</span>
-                        <span>{{ '✔ configurée' if secrets_enregistres.BREVO_API_KEY else '✖ absente' }}</span>
+                        <span>{{ 'âœ” configurÃ©e' if secrets_enregistres.BREVO_API_KEY else 'âœ– absente' }}</span>
                     </li>
                     <li class="d-flex justify-content-between py-2">
                         <span>SMTP (secours)</span>
-                        <span>{{ '✔ configuré' if secrets_enregistres.MAIL_PASSWORD else '✖ absent' }}</span>
+</li>
+                    <li class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--border-color) !important;">
+                        <span>NVIDIA NIM (IA de secours)</span>
+                        <span>NON CONFIGURÉE</span>
+                    </li>
+                    <li class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--border-color) !important;">
+                        <span>Google Gemini (IA de secours)</span>
+                        <span>NON CONFIGURÉE</span>
+                    </li>
+                        <span>{{ 'âœ” configurÃ©' if secrets_enregistres.MAIL_PASSWORD else 'âœ– absent' }}</span>
                     </li>
                 </ul>
             </div>
         </div>
     </div>
 </div>
+
+<div class="row g-4 mb-4">
+    <!-- Providers IA secondaires (NVIDIA, Gemini) -->
+    <div class="col-lg-6">
+        <div class="card-premium h-100 animate-fade-in-up stagger-3">
+            <div class="card-header-premium">
+                <h5 class="mb-0"><i class="bi bi-robot me-2" style="color: var(--orange-primary);"></i>Providers IA secondaires</h5>
+            </div>
+            <div class="card-body-premium">
+                <p class="text-tertiary small mb-3">Clés pour les providers de secours. OpenRouter reste le fallback systématique.</p>
+
+                <form id="nvidiaForm" class="mb-4">
+                    <label class="form-label" for="nvidiaKey">Clé API NVIDIA NIM</label>
+                    <input id="nvidiaKey" type="password" name="NVIDIA_API_KEY" class="input-premium" placeholder="Enregistrée : laisser vide pour conserver" autocomplete="new-password">
+                    <div class="mb-2">
+                        <label class="form-label" for="nvidiaModel">Modèle</label>
+                        <input id="nvidiaModel" type="text" name="NVIDIA_MODEL" class="input-premium" value="" placeholder="meta/llama-3.1-8b-instruct">
+                    </div>
+                    <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer NVIDIA</button>
+                </form>
+                <div id="nvidiaResult" class="small mb-3" aria-live="polite"></div>
+
+                <form id="geminiForm" class="mb-4">
+                    <label class="form-label" for="geminiKey">Clé API Google Gemini</label>
+                    <input id="geminiKey" type="password" name="GEMINI_API_KEY" class="input-premium" placeholder="Enregistrée : laisser vide pour conserver" autocomplete="new-password">
+                    <div class="mb-2">
+                        <label class="form-label" for="geminiModel">Modèle</label>
+                        <input id="geminiModel" type="text" name="GEMINI_MODEL" class="input-premium" value="" placeholder="gemini-1.5-flash">
+                    </div>
+                    <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer Gemini</button>
+                </form>
+                <div id="geminiResult" class="small mt-2" aria-live="polite"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Affiche un message dans une zone de résultat (textContent : aucune interprétation HTML).
+// Affiche un message dans une zone de rÃ©sultat (textContent : aucune interprÃ©tation HTML).
 function showResult(box, color, text) {
     const span = document.createElement('span');
     span.style.color = color;
@@ -170,8 +225,8 @@ function showResult(box, color, text) {
     box.replaceChildren(span);
 }
 
-// Enregistre une liste de réglages, puis affiche le résultat dans la zone donnée.
-// Un champ secret vide n'est pas envoyé : la valeur déjà enregistrée est conservée.
+// Enregistre une liste de rÃ©glages, puis affiche le rÃ©sultat dans la zone donnÃ©e.
+// Un champ secret vide n'est pas envoyÃ© : la valeur dÃ©jÃ  enregistrÃ©e est conservÃ©e.
 function saveSettings(entries, box, okMessage) {
     box.textContent = 'Enregistrement...';
     const requests = entries
@@ -182,7 +237,7 @@ function saveSettings(entries, box, okMessage) {
             body: JSON.stringify(item),
         }).then(r => r.json()));
     if (requests.length === 0) {
-        showResult(box, 'var(--text-muted)', 'Aucune modification à enregistrer.');
+        showResult(box, 'var(--text-muted)', 'Aucune modification Ã  enregistrer.');
         return;
     }
     Promise.all(requests).then(results => {
@@ -193,7 +248,7 @@ function saveSettings(entries, box, okMessage) {
             showResult(box, 'var(--danger)', failed.message || 'Erreur lors de l\'enregistrement.');
         }
     }).catch(err => {
-        showResult(box, 'var(--danger)', 'Erreur réseau : ' + err.message);
+        showResult(box, 'var(--danger)', 'Erreur rÃ©seau : ' + err.message);
     });
 }
 
@@ -205,7 +260,7 @@ document.getElementById('smtpForm').addEventListener('submit', function(e) {
         {cle: 'MAIL_PORT', valeur: f.get('MAIL_PORT'), service: 'mail', type_valeur: 'string', masque: false},
         {cle: 'MAIL_USERNAME', valeur: f.get('MAIL_USERNAME'), service: 'mail', type_valeur: 'string', masque: false},
         {cle: 'MAIL_PASSWORD', valeur: f.get('MAIL_PASSWORD'), service: 'mail', type_valeur: 'password', masque: true, secret: true},
-    ], document.getElementById('smtpResult'), 'SMTP enregistré.');
+    ], document.getElementById('smtpResult'), 'SMTP enregistrÃ©.');
 });
 
 document.getElementById('openrouterForm').addEventListener('submit', function(e) {
@@ -215,7 +270,25 @@ document.getElementById('openrouterForm').addEventListener('submit', function(e)
         {cle: 'OPENROUTER_API_KEY', valeur: f.get('OPENROUTER_API_KEY'), service: 'llm', type_valeur: 'password', masque: true, secret: true},
         {cle: 'OPENROUTER_MODEL', valeur: f.get('OPENROUTER_MODEL'), service: 'llm', type_valeur: 'string', masque: false},
         {cle: 'LLM_CUSTOM_INSTRUCTIONS', valeur: f.get('LLM_CUSTOM_INSTRUCTIONS'), service: 'llm', type_valeur: 'string', masque: false},
-    ], document.getElementById('openrouterResult'), 'Assistant IA enregistré.');
+    ], document.getElementById('openrouterResult'), 'Assistant IA enregistrÃ©.');
+});
+
+document.getElementById('nvidiaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'NVIDIA_API_KEY', valeur: f.get('NVIDIA_API_KEY'), service: 'llm', type_valeur: 'password', masque: true, secret: true},
+        {cle: 'NVIDIA_MODEL', valeur: f.get('NVIDIA_MODEL'), service: 'llm', type_valeur: 'string', masque: false},
+    ], document.getElementById('nvidiaResult'), 'NVIDIA enregistré.');
+});
+
+document.getElementById('geminiForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'GEMINI_API_KEY', valeur: f.get('GEMINI_API_KEY'), service: 'llm', type_valeur: 'password', masque: true, secret: true},
+        {cle: 'GEMINI_MODEL', valeur: f.get('GEMINI_MODEL'), service: 'llm', type_valeur: 'string', masque: false},
+    ], document.getElementById('geminiResult'), 'Gemini enregistré.');
 });
 
 document.getElementById('brevoForm').addEventListener('submit', function(e) {
@@ -223,7 +296,7 @@ document.getElementById('brevoForm').addEventListener('submit', function(e) {
     const f = new FormData(this);
     saveSettings([
         {cle: 'BREVO_API_KEY', valeur: f.get('BREVO_API_KEY'), service: 'mail', type_valeur: 'password', masque: true, secret: true},
-    ], document.getElementById('brevoResult'), 'Brevo enregistré.');
+    ], document.getElementById('brevoResult'), 'Brevo enregistrÃ©.');
 });
 
 document.getElementById('digestForm').addEventListener('submit', function(e) {
@@ -240,8 +313,8 @@ document.getElementById('digestForm').addEventListener('submit', function(e) {
         if (res.ok) {
             span.style.color = 'var(--success)';
             span.textContent = valeur
-                ? 'Récapitulatif programmé à ' + valeur + ' h (heure de Paris).'
-                : 'Envoi désactivé : les nouveaux documents restent visibles dans l\'application.';
+                ? 'RÃ©capitulatif programmÃ© Ã  ' + valeur + ' h (heure de Paris).'
+                : 'Envoi dÃ©sactivÃ© : les nouveaux documents restent visibles dans l\'application.';
         } else {
             span.style.color = 'var(--danger)';
             span.textContent = res.message || 'Erreur lors de l\'enregistrement.';
@@ -261,7 +334,7 @@ document.getElementById('btnTestMail').addEventListener('click', function() {
             btn.disabled = false;
             const span = document.createElement('span');
             span.style.color = data.ok ? 'var(--success)' : 'var(--danger)';
-            span.textContent = data.message || (data.ok ? 'Email de test envoyé.' : 'Échec : vérifiez la configuration.');
+            span.textContent = data.message || (data.ok ? 'Email de test envoyÃ©.' : 'Ã‰chec : vÃ©rifiez la configuration.');
             box.replaceChildren(span);
         })
         .catch(err => {
