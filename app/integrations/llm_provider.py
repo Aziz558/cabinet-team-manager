@@ -5,12 +5,14 @@ Providers supportés :
 - openrouter  (OpenRouter API) — toujours conservé en fallback de secours
 - nvidia      (NVIDIA NIM API)
 - gemini      (Google Gemini API)
+- groq        (Groq API — rapide, quota gratuit généreux)
 
 La clé et le modèle de chaque provider se lisent depuis les AppSetting :
-  LLM_PROVIDER_PRIMAIRE  : 'openrouter' | 'nvidia' | 'gemini'
+  LLM_PROVIDER_PRIMAIRE  : 'openrouter' | 'nvidia' | 'gemini' | 'groq'
   OPENROUTER_API_KEY / OPENROUTER_MODEL
   NVIDIA_API_KEY / NVIDIA_MODEL
   GEMINI_API_KEY / GEMINI_MODEL
+  GROQ_API_KEY / GROQ_MODEL
 
 Le LLMManager essaie le provider primaire, puis bascule sur OpenRouter en cas
 d'échec (quota, panne, clé invalide).
@@ -128,6 +130,57 @@ class NVIDIAProvider(LLMProvider):
         return None
 
 
+class GroqProvider(LLMProvider):
+    """Groq — API compatible OpenAI (api.groq.com), très rapide, quota gratuit."""
+    URL = 'https://api.groq.com/openai/v1/chat/completions'
+
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
+        self.api_key = api_key or _env_or_setting('GROQ_API_KEY', 'GROQ_API_KEY')
+        self.model = model or _env_or_setting('GROQ_MODEL', 'GROQ_MODEL',
+                                                'llama-3.3-70b-versatile')
+
+    def name(self) -> str:
+        return 'groq'
+
+    def is_configured(self) -> bool:
+        return bool(self.api_key)
+
+    def chat(self, messages: List[Dict[str, str]], model: Optional[str] = None) -> Optional[str]:
+        if not self.is_configured():
+            return None
+        headers = {
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json',
+        }
+        payload: Dict[str, Any] = {
+            'model': model or self.model,
+            'messages': messages,
+            'max_tokens': 1500,
+            'temperature': 0.2,
+        }
+        try:
+            resp = requests.post(self.URL, headers=headers, json=payload, timeout=25)
+        except Exception as exc:
+            logger.error('Groq: requête échouée (%s): %s', type(exc).__name__, exc)
+            return None
+        if resp.status_code >= 400:
+            logger.error('Groq: HTTP %s model=%s corps=%s',
+                         resp.status_code, payload['model'], resp.text[:300])
+            return None
+        try:
+            data = resp.json()
+            choices = data.get('choices') or []
+            if choices:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    return content.strip()
+            logger.error('Groq: réponse sans contenu model=%s corps=%s',
+                         payload['model'], resp.text[:300])
+        except Exception as exc:
+            logger.error('Groq: réponse illisible (%s): %s', type(exc).__name__, exc)
+        return None
+
+
 class GeminiProvider(LLMProvider):
     BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 
@@ -181,6 +234,7 @@ _PROVIDER_CLASSES = {
     'openrouter': OpenRouterProvider,
     'nvidia': NVIDIAProvider,
     'gemini': GeminiProvider,
+    'groq': GroqProvider,
 }
 
 
@@ -228,13 +282,12 @@ class LLMManager:
         return self.primary.name() if self.primary else 'openrouter'
 
 
-# Instance partagée (instanciée paresseusement pour pouvoir lire les AppSetting)
-llm_manager: Optional[LLMManager] = None
+# Pas de cache global : un manager frais est instancié à chaque appel afin de
+# relire immédiatement les clés saisies dans les Réglages (AppSetting), sans
+# redémarrer l'application. Le coût (quelques requêtes de config) est négligeable
+# face à un appel LLM.
 
 
 def get_llm_manager() -> LLMManager:
-    global llm_manager
-    if llm_manager is None:
-        llm_manager = LLMManager()
-    return llm_manager
+    return LLMManager()
 

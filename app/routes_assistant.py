@@ -35,7 +35,7 @@ def assistant_message():
     manager = get_llm_manager()
     if not manager.primary.is_configured() and not manager.fallback.is_configured():
         return jsonify({'ok': False,
-                        'error': "Assistant non configuré : ajoutez une clé API (OpenRouter, NVIDIA ou Gemini) dans les réglages."}), 503
+                        'error': "Assistant non configuré : ajoutez une clé API (OpenRouter, Groq, NVIDIA ou Gemini) dans les réglages."}), 503
     messages = ([{'role': 'system', 'content': construire_prompt(current_user)}]
                 + historique_propre(data.get('historique'))
                 + [{'role': 'user', 'content': message}])

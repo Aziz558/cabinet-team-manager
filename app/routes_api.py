@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 from .route_common import membres_visibles_query, dossiers_visibles_query
 
 # Réglages dont la valeur n'est JAMAIS renvoyée au navigateur (ni dans le HTML, ni dans le JSON).
-_CLES_SECRETES = ('MAIL_PASSWORD', 'BREVO_API_KEY', 'OPENROUTER_API_KEY', 'NVIDIA_API_KEY', 'GEMINI_API_KEY')
+_CLES_SECRETES = ('MAIL_PASSWORD', 'BREVO_API_KEY', 'OPENROUTER_API_KEY', 'NVIDIA_API_KEY', 'GEMINI_API_KEY', 'GROQ_API_KEY')
 
 
 @app.route('/settings')
