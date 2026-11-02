@@ -17,14 +17,45 @@ def test_login_charged_la_couche_premium(client):
     assert 'class="orbit-premium"' in html
 
 
-def test_pages_authentifiees_chargent_le_premium(admin_client):
-    """base.html : premium charge en DERNIER (apres workspace), jamais avant."""
+def test_pages_authentifiees_chargent_la_feuille_systeme(admin_client):
+    """base.html : une seule feuille système, chargée en dernier.
+
+    Depuis la consolidation, les 8 couches qui s'empilaient (polish, workspace,
+    orbit-premium, mobile-responsive, filters-premium, orbit-elevate,
+    orbit-hallmark-fix, orbit-ds) sont fusionnées dans orbit-system.css à ordre
+    de cascade identique. L'intention du test d'origine est conservée : la
+    couche qui a le dernier mot est bien chargée en dernier, et aucune couche
+    historique ne doit réapparaître dans la page.
+    """
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
-    assert 'orbit-premium.css?v=4' in html
+    assert 'orbit-system.css' in html
     assert 'orbit-premium.js?v=8' in html
-    # Ordre imparatif : la surcouche ecrase (ou complÃ¨te) le socle.
-    assert html.index('workspace.css') < html.index('orbit-premium.css')
+    # Ordre : socle (style) -> thème clair -> feuille système (dernier mot)
+    assert (html.index('style.css')
+            < html.index('light-theme.css')
+            < html.index('orbit-system.css'))
+    # Les anciennes couches ne sont plus chargées par l'application.
+    for old in ('polish.css', 'workspace.css', 'orbit-premium.css',
+                'mobile-responsive.css', 'filters-premium.css',
+                'orbit-elevate.css', 'orbit-hallmark-fix.css', 'orbit-ds.css'):
+        assert 'css/%s' % old not in html, 'couche obsolete encore chargee : %s' % old
     assert html.index('orbit-workspace.js') < html.index('orbit-premium.js')
+
+
+def test_pages_authentifiees_sans_mojibake_ni_pourcentage_anglais(admin_client):
+    """Garde-fou de rendu : plus de mojibake ni de « 75.0% » dans l'app."""
+    import re
+    pages = ['/dashboard', '/dossiers', '/taches', '/suivi_avancement', '/checklist',
+             '/equipes', '/liste_membres', '/fiscal', '/settings', '/profil',
+             '/notifications', '/pennylane', '/analytics']
+    mojibake = re.compile(r'Ã[\u0080-\u00bf]|â[\u0080-\u00bf\u0153\u0161]|ð[\u0080-\u00bf]|Â[\u00a0-\u00bf]')
+    pourcentage_en = re.compile(r'>\s*\d+\.\d+\s*%')
+    for page in pages:
+        r = admin_client.get(page, follow_redirects=True)
+        assert r.status_code == 200, page
+        body = r.get_data(as_text=True)
+        assert not mojibake.search(body), 'mojibake sur %s : %s' % (page, set(mojibake.findall(body)))
+        assert not pourcentage_en.search(body), 'pourcentage non francais sur %s' % page
 
 
 def test_cache_statiques_versionnes(client):
