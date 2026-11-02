@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>{% block title %}Cabinet Manager{% endblock %}</title>
     <!-- Fond du thème dès le 1er rendu : évite le flash blanc pendant le chargement des CSS -->
-    <style>html,body{background:#f3f4f6}html[data-theme="dark"],html[data-theme="dark"] body{background:#0f0f12}</style>
+    <style>html,body{background:#f5f2ec}html[data-theme="dark"],html[data-theme="dark"] body{background:#0f0f12}</style>
     <!-- Appliquer le thème AVANT le premier rendu (évite flash/latence de changement de page) -->
     <script>
     // ===== Socle thème JMH Orbit (source unique, appliqué à toutes les fenêtres) =====
@@ -46,7 +47,7 @@
                     el.classList.toggle('active', el.getAttribute('data-theme-choice') === theme);
                 });
                 var meta = document.querySelector('meta[name="theme-color"]');
-                if (meta) { meta.setAttribute('content', theme === 'light' ? '#f3f4f6' : '#0f0f12'); }
+                if (meta) { meta.setAttribute('content', theme === 'light' ? '#f5f2ec' : '#0f0f12'); }
                 window.dispatchEvent(new CustomEvent('orbit:theme', { detail: theme }));
             };
 
@@ -83,7 +84,7 @@
         // N'animer qu'a partir du moment ou la page est chargee (jamais au 1er affichage)
         window.addEventListener('load', function() {
             var m = document.querySelector('meta[name="theme-color"]');
-            if (m) { m.setAttribute('content', window.ORBIT_THEME === 'light' ? '#f3f4f6' : '#0f0f12'); }
+            if (m) { m.setAttribute('content', window.ORBIT_THEME === 'light' ? '#f5f2ec' : '#0f0f12'); }
             window.ORBIT_THEME_READY = true;
         });
     })();
@@ -97,9 +98,12 @@
     <link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=4" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/mobile-responsive.css') }}?v=2" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/filters-premium.css') }}?v=1" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;0,600;1,400&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/orbit-elevate.css') }}?v=1" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/orbit-hallmark-fix.css') }}?v=1" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/orbit-ds.css') }}?v=1" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#f5f2ec">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -107,10 +111,12 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo-orbit.svg') }}">
         <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo-orbit.png') }}">
     <!-- Toast container -->
-    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;"></div>
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;" role="status" aria-live="polite"></div>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <a class="skip-link" href="#mainContent">Aller au contenu</a>
+    <div id="orbitProgress" aria-hidden="true"></div>
     <!-- Minimal top bar (replaces bulky Bootstrap navbar) -->
     <header class="app-topbar">
         <div class="app-topbar-left">
@@ -146,15 +152,15 @@
                     <i class="bi bi-search"></i><span class="orbit-search-label">Rechercher</span><kbd class="orbit-kbd">&#8984;K</kbd>
                 </button>
                 <!-- Theme toggle -->
-                <button id="themeToggle" style="background:none;border:none;color:var(--text-primary);font-size:18px;cursor:pointer;margin-right:12px;" onclick="toggleTheme()" title="Changer le thème">
+                <button id="themeToggle" aria-label="Changer de thème" style="background:none;border:none;color:var(--text-primary);font-size:18px;cursor:pointer;margin-right:12px;" onclick="toggleTheme()" title="Changer le thème">
                     <i id="themeIcon" class="bi bi-sun-fill"></i>
                 </button>
                 <!-- Notification bell -->
-            <a href="{{ url_for('notifications_page') }}" class="notif-bell-link" style="margin-right:12px;position:relative;text-decoration:none;color:var(--text-primary);font-size:18px;">
+            <a href="{{ url_for('notifications_page') }}" class="notif-bell-link" aria-label="Notifications" style="margin-right:12px;position:relative;text-decoration:none;color:var(--text-primary);font-size:18px;">
                 <i class="bi bi-bell"></i>
                 <span class="notif-badge" id="notifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:8px;padding:0 4px;">0</span>
             </a>
-            <a href="{{ url_for('rappels_suivi') }}" style="margin-right:12px;text-decoration:none;color:var(--text-primary);font-size:18px;" title="Mes rappels">
+            <a href="{{ url_for('rappels_suivi') }}" aria-label="Mes rappels" style="margin-right:12px;text-decoration:none;color:var(--text-primary);font-size:18px;" title="Mes rappels">
                 <i class="bi bi-alarm"></i>
             </a>
             {% if current_equipe or all_equipes_for_switch %}
@@ -236,7 +242,7 @@
         </div>
     </header>
 
-    <main class="container-fluid" style="padding-top: 72px;">
+    <main class="container-fluid" id="mainContent" tabindex="-1" style="padding-top: 72px;">
         <div class="row">
             {% if current_user.is_authenticated %}
             <div class="col-auto h-100 d-block d-md-block" id="sidebarCol" style="width: 220px; position: relative;">
@@ -747,24 +753,52 @@ function changeNotifSound(value) {
                     app.classList.add('mobile-optimized');
                 }
                 
-                // Prevent double-tap zoom on mobile
-                var lastTouchEnd = 0;
-                document.addEventListener('touchend', function(event) {
-                    var now = new Date().getTime();
-                    if (now - lastTouchEnd <= 300) {
-                        event.preventDefault();
-                    }
-                    lastTouchEnd = now;
-                }, false);
+                // Double-tap : géré proprement par touch-action: manipulation (orbit-ds.css)
                 
                 // Improve mobile viewport handling
                 var viewport = document.querySelector('meta[name="viewport"]');
                 if (viewport && !viewport.content.includes('interactive-widget')) {
-                    viewport.setAttribute('content', 
-                        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                    viewport.setAttribute('content',
+                        'width=device-width, initial-scale=1.0');
                 }
             }, 100);
         }
+    })();
+    </script>
+    <script>
+    // Barre de progression de navigation : retour visuel immédiat entre deux pages.
+    (function () {
+        var bar = document.getElementById('orbitProgress');
+        if (!bar) { return; }
+        var timer = null;
+        function start() {
+            clearTimeout(timer);
+            bar.classList.remove('is-done');
+            bar.classList.add('is-on');
+        }
+        function done() {
+            if (!bar.classList.contains('is-on')) { return; }
+            bar.classList.remove('is-on');
+            bar.classList.add('is-done');
+            timer = setTimeout(function () { bar.classList.remove('is-done'); }, 600);
+        }
+        document.addEventListener('click', function (e) {
+            var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) { return; }
+            if (a.target && a.target !== '_self') { return; }
+            if (a.hasAttribute('download')) { return; }
+            var href = a.getAttribute('href') || '';
+            if (!href || href.charAt(0) === '#') { return; }
+            if (a.origin && a.origin !== window.location.origin) { return; }
+            if (/^(mailto:|tel:|javascript:)/i.test(href)) { return; }
+            start();
+        }, true);
+        document.addEventListener('submit', function (e) {
+            if (e.target && e.target.target && e.target.target !== '_self') { return; }
+            start();
+        }, true);
+        window.addEventListener('pageshow', done);
+        window.addEventListener('load', done);
     })();
     </script>
     {% if current_user.is_authenticated %}

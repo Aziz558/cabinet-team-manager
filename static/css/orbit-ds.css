@@ -1,0 +1,555 @@
+/* ============================================================================
+   JMH ORBIT — DESIGN SYSTEM (couche finale, chargée EN DERNIER)
+   Direction : « Editorial Ink & Amber » — papier chaud, encre profonde,
+   amber net. Complète orbit-elevate.css : typographie, focus, mouvement,
+   tables, formulaires, transitions de page. Aucune dépendance externe.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. TOKENS COMPLÉMENTAIRES
+   -------------------------------------------------------------------------- */
+:root,
+html[data-theme="light"] {
+  color-scheme: light;
+  --ds-amber: var(--amber, #ff8c00);
+  --ds-amber-deep: var(--amber-deep, #b8590a);
+  --ds-amber-soft: var(--amber-soft, rgba(255, 140, 0, .10));
+  --ds-ink: var(--ink, #171a1f);
+  --ds-ink-2: var(--ink-2, #3d434d);
+  --ds-ink-3: var(--ink-3, #6a7180);
+  --ds-paper: var(--paper, #f5f2ec);
+  --ds-surface: var(--surface, #fcfaf6);
+  --ds-raised: var(--surface-raised, #ffffff);
+  --ds-rule: var(--rule, #e2dbcf);
+  --ds-rule-soft: var(--rule-soft, #ece6dc);
+  --ds-ok: var(--ok, #1c7a4d);
+  --ds-warn: var(--warn, #9c6213);
+  --ds-bad: var(--bad, #bb3a3a);
+  --ds-info: var(--info2, #2c5b9e);
+  --ds-shadow-1: 0 1px 2px rgba(23, 26, 31, .05);
+  --ds-shadow-2: 0 1px 2px rgba(23, 26, 31, .05), 0 10px 28px -16px rgba(23, 26, 31, .20);
+  --ds-shadow-3: 0 2px 6px rgba(23, 26, 31, .06), 0 26px 60px -26px rgba(23, 26, 31, .28);
+  --ds-radius: 12px;
+  --ds-tap: 44px;
+  /* Mouvement : durées courtes, courbes franches */
+  --dur-1: 110ms;
+  --dur-2: 180ms;
+  --dur-3: 280ms;
+  --dur-4: 460ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-io: cubic-bezier(.65, 0, .35, 1);
+  --ds-gutter: clamp(16px, 2.2vw, 28px);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ds-paper: var(--paper, #101216);
+  --ds-surface: var(--surface, #16191f);
+  --ds-raised: var(--surface-raised, #1c2028);
+  --ds-ink: var(--ink, #eef1f5);
+  --ds-ink-2: var(--ink-2, #c6ccd6);
+  --ds-ink-3: var(--ink-3, #98a1ae);
+  --ds-rule: var(--rule, #2a2f38);
+  --ds-rule-soft: var(--rule-soft, #23282f);
+  --ds-shadow-1: 0 1px 2px rgba(0, 0, 0, .35);
+  --ds-shadow-2: 0 1px 2px rgba(0, 0, 0, .35), 0 12px 32px -18px rgba(0, 0, 0, .65);
+  --ds-shadow-3: 0 2px 8px rgba(0, 0, 0, .4), 0 28px 64px -28px rgba(0, 0, 0, .7);
+}
+
+/* --------------------------------------------------------------------------
+   2. SOCLE
+   -------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 88px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-ui, "Figtree", system-ui, sans-serif);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+[id] { scroll-margin-top: 88px; }
+
+/* Cibles tactiles fiables, sans délai de double-tap */
+a, button, [role="button"], input, select, textarea, summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ds-amber) 26%, transparent);
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   3. TYPOGRAPHIE
+   -------------------------------------------------------------------------- */
+h1, h2, h3, .page-head-titles h2, .stat-card-value, .modal-title {
+  font-family: var(--font-display, "Instrument Serif", Georgia, serif);
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+
+h1 { font-size: clamp(1.65rem, 1.2rem + 1.2vw, 2.15rem); line-height: 1.15; }
+h2 { font-size: clamp(1.35rem, 1.05rem + .8vw, 1.7rem); line-height: 1.2; }
+h3 { font-size: clamp(1.15rem, 1rem + .45vw, 1.35rem); line-height: 1.25; }
+
+p, li, .page-head-sub { text-wrap: pretty; }
+
+small, .text-tertiary, .form-text { letter-spacing: .005em; }
+
+/* Chiffres alignés pour toutes les données tabulaires */
+.tnum,
+.table td, .table th,
+.stat-card-value, .stat-card-trend,
+.kpi-value, .amount, .money,
+.orbit-filter-count strong {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Utilitaires de contenu */
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line-clamp-2 {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.min-w-0 { min-width: 0; }
+
+/* --------------------------------------------------------------------------
+   4. FOCUS VISIBLE (jamais de focus supprimé sans remplacement)
+   -------------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ds-amber);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.btn-premium:focus-visible,
+.sidebar-nav-item:focus-visible,
+.dropdown-item:focus-visible {
+  outline-offset: 3px;
+}
+
+/* Les champs gèrent leur focus via box-shadow (pas de double anneau) */
+.input-premium:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible {
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. ASCENSEURS DISCRETS
+   -------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ds-ink) 22%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ds-ink) 18%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ds-ink) 32%, transparent);
+  background-clip: content-box;
+}
+
+/* --------------------------------------------------------------------------
+   6. BOUTONS — micro-interactions explicites (jamais transition: all)
+   -------------------------------------------------------------------------- */
+.btn-premium,
+.btn,
+.btn-premium-primary,
+.btn-premium-secondary,
+.btn-premium-success {
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) linear,
+    border-color var(--dur-2) linear,
+    color var(--dur-2) linear;
+  min-height: 40px;
+}
+
+.btn-premium { font-weight: 600; letter-spacing: .005em; }
+
+.btn-premium:hover:not(:disabled) { transform: translateY(-1px); }
+.btn-premium:active:not(:disabled) { transform: translateY(0) scale(.985); }
+
+.btn-premium:disabled,
+.btn-premium.disabled,
+.btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none;
+}
+
+/* État de chargement : spinner intégré, interactions bloquées */
+.btn-premium.is-loading {
+  pointer-events: none;
+  opacity: .85;
+  position: relative;
+  color: transparent !important;
+}
+.btn-premium.is-loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  animation: ds-spin .7s linear infinite;
+}
+
+@keyframes ds-spin { to { transform: rotate(360deg); } }
+
+@media (pointer: coarse) {
+  .btn-premium, .btn { min-height: var(--ds-tap); }
+}
+
+/* --------------------------------------------------------------------------
+   7. CARTES
+   -------------------------------------------------------------------------- */
+.card-premium {
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    box-shadow var(--dur-3) var(--ease-out),
+    border-color var(--dur-2) linear;
+}
+
+.card-premium:hover { transform: translateY(-2px); }
+
+/* Une carte non interactive ne doit pas « sauter » */
+.card-premium.no-lift:hover,
+.card-premium.static:hover { transform: none; }
+
+.card-header-premium h5 { letter-spacing: -.005em; }
+
+/* --------------------------------------------------------------------------
+   8. FORMULAIRES
+   -------------------------------------------------------------------------- */
+.input-premium,
+.form-control,
+.form-select {
+  transition:
+    border-color var(--dur-2) linear,
+    box-shadow var(--dur-2) linear,
+    background-color var(--dur-2) linear;
+}
+
+.input-premium:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--ds-amber);
+  box-shadow: 0 0 0 3px var(--ds-amber-soft);
+  outline: none;
+}
+
+/* Erreur signalée par le navigateur, sans bloquer la saisie */
+.input-premium:user-invalid,
+.form-control:user-invalid,
+.form-select:user-invalid {
+  border-color: var(--ds-bad);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-bad) 14%, transparent);
+}
+
+.form-label { font-weight: 600; color: var(--ds-ink-2); }
+
+/* Cases à cocher : une seule cible cliquable, curseur cohérent */
+.form-check { min-height: 24px; }
+.form-check-input { cursor: pointer; }
+.form-check-label { cursor: pointer; }
+
+/* Sélecteur natif lisible en thème sombre (Windows) */
+.form-select {
+  background-color: var(--ds-raised);
+  color: var(--ds-ink);
+}
+
+/* --------------------------------------------------------------------------
+   9. TABLES — lisibilité type « grand livre »
+   -------------------------------------------------------------------------- */
+.table-responsive {
+  border-radius: var(--ds-radius);
+  border: 1px solid var(--ds-rule-soft);
+  background: var(--ds-surface);
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ds-surface);
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.table tbody tr { transition: background-color var(--dur-1) linear; }
+.table tbody td { vertical-align: middle; }
+.table td .fw-semibold, .table td strong { color: var(--ds-ink); }
+
+/* Indice de défilement horizontal (dégradé sur les bords) */
+.table-responsive.can-scroll-x {
+  background-image:
+    linear-gradient(90deg, var(--ds-surface) 30%, transparent),
+    linear-gradient(270deg, var(--ds-surface) 30%, transparent);
+  background-position: 0 0, 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%;
+}
+
+/* --------------------------------------------------------------------------
+   10. PASTILLES DE STATUT
+   -------------------------------------------------------------------------- */
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: .015em;
+  white-space: nowrap;
+}
+
+.badge {
+  font-weight: 600;
+  letter-spacing: .01em;
+  padding: .34em .62em;
+  border-radius: 999px;
+}
+
+/* --------------------------------------------------------------------------
+   11. NAVIGATION LATÉRALE & BARRE SUPÉRIEURE
+   -------------------------------------------------------------------------- */
+.sidebar-nav-item {
+  transition:
+    background-color var(--dur-2) linear,
+    color var(--dur-2) linear,
+    transform var(--dur-2) var(--ease-out);
+}
+
+.sidebar-nav-item:hover { transform: translateX(2px); }
+
+.sidebar-group-title {
+  transition: color var(--dur-2) linear, background-color var(--dur-2) linear;
+}
+.sidebar-group-title i { transition: transform var(--dur-2) var(--ease-out); }
+.sidebar-group.collapsed .sidebar-group-title i { transform: rotate(-90deg); }
+
+.sidebar-group-items {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--dur-3) var(--ease-out), opacity var(--dur-2) linear;
+  opacity: 1;
+}
+.sidebar-group.collapsed .sidebar-group-items {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* Boutons icônes de la barre supérieure : cible nette + survol */
+#themeToggle,
+.notif-bell-link,
+.app-topbar-right > a,
+.app-topbar-right > button:not(.orbit-search-btn) {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--ds-ink-2);
+  transition: background-color var(--dur-2) linear, color var(--dur-2) linear, transform var(--dur-2) var(--ease-out);
+}
+
+#themeToggle:hover,
+.notif-bell-link:hover,
+.app-topbar-right > a:hover,
+.app-topbar-right > button:not(.orbit-search-btn):hover {
+  background: color-mix(in srgb, var(--ds-ink) 7%, transparent);
+  color: var(--ds-ink);
+}
+
+#themeToggle:active,
+.notif-bell-link:active { transform: scale(.94); }
+
+.app-topbar {
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+  backdrop-filter: saturate(150%) blur(14px);
+}
+
+.app-user-toggle {
+  transition: background-color var(--dur-2) linear, transform var(--dur-2) var(--ease-out);
+}
+.app-user-toggle:hover { background: color-mix(in srgb, var(--ds-ink) 6%, transparent); }
+
+/* Menu d'équipe : élément cliquable = vraie zone interactive */
+.team-context-icon {
+  transition: background-color var(--dur-2) linear, border-color var(--dur-2) linear;
+  cursor: pointer;
+}
+.team-context-icon:hover { background: color-mix(in srgb, var(--ds-ink) 6%, transparent); }
+
+/* --------------------------------------------------------------------------
+   12. ONGLETS, MENUS, MODALES, TOASTS
+   -------------------------------------------------------------------------- */
+.nav-tabs .nav-link {
+  transition: color var(--dur-2) linear, border-color var(--dur-2) linear, background-color var(--dur-2) linear;
+}
+
+.dropdown-item { transition: background-color var(--dur-1) linear, color var(--dur-1) linear; }
+
+.modal-content { border-radius: 16px; box-shadow: var(--ds-shadow-3); }
+
+.toast { border-radius: 12px; box-shadow: var(--ds-shadow-2); }
+
+.progress-bar { transition: width var(--dur-4) var(--ease-out); }
+
+/* --------------------------------------------------------------------------
+   13. MOUVEMENT — révélations orchestrées & transitions de page
+   -------------------------------------------------------------------------- */
+@keyframes ds-rise {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ds-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entrée de page : le contenu monte doucement, une seule fois */
+  main > .row > .col > .container > .page-head,
+  main > .row > .col > .container > .row > [class*="col"] {
+    animation: ds-rise var(--dur-4) var(--ease-out) both;
+  }
+
+  /* Décalage en cascade (limité à 6 éléments pour rester subtil) */
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(2) { animation-delay: 45ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(3) { animation-delay: 90ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(4) { animation-delay: 135ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(5) { animation-delay: 180ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(6) { animation-delay: 225ms; }
+
+  .animate-fade-in-up { animation: ds-rise var(--dur-4) var(--ease-out) both; }
+
+  /* Les blocs déjà animés par leur classe ne cumulent pas deux animations */
+  .page-head.animate-fade-in-up,
+  .card-premium.animate-fade-in-up { animation-delay: 0ms; }
+}
+
+/* Transitions entre documents (Chrome/Edge/Safari 18+) */
+@view-transition { navigation: auto; }
+
+::view-transition-old(root) {
+  animation: ds-fade var(--dur-2) var(--ease-io) both reverse;
+}
+::view-transition-new(root) {
+  animation: ds-fade var(--dur-3) var(--ease-out) both;
+}
+
+/* Barre de progression de navigation (2px, en haut) */
+#orbitProgress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  z-index: 3000;
+  background: linear-gradient(90deg, var(--ds-amber), var(--amber-light, #ffab4d));
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  opacity: 0;
+  transition: transform var(--dur-4) var(--ease-out), opacity var(--dur-2) linear;
+  pointer-events: none;
+}
+#orbitProgress.is-on { opacity: 1; transform: scaleX(.42); }
+#orbitProgress.is-done {
+  opacity: 0;
+  transform: scaleX(1);
+  transition: transform var(--dur-1) linear, opacity var(--dur-3) linear var(--dur-1);
+}
+
+/* Lien d'évitement (accessibilité clavier) */
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: -64px;
+  z-index: 3100;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--ds-ink);
+  color: var(--ds-paper);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--ds-shadow-2);
+  transition: top var(--dur-2) var(--ease-out);
+}
+.skip-link:focus { top: 12px; }
+
+main#mainContent:focus { outline: none; }
+
+/* --------------------------------------------------------------------------
+   14. PRÉFÉRENCE « MOUVEMENT RÉDUIT » — tout est neutralisé
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-in-up,
+  main > .row > .col > .container > .row > [class*="col"],
+  main > .row > .col > .container > .page-head {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .card-premium:hover,
+  .btn-premium:hover:not(:disabled),
+  .sidebar-nav-item:hover { transform: none; }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none !important; }
+
+  #orbitProgress { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   15. ÉTATS VIDES & DÉTAILS FINAUX
+   -------------------------------------------------------------------------- */
+.orbit-empty { animation: ds-fade var(--dur-4) var(--ease-out) both; }
+
+.orbit-filter-reset {
+  transition: background-color var(--dur-2) linear, color var(--dur-2) linear, border-color var(--dur-2) linear;
+}
+
+/* Images : jamais de décalage de mise en page */
+img { max-width: 100%; height: auto; }
+
+/* Zones sujettes à débordement : on garde le contrôle */
+.table-responsive, .card-body-premium, .dropdown-menu { overscroll-behavior: contain; }
