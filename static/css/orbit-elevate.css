@@ -1,0 +1,1054 @@
+/* ============================================================================
+   JMH ORBIT — COUCHE « ELEVATE » (v1)
+   Direction artistique : « Editorial Ink & Amber »
+   ----------------------------------------------------------------------------
+   L'app empilait 6 feuilles de style qui se neutralisaient (style.css,
+   light-theme, polish, workspace, orbit-premium, filters-premium) et parlaient
+   toutes « Bootstrap gris + orange ». On ne réécrit pas 40 templates : on
+   redéfinit les JETONS (variables) et on raffine les COMPOSANTS partagés, donc
+   toutes les pages héritent du changement d'un coup.
+
+   Charger ce fichier EN DERNIER. Les variables sont verrouillées via
+   html[data-theme="..."] (spécificité supérieure aux :root précédents).
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. JETONS — papier chaud / encre / amber
+   ------------------------------------------------------------------------- */
+:root,
+html[data-theme="light"] {
+  --paper: #f5f2ec;
+  --paper-deep: #ebe6dc;
+  --paper-tint: #f9f7f2;
+  --surface: #fcfaf6;
+  --surface-raised: #ffffff;
+
+  --ink: #171a1f;
+  --ink-2: #3d434d;
+  --ink-3: #6a7180;
+  --ink-4: #979daa;
+
+  --rule: #e2dbcf;
+  --rule-soft: #ece6dc;
+  --rule-strong: #cfc7b8;
+
+  --amber: #ff8c00;
+  --amber-deep: #b8590a;
+  --amber-light: #ffab4d;
+  --amber-soft: rgba(255, 140, 0, .10);
+  --amber-line: rgba(255, 140, 0, .30);
+
+  --ok: #1c7a4d;
+  --ok-bg: #e6f3ea;
+  --warn: #9c6213;
+  --warn-bg: #fbf0dd;
+  --bad: #bb3a3a;
+  --bad-bg: #fbe9e9;
+  --info2: #2c5b9e;
+  --info2-bg: #e8effa;
+
+  --font-display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-ui: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 13px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --ease-io: cubic-bezier(.4, 0, .2, 1);
+  --shadow-1: 0 1px 2px rgba(23, 26, 31, .05);
+  --shadow-2: 0 1px 2px rgba(23, 26, 31, .05), 0 10px 26px -16px rgba(23, 26, 31, .18);
+  --shadow-3: 0 2px 4px rgba(23, 26, 31, .06), 0 22px 48px -22px rgba(23, 26, 31, .28);
+  --halo: 0 0 0 4px rgba(255, 140, 0, .16);
+
+  /* ---- Alias legacy : tout le CSS existant s'accroche à ces noms ---- */
+  --bg-dark: var(--paper);
+  --bg-darker: var(--paper-deep);
+  --bg-card: var(--surface);
+  --bg-card-hover: #f3efe7;
+  --bg-card-active: #ebe6dc;
+  --bg-elevated: var(--surface-raised);
+  --bg-sidebar: transparent;
+  --bg-sidebar-hover: rgba(23, 26, 31, .045);
+  --bg-hover: rgba(23, 26, 31, .04);
+  --bg-glass: rgba(252, 250, 246, .82);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-tertiary: var(--ink-3);
+  --text-muted: var(--ink-4);
+  --text-inverse: #ffffff;
+  --white: var(--ink);
+  --border-color: var(--rule);
+  --border-color-hover: var(--rule-strong);
+  --border-whisper: var(--rule-soft);
+  --border-light: var(--rule);
+  --border-strong: var(--rule-strong);
+  --border-active: var(--amber-line);
+  --orange-primary: var(--amber);
+  --orange-dark: var(--amber-deep);
+  --orange-light: var(--amber-light);
+  --orange-subtle: var(--amber-soft);
+  --orange-gradient: linear-gradient(135deg, #ff8c00 0%, #ffab4d 100%);
+  --orange-glow: 0 0 0 rgba(255, 140, 0, 0);
+  --success: var(--ok);
+  --success-bg: var(--ok-bg);
+  --warning: var(--warn);
+  --warning-bg: var(--warn-bg);
+  --danger: var(--bad);
+  --danger-bg: var(--bad-bg);
+  --info: var(--info2);
+  --info-bg: var(--info2-bg);
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
+  --shadow-xl: 0 32px 64px -32px rgba(23, 26, 31, .34);
+  --shadow-orange: 0 8px 22px -12px rgba(255, 140, 0, .55);
+  --orbit-shadow-card: var(--shadow-2);
+  --orbit-shadow-float: var(--shadow-3);
+  --orbit-radius-xl: var(--r-lg);
+  --orbit-radius-2xl: var(--r-xl);
+  --orbit-ease: var(--ease);
+  --orbit-ease-out: var(--ease-io);
+  --orbit-grid: rgba(23, 26, 31, .028);
+  --orbit-sb-w: 232px;
+}
+
+html[data-theme="dark"] {
+  --paper: #0b0c0e;
+  --paper-deep: #08090a;
+  --paper-tint: #101216;
+  --surface: #14161a;
+  --surface-raised: #191c21;
+  --ink: #f2efe8;
+  --ink-2: #c3c7cf;
+  --ink-3: #8e94a1;
+  --ink-4: #6b7280;
+  --rule: #262931;
+  --rule-soft: #1e2127;
+  --rule-strong: #363a44;
+  --amber: #ff9422;
+  --amber-deep: #ffb464;
+  --amber-light: #ffc98b;
+  --amber-soft: rgba(255, 148, 34, .13);
+  --amber-line: rgba(255, 148, 34, .34);
+  --ok: #4ec98a;
+  --ok-bg: rgba(78, 201, 138, .12);
+  --warn: #e3a45a;
+  --warn-bg: rgba(227, 164, 90, .12);
+  --bad: #f07171;
+  --bad-bg: rgba(240, 113, 113, .12);
+  --info2: #79a8ff;
+  --info2-bg: rgba(121, 168, 255, .12);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .5);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 30px -16px rgba(0, 0, 0, .8);
+  --shadow-3: 0 2px 6px rgba(0, 0, 0, .6), 0 24px 52px -24px rgba(0, 0, 0, .95);
+  --bg-card-hover: #1a1d23;
+  --bg-card-active: #20242b;
+  --bg-card: var(--surface);
+  --bg-elevated: var(--surface-raised);
+  --bg-sidebar-hover: rgba(255, 255, 255, .05);
+  --bg-hover: rgba(255, 255, 255, .045);
+  --bg-glass: rgba(20, 22, 26, .84);
+  --orbit-grid: rgba(255, 255, 255, .026);
+}
+
+/* ---------------------------------------------------------------------------
+   2. TYPOGRAPHIE — serif éditorial pour les titres, Figtree pour l'UI,
+      mono pour les chiffres et les micro-libellés
+   ------------------------------------------------------------------------- */
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-ui) !important;
+  background: var(--paper) !important;
+  color: var(--ink);
+  font-size: .9375rem;
+  line-height: 1.55;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, .h1, .h2, .h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -.012em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+h1, .h1 { font-size: clamp(1.9rem, 1.4rem + 1.6vw, 2.5rem); }
+h2, .h2 { font-size: clamp(1.45rem, 1.2rem + .8vw, 1.85rem); }
+h3, .h3 { font-size: clamp(1.15rem, 1.05rem + .4vw, 1.35rem); }
+h4, h5, h6, .h4, .h5, .h6 {
+  font-family: var(--font-ui);
+  font-weight: 650;
+  letter-spacing: -.015em;
+  color: var(--ink);
+}
+
+/* Chiffres alignés = lisibilité comptable */
+body, .table, .stat-card, .badge, td, th { font-variant-numeric: tabular-nums; }
+.mono, .orbit-kbd, .sidebar-section-title, .stat-card-label,
+.data-mono, .orbit-filter-count, .eyebrow, .section-label {
+  font-family: var(--font-mono);
+}
+
+/* Micro-libellé « registre » : signature visuelle de l'app */
+.eyebrow, .section-label {
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+a { color: var(--amber-deep); text-underline-offset: 2px; }
+a:hover { color: var(--amber); }
+::selection { background: rgba(255, 140, 0, .22); color: var(--ink); }
+
+/* Défilement sobre */
+* { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--rule-strong); border-radius: 99px;
+  border: 3px solid transparent; background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-4); background-clip: content-box; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus clavier homogène et visible */
+/* ---------------------------------------------------------------------------
+   3. ATMOSPHÈRE — papier, halo amber, grain typographique
+      (remplace le mesh froid de orbit-premium : même mécanisme, autre lumière)
+   ------------------------------------------------------------------------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(760px 420px at 8% -10%, rgba(255, 140, 0, .11), transparent 62%),
+    radial-gradient(620px 380px at 96% 4%, rgba(184, 89, 10, .07), transparent 58%),
+    radial-gradient(900px 620px at 46% 112%, rgba(23, 26, 31, .06), transparent 64%);
+  opacity: 1;
+}
+html[data-theme="dark"] body::before {
+  background:
+    radial-gradient(760px 420px at 8% -10%, rgba(255, 148, 34, .13), transparent 62%),
+    radial-gradient(620px 380px at 96% 4%, rgba(121, 168, 255, .05), transparent 58%),
+    radial-gradient(900px 620px at 46% 112%, rgba(255, 255, 255, .04), transparent 64%);
+}
+
+/* Grain : texture imprimée, très légère. C'est ce qui retire l'aspect « flat SaaS » */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .34;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.055'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+html[data-theme="dark"] body::after { mix-blend-mode: screen; opacity: .22; }
+
+/* ---------------------------------------------------------------------------
+   4. TOPBAR — filet, verre, marque en serif
+   ------------------------------------------------------------------------- */
+.app-topbar {
+  background: color-mix(in srgb, var(--paper) 78%, transparent) !important;
+  border-bottom: 1px solid var(--rule) !important;
+  backdrop-filter: saturate(1.35) blur(14px);
+  -webkit-backdrop-filter: saturate(1.35) blur(14px);
+  box-shadow: none !important;
+  padding: .55rem 1.15rem !important;
+  min-height: 60px;
+}
+.app-topbar.is-compact { box-shadow: var(--shadow-1) !important; }
+
+.app-brand { text-decoration: none !important; gap: .6rem; align-items: center; }
+.app-brand-text {
+  font-family: var(--font-display) !important;
+  font-size: 1.16rem !important;
+  font-weight: 400 !important;
+  letter-spacing: .005em !important;
+  color: var(--ink) !important;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .45rem;
+}
+.app-brand-text small {
+  font-family: var(--font-mono) !important;
+  font-size: .58rem !important;
+  letter-spacing: .06em !important;
+  color: var(--ink-4) !important;
+  opacity: 1 !important;
+}
+.app-brand-icon .orbit-logo {
+  filter: drop-shadow(0 2px 8px rgba(255, 140, 0, .22));
+  transition: transform .45s var(--ease);
+}
+.app-brand:hover .app-brand-icon .orbit-logo { transform: rotate(-8deg) scale(1.05); }
+
+.app-user-icon {
+  background: var(--amber-soft) !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+}
+.app-user-name { font-weight: 600; letter-spacing: -.01em; }
+
+.app-topbar-right > a,
+.app-topbar-right > button {
+  border-radius: var(--r-sm);
+  transition: background-color .18s var(--ease-io), color .18s var(--ease-io);
+}
+.app-topbar-right > a:hover,
+.app-topbar-right > button:hover { background: var(--bg-hover); }
+
+.orbit-search-btn {
+  border: 1px solid var(--rule) !important;
+  background: var(--surface) !important;
+  border-radius: var(--r-sm) !important;
+  padding: .34rem .55rem .34rem .65rem !important;
+  color: var(--ink-3) !important;
+  box-shadow: none !important;
+  transition: border-color .18s var(--ease-io), color .18s var(--ease-io), background-color .18s var(--ease-io);
+}
+.orbit-search-btn:hover {
+  border-color: var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+  background: var(--amber-soft) !important;
+}
+.orbit-search-label { font-size: .82rem; letter-spacing: -.005em; }
+.orbit-kbd {
+  font-size: .58rem !important;
+  letter-spacing: .06em;
+  border: 1px solid var(--rule) !important;
+  border-bottom-width: 2px !important;
+  background: var(--paper-tint) !important;
+  color: var(--ink-4) !important;
+  border-radius: 5px !important;
+  padding: .08rem .3rem !important;
+}
+
+/* ---------------------------------------------------------------------------
+   5. SIDEBAR — panneau papier, item actif encre + filet amber
+   ------------------------------------------------------------------------- */
+.sidebar {
+  background: transparent !important;
+  border-right: 1px solid var(--rule);
+  padding: .9rem .55rem 1rem .35rem !important;
+}
+.sidebar-brand {
+  padding: .25rem .5rem 1rem !important;
+  border-bottom: 1px solid var(--rule-soft);
+  margin-bottom: .85rem;
+}
+.sidebar-menu { display: flex; flex-direction: column; gap: 1px; }
+
+.sidebar-section-title {
+  font-size: .6rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .17em !important;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  padding: 1.05rem .7rem .42rem !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+}
+.sidebar-section-title::after {
+  content: "";
+  display: block;
+  height: 1px;
+  margin-top: .42rem;
+  background: linear-gradient(90deg, var(--rule-strong), transparent 72%);
+}
+
+.sidebar-nav-item {
+  display: flex !important;
+  align-items: center;
+  gap: .62rem !important;
+  padding: .52rem .7rem !important;
+  border-radius: var(--r-sm) !important;
+  color: var(--ink-2) !important;
+  font-size: .855rem !important;
+  font-weight: 500 !important;
+  letter-spacing: -.008em;
+  text-decoration: none !important;
+  border: 1px solid transparent;
+  position: relative;
+  transition: background-color .16s var(--ease-io), color .16s var(--ease-io),
+              border-color .16s var(--ease-io);
+}
+.sidebar-nav-item i {
+  font-size: .95rem;
+  color: var(--ink-4);
+  width: 1.05rem;
+  text-align: center;
+  transition: color .16s var(--ease-io), transform .3s var(--ease);
+}
+.sidebar-nav-item:hover {
+  background: var(--bg-sidebar-hover) !important;
+  color: var(--ink) !important;
+}
+.sidebar-nav-item:hover i { color: var(--amber); transform: translateX(1px); }
+
+/* SIGNATURE : l'item actif devient un bloc d'encre, filet amber à gauche */
+.sidebar-nav-item.active {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+  border-color: var(--ink) !important;
+  box-shadow: var(--shadow-1) !important;
+  font-weight: 600 !important;
+}
+.sidebar-nav-item.active i { color: var(--amber) !important; }
+.sidebar-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -1px; top: 50%;
+  width: 3px; height: 58%;
+  border-radius: 99px;
+  background: var(--amber);
+  transform: translateY(-50%) scaleY(1);
+}
+html[data-theme="dark"] .sidebar-nav-item.active {
+  background: var(--amber) !important;
+  color: #14161a !important;
+  border-color: var(--amber) !important;
+}
+html[data-theme="dark"] .sidebar-nav-item.active i { color: #14161a !important; }
+html[data-theme="dark"] .sidebar-nav-item.active::before { display: none; }
+
+.sidebar-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: .6rem !important;
+  font-weight: 600 !important;
+  min-width: 18px;
+  padding: .1rem .32rem !important;
+  border-radius: 99px !important;
+  background: var(--amber) !important;
+  color: #17181c !important;
+}
+.sidebar-nav-item.active .sidebar-badge {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: .75rem .35rem .1rem !important;
+  border-top: 1px solid var(--rule-soft);
+}
+.sidebar-user {
+  border-radius: var(--r-sm);
+  padding: .4rem .5rem !important;
+  transition: background-color .16s var(--ease-io);
+}
+.sidebar-user:hover { background: var(--bg-sidebar-hover); }
+.sidebar-user-img, .sidebar-user-icon {
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+}
+
+/* ---------------------------------------------------------------------------
+   6. EN-TÊTE DE PAGE — « ouverture de chapitre » éditoriale
+      (macro page_head de includes/orbit_ui.html : présent sur TOUTES les pages)
+   ------------------------------------------------------------------------- */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+}
+/* Filet amber qui « s'écrit » sous le titre */
+.page-head::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -1px;
+  height: 2px;
+  width: 74px;
+  background: linear-gradient(90deg, var(--amber), transparent);
+  transform-origin: left center;
+  animation: orbit-rule-in .9s var(--ease) both;
+}
+@keyframes orbit-rule-in {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+.page-head-main { display: flex; align-items: center; gap: .95rem; min-width: 0; }
+
+.page-head-icon {
+  width: 44px; height: 44px;
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  color: var(--amber-deep);
+  font-size: 1.12rem;
+  box-shadow: var(--shadow-1);
+  position: relative;
+  overflow: hidden;
+}
+.page-head-icon::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 120% at 0% 0%, var(--amber-soft), transparent 60%);
+}
+
+.page-head-titles { min-width: 0; }
+.page-head-titles h2 {
+  font-family: var(--font-display) !important;
+  font-size: clamp(1.5rem, 1.2rem + .9vw, 2rem) !important;
+  font-weight: 400 !important;
+  letter-spacing: -.018em !important;
+  line-height: 1.05 !important;
+  margin: 0 !important;
+  color: var(--ink) !important;
+  display: flex;
+  align-items: baseline;
+  gap: .55rem;
+  flex-wrap: wrap;
+}
+.page-head-sub {
+  font-family: var(--font-mono);
+  font-size: .7rem !important;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  margin: .32rem 0 0 !important;
+}
+.page-head-count {
+  font-family: var(--font-mono) !important;
+  font-size: .68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .02em;
+  line-height: 1;
+  padding: .26rem .46rem !important;
+  border-radius: 99px !important;
+  background: var(--amber-soft) !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+  transform: translateY(-.25em);
+}
+.page-head-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------------------------
+   7. CARTES — filet chaud, profondeur minimale, survol sobre
+   ------------------------------------------------------------------------- */
+.card,
+.card-premium {
+  background: var(--surface) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: var(--shadow-1) !important;
+  transition: box-shadow .28s var(--ease), border-color .28s var(--ease);
+}
+/* JAMAIS de transform au survol : cela provoquait une oscillation des bords */
+.card:hover,
+.card-premium:hover {
+  box-shadow: var(--shadow-2) !important;
+  border-color: var(--rule-strong) !important;
+}
+.card-body { padding: 1.25rem 1.35rem; }
+.card-header,
+.card-header-premium {
+  background: transparent !important;
+  border-bottom: 1px solid var(--rule) !important;
+  padding: .95rem 1.35rem !important;
+  font-family: var(--font-ui);
+  font-weight: 650 !important;
+  font-size: .92rem !important;
+  letter-spacing: -.012em !important;
+  color: var(--ink) !important;
+}
+.card-footer {
+  background: transparent !important;
+  border-top: 1px solid var(--rule) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   8. KPI / STAT CARDS — le chiffre en mono, l'étiquette en micro-caps
+   ------------------------------------------------------------------------- */
+.stat-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  padding: 1rem 1.1rem !important;
+  box-shadow: var(--shadow-1) !important;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow .28s var(--ease), border-color .28s var(--ease);
+}
+/* Filet amber en haut : repère discret, visible sans crier */
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--amber), var(--amber-line) 45%, transparent);
+  opacity: .55;
+  transition: opacity .28s var(--ease);
+}
+.stat-card:hover { box-shadow: var(--shadow-2) !important; border-color: var(--rule-strong) !important; }
+.stat-card:hover::before { opacity: 1; }
+
+.stat-card-icon {
+  width: 38px; height: 38px;
+  border-radius: var(--r-sm) !important;
+  display: grid; place-items: center;
+  background: var(--amber-soft) !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+  font-size: 1rem;
+  box-shadow: none !important;
+}
+.stat-card-value {
+  font-family: var(--font-mono) !important;
+  font-weight: 600 !important;
+  font-size: 1.65rem !important;
+  letter-spacing: -.02em !important;
+  line-height: 1.1 !important;
+  color: var(--ink) !important;
+  font-variant-numeric: tabular-nums;
+}
+.stat-card-label,
+.stat-card-title {
+  font-size: .64rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .13em !important;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+}
+.stat-card-trend { font-size: .72rem !important; gap: .3rem; font-family: var(--font-mono); }
+
+/* ---------------------------------------------------------------------------
+   9. BOUTONS — l'amber reste le CTA, le reste est en filet
+   ------------------------------------------------------------------------- */
+.btn { font-family: var(--font-ui); font-weight: 600; letter-spacing: -.008em; }
+.btn-premium,
+.btn {
+  border-radius: var(--r-sm) !important;
+  font-size: .855rem !important;
+  padding: .5rem .9rem !important;
+  transition: background-color .18s var(--ease-io), border-color .18s var(--ease-io),
+              color .18s var(--ease-io), box-shadow .22s var(--ease) !important;
+}
+.btn-premium {
+  border: 1px solid transparent;
+  box-shadow: none !important;
+  overflow: hidden;
+  position: relative;
+}
+.btn-premium:active { transform: translateY(1px) !important; }
+
+.btn-premium-primary,
+.btn-primary {
+  background: var(--ink) !important;
+  border-color: var(--ink) !important;
+  color: var(--paper) !important;
+  box-shadow: var(--shadow-1) !important;
+}
+.btn-premium-primary:hover,
+.btn-primary:hover {
+  background: var(--amber) !important;
+  border-color: var(--amber) !important;
+  color: #17181c !important;
+  box-shadow: 0 8px 20px -10px rgba(255, 140, 0, .55) !important;
+}
+/* Balayage lumineux conservé mais plus discret */
+.btn-premium-primary::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 24%, rgba(255, 255, 255, .28) 50%, transparent 76%);
+  transform: translateX(-130%);
+  transition: transform .7s var(--ease);
+  pointer-events: none;
+}
+.btn-premium-primary:hover::after { transform: translateX(130%); }
+
+.btn-premium-secondary,
+.btn-outline-secondary,
+.btn-light {
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--rule) !important;
+  color: var(--ink-2) !important;
+  box-shadow: none !important;
+}
+.btn-premium-secondary:hover,
+.btn-outline-secondary:hover,
+.btn-light:hover {
+  background: var(--amber-soft) !important;
+  border-color: var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+}
+.btn-outline-primary {
+  background: transparent !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+}
+.btn-outline-primary:hover {
+  background: var(--amber) !important;
+  border-color: var(--amber) !important;
+  color: #17181c !important;
+}
+.btn-danger {
+  background: var(--bad) !important;
+  border-color: var(--bad) !important;
+  color: #fff !important;
+}
+.btn-sm { padding: .3rem .6rem !important; font-size: .78rem !important; }
+.btn-lg { padding: .68rem 1.25rem !important; font-size: .95rem !important; }
+.btn-link { color: var(--amber-deep) !important; text-decoration: none !important; }
+.btn-link:hover { text-decoration: underline !important; text-underline-offset: 3px; }
+
+/* ---------------------------------------------------------------------------
+   10. FORMULAIRES — surface papier, focus halo amber, étiquettes en micro-caps
+   ------------------------------------------------------------------------- */
+.form-label,
+label.form-label {
+  font-family: var(--font-mono);
+  font-size: .64rem !important;
+  font-weight: 500 !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase;
+  color: var(--ink-3) !important;
+  margin-bottom: .34rem !important;
+}
+.input-premium,
+.select-premium,
+.form-control,
+.form-select {
+  border-radius: var(--r-sm) !important;
+  border: 1px solid var(--rule) !important;
+  background: var(--surface-raised) !important;
+  color: var(--ink) !important;
+  font-family: var(--font-ui);
+  font-size: .875rem !important;
+  padding: .52rem .72rem !important;
+  box-shadow: none !important;
+  transition: border-color .18s var(--ease-io), box-shadow .18s var(--ease-io),
+              background-color .18s var(--ease-io) !important;
+}
+.form-control::placeholder,
+.input-premium::placeholder { color: var(--ink-4) !important; opacity: 1; }
+.input-premium:focus,
+.select-premium:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--amber) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--halo) !important;
+  outline: none !important;
+}
+.form-control:disabled,
+.form-control[readonly] {
+  background: var(--paper-tint) !important;
+  color: var(--ink-3) !important;
+}
+.form-check-input {
+  border: 1px solid var(--rule-strong) !important;
+  border-radius: 4px !important;
+  background-color: var(--surface-raised) !important;
+}
+.form-check-input:checked {
+  background-color: var(--amber) !important;
+  border-color: var(--amber) !important;
+}
+.form-check-input:focus { box-shadow: var(--halo) !important; }
+.form-text, .form-text.text-muted { color: var(--ink-4) !important; font-size: .74rem; }
+/* Champs de recherche avec icône */
+.input-wrap > i, .input-icon > i { color: var(--ink-4) !important; }
+.input-wrap:focus-within > i { color: var(--amber) !important; }
+
+/* ---------------------------------------------------------------------------
+   11. PASTILLES DE STATUT (.st-*) — macro status_badge, présente partout
+       Forme : carré arrondi + point de couleur, pas de dégradé criard
+   ------------------------------------------------------------------------- */
+.st,
+.badge {
+  display: inline-flex !important;
+  align-items: center;
+  gap: .34rem;
+  font-family: var(--font-mono);
+  font-size: .66rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .22rem .52rem !important;
+  border-radius: 6px !important;
+  border: 1px solid transparent;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.st::before {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+  opacity: .9;
+}
+.st-neutral { background: var(--paper-tint) !important; border-color: var(--rule) !important; color: var(--ink-3) !important; }
+.st-todo    { background: var(--paper-tint) !important; border-color: var(--rule-strong) !important; color: var(--ink-2) !important; }
+.st-doing   { background: var(--amber-soft) !important; border-color: var(--amber-line) !important; color: var(--amber-deep) !important; }
+.st-done    { background: var(--ok-bg) !important; border-color: color-mix(in srgb, var(--ok) 26%, transparent) !important; color: var(--ok) !important; }
+.st-late    { background: var(--bad-bg) !important; border-color: color-mix(in srgb, var(--bad) 26%, transparent) !important; color: var(--bad) !important; }
+.st-today   { background: var(--info2-bg) !important; border-color: color-mix(in srgb, var(--info2) 26%, transparent) !important; color: var(--info2) !important; }
+.st-soon    { background: var(--warn-bg) !important; border-color: color-mix(in srgb, var(--warn) 26%, transparent) !important; color: var(--warn) !important; }
+
+.badge.bg-success, .badge.text-bg-success { background: var(--ok-bg) !important; color: var(--ok) !important; border-color: color-mix(in srgb, var(--ok) 26%, transparent) !important; }
+.badge.bg-danger, .badge.text-bg-danger { background: var(--bad-bg) !important; color: var(--bad) !important; border-color: color-mix(in srgb, var(--bad) 26%, transparent) !important; }
+.badge.bg-warning, .badge.text-bg-warning { background: var(--warn-bg) !important; color: var(--warn) !important; border-color: color-mix(in srgb, var(--warn) 26%, transparent) !important; }
+.badge.bg-info, .badge.text-bg-info { background: var(--info2-bg) !important; color: var(--info2) !important; border-color: color-mix(in srgb, var(--info2) 26%, transparent) !important; }
+.badge.bg-secondary, .badge.bg-light { background: var(--paper-tint) !important; color: var(--ink-3) !important; border-color: var(--rule) !important; }
+
+/* ---------------------------------------------------------------------------
+   12. TABLEAUX — le « registre » : filets horizontaux, pas de zebra agressif
+   ------------------------------------------------------------------------- */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--ink-2);
+  --bs-table-border-color: var(--rule-soft);
+  margin-bottom: 0;
+  font-size: .855rem;
+}
+.table > thead > tr > th,
+.table thead th {
+  font-family: var(--font-mono) !important;
+  font-size: .62rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  border-bottom: 1px solid var(--rule-strong) !important;
+  border-top: none !important;
+  padding: .62rem .7rem !important;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--paper) 90%, transparent) !important;
+}
+.table > tbody > tr > td,
+.table tbody td {
+  padding: .6rem .7rem !important;
+  border-bottom: 1px solid var(--rule-soft) !important;
+  border-top: none !important;
+  vertical-align: middle;
+  color: var(--ink-2);
+  background: transparent !important;
+}
+.table > tbody > tr:last-child > td { border-bottom: none !important; }
+
+/* Ligne survolée : révèle un filet amber à gauche (repère de lecture) */
+.table > tbody > tr { transition: background-color .14s var(--ease-io); }
+.table > tbody > tr:hover > td { background: var(--bg-hover) !important; }
+.table > tbody > tr:hover > td:first-child { box-shadow: inset 2px 0 0 var(--amber); }
+.table-hover > tbody > tr:hover > * { --bs-table-accent-bg: transparent; color: var(--ink) !important; }
+
+/* Cellules numériques : mono + chiffres alignés */
+.table td.text-end, .table th.text-end,
+.table td.num, .table .money {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background: color-mix(in srgb, var(--paper-tint) 60%, transparent);
+  box-shadow: none;
+}
+.table-responsive { border-radius: var(--r-md); }
+
+/* ---------------------------------------------------------------------------
+   13. ÉTAT VIDE & OUTILS DE FILTRE (macros empty_state / filter_bar)
+   ------------------------------------------------------------------------- */
+.orbit-empty {
+  text-align: center;
+  padding: 3.25rem 1.5rem;
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+.orbit-empty-icon {
+  width: 52px; height: 52px;
+  margin: 0 auto .95rem;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--amber-soft);
+  border: 1px solid var(--amber-line);
+  color: var(--amber-deep);
+  font-size: 1.35rem;
+}
+.orbit-empty h4 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--ink);
+  margin-bottom: .3rem;
+}
+.orbit-empty p {
+  color: var(--ink-3);
+  font-size: .85rem;
+  max-width: 46ch;
+  margin: 0 auto 1.1rem;
+}
+
+.orbit-filter-count {
+  font-size: .68rem !important;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  padding: .28rem .55rem;
+  border-radius: 99px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+}
+.orbit-filter-count strong { color: var(--ink); font-weight: 600; }
+.orbit-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .3rem .6rem;
+  border-radius: 99px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink-3);
+  transition: all .18s var(--ease-io);
+}
+.orbit-filter-reset:hover {
+  border-color: var(--amber-line);
+  background: var(--amber-soft);
+  color: var(--amber-deep);
+}
+
+/* ---------------------------------------------------------------------------
+   14. SURCOUCHES — menus, modales, toasts, onglets, accordéons
+   ------------------------------------------------------------------------- */
+.dropdown-menu {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-3) !important;
+  padding: .35rem !important;
+  font-size: .85rem;
+}
+.dropdown-item {
+  border-radius: var(--r-xs) !important;
+  padding: .45rem .6rem !important;
+  color: var(--ink-2) !important;
+  transition: background-color .14s var(--ease-io), color .14s var(--ease-io);
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--amber-soft) !important;
+  color: var(--amber-deep) !important;
+}
+.dropdown-divider { border-color: var(--rule) !important; margin: .3rem 0 !important; }
+.dropdown-item-text { color: var(--ink-4) !important; }
+
+.modal-content {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-lg) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-3) !important;
+}
+.modal-header, .modal-footer { border-color: var(--rule) !important; }
+.modal-header .modal-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+.modal-backdrop.show { opacity: .42; }
+
+.toast {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-3) !important;
+  overflow: hidden;
+}
+.toast-header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--rule-soft) !important;
+  font-size: .78rem;
+  letter-spacing: .02em;
+}
+.toast-body { font-size: .85rem; color: var(--ink-2); }
+.toast-success { border-left: 3px solid var(--ok) !important; }
+.toast-danger { border-left: 3px solid var(--bad) !important; }
+.toast-warning { border-left: 3px solid var(--warn) !important; }
+.toast-info { border-left: 3px solid var(--amber) !important; }
+
+.nav-tabs { border-bottom: 1px solid var(--rule) !important; gap: .15rem; }
+.nav-tabs .nav-link {
+  border: none !important;
+  border-radius: var(--r-sm) var(--r-sm) 0 0 !important;
+  color: var(--ink-3) !important;
+  font-size: .84rem;
+  font-weight: 600;
+  padding: .5rem .8rem !important;
+  position: relative;
+  transition: color .16s var(--ease-io), background-color .16s var(--ease-io);
+}
+.nav-tabs .nav-link:hover { background: var(--bg-hover); color: var(--ink) !important; }
+.nav-tabs .nav-link.active {
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+.nav-tabs .nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: .55rem; right: .55rem; bottom: -1px;
+  height: 2px;
+  background: var(--amber);
+  border-radius: 2px;
+}
+.nav-pills .nav-link {
+  border-radius: 99px !important;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink-3) !important;
+  padding: .34rem .78rem !important;
+}
+.nav-pills .nav-link.active {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+}
+
+.progress {
+  background: var(--paper-deep) !important;
+  border-radius: 99px !important;
+  height: 6px !important;
+  overflow: hidden;
+}
+.progress-bar { background: var(--amber) !important; }
+
+.accordion-item {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  background: var(--surface) !important;
+  margin-bottom: .4rem;
+  overflow: hidden;
+}
+.accordion-button {
+  background: transparent !important;
+  color: var(--ink) !important;
+  font-weight: 600;
+  font-size: .88rem;
+  box-shadow: none !important;
+}
+.accordion-button:not(.collapsed) { background: var(--amber-soft) !important; color: var(--amber-deep) !important; }
+.accordion-body { font-size: .86rem; color: var(--ink-2); }

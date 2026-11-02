@@ -148,6 +148,32 @@ def terminer_tache(tache_id):
     flash('Tâche marquée comme terminée.', 'success')
     return redirect(url_for('taches'))
 
+def _reduire_photo(donnees, mimetype, max_px=256, qualite=82):
+    """Réduit une photo de profil avant stockage en base (best effort).
+
+    Objectif : limiter le poids des BYTEA stockés (quota de transfert réseau de
+    l'hébergeur) et accélérer l'affichage. Renvoie (octets, mimetype) ; si Pillow
+    n'est pas installé ou si l'image est illisible, renvoie l'original inchangé.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return donnees, mimetype
+    import io as _io
+    try:
+        img = Image.open(_io.BytesIO(donnees))
+        img = img.convert('RGB')
+        img.thumbnail((max_px, max_px))
+        out = _io.BytesIO()
+        img.save(out, format='JPEG', quality=qualite, optimize=True)
+        reduit = out.getvalue()
+        if len(reduit) < len(donnees):
+            return reduit, 'image/jpeg'
+    except Exception:
+        pass
+    return donnees, mimetype
+
+
 @app.route('/upload_photo', methods=['POST'])
 @app.route('/upload_photo/<int:user_id>', methods=['POST'])
 @login_required
@@ -181,8 +207,12 @@ def upload_photo(user_id=None):
     file.seek(0)
     
     # Sauvegarder dans la base de données (permanent)
-    target_user.photo_data = file.read()
-    target_user.photo_mimetype = f"image/{ext}"
+    # Réduction systématique (256 px max, JPEG) : un avatar de 5 Mo stocké en base
+    # coûtait 5 Mo de transfert à CHAQUE lecture.
+    mimetype_origine = 'image/jpeg' if ext in ('jpg', 'jpeg') else f'image/{ext}'
+    donnees, mimetype = _reduire_photo(file.read(), mimetype_origine)
+    target_user.photo_data = donnees
+    target_user.photo_mimetype = mimetype
     target_user.photo_profil = None  # plus besoin du fichier disque
     db.session.commit()
     
@@ -196,12 +226,25 @@ def upload_photo(user_id=None):
 
 @app.route('/user_photo/<int:user_id>')
 def user_photo(user_id):
-    """Servir la photo de profil depuis la base de données."""
+    """Servir la photo de profil depuis la base de données.
+
+    Cache HTTP agressif : pour un user_id donné l'image est immutable, et l'ETag
+    change dès que la photo change. Sans ces en-têtes, chaque page relançait le
+    téléchargement complet du blob (et chaque affichage relisait le BYTEA chez
+    Neon) — c'est ce qui a saturé le quota de transfert réseau.
+    """
     user = User.query.get_or_404(user_id)
     if not user.photo_data:
         return redirect(url_for('static', filename='img/default-avatar.png'))
     from flask import Response
-    return Response(user.photo_data, mimetype=user.photo_mimetype or 'image/png')
+    import hashlib
+    blob = user.photo_data
+    resp = Response(blob, mimetype=user.photo_mimetype or 'image/png')
+    resp.set_etag(hashlib.md5(blob).hexdigest())
+    resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    # Répond 304 Not Modified si le navigateur a déjà cette version.
+    resp.make_conditional(request)
+    return resp
 
 # ==========================
 # API Notifications

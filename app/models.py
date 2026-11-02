@@ -2,6 +2,7 @@ from datetime import datetime, date
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login_manager
+from sqlalchemy.orm import deferred
 import os
 
 class User(UserMixin, db.Model):
@@ -12,7 +13,14 @@ class User(UserMixin, db.Model):
     nom = db.Column(db.String(80), nullable=False)
     prenom = db.Column(db.String(80), nullable=False)
     photo_profil = db.Column(db.String(200), default='default.png')
-    photo_data = db.Column(db.LargeBinary, nullable=True)
+    # photo_data est DECALEE (deferred) : la colonne BYTEA n'est chargee depuis la
+    # base que si le code y accede explicitement (route /user_photo). Sans ce
+    # defer, CHAQUE query renvoyant des User (dashboard, listes, taches, equipes)
+    # ramenait le binaire complet de toutes les photos -> consommation massive du
+    # quota de transfert reseau Neon (5 Go/mois) et base neutralisee.
+    # Ne PAS lire `user.photo_data` hors de la route photo : utiliser
+    # `photo_mimetype` / `a_une_photo` comme indicateur leger.
+    photo_data = deferred(db.Column(db.LargeBinary, nullable=True))
     photo_mimetype = db.Column(db.String(50), nullable=True)
     role = db.Column(db.String(20), nullable=False, default='membre')  # admin | manager | membre
     pole = db.Column(db.String(20), default='comptable')  # comptable | social | les_deux
@@ -71,8 +79,10 @@ class User(UserMixin, db.Model):
     def photo_display_src(self):
         """Retourne l'URL de la photo de profil ou un avatar généré."""
         try:
-            # Photo stockée en DB (permanente)
-            if self.photo_data:
+            # Photo stockée en DB (permanente). On teste photo_mimetype (varchar
+            # legere) et JAMAIS photo_data : lire photo_data declencherait le
+            # chargement du BYTEA depuis Neon pour chaque membre affiche.
+            if self.photo_mimetype:
                 from flask import url_for
                 return url_for('user_photo', user_id=self.id)
             # Photo uploadée via fichier (legacy)

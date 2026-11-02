@@ -27,7 +27,7 @@
             <form id="priseEnChargeForm">
                 <div class="modal-header-premium">
                     <h5 class="mb-0">Prendre en charge la tâche</h5>
-                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">âœ•</button>
                 </div>
                 <div class="modal-body-premium">
                     <input type="hidden" id="tacheId">
@@ -64,7 +64,7 @@ function loadMesTaches() {
         .then(data => {
             const container = document.getElementById('mesTachesList');
             if (!data.ok || !data.taches.length) {
-                container.innerHTML = '<div class="empty-state"><img src="{{ url_for("static", filename="img/logo-jmh.png") }}" alt="" class="empty-state-icon"><h4 class="empty-state-title">Aucune tâche pour le moment</h4><p class="empty-state-desc">Vos tâches apparaîtront ici quand elles vous seront assignées.</p></div>';
+                container.innerHTML = '<div class="empty-state"><img src="{{ url_for("static", filename="img/logo-jmh-orbit.png") }}" alt="" class="empty-state-icon"><h4 class="empty-state-title">Aucune tâche pour le moment</h4><p class="empty-state-desc">Vos tâches apparaîtront ici quand elles vous seront assignées.</p></div>';
                 return;
             }
 

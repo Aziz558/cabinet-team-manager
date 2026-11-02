@@ -7,7 +7,7 @@
 <div class="card-premium today-band animate-fade-in-up mb-4">
     <div class="today-head">
         <div>
-            <div class="today-hello">Bonjour {{ current_user.prenom }} 👋</div>
+            <div class="today-hello">Bonjour {{ current_user.prenom }} ðŸ‘‹</div>
             <div class="today-date" id="todayDateLabel">Voici votre journée</div>
         </div>
         <div class="today-stats">
@@ -260,7 +260,7 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+            <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
             <h4 class="empty-state-title">Aucune suggestion pour le moment</h4>
             <p class="empty-state-desc">Les suggestions apparaîtront automatiquement quand des deadlines approcheront.</p>
         </div>
@@ -376,7 +376,7 @@
                     {% endfor %}
                 {% else %}
                     <div class="empty-state">
-                        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+                        <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
                         <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
                         <p class="empty-state-desc">Vous n'avez pas de tâches planifiées aujourd'hui. Profitez de cette journée !</p>
                     </div>
@@ -413,7 +413,7 @@
                     {% endfor %}
                 {% else %}
                     <div class="empty-state">
-                        <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="" class="empty-state-icon">
+                        <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
                         <h4 class="empty-state-title">Aucune tâche cette semaine</h4>
                         <p class="empty-state-desc">Toutes les tâches de la semaine sont à jour. Parfait travail !</p>
                     </div>

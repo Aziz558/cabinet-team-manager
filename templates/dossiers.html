@@ -364,7 +364,7 @@ function orbitChips() {
                                     {% if nb_taches_dossier > 0 %}
                                     <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
                                     {% endif %}
-                                    <li><a class="dropdown-item" href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}"><i class="bi bi-link-45deg me-2"></i>Pennylane{% if d.pennylane_customer_id %} <span class="badge badge-success ms-1">●</span>{% endif %}</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}"><i class="bi bi-link-45deg me-2"></i>Pennylane{% if d.pennylane_customer_id %} <span class="badge badge-success ms-1">â—</span>{% endif %}</a></li>
                                     {% if d.siren %}
                                     <li><a class="dropdown-item" href="#" onclick="enrichirDossier({{ d.id }}, this);return false;"><i class="bi bi-stars me-2"></i>Enrichir via SIREN</a></li>
                                     {% endif %}
@@ -398,7 +398,7 @@ function orbitChips() {
             <form method="POST" action="{{ url_for('importer_csv') }}" enctype="multipart/form-data" id="formImportCSV">
                 <div class="modal-header-premium">
                     <h5 class="mb-0"><i class="bi bi-upload me-2" style="color:var(--orange-primary)"></i>Importer des dossiers (CSV)</h5>
-                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">âœ•</button>
                 </div>
                 <div class="modal-body-premium">
                     <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
@@ -438,7 +438,7 @@ function orbitChips() {
             <form method="POST" action="{{ url_for('ajouter_dossier') }}" id="formNouveauDossier">
                 <div class="modal-header-premium">
                     <h5 class="mb-0"><i class="bi bi-folder-plus me-2" style="color:var(--orange-primary)"></i>Nouveau dossier</h5>
-                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">âœ•</button>
                 </div>
                 <div class="modal-body-premium">
                     <div class="row">
@@ -591,7 +591,7 @@ function orbitChips() {
             <form method="POST" id="formModifierDossier">
                 <div class="modal-header-premium">
                     <h5 class="mb-0"><i class="bi bi-pencil-square me-2" style="color:var(--orange-primary)"></i>Modifier le dossier</h5>
-                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">âœ•</button>
                 </div>
                 <div class="modal-body-premium">
                     <div class="row">

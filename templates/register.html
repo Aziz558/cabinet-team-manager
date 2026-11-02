@@ -298,6 +298,9 @@
         html[data-theme="light"] .register-card,
         html[data-theme="light"] .register-card .input-premium-custom { transition: background-color .42s ease, border-color .42s ease, color .3s ease; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;0,600;1,400&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/orbit-elevate.css') }}?v=1" rel="stylesheet">
+    <meta name="theme-color" content="#0b0c0e">
 </head>
 <body>
     <div class="orb orb-1"></div>
@@ -307,7 +310,7 @@
 
     <div class="register-container">
         <div class="register-logo">
-            <img src="{{ url_for('static', filename='img/logo-jmh.png') }}" alt="Cabinet JMH">
+            <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="Cabinet JMH Orbit">
             <h1>Créer un compte</h1>
             <p>Rejoignez votre équipe Cabinet JMH</p>
         </div>
@@ -370,3 +373,4 @@
     </script>
 </body>
 </html>
+

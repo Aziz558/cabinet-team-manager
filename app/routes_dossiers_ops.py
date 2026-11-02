@@ -252,18 +252,27 @@ def _retype(col, v):
 @login_required
 def admin_export_db():
     """Exporte TOUTE la base en JSON telechargeable (secours, transfert dev<->prod,
-    migration vers un autre Postgres)."""
+    migration vers un autre Postgres).
+
+    Les photos de profil (colonne BLOB `photo_data`, jusqu'a 5 Mo chacune) sont
+    EXCLUES par defaut : en hex elles doublent de volume et faisaient exploser le
+    transfert reseau (quota de l'hebergeur). Passer ?photos=1 pour les inclure.
+    """
     if current_user.role != 'admin':
         return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
     import datetime as _dt
+    inclure_photos = request.args.get('photos') == '1'
+    exclues = () if inclure_photos else ('photo_data',)
     md = db.metadata
     data = {}
     for t in md.sorted_tables:
         rows = db.session.execute(t.select()).mappings().all()
-        data[t.name] = [[_jsonable(r[c.name]) for c in t.columns] for r in rows]
+        data[t.name] = [[None if c.name in exclues else _jsonable(r[c.name])
+                         for c in t.columns] for r in rows]
     payload = {
         'kind': 'jmh-orbit-db-export',
         'version': 1,
+        'photos_incluses': inclure_photos,
         'exported_at': _dt.datetime.utcnow().isoformat(),
         'dialect': db.engine.dialect.name,
         'column_order': {t.name: [c.name for c in t.columns] for t in md.sorted_tables},

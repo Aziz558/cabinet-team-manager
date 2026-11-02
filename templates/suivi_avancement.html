@@ -229,9 +229,9 @@
 
     /* Échéancier : chevron au survol + tri des en-têtes */
     .cal-table thead th.avm-sort { cursor: pointer; user-select: none; white-space: nowrap; }
-    .cal-table thead th.avm-sort::after { content: "↕"; margin-left: 6px; opacity: 0.35; font-size: 0.82em; }
-    .cal-table thead th.avm-sort.asc::after { content: "↑"; opacity: 1; color: var(--orange-primary); }
-    .cal-table thead th.avm-sort.desc::after { content: "↓"; opacity: 1; color: var(--orange-primary); }
+    .cal-table thead th.avm-sort::after { content: "â†•"; margin-left: 6px; opacity: 0.35; font-size: 0.82em; }
+    .cal-table thead th.avm-sort.asc::after { content: "â†‘"; opacity: 1; color: var(--orange-primary); }
+    .cal-table thead th.avm-sort.desc::after { content: "â†“"; opacity: 1; color: var(--orange-primary); }
     .cal-table tbody tr td:first-child { position: relative; }
     .cal-table tbody tr:hover td:first-child { padding-right: 26px; }
     .cal-table tbody tr td:first-child .cal-chev { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); color: var(--orange-primary); font-weight: 700; opacity: 0; transition: all 0.16s ease; }
@@ -1031,3 +1031,4 @@ document.querySelectorAll('#calTabs .cal-tab').forEach(function(btn) {
 });
 </script>
 {% endblock %}
+

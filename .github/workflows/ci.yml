@@ -39,13 +39,51 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Trigger Render Deploy
+        id: trigger
         run: |
-          curl -X POST "https://api.render.com/v1/services/srv-cabinet-team-manager/deploys" \
+          if [ -z "${{ secrets.RENDER_SERVICE_ID }}" ]; then
+            echo "RENDER_SERVICE_ID non configure — deploy ignore."
+            echo "deploy_triggered=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          RESPONSE=$(curl -s --fail -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
             -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            -d '{"clearCache": true}'
+            -d '{"clearCache": true}')
+          echo "$RESPONSE"
+          DEPLOY_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "Impossible de recuperer l'ID du deploy Render."
+            exit 1
+          fi
+          echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
+          echo "deploy_triggered=true" >> $GITHUB_OUTPUT
 
       - name: Wait for Deploy to Complete
+        if: steps.trigger.outputs.deploy_triggered == 'true'
         run: |
-          sleep 30
+          DEPLOY_ID="${{ steps.trigger.outputs.deploy_id }}"
+          SERVICE_ID="${{ secrets.RENDER_SERVICE_ID }}"
+          API_KEY="${{ secrets.RENDER_API_KEY }}"
+          ELAPSED=0
+          TIMEOUT=300
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            STATUS=$(curl -s "https://api.render.com/v1/services/${SERVICE_ID}/deploys/${DEPLOY_ID}" \
+              -H "Accept: application/json" \
+              -H "Authorization: Bearer ${API_KEY}" \
+              | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))")
+            echo "Deploy status: $STATUS (elapsed ${ELAPSED}s)"
+            if [ "$STATUS" = "live" ]; then
+              echo "Deploy termine avec succes."
+              exit 0
+            fi
+            if [ "$STATUS" = "failed" ] || [ "$STATUS" = "cancelled" ]; then
+              echo "Deploy echoue ou annule."
+              exit 1
+            fi
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+          echo "Timeout atteint ($TIMEOUTs) sans statut live."
+          exit 1

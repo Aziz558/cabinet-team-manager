@@ -47,7 +47,7 @@
             <form id="validateForm">
                 <div class="modal-header-premium">
                     <h5 class="mb-0">Valider la suggestion</h5>
-                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">✕</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">âœ•</button>
                 </div>
                 <div class="modal-body-premium">
                     <input type="hidden" id="suggestionId">
@@ -119,7 +119,7 @@ function loadSuggestions() {
         .then(data => {
             const container = document.getElementById('suggestionsList');
             if (!data.ok || !data.suggestions.length) {
-                container.innerHTML = '<div class="empty-state"><img src="{{ url_for("static", filename="img/logo-jmh.png") }}" alt="" class="empty-state-icon"><h4 class="empty-state-title">Aucune suggestion pour le moment</h4><p class="empty-state-desc">Les suggestions apparaîtront automatiquement quand des emails avec des deadlines seront détectés.</p></div>';
+                container.innerHTML = '<div class="empty-state"><img src="{{ url_for("static", filename="img/logo-jmh-orbit.png") }}" alt="" class="empty-state-icon"><h4 class="empty-state-title">Aucune suggestion pour le moment</h4><p class="empty-state-desc">Les suggestions apparaîtront automatiquement quand des emails avec des deadlines seront détectés.</p></div>';
                 return;
             }
 

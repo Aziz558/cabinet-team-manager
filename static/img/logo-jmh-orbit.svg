@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360">
+  <rect width="1280" height="360" rx="60" fill="#141414"/>
+  <g transform="translate(48,40) scale(0.266)">
+    <ellipse cx="512" cy="512" rx="360" ry="150" fill="none" stroke="#FF7A00" stroke-width="44" transform="rotate(-24 512 512)"/>
+    <ellipse cx="512" cy="512" rx="360" ry="150" fill="none" stroke="#FFA149" stroke-width="26" transform="rotate(24 512 512)" opacity="0.55"/>
+    <circle cx="512" cy="512" r="120" fill="#FF7A00"/>
+    <text x="512" y="562" font-family="Segoe UI, Arial, sans-serif" font-size="104" font-weight="800" fill="#141414" text-anchor="middle">JMH</text>
+    <circle cx="200" cy="640" r="38" fill="#FFFFFF"/>
+  </g>
+  <text x="360" y="238" font-family="Segoe UI, Arial, sans-serif" font-size="150" font-weight="800" fill="#FFFFFF">JMH <tspan fill="#FF7A00">Orbit</tspan></text>
+</svg>

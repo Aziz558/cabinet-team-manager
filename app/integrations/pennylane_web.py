@@ -490,7 +490,10 @@ def sync_checklist_tva() -> dict:
         if not res['ok']:
             erreurs.append(f"{d.numero_dossier}: {res['message']}")
             if 'Session expirée' in res['message']:
-                break  # inutile de continuer, tout va échouer
+                # La session est partagée par tous les dossiers : on marque l'erreur
+                # mais on CONTINUE de tenter les suivants (chacun remonte son propre
+                # statut) plutôt que d'arrêter la boucle net avec break.
+                continue
             continue
 
         dossiers_ok += 1
