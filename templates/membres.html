@@ -21,7 +21,7 @@
     {% if not m.equipe_id %}{% set mns.sans_eq = mns.sans_eq + 1 %}{% endif %}
 {% endfor %}
 <div class="kpi-band animate-fade-in-up">
-    <div class="kpi-chip" style="--accent: var(--info);">
+    <div class="kpi-chip" style="--accent: var(--ink-3);">
         <div class="kpi-label"><i class="bi bi-people"></i> Membres</div>
         <div class="kpi-value">{{ mns.total }}</div>
         <div class="kpi-sub">total du cabinet</div>
@@ -29,7 +29,7 @@
     <div class="kpi-chip" style="--accent: var(--success);">
         <div class="kpi-label"><i class="bi bi-person-check"></i> Actifs</div>
         <div class="kpi-value">{{ mns.actifs }}</div>
-        <div class="kpi-sub">{{ (mns.actifs / mns.total * 100)|round(0) if mns.total else 0 }}% de l'effectif</div>
+        <div class="kpi-sub">{{ ((mns.actifs / mns.total * 100)|round(0) if mns.total else 0)|pct }} de l'effectif</div>
     </div>
     <div class="kpi-chip" style="--accent: var(--orange-primary);">
         <div class="kpi-label"><i class="bi bi-person-lines-fill"></i> Managers</div>

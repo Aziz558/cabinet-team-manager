@@ -11,11 +11,11 @@
         <div class="sidebar-section-title">Principal</div>
         <a href="{{ url_for('dashboard') }}" class="sidebar-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
             <i class="bi bi-speedometer2"></i>
-            <span>Dashboard</span>
+            <span>Tableau de bord</span>
         </a>
         <a href="{{ url_for('analytics') }}" class="sidebar-nav-item {% if request.endpoint == 'analytics' %}active{% endif %}">
             <i class="bi bi-graph-up-arrow"></i>
-            <span>Analytics</span>
+            <span>Analyses</span>
         </a>
         <a href="{{ url_for('suivi_avancement') }}" class="sidebar-nav-item {% if request.endpoint == 'suivi_avancement' %}active{% endif %}">
             <i class="bi bi-calendar3-week"></i>
@@ -92,14 +92,10 @@
 
         <!-- Admin -->
         {% if current_user.role == 'admin' %}
-        <div class="sidebar-section-title">Admin</div>
-        <a href="{{ url_for('pennylane_page') }}" class="sidebar-nav-item {% if request.endpoint == 'pennylane_page' %}active{% endif %}">
-            <i class="bi bi-link-45deg"></i>
-            <span>Pennylane</span>
-        </a>
+        <div class="sidebar-section-title">Administration</div>
         <a href="{{ url_for('admin_debug') }}" class="sidebar-nav-item {% if request.endpoint == 'admin_debug' %}active{% endif %}">
             <i class="bi bi-bug"></i>
-            <span>Debug</span>
+            <span>Diagnostic</span>
         </a>
         {% endif %}
     </div>
@@ -144,7 +140,7 @@
         <div class="sidebar-section-title">Navigation</div>
         <a href="{{ url_for('dashboard') }}" class="sidebar-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
             <i class="bi bi-speedometer2"></i>
-            <span>Dashboard</span>
+            <span>Tableau de bord</span>
         </a>
         <a href="{{ url_for('taches_aujourdhui') }}" class="sidebar-nav-item {% if request.endpoint == 'taches_aujourdhui' %}active{% endif %}">
             <i class="bi bi-calendar-check"></i>
@@ -211,7 +207,9 @@
 </div>
 {% endif %}
 <script>
-/* Navigation : recherche rapide + sections repliables (non invasif, dégrade en douceur) */
+/* Navigation : sections repliables (non invasif, dégrade en douceur).
+   La recherche globale vit dans la palette de commandes de la barre du haut
+   (Ctrl+K) — une seule interface de recherche pour toute l'app. */
 (function() {
     function ready(fn) { if (document.readyState !== 'loading') { fn(); } else { document.addEventListener('DOMContentLoaded', fn); } }
     ready(function() {
@@ -219,20 +217,10 @@
         if (!menu || menu.dataset.orbitGroups) { return; }
         menu.dataset.orbitGroups = '1';
 
-        /* Ne pas doubler la recherche quand la page a déjà sa propre barre (ex: /dossiers avec rechercheDossier) */
-        if (document.getElementById('rechercheDossier')) { return; }
-
-        /* 1) Recherche rapide */
-        var search = document.createElement('div');
-        search.className = 'sidebar-search';
-        search.innerHTML = '<i class="bi bi-search"></i><input type="text" id="orbitSidebarSearch" placeholder="Rechercher…" autocomplete="off" aria-label="Rechercher dans la navigation">';
-        menu.insertBefore(search, menu.firstChild);
-
-        /* 2) Regrouper les items en sections repliables */
+        /* Regrouper les items en sections repliables */
         var groups = [];
         var currentItems = null;
         Array.prototype.slice.call(menu.children).forEach(function(el) {
-            if (el === search) { return; }
             if (el.classList && el.classList.contains('sidebar-section-title')) {
                 var g = document.createElement('div');
                 g.className = 'sidebar-group';
@@ -240,7 +228,8 @@
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'sidebar-group-title';
-                btn.innerHTML = '<span>' + (el.textContent || '').trim() + '</span><i class="bi bi-chevron-down"></i>';
+                btn.setAttribute('aria-expanded', 'true');
+                btn.innerHTML = '<span>' + (el.textContent || '').trim() + '</span><i class="bi bi-chevron-down" aria-hidden="true"></i>';
                 var items = document.createElement('div');
                 items.className = 'sidebar-group-items';
                 g.appendChild(btn);
@@ -249,16 +238,15 @@
                 menu.removeChild(el);
                 currentItems = items;
                 groups.push(g);
-                btn.addEventListener('click', function() { g.classList.toggle('collapsed'); saveGroups(); });
+                btn.addEventListener('click', function() {
+                    g.classList.toggle('collapsed');
+                    btn.setAttribute('aria-expanded', g.classList.contains('collapsed') ? 'false' : 'true');
+                    saveGroups();
+                });
             } else if (currentItems) {
                 currentItems.appendChild(el);
             }
         });
-
-        var empty = document.createElement('div');
-        empty.className = 'sidebar-search-empty';
-        empty.textContent = 'Aucun résultat';
-        menu.appendChild(empty);
 
         function saveGroups() {
             try {
@@ -272,25 +260,21 @@
             groups.forEach(function(g) { if (saved[g.dataset.group]) { g.classList.add('collapsed'); } });
         } catch (e) {}
 
-        /* 3) Filtrage par recherche */
-        var input = document.getElementById('orbitSidebarSearch');
-        if (input) {
-            input.addEventListener('input', function() {
-                var q = (this.value || '').trim().toLowerCase();
-                var any = false;
-                groups.forEach(function(g) {
-                    var found = false;
-                    g.querySelectorAll('.sidebar-nav-item').forEach(function(a) {
-                        var match = !q || (a.textContent || '').toLowerCase().indexOf(q) !== -1;
-                        a.classList.toggle('hidden-by-search', !match);
-                        if (match) { found = true; }
-                    });
-                    g.style.display = found ? '' : 'none';
-                    if (q && found) { g.classList.remove('collapsed'); }
-                    if (found) { any = true; }
-                });
-                empty.classList.toggle('show', Boolean(q) && !any);
-            });
+        /* La section qui contient la page courante ne se replie jamais :
+           l'utilisateur garde toujours son repère de navigation. */
+        var active = menu.querySelector('.sidebar-nav-item.active');
+        if (active && active.closest) {
+            var grp = active.closest('.sidebar-group');
+            if (grp) { grp.classList.remove('collapsed'); }
+            /* L'item actif est ramené dans la zone visible du menu défilant :
+               sur une page située en bas (Paramètres), on le perdait de vue. */
+            try {
+                var mRect = menu.getBoundingClientRect();
+                var aRect = active.getBoundingClientRect();
+                if (aRect.top < mRect.top || aRect.bottom > mRect.bottom) {
+                    menu.scrollTop = active.offsetTop - (menu.clientHeight / 2) + (active.offsetHeight / 2);
+                }
+            } catch (e) {}
         }
     });
 })();

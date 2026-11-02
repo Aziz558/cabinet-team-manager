@@ -108,7 +108,7 @@
         {% if d._delai_label and 'J-' in d._delai_label and d._delai_label|replace('J-','')|int >= 0 and d._delai_label|replace('J-','')|int < 30 %}{% set ns.proche = ns.proche + 1 %}{% endif %}
     {% endfor %}
     <div class="kpi-band animate-fade-in-up">
-        <div class="kpi-chip" style="--accent: var(--info);">
+        <div class="kpi-chip" style="--accent: var(--ink-3);">
             <div class="kpi-label"><i class="bi bi-stack"></i> Dossiers total</div>
             <div class="kpi-value">{{ ns.total }}</div>
             <div class="kpi-sub">dont {{ dossiers_par_collab.values()|list|length }} collaborateurs</div>
@@ -116,12 +116,12 @@
         <div class="kpi-chip" style="--accent: var(--orange-primary);">
             <div class="kpi-label"><i class="bi bi-cash-stack"></i> CA3</div>
             <div class="kpi-value">{{ ns.ca3 }}</div>
-            <div class="kpi-sub">{{ (ns.ca3 / ns.total * 100)|round(1) if ns.total else 0 }}% des dossiers</div>
+            <div class="kpi-sub">{{ ((ns.ca3 / ns.total * 100)|round(1) if ns.total else 0)|pct }} des dossiers</div>
         </div>
         <div class="kpi-chip" style="--accent: var(--warning);">
             <div class="kpi-label"><i class="bi bi-cash"></i> CA12</div>
             <div class="kpi-value">{{ ns.ca12 }}</div>
-            <div class="kpi-sub">{{ (ns.ca12 / ns.total * 100)|round(1) if ns.total else 0 }}% des dossiers</div>
+            <div class="kpi-sub">{{ ((ns.ca12 / ns.total * 100)|round(1) if ns.total else 0)|pct }} des dossiers</div>
         </div>
         <div class="kpi-chip" style="--accent: var(--success);">
             <div class="kpi-label"><i class="bi bi-layers"></i> Autres</div>
@@ -270,7 +270,7 @@ function orbitChips() {
                     {% set orbit_tva = d._tva_taches_count if d._tva_taches_count is defined else 0 %}
                     {% set orbit_reste = d._tva_taches_restantes if d._tva_taches_restantes is defined else 0 %}
                     {% set orbit_actions = [['Voir les tâches', url_for('voir_taches_dossier', dossier_id=d.id), '', 'bi-list-task'], ['Modifier', 'js:openEditDossier(' ~ d.id ~ ')', 'primary', 'bi-pencil'], ['Pennylane', url_for('pennylane_dossier', dossier_id=d.id), '', 'bi-link-45deg']] %}
-                    <tr tabindex="0" data-orbit-nav data-orbit-kind="Dossier" data-orbit-id="{{ d.id }}" data-orbit-title="{{ d.numero_dossier }} — {{ d.intitule }}" data-orbit-sub="{{ orbit_collab or 'Sans collaborateur' }}" data-orbit-f-collaborateur="{{ orbit_collab }}" data-orbit-f-equipe="{{ d.equipe.nom if d.equipe else '—' }}" data-orbit-f-regime="{{ orbit_regime }}" data-orbit-f-echeances="{{ orbit_echeances | join(' · ') if orbit_echeances else '—' }}" data-orbit-f-delai="{{ d._delai_label }}" data-orbit-f-tva="{{ orbit_tva }} tâche(s)" data-orbit-f-reste="{{ orbit_reste }} restante(s)" data-orbit-f-siren="{{ d.siren or '—' }}" data-orbit-actions='{{ orbit_actions | tojson }}' data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime-combo="{{ d._regime_combo }}" data-date-iso="{{ d._date_iso }}">
+                    <tr tabindex="0" data-orbit-nav data-orbit-kind="Dossier" data-orbit-id="{{ d.id }}" data-orbit-title="{{ d.numero_dossier }} — {{ d.intitule }}" data-orbit-sub="{{ orbit_collab or 'Sans collaborateur' }}" data-orbit-f-collaborateur="{{ orbit_collab }}" data-orbit-f-equipe="{{ d.equipe.nom if d.equipe else '—' }}" data-orbit-f-regime="{{ orbit_regime }}" data-orbit-f-echeances="{{ orbit_echeances | join(' · ') if orbit_echeances else '—' }}" data-orbit-f-delai="{{ d._delai_label }}" data-orbit-f-tva="{{ orbit_tva }} tâche{{ orbit_tva|plur }}" data-orbit-f-reste="{{ orbit_reste }} restante{{ orbit_reste|plur }}" data-orbit-f-siren="{{ d.siren or '—' }}" data-orbit-actions='{{ orbit_actions | tojson }}' data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime-combo="{{ d._regime_combo }}" data-date-iso="{{ d._date_iso }}">
                         <td style="width:36px"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
                         <td><strong>{{ d.numero_dossier }}</strong></td>
                         <td>{{ d.intitule }}</td>
@@ -364,7 +364,7 @@ function orbitChips() {
                                     {% if nb_taches_dossier > 0 %}
                                     <li><a class="dropdown-item" href="{{ url_for('voir_taches_dossier', dossier_id=d.id) }}"><i class="bi bi-list-task me-2"></i>Voir les tâches</a></li>
                                     {% endif %}
-                                    <li><a class="dropdown-item" href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}"><i class="bi bi-link-45deg me-2"></i>Pennylane{% if d.pennylane_customer_id %} <span class="badge badge-success ms-1">â—</span>{% endif %}</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('pennylane_dossier', dossier_id=d.id) }}"><i class="bi bi-link-45deg me-2"></i>Pennylane{% if d.pennylane_customer_id %} <span class="badge badge-success ms-1"><i class="bi bi-check-lg"></i></span>{% endif %}</a></li>
                                     {% if d.siren %}
                                     <li><a class="dropdown-item" href="#" onclick="enrichirDossier({{ d.id }}, this);return false;"><i class="bi bi-stars me-2"></i>Enrichir via SIREN</a></li>
                                     {% endif %}
@@ -379,7 +379,7 @@ function orbitChips() {
                 </tbody>
                 <tfoot class="orbit-tfoot">
                     <tr>
-                        <td colspan="8"><strong>Total — {{ dossiers | length }} dossier(s)</strong></td>
+                        <td colspan="8"><strong>Total — {{ dossiers | length }} dossier{{ dossiers | length|plur }}</strong></td>
                         <td class="text-end"><strong>{{ orbit_tot.tva }}</strong></td>
                         <td class="text-end"><strong>{{ orbit_tot.reste }}</strong></td>
                         <td></td>

@@ -219,7 +219,7 @@
         <i class="bi bi-cloud-check me-1" style="color:var(--info);"></i>
         Dernière synchro Pennylane : <strong>{{ pl_last_sync.quand }} UTC</strong> —
         {% if pl_last_sync.ok %}<span style="color:var(--success);">{{ pl_last_sync.message }}</span>
-        {% else %}<span style="color:var(--danger);">âš ï¸ {{ pl_last_sync.message }}</span>{% endif %}
+        {% else %}<span style="color:var(--danger);"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ pl_last_sync.message }}</span>{% endif %}
         {% else %}
         <i class="bi bi-cloud-check me-1" style="color:var(--info);"></i>
         Aucune synchro Pennylane enregistrée — automatique chaque heure à :10 (UTC).

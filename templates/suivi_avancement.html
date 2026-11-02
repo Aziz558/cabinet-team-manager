@@ -229,9 +229,9 @@
 
     /* Échéancier : chevron au survol + tri des en-têtes */
     .cal-table thead th.avm-sort { cursor: pointer; user-select: none; white-space: nowrap; }
-    .cal-table thead th.avm-sort::after { content: "â†•"; margin-left: 6px; opacity: 0.35; font-size: 0.82em; }
-    .cal-table thead th.avm-sort.asc::after { content: "â†‘"; opacity: 1; color: var(--orange-primary); }
-    .cal-table thead th.avm-sort.desc::after { content: "â†“"; opacity: 1; color: var(--orange-primary); }
+    .cal-table thead th.avm-sort::after { content: "\2195"; margin-left: 6px; opacity: 0.35; font-size: 0.82em; }
+    .cal-table thead th.avm-sort.asc::after { content: "\2191"; opacity: 1; color: var(--orange-primary); }
+    .cal-table thead th.avm-sort.desc::after { content: "\2193"; opacity: 1; color: var(--orange-primary); }
     .cal-table tbody tr td:first-child { position: relative; }
     .cal-table tbody tr:hover td:first-child { padding-right: 26px; }
     .cal-table tbody tr td:first-child .cal-chev { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); color: var(--orange-primary); font-weight: 700; opacity: 0; transition: all 0.16s ease; }
@@ -328,11 +328,11 @@
         </button>
     </div>
     <div class="avm-legend mb-3">
-        <s style="--k:var(--success)"><b>{{ ns.done }}</b> terminée(s)</s>
+        <s style="--k:var(--success)"><b>{{ ns.done }}</b> terminée{{ ns.done|plur }}</s>
         <s style="--k:var(--info)"><b>{{ ns.ec }}</b> en cours</s>
         <s style="--k:var(--warning)"><b>{{ ns.af }}</b> à faire</s>
         <s style="--k:var(--danger)"><b>{{ ns.retard }}</b> en retard</s>
-        <s class="ms-auto text-tertiary">{{ suivi_data|length }} membre(s) suivi(s)</s>
+        <s class="ms-auto text-tertiary">{{ suivi_data|length }} membre{{ suivi_data|length|plur }} suivi{{ suivi_data|length|plur }}</s>
     </div>
 
     <!-- Filtres cartes membres : icones seules -->
@@ -371,7 +371,7 @@
                         <circle class="fil" cx="18" cy="18" r="15.5" pathLength="100"
                                 data-val="{{ (item.terminees / item.total * 100) if item.total else 0 }}"></circle>
                     </svg>
-                    <span class="pct">{{ (item.terminees / item.total * 100)|round(0) if item.total else 0 }}%</span>
+                    <span class="pct">{{ ((item.terminees / item.total * 100)|round(0) if item.total else 0)|pct }}</span>
                 </div>
             </div>
             <div class="avm-counters">
@@ -381,7 +381,7 @@
                 {% if item.en_retard > 0 %}<div class="avm-counter avm-late" title="En retard"><i class="bi bi-exclamation-triangle"></i><strong>{{ item.en_retard }}</strong></div>{% endif %}
             </div>
             <div class="member-progress-wrap avm-progress">
-                <div class="member-progress-top"><span>Avancement</span><strong>{{ (item.terminees / item.total * 100)|round(0) if item.total else 0 }}%</strong></div>
+                <div class="member-progress-top"><span>Avancement</span><strong>{{ ((item.terminees / item.total * 100)|round(0) if item.total else 0)|pct }}</strong></div>
                 {% set pct = (item.terminees / item.total * 100) if item.total > 0 else 0 %}
                 {% set paf = (item.a_faire / item.total * 100) if item.total else 0 %}
                 {% set pec = (item.en_cours / item.total * 100) if item.total else 0 %}
@@ -806,7 +806,7 @@ function renderTaches() {
             + '</tr>';
     });
     body.innerHTML = html || '<tr><td colspan="7" class="text-center text-tertiary py-4">Aucune tâche (filtres actifs ?)</td></tr>';
-    document.getElementById('fCount').textContent = rows.length + ' tâche(s) affichée(s) / ' + MEMBRE_DATA.taches.length;
+    document.getElementById('fCount').textContent = rows.length + ' tâche' + orbitPl(rows.length) + ' affichée' + orbitPl(rows.length) + ' / ' + MEMBRE_DATA.taches.length;
 }
 
 function escapeHtml(s) {

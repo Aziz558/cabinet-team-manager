@@ -7,7 +7,7 @@
         <span class="page-head-icon"><i class="bi bi-check2-square"></i></span>
         <div class="page-head-titles">
             <h2>Tâches</h2>
-            <p class="page-head-sub" id="taskCount">{{ taches|length }} tâche(s)</p>
+            <p class="page-head-sub" id="taskCount">{{ taches|length }} tâche{{ taches|length|plur }}</p>
             {% if _pending_validations > 0 %}
             <span class="sidebar-badge" style="margin-left:8px;">{{ _pending_validations }} validation{{ 's' if _pending_validations > 1 else '' }}</span>
             {% endif %}
@@ -94,22 +94,22 @@
     {% if t.est_en_retard() %}{% set tns.retard = tns.retard + 1 %}{% endif %}
 {% endfor %}
 <div class="kpi-band animate-fade-in-up">
-    <div class="kpi-chip" style="--accent: var(--info);">
-        <div class="kpi-label"><i class="bi bi-stack"></i> Tâches total</div>
+    <div class="kpi-chip" style="--accent: var(--ink-3);">
+        <div class="kpi-label"><i class="bi bi-stack"></i> Total tâches</div>
         <div class="kpi-value">{{ tns.total }}</div>
-        <div class="kpi-sub">{{ membres|length }} membres</div>
+        <div class="kpi-sub">{{ membres|length }} membre{{ membres|length|plur }}</div>
     </div>
     <div class="kpi-chip" style="--accent: var(--danger);">
         <div class="kpi-label"><i class="bi bi-exclamation-triangle"></i> En retard</div>
         <div class="kpi-value">{{ tns.retard }}</div>
-        <div class="kpi-sub">{{ (tns.retard / tns.total * 100)|round(1) if tns.total else 0 }}% du total</div>
+        <div class="kpi-sub">{{ ((tns.retard / tns.total * 100)|round(1) if tns.total else 0)|pct }} du total</div>
     </div>
     <div class="kpi-chip" style="--accent: var(--warning);">
         <div class="kpi-label"><i class="bi bi-hourglass-split"></i> À faire</div>
         <div class="kpi-value">{{ tns.af }}</div>
         <div class="kpi-sub">en attente</div>
     </div>
-    <div class="kpi-chip" style="--accent: var(--orange-primary);">
+    <div class="kpi-chip" style="--accent: var(--info);">
         <div class="kpi-label"><i class="bi bi-arrow-repeat"></i> En cours</div>
         <div class="kpi-value">{{ tns.ec }}</div>
         <div class="kpi-sub">travaux actifs</div>
@@ -117,7 +117,7 @@
     <div class="kpi-chip" style="--accent: var(--success);">
         <div class="kpi-label"><i class="bi bi-check2-circle"></i> Terminées</div>
         <div class="kpi-value">{{ tns.done }}</div>
-        <div class="kpi-sub">{{ (tns.done / tns.total * 100)|round(1) if tns.total else 0 }}% réalisé</div>
+        <div class="kpi-sub">{{ ((tns.done / tns.total * 100)|round(1) if tns.total else 0)|pct }} terminées</div>
     </div>
 </div>
 
@@ -609,12 +609,12 @@ function applyFilter(typeFilter) {
     });
 
     var counter = document.getElementById('taskCount');
-    if (counter) counter.textContent = visibleCount + ' tâche(s)';
+    if (counter) counter.textContent = visibleCount + ' tâche' + orbitPl(visibleCount);
     var fc = document.getElementById('tacheFCount');
     if (fc) fc.textContent = visibleCount + '/' + cards.length;
     /* V5 : compteur barre standard + pastille urgences */
     var rc = document.getElementById('orbitTaskCount');
-    if (rc) rc.innerHTML = '<strong>' + visibleCount + '</strong> / ' + cards.length + ' tâche(s)';
+    if (rc) rc.innerHTML = '<strong>' + visibleCount + '</strong> / ' + cards.length + ' tâche' + orbitPl(cards.length);
     try {
         var todayISO = orbitTodayISO(), urg = 0;
         cards.forEach(function(card) {
@@ -658,8 +658,8 @@ function orbitShowUrgent() {
         if (late) n++;
     });
     var rc = document.getElementById('orbitTaskCount');
-    if (rc) rc.innerHTML = '<strong>' + n + '</strong> tâche(s) en retard';
-    if (window.showToast) showToast('File des urgences : ' + n + ' tâche(s) en retard', 'warning');
+    if (rc) rc.innerHTML = '<strong>' + n + '</strong> tâche' + orbitPl(n) + ' en retard';
+    if (window.showToast) showToast('File des urgences : ' + n + ' tâche' + orbitPl(n) + ' en retard', 'warning');
 }
 
 // Bouton 🔔 : notifier manuellement l'assigné (email + notification in-app)

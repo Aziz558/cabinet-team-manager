@@ -91,19 +91,14 @@
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<link href="{{ url_for('static', filename='css/style.css') }}?v=9" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=5" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/polish.css') }}?v=9" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/workspace.css') }}?v=10" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/orbit-premium.css') }}?v=4" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/mobile-responsive.css') }}?v=2" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/filters-premium.css') }}?v=1" rel="stylesheet">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=10" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/light-theme.css') }}?v=6" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;0,600;1,400&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/orbit-elevate.css') }}?v=1" rel="stylesheet">
-<link href="{{ url_for('static', filename='css/orbit-hallmark-fix.css') }}?v=1" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/orbit-ds.css') }}?v=1" rel="stylesheet">
+    <!-- Feuille système unique : consolidation des 8 couches précédentes + finitions v2 -->
+    <link href="{{ url_for('static', filename='css/orbit-system.css') }}?v=3" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#f5f2ec">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -120,27 +115,13 @@
     <!-- Minimal top bar (replaces bulky Bootstrap navbar) -->
     <header class="app-topbar">
         <div class="app-topbar-left">
-            <a class="app-brand" href="{{ url_for('dashboard') }}">
+            <a class="app-brand" href="{{ url_for('dashboard') }}" title="JMH Orbit — build serveur {{ app_build }}">
                 {% from 'includes/orbit_logo.html' import orbit_logo with context %}
                 <span class="app-brand-icon">{{ orbit_logo(size=24) }}</span>
-                                <span class="app-brand-text">JMH Orbit <small style="font-size:0.5rem;opacity:0.3;" title="Heure de construction du serveur — si tu vois une vieille date, ton navigateur affiche un cache">{{ app_build }}</small></span>
+                <span class="app-brand-text">JMH Orbit</span>
             </a>
             {% if current_user.is_authenticated %}
-            {% set photo_src = current_user.photo_display_src() %}
-            {% if photo_src %}
-            <span class="app-user-icon">
-                <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;">
-            </span>
-            {% else %}
-            {% set role_icon = 'bi-person' %}
-            {% if current_user.role == 'admin' %}
-              {% set role_icon = 'bi-person-badge' %}
-            {% elif current_user.role == 'manager' %}
-              {% set role_icon = 'bi-person-lines-fill' %}
-            {% endif %}
-            <span class="app-user-icon"><i class="bi {{ role_icon }}"></i></span>
-            {% endif %}
-            <button class="app-topbar-toggle" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
+            <button class="app-topbar-toggle" id="sidebarToggle" type="button" aria-label="Replier / déplier la navigation">
                 <i class="bi bi-list fs-4"></i>
             </button>
             {% endif %}
@@ -148,8 +129,8 @@
         <div class="app-topbar-right">
                 {% if current_user.is_authenticated %}
                 <!-- Recherche rapide (palette de commandes) -->
-                <button type="button" class="orbit-search-btn" data-orbit-open-palette title="Recherche rapide (Ctrl + K)">
-                    <i class="bi bi-search"></i><span class="orbit-search-label">Rechercher</span><kbd class="orbit-kbd">&#8984;K</kbd>
+                <button type="button" class="orbit-search-btn" data-orbit-open-palette title="Recherche rapide (Ctrl+K)">
+                    <i class="bi bi-search"></i><span class="orbit-search-label">Rechercher</span><kbd class="orbit-kbd">Ctrl+K</kbd>
                 </button>
                 <!-- Theme toggle -->
                 <button id="themeToggle" aria-label="Changer de thème" style="background:none;border:none;color:var(--text-primary);font-size:18px;cursor:pointer;margin-right:12px;" onclick="toggleTheme()" title="Changer le thème">
@@ -306,6 +287,12 @@
                 }, 100);
             });
         }
+        // Concordance singulier/pluriel côté client : `'tâche' + orbitPl(n)`
+        window.orbitPl = function(n, one, many) {
+            n = Number(n) || 0;
+            if (n === 1) { return one || ''; }
+            return many === undefined ? 's' : many;
+        };
         // Convenience function for non-flashed toasts
         window.showToast = function(message, category) {
             category = category || 'info';

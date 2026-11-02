@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Mon Dashboard{% endblock %}
+{% block title %}Mon tableau de bord{% endblock %}
 
 {% block content %}
 {# ============ BANDEAU « AUJOURD'HUI » ============ #}
 <div class="card-premium today-band animate-fade-in-up mb-4">
     <div class="today-head">
         <div>
-            <div class="today-hello">Bonjour {{ current_user.prenom }} ðŸ‘‹</div>
+            <div class="today-hello">Bonjour {{ current_user.prenom }} <span aria-hidden="true">&#128075;</span></div>
             <div class="today-date" id="todayDateLabelCollab">Voici votre journée</div>
         </div>
         <div class="today-stats">
             <span class="today-chip"><strong>{{ taches_jour|length }}</strong> aujourd'hui</span>
             <span class="today-chip"><strong>{{ taches_semaine|length }}</strong> cette semaine</span>
-            <span class="today-chip"><strong>{{ kpi.taux_completion or 0 }}%</strong> avancement</span>
+            <span class="today-chip"><strong>{{ (kpi.taux_completion or 0)|pct }}</strong> avancement</span>
         </div>
     </div>
     {% if taches_jour %}
@@ -76,8 +76,8 @@
             <div class="stat-card-label">À faire</div>
             <div class="stat-card-value">{{ kpi.taches_a_faire if kpi.taches_a_faire is defined else taches_jour|length }}</div>
             <div class="stat-card-trend down">
-                <i class="bi bi-arrow-down"></i>
-                <span>Urgent</span>
+                <i class="bi bi-exclamation-circle"></i>
+                <span>À traiter en priorité</span>
             </div>
         </div>
     </div>
@@ -87,8 +87,8 @@
         </div>
         <div class="stat-card-content">
             <div class="stat-card-label">Taux d'avancement</div>
-            <div class="stat-card-value">{{ kpi.taux_completion or 0 }}%</div>
-            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ kpi.taux_completion or 0 }}%; background: var(--orange-primary);"></div></div>
+            <div class="stat-card-value">{{ (kpi.taux_completion or 0)|pct }}</div>
+            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ (kpi.taux_completion or 0) | round(0) | int }}%; background: var(--orange-primary);"></div></div>
             <div class="stat-card-trend up">
                 <i class="bi bi-rocket"></i>
                 <span>Progression</span>
@@ -115,7 +115,7 @@
                             <circle class="progress-ring-progress" cx="50" cy="50" r="40" fill="transparent" style="--progress: {{ kpi.taux_completion or 0 }}"></circle>
                         </svg>
                         <div class="progress-ring-text">
-                            <div class="value">{{ kpi.taux_completion or 0 }}%</div>
+                            <div class="value">{{ (kpi.taux_completion or 0)|pct }}</div>
                             <div class="label">Terminé</div>
                         </div>
                     </div>

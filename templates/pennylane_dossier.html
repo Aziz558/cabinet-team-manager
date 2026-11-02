@@ -382,7 +382,7 @@ function checkPennylane() {
     fetch(`/pennylane/check/{{ dossier.id }}`, {method: 'POST'})
     .then(r => r.json()).then(d => {
         if (d.ok && d.nouveaux && d.nouveaux.length > 0) alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
-        else if (d.ok) alert('âœ… Aucun nouveau document.');
+        else if (d.ok) alert('Aucun nouveau document.');
         else alert(d.message || 'Erreur');
         location.reload();
     }).catch(() => { location.reload(); });
@@ -438,7 +438,7 @@ function plRowHtml(l) {
         <td><div class="pl-doc-title" title="${esc(l.num)}">${esc(String(l.num || '').slice(0, 46))}${String(l.num || '').length > 46 ? '…' : ''}</div></td>
         <td class="pl-cell-date">${esc(l.d || '—')}</td>
         <td class="pl-cell-date">${esc((l.ad || '').slice(0, 10) || '—')}</td>
-        <td class="pl-cell-amount">${fmtMontant(l.m)} <span class="pl-devise">â‚¬</span></td>
+        <td class="pl-cell-amount">${fmtMontant(l.m)} <span class="pl-devise">&euro;</span></td>
         <td id="pl-cell-${l.id}" class="pl-cell-action">${badge}${btns}</td>
     </tr>`;
 }
@@ -597,7 +597,7 @@ function syncTvaDossier() {
         }
         btn.innerHTML = orig; btn.disabled = false;
         if (d.ok && d.nouveaux && d.nouveaux.length > 0) alert(`🆕 ${d.resume} nouveau(x) détecté(s) !`);
-        else if (d.ok) alert('âœ… Aucun nouveau document.');
+        else if (d.ok) alert('Aucun nouveau document.');
         else alert(d.message || 'Erreur');
         location.reload();
     }).catch(() => { btn.innerHTML = orig; btn.disabled = false; location.reload(); });

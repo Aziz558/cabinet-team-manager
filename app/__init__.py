@@ -456,6 +456,52 @@ app.jinja_env.globals['date'] = _date
 app.jinja_env.globals['app_build'] = _datetime.now().strftime('%d/%m %H:%M')
 app.jinja_env.globals['orbit_db_warning'] = orbit_db_warning
 
+
+def _fr_pct(value, decimals=1):
+    """Formate un pourcentage à la française : « 75,5 % », « 25 % ».
+
+    - virgule décimale, espace insécable avant le % ;
+    - les décimales inutiles sont supprimées (25,0 → 25) ;
+    - toute valeur non numérique retombe sur 0 %.
+    """
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        n = 0.0
+    if decimals and abs(n - round(n)) < 0.05:
+        decimals = 0
+    s = f"{n:,.{decimals}f}".replace(",", "\u202f").replace(".", ",")
+    return f"{s}\u00a0%"
+
+
+def _fr_num(value, decimals=0):
+    """Séparateur de milliers insécable + virgule décimale (montants, volumes)."""
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        n = 0.0
+    s = f"{n:,.{decimals}f}".replace(",", "\u202f").replace(".", ",")
+    return s
+
+
+app.jinja_env.filters['pct'] = _fr_pct
+app.jinja_env.filters['frnum'] = _fr_num
+
+
+def _plural(count, singular="", plural="s"):
+    """Accord simple : `{{ n }} tâche{{ n|plur }}` → « 1 tâche » / « 3 tâches ».
+
+    Renvoie la chaîne à coller au mot (rien au singulier, « s » au pluriel).
+    """
+    try:
+        n = abs(float(count))
+    except (TypeError, ValueError):
+        n = 0.0
+    return singular if n == 1 else plural
+
+
+app.jinja_env.filters['plur'] = _plural
+
 # Context processor — makes current_equipe available in all templates
 @app.context_processor
 def inject_globals():

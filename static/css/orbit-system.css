@@ -1,0 +1,4131 @@
+/* ============================================================================
+   JMH ORBIT — FEUILLE SYSTÈME UNIQUE (générée)
+   ----------------------------------------------------------------------------
+   Origine : consolidation à l'ordre identique des 8 feuilles qui s'empilaient
+   jusqu'ici (polish, workspace, orbit-premium, mobile-responsive,
+   filters-premium, orbit-elevate, orbit-hallmark-fix, orbit-ds). L'ordre de
+   cascade est STRICTEMENT préservé : le rendu est identique à l'empilement
+   précédent, mais en 1 requête au lieu de 8 et avec un seul endroit à relire.
+   Les 8 fichiers d'origine ne sont plus chargés (récupérables via
+   `git show <commit>:static/css/<fichier>.css`). Exception : orbit-premium.css
+   et orbit-elevate.css restent servis UNIQUEMENT aux pages autonomes
+   (login / register / team_select / error), qui n'étendent pas base.html.
+
+   Pour modifier le style : éditer CE fichier (une règle plus basse l'emporte)
+   ou ajouter à la fin, section « COHÉRENCE & FINITIONS (v2) ».
+   ========================================================================== */
+
+
+/* =========================================================================
+   SECTION — polish.css
+   ====================================================================== */
+
+/* ============================================================
+   POLISH — surcouche UI (light-first). Chargée en DERNIER (apres
+   style.css et light-theme.css) pour affiner les composants vus sur
+   toutes les pages. 100% basee sur les tokens => coherent en clair
+   comme en sombre. Aucun impact sur la logique / le HTML.
+   ============================================================ */
+
+/* Schema de couleur natif : inputs, selects, date pickers, scrollbars systeme */
+:root { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+
+/* Barre de defilement discrete et coherente (tous les panneaux) */
+* { scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Selection de texte */
+::selection { background: rgba(255, 122, 0, 0.18); color: var(--text); }
+
+/* Anneau de focus discret et coherit (clair + sombre) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--orange-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Typographie : titres plus serres et hierarchises */
+h1, h2, h3, h4, .h1, .h2, .h3, .h4 { color: var(--text); letter-spacing: -0.018em; font-weight: 600; }
+.text-gradient-premium { letter-spacing: -0.02em; }
+
+/* Cartes : presence plus nette en clair (bord fin + ombre douce), hover discret */
+.card-premium { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06); }
+.card-premium:hover { box-shadow: 0 6px 18px -6px rgba(16, 24, 40, 0.14), 0 2px 6px rgba(16, 24, 40, 0.06); }
+html[data-theme="dark"] .card-premium { box-shadow: none; }
+html[data-theme="dark"] .card-premium:hover { box-shadow: var(--shadow-lg); }
+
+/* Barre superieure : legere elevation en clair */
+.app-topbar { box-shadow: 0 1px 0 rgba(16, 24, 40, 0.03), 0 2px 8px -4px rgba(16, 24, 40, 0.08); }
+html[data-theme="dark"] .app-topbar { box-shadow: none; }
+
+/* Sidebar : element actif mieux signale (indicateur accent + graisse) */
+.sidebar-nav-item { font-weight: 500; }
+.sidebar-nav-item::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 50%;
+    width: 3px; height: 18px;
+    border-radius: 0 3px 3px 0;
+    background: var(--orange-primary);
+    transform: translateY(-50%) scaleY(0);
+    transition: transform var(--transition);
+}
+.sidebar-nav-item.active { font-weight: 600; }
+.sidebar-nav-item.active::before { transform: translateY(-50%) scaleY(1); }
+
+/* Boutons : micro-elevation et retour au clic */
+.btn-premium { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); }
+.btn-premium:hover { filter: brightness(1.03); }
+.btn-premium:active { transform: translateY(1px); }
+.btn-premium-primary { box-shadow: 0 2px 8px -2px rgba(255, 122, 0, 0.45); }
+html[data-theme="dark"] .btn-premium,
+html[data-theme="dark"] .btn-premium-primary { box-shadow: none; }
+
+/* Tableaux : en-tete affirmee, densite confortable */
+.table-premium thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; }
+.table-premium tbody td { padding-top: 0.85rem; padding-bottom: 0.85rem; }
+
+/* ============================================================
+   1) KPI / CARTES DE STAT (dashboard_manager, dashboard_collaborateur)
+   ============================================================ */
+.stats-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.15rem; margin: 1.5rem 0; }
+.stat-card { box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 2px 6px -2px rgba(16,24,40,.06); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -8px rgba(16,24,40,.16); }
+.stat-card-icon { width: 46px; height: 46px; border-radius: 12px; margin-bottom: 0.9rem; box-shadow: inset 0 0 0 1px rgba(0,0,0,.03); }
+.stat-card-icon i { font-size: 1.35rem; }
+.stat-card-label { font-size: 0.72rem; color: var(--text-muted); letter-spacing: .05em; margin-bottom: .3rem; }
+.stat-card-value { font-size: 2rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: .35rem; }
+.stat-card-trend { font-size: 0.8rem; font-weight: 600; }
+html[data-theme="dark"] .stat-card { box-shadow: none; }
+html[data-theme="dark"] .stat-card:hover { box-shadow: var(--shadow-lg); }
+html[data-theme="dark"] .stat-card-icon { box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+
+/* ============================================================
+   2) SQUELETTES DE CHARGEMENT + ETATS VIDES
+   ============================================================ */
+.skeleton { border-radius: 10px; }
+html[data-theme="light"] .skeleton {
+    background: linear-gradient(90deg, #eef0f4 25%, #e1e4ea 37%, #eef0f4 63%);
+    background-size: 200% 100%;
+}
+.empty-state { padding: 2.5rem 1.25rem; }
+.empty-state-title { color: var(--text); font-weight: 600; font-size: 1.05rem; }
+.empty-state p { color: var(--text-muted); font-size: 0.9rem; max-width: 360px; margin: 0.35rem auto 0; }
+
+/* ============================================================
+   3) FORMULAIRES HARMONISES (input-premium + Bootstrap)
+   ============================================================ */
+.input-premium, .form-control, .form-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text);
+    border-radius: 10px;
+}
+.input-premium::placeholder, .form-control::placeholder { color: var(--text-muted); opacity: .8; }
+.input-premium:hover:not(:focus), .form-control:hover:not(:focus), .form-select:hover:not(:focus) { border-color: var(--border-strong); }
+.input-premium:focus, .form-control:focus, .form-select:focus {
+    background: var(--bg-card);
+    border-color: var(--orange-primary);
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(255,122,0,.15);
+    outline: none;
+}
+.form-label, .form-label-premium { color: var(--text-secondary); font-weight: 500; font-size: .875rem; }
+textarea.input-premium, textarea.form-control { min-height: 90px; }
+
+/* ============================================================
+   6) CONTRASTE MARQUE (logo + bascule) — cohérent clair/sombre
+   ============================================================ */
+.sidebar-logo { border-radius: 8px; }
+.app-brand-icon { display: inline-flex; }
+#themeToggle i { line-height: 1; }
+
+/* ============================================================
+   4) RESPONSIVE — tableaux adaptés + espacements + tiroir mobile
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .table-premium { display: block; width: 100%; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .card-body-premium { padding: 1rem; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+    .stat-card-value { font-size: 1.6rem; }
+    .stat-card-icon { width: 40px; height: 40px; }
+    .container { padding-left: .75rem; padding-right: .75rem; }
+    .app-topbar { left: 0 !important; padding: 0 .75rem; }
+
+    /* Sidebar en tiroir hors-canvas sur mobile */
+    #sidebarCol {
+        display: flex !important;
+        position: fixed !important;
+        top: 56px; left: 0; bottom: 0;
+        width: 240px !important; max-width: 82vw; padding: 0;
+        transform: translateX(-100%);
+        transition: transform .26s ease;
+        box-shadow: 0 0 40px rgba(0,0,0,.35);
+        z-index: 1040;
+    }
+    #sidebarCol .sidebar { position: static; width: 100% !important; height: 100%; box-shadow: none; }
+    #sidebarCol .sidebar-nav-item span,
+    #sidebarCol .sidebar-section-title,
+    #sidebarCol .sidebar-brand-text,
+    #sidebarCol .sidebar-subtitle { display: inline-block !important; }
+    #sidebarCol .sidebar-nav-item { justify-content: flex-start !important; padding: .55rem .75rem !important; }
+    body.sidebar-open #sidebarCol { transform: translateX(0); }
+    body.sidebar-open { overflow: hidden; }
+    body.sidebar-open .sidebar-backdrop { opacity: 1; visibility: visible; }
+}
+.sidebar-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(8, 9, 11, .55);
+    opacity: 0; visibility: hidden;
+    transition: opacity .2s ease;
+    z-index: 1039;
+}
+
+/* ============================================================
+   V3 — MONTEE EN GAMME UI/UX GLOBALE
+   ============================================================ */
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { letter-spacing: -0.005em; }
+::selection { background: rgba(255,122,0,.22); color: inherit; }
+
+/* Scrollbars cohérentes */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: content-box; }
+
+/* Focus accessible */
+:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 2px; border-radius: 6px; }
+
+/* Titres de page */
+main h2 { letter-spacing: -0.02em; font-weight: 700; }
+h1, h2, h3, h4, h5 { color: var(--text-primary); }
+
+/* Cartes premium : profondeur + interaction */
+.card-premium { border-radius: 16px; box-shadow: var(--shadow-sm); }
+.card-premium:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+.card-header-premium { font-size: .95rem; letter-spacing: .01em; }
+html[data-theme="dark"] .card-premium { box-shadow: none; }
+html[data-theme="dark"] .card-premium:hover { border-color: rgba(255,255,255,.14); box-shadow: none; }
+
+/* Boutons : hauteur, poids, micro-interactions */
+.btn-premium { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: 10px; padding: .68rem 1.25rem; font-weight: 600; transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease; }
+.btn-premium:active { transform: translateY(1px) scale(.995); }
+.btn-premium-primary { box-shadow: 0 1px 2px rgba(255,122,0,.25); }
+.btn-premium-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,122,0,.28); }
+.btn-premium-secondary:hover { transform: translateY(-1px); border-color: var(--border-strong); }
+.btn-premium:disabled, .btn-premium.disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* Badges : pastilles sobres */
+.badge { border-radius: 999px; padding: .32em .6em; font-weight: 600; font-size: .72rem; letter-spacing: .01em; }
+.badge-tertiary { background: var(--bg-card-hover); color: var(--text-tertiary); }
+.sidebar-badge { background: var(--orange-primary); color: #fff; border-radius: 999px; padding: .15em .55em; font-weight: 700; font-size: .68rem; line-height: 1; margin-left: 6px; vertical-align: middle; }
+
+/* Tableaux : lisibilité */
+.table-premium thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border-color); }
+.table-premium tbody tr { transition: background .15s ease; }
+.table-premium tbody tr:hover td { background: var(--bg-card-hover); }
+
+/* Sidebar : navigation claire */
+.sidebar-nav-item { transition: background .18s ease, color .18s ease, transform .18s ease; }
+.sidebar-nav-item:hover { background: var(--bg-sidebar-hover); color: var(--text-primary); }
+.sidebar-nav-item.active { background: var(--orange-subtle); color: var(--text-primary); font-weight: 600; }
+.sidebar-nav-item.active i { color: var(--orange-primary); }
+.sidebar-section-title { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+
+/* Barre supérieure */
+.app-topbar { box-shadow: 0 1px 0 var(--border-color); }
+
+/* Modales */
+.modal-content, .modal-content-premium { border-radius: 16px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xl); }
+
+/* Sélecteur de thème (Paramètres → Apparence) */
+.theme-choice-group { display: flex; gap: .75rem; flex-wrap: wrap; }
+.theme-choice { flex: 1 1 200px; display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; text-align: left; padding: 1rem; border-radius: 14px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, transform .15s ease; }
+.theme-choice i { font-size: 1.25rem; color: var(--orange-primary); margin-bottom: .35rem; }
+.theme-choice span { font-weight: 600; }
+.theme-choice small { color: var(--text-muted); font-size: .78rem; }
+.theme-choice:hover { border-color: var(--border-strong); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.theme-choice.active { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255,122,0,.15); background: var(--orange-subtle); }
+
+/* ============================================================
+   V5 — STANDARDISATION UI GLOBALE : en-têtes, filtres, statuts,
+   états vides, tableaux responsives, KPI cliquables.
+   100% compatible clair/sombre, respecte prefers-reduced-motion.
+   ============================================================ */
+
+/* ---------- 1) EN-TÊTE DE PAGE STANDARD ---------- */
+.page-head .page-head-titles h2 { letter-spacing: -0.02em; }
+.page-head-count {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.72rem; font-weight: 600; padding: 0.22rem 0.6rem;
+    border-radius: 999px; background: var(--orange-subtle);
+    color: var(--orange-primary); border: 1px solid var(--border-active);
+    margin-left: 0.6rem; vertical-align: middle; white-space: nowrap;
+}
+.page-head-sub .text-alert { color: var(--danger); font-weight: 600; }
+
+/* ---------- 2) BARRE DE FILTRES STANDARD : compteur + reset ---------- */
+.orbit-filter-count {
+    font-size: 0.76rem; color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.orbit-filter-count strong { color: var(--text-primary); }
+.orbit-filter-reset {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-secondary); border-radius: 9px; padding: 0.3rem 0.65rem;
+    font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.orbit-filter-reset:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: var(--border-strong); }
+/* ---------- 3) BADGES DE STATUT UNIFIÉS ---------- */
+.st {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    border-radius: 999px; padding: 0.28em 0.65em;
+    font-weight: 600; font-size: 0.72rem; letter-spacing: 0.01em;
+    border: 1px solid transparent; white-space: nowrap; line-height: 1.5;
+}
+.st::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.st-todo { background: var(--danger-bg); color: var(--danger); }
+.st-doing { background: var(--warning-bg); color: var(--warning); }
+.st-done { background: var(--success-bg); color: var(--success); }
+.st-late { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.st-today { background: var(--orange-subtle); color: var(--orange-primary); border-color: var(--border-active); }
+.st-soon { background: var(--info-bg); color: var(--info); }
+.st-neutral { background: var(--bg-card-hover); color: var(--text-tertiary); border-color: var(--border-color); }
+
+/* ---------- 4) ÉTAT VIDE STANDARD AVEC ACTION ---------- */
+.orbit-empty { text-align: center; padding: 2.5rem 1.5rem; }
+.orbit-empty-icon {
+    width: 56px; height: 56px; border-radius: 18px; margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--orange-subtle); color: var(--orange-primary); font-size: 1.5rem;
+}
+.orbit-empty h4 { font-size: 1.02rem; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 0.3rem; }
+.orbit-empty p { color: var(--text-tertiary); font-size: 0.86rem; margin-bottom: 1.1rem; }
+
+/* ---------- 5) TABLEAUX RESPONSIVES : cartes empilées sous 900px ---------- */
+@media (max-width: 900px) {
+    .table-responsive.orbit-stack table.table-premium thead { display: none; }
+    .table-responsive.orbit-stack table.table-premium,
+    .table-responsive.orbit-stack table.table-premium tbody,
+    .table-responsive.orbit-stack table.table-premium tr,
+    .table-responsive.orbit-stack table.table-premium td { display: block; width: 100%; }
+    .table-responsive.orbit-stack table.table-premium tr {
+        border: 1px solid var(--border-color); border-radius: 12px;
+        margin-bottom: 0.7rem; overflow: hidden; background: var(--bg-card);
+    }
+    .table-responsive.orbit-stack table.table-premium td {
+        border: none; border-bottom: 1px dashed var(--border-color);
+        padding: 0.6rem 0.9rem; text-align: left;
+    }
+    .table-responsive.orbit-stack table.table-premium td:last-child { border-bottom: none; }
+    .table-responsive.orbit-stack table.table-premium td[data-label]::before {
+        content: attr(data-label); display: block;
+        font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.2rem;
+    }
+    .table-responsive.orbit-stack table.table-premium td.orbit-hide-mobile { display: none; }
+}
+.today-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.today-hello { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+.today-date { color: var(--text-muted); font-size: .85rem; }
+.today-stats { display: flex; gap: .5rem; flex-wrap: wrap; }
+.today-chip { display: inline-flex; align-items: baseline; gap: .35rem; padding: .4rem .7rem; border-radius: 999px; background: var(--bg-card-hover); border: 1px solid var(--border-color); font-size: .8rem; color: var(--text-secondary); }
+.today-chip strong { color: var(--text-primary); font-size: .95rem; font-weight: 700; }
+.today-chip.danger { background: var(--danger-bg); border-color: transparent; color: var(--danger); }
+.today-chip.danger strong { color: var(--danger); }
+.today-list { margin-top: .9rem; display: flex; flex-direction: column; gap: .35rem; }
+.today-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border-radius: 10px; text-decoration: none; color: var(--text-primary); border: 1px solid transparent; transition: background .15s ease, border-color .15s ease; }
+.today-item:hover { background: var(--bg-card-hover); border-color: var(--border-color); color: var(--text-primary); }
+.today-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+.today-dot.prio-haute { background: var(--danger); }
+.today-dot.prio-moyenne { background: var(--warning); }
+.today-dot.prio-basse { background: var(--success); }
+.today-item-title { font-weight: 600; font-size: .875rem; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-item-meta { font-size: .75rem; color: var(--text-muted); }
+.today-empty { margin-top: .8rem; display: flex; align-items: center; gap: .5rem; color: var(--text-tertiary); font-size: .875rem; }
+.today-empty i { color: var(--success); font-size: 1.1rem; }
+
+.quick-actions-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+.qa-title { font-size: .78rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.qa-title i { color: var(--orange-primary); }
+.quick-actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+.qa-btn { display: flex; align-items: center; gap: .6rem; padding: .7rem .85rem; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); text-decoration: none; font-weight: 600; font-size: .85rem; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.qa-btn i { font-size: 1.05rem; color: var(--orange-primary); }
+.qa-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--border-strong); color: var(--text-primary); }
+
+.stat-mini { height: 5px; border-radius: 999px; background: var(--bg-card-active); overflow: hidden; margin: .1rem 0 .5rem; }
+.stat-mini-fill { height: 100%; border-radius: 999px; background: var(--orange-primary); transition: width .6s cubic-bezier(.22,1,.36,1); }
+html[data-theme="dark"] .stat-mini { background: rgba(255,255,255,.08); }
+
+/* ============================================================
+   V4.2 — EN-TÊTES DE PAGE UNIFIES
+   ============================================================ */
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.page-head-main { display: flex; align-items: center; gap: .8rem; min-width: 0; }
+.page-head-icon { width: 42px; height: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--orange-subtle); color: var(--orange-primary); font-size: 1.15rem; flex-shrink: 0; }
+.page-head-titles { min-width: 0; }
+.page-head h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--text-primary); }
+.page-head-sub { color: var(--text-muted); font-size: .82rem; margin: 0; }
+.page-head-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+@media (max-width: 767.98px) {
+  .page-head { align-items: flex-start; }
+  .page-head h2 { font-size: 1.15rem; }
+  .page-head-icon { width: 36px; height: 36px; font-size: 1rem; }
+}
+
+/* ============================================================
+   V4.3 — SIDEBAR : recherche rapide + sections repliables
+   ============================================================ */
+.sidebar-search { position: relative; margin: .25rem .75rem .75rem; }
+.sidebar-search > i { position: absolute; left: .6rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: .9rem; pointer-events: none; }
+.sidebar-search input { width: 100%; padding: .5rem .6rem .5rem 1.9rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-card-hover); color: var(--text-primary); font-size: .82rem; outline: none; }
+.sidebar-search input:focus { border-color: var(--orange-primary); background: var(--bg-card); box-shadow: 0 0 0 3px rgba(255,122,0,.15); }
+.sidebar-group-title { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; padding: .55rem .75rem .35rem; cursor: pointer; color: var(--text-muted); font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.sidebar-group-title:hover { color: var(--text-secondary); }
+.sidebar-group-title .bi-chevron-down { transition: transform .2s ease; font-size: .7rem; }
+.sidebar-group.collapsed .sidebar-group-title .bi-chevron-down { transform: rotate(-90deg); }
+.sidebar-group.collapsed .sidebar-group-items { display: none; }
+.sidebar-nav-item.hidden-by-search { display: none !important; }
+.sidebar-search-empty { display: none; padding: .5rem .9rem; color: var(--text-muted); font-size: .8rem; }
+.sidebar-search-empty.show { display: block; }
+/* Mode icônes (sidebar effondrée) : on masque recherche et libellés de groupe */
+.sidebar-collapsed .sidebar-search,
+.sidebar-collapsed .sidebar-group-title span,
+.sidebar-collapsed .sidebar-group-title .bi-chevron-down { display: none !important; }
+
+/* ---------- 6) KPI CLIQUABLES (filtres rapides) ---------- */
+a.kpi-chip, button.kpi-chip {
+    cursor: pointer; text-decoration: none; color: inherit;
+    display: block; text-align: left; width: 100%; font: inherit; background: none;
+}
+a.kpi-chip:hover, button.kpi-chip:hover { border-color: var(--orange-primary); background: var(--orange-subtle); }
+a.kpi-chip.is-active, button.kpi-chip.is-active { border-color: var(--orange-primary); box-shadow: 0 0 0 2px var(--orange-subtle); }
+
+/* ============================================================
+   V5.1 — LOGO ORBIT INTERACTIF : anneaux + particules, réagit au
+   survol, au clic (ouvre la palette) et suit le thème.
+   ============================================================ */
+.orbit-logo { position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.orbit-logo svg { display: block; overflow: visible; }
+.orbit-logo .orbit-ring { fill: none; transform-origin: center; transform-box: fill-box; transition: stroke 0.3s ease, opacity 0.3s ease; }
+.orbit-logo .orbit-ring-a { animation: orbitSpinA 9s linear infinite; }
+.orbit-logo .orbit-ring-b { animation: orbitSpinB 14s linear infinite; }
+@keyframes orbitSpinA { to { transform: rotate(360deg); } }
+@keyframes orbitSpinB { to { transform: rotate(-360deg); } }
+.orbit-logo .orbit-core { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center; transform-box: fill-box; }
+.orbit-logo:hover .orbit-core { transform: scale(1.12); }
+.orbit-logo:active .orbit-core { transform: scale(0.94); }
+.orbit-logo .orbit-sat { transition: opacity 0.3s ease; transform-origin: center; transform-box: fill-box; }
+.orbit-logo:hover .orbit-sat { animation: orbitSatPulse 1.1s ease-in-out infinite; }
+@keyframes orbitSatPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.orbit-logo-burst { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: var(--orange-primary); pointer-events: none; z-index: 5; }
+.orbit-logo:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 3px; border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) {
+    .orbit-logo .orbit-ring-a, .orbit-logo .orbit-ring-b, .orbit-logo:hover .orbit-sat { animation: none; }
+}
+
+.orbit-db-warning { display: flex; align-items: flex-start; gap: .75rem; padding: .85rem 1rem; margin-bottom: 1rem; border-radius: 12px; border: 1px solid rgba(209,67,67,.35); background: var(--danger-bg); color: var(--danger); }
+.orbit-db-warning > i { font-size: 1.2rem; line-height: 1.2; margin-top: 1px; }
+.orbit-db-warning-text { display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; }
+.orbit-db-warning-text strong { font-weight: 700; }
+.orbit-db-warning-close { margin-left: auto; background: none; border: none; color: inherit; font-size: 1.3rem; line-height: 1; cursor: pointer; opacity: .7; }
+.orbit-db-warning-close:hover { opacity: 1; }
+html[data-theme="dark"] .orbit-db-warning { background: rgba(209,67,67,.12); border-color: rgba(209,67,67,.35); }
+
+/* ============================================================
+   V4.4 — TOASTS plus clairs + micro-animations de listes
+   ============================================================ */
+.toast { border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-elevated); color: var(--text-primary); box-shadow: var(--shadow-lg); overflow: hidden; }
+.toast-header { background: transparent; border-bottom: 1px solid var(--border-color); color: var(--text-primary); font-weight: 600; }
+.toast-body { color: var(--text-secondary); }
+.toast.toast-success { border-left: 4px solid var(--success); }
+.toast.toast-danger { border-left: 4px solid var(--danger); }
+.toast.toast-warning { border-left: 4px solid var(--warning); }
+.toast.toast-info { border-left: 4px solid var(--info); }
+html[data-theme="dark"] .toast-header .btn-close { filter: invert(1) grayscale(1) brightness(2); }
+html[data-theme="light"] .toast-header .btn-close-white { filter: none; }
+
+@keyframes orbitRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.today-list > *, .quick-actions-grid > * { animation: orbitRise .45s ease backwards; }
+.today-list > *:nth-child(1), .quick-actions-grid > *:nth-child(1) { animation-delay: .04s; }
+.today-list > *:nth-child(2), .quick-actions-grid > *:nth-child(2) { animation-delay: .08s; }
+.today-list > *:nth-child(3), .quick-actions-grid > *:nth-child(3) { animation-delay: .12s; }
+.today-list > *:nth-child(4), .quick-actions-grid > *:nth-child(4) { animation-delay: .16s; }
+.today-list > *:nth-child(5), .quick-actions-grid > *:nth-child(5) { animation-delay: .20s; }
+.today-list > *:nth-child(6), .quick-actions-grid > *:nth-child(6) { animation-delay: .24s; }
+@media (prefers-reduced-motion: reduce) {
+  .today-list > *, .quick-actions-grid > * { animation: none; }
+}
+
+/* ============================================================
+   6) TRANSITION DEGRADEE DU THEME (clair <-> sombre)
+   But : un fondu progressif (~420 ms) au lieu d'un saut sec.
+   - Navigateurs compatibles : View Transitions API -> fondu croise global.
+   - Repli : classe .orbit-theme-anim ajoutee UNIQUEMENT pendant le
+     basculement (aucun cout permanent sur les performances).
+   - prefers-reduced-motion : bascule instantanee.
+   ============================================================ */
+
+/* Repli : transitions cibles, actives seulement pendant le basculement */
+html.orbit-theme-anim,
+html.orbit-theme-anim *,
+html.orbit-theme-anim *::before,
+html.orbit-theme-anim *::after {
+    transition: background-color 420ms cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 420ms cubic-bezier(0.4, 0, 0.2, 1),
+                color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                fill 300ms ease,
+                stroke 300ms ease,
+                box-shadow 420ms ease !important;
+    transition-delay: 0s !important;
+}
+
+/* Voile : attenue le pic lumineux pendant le fondu (effet degrade) */
+.orbit-theme-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    pointer-events: none;
+    opacity: 0;
+    background: var(--bg-dark);
+}
+.orbit-theme-veil--out { animation: orbitVeil 420ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+@keyframes orbitVeil {
+    0%   { opacity: 0; }
+    35%  { opacity: 0.5; }
+    100% { opacity: 0; }
+}
+
+/* View Transitions : fondu croise global */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-duration: 420ms;
+}
+::view-transition-old(root) { animation-name: orbitVtOut; }
+::view-transition-new(root) { animation-name: orbitVtIn; }
+@keyframes orbitVtOut { to { opacity: 0; } }
+@keyframes orbitVtIn  { from { opacity: 0; } to { opacity: 1; } }
+
+/* Icone du selecteur de theme : rotation + scale a la bascule */
+#themeIcon, #authThemeToggle i {
+    display: inline-block;
+    transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.orbit-theme-anim #themeIcon { transform: rotate(180deg) scale(0.9); }
+
+@media (prefers-reduced-motion: reduce) {
+    html.orbit-theme-anim,
+    html.orbit-theme-anim *,
+    html.orbit-theme-anim *::before,
+    html.orbit-theme-anim *::after { transition: none !important; }
+    .orbit-theme-veil--out { animation: none !important; }
+    ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
+
+/* ============================================================
+   7) CHIFFRES TABULAIRES + MICRO-INTERACTIONS D'ENTREE
+   ============================================================ */
+.stat-card-value, .stat-card-trend, .table-premium td, .kpi-value {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
+/* Apparition en cascade (pur CSS, aucun JS requis, cibles existantes) */
+@keyframes orbitRise {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+.page-head, .stats-grid > * { animation: orbitRise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stats-grid > *:nth-child(1) { animation-delay: 0.02s; }
+.stats-grid > *:nth-child(2) { animation-delay: 0.07s; }
+.stats-grid > *:nth-child(3) { animation-delay: 0.12s; }
+.stats-grid > *:nth-child(4) { animation-delay: 0.17s; }
+.stats-grid > *:nth-child(5) { animation-delay: 0.22s; }
+.stats-grid > *:nth-child(6) { animation-delay: 0.27s; }
+.table-premium tbody > tr:nth-child(-n+14) {
+    animation: orbitRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.table-premium tbody > tr:nth-child(-n+14):nth-child(n+2) { animation-delay: 0.05s; }
+
+/* Retour tactile leger sur les boutons */
+.btn-premium:active, .btn-premium-primary:active {
+    transform: translateY(1px) scale(0.985);
+}
+
+/* Barre d'accent qui glisse au survol des lignes */
+.table-premium tbody tr {
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.table-premium tbody tr:hover { box-shadow: inset 3px 0 0 var(--orange-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+    .page-head, .stats-grid > *, .table-premium tbody > tr:nth-child(-n+14) { animation: none !important; }
+}
+
+/* ============================================================
+   8) MICRO-INTERACTIONS (scroll, modales, boutons, etats vides)
+   ============================================================ */
+
+/* Barre superieure : elle se compacte des que l'on descend */
+.app-topbar { transition: height .25s cubic-bezier(.4,0,.2,1), box-shadow .25s ease; }
+.app-topbar.is-compact {
+    height: 48px;
+    box-shadow: 0 1px 0 var(--border-color), 0 6px 18px -8px rgba(16,24,40,.18);
+}
+html[data-theme="dark"] .app-topbar.is-compact { box-shadow: 0 1px 0 rgba(255,255,255,.06); }
+
+/* Modales : entree discrete (montee + leger recadrage) */
+.modal.show .modal-content-premium { animation: orbitPop .3s cubic-bezier(.16,1,.3,1) both; }
+@keyframes orbitPop {
+    from { opacity: 0; transform: translateY(10px) scale(.985); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* Boutons : relief et profondeur homogenes */
+.btn-premium, .btn-premium-primary {
+    transition: transform .16s cubic-bezier(.4,0,.2,1), box-shadow .2s ease,
+                filter .2s ease, background-color .42s ease;
+}
+
+/* Cartes KPI : profondeur au survol */
+.stat-card { transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease; }
+.stat-card:hover { transform: translateY(-3px); }
+
+/* Etat vide : icone qui flotte tres legerement */
+@keyframes orbitFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.empty-state i, .empty-state-icon { animation: orbitFloat 5s ease-in-out infinite; }
+
+/* Focus clavier : halo plus genereux, moins agressif pour l'oeil */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--orange-primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(255, 140, 0, .16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-topbar, .stat-card, .btn-premium, .btn-premium-primary { transition: none !important; }
+    .modal.show .modal-content-premium { animation: none !important; }
+    .empty-state i, .empty-state-icon { animation: none !important; }
+    .stat-card:hover { transform: none !important; }
+}
+
+/* ============================================================
+   9) DASHBOARD — cartes alertes / notifications + triage Pennylane
+   ============================================================ */
+.dash-alert {
+    transition: transform .18s cubic-bezier(.16,1,.3,1), box-shadow .18s ease, border-color .18s ease;
+}
+.dash-alert:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -8px rgba(244,67,54,.45);
+    border-color: rgba(244,67,54,.45) !important;
+}
+.dash-notif {
+    transition: background .15s ease, transform .15s ease;
+    cursor: default;
+}
+.dash-notif:hover {
+    background: rgba(255,140,0,.10) !important;
+    transform: translateX(2px);
+}
+/* Cartes du rail : leger lift au survol pour sentir la zone cliquable */
+.orbit-dash .card-premium .card-header-premium { position: relative; }
+.orbit-dash .card-premium .card-header-premium::after {
+    content: "";
+    position: absolute;
+    left: 1.35rem;
+    bottom: 0;
+    width: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--orange-primary);
+    transition: width .25s cubic-bezier(.16,1,.3,1);
+}
+.orbit-dash .card-premium:hover .card-header-premium::after { width: 2.2rem; }
+@media (prefers-reduced-motion: reduce) {
+    .dash-alert, .dash-notif { transition: none !important; }
+    .dash-alert:hover, .dash-notif:hover { transform: none !important; }
+    .orbit-dash .card-premium .card-header-premium::after { transition: none !important; }
+}
+
+/* ============================================================
+   10) UI PAGES — SUIVI / TÂCHES / DOSSIERS
+   Harmonise page-head, KPI, toolbars, tableaux, task board/cards
+   ============================================================ */
+
+/* Page head (défini en V4.2) : fond subtil pour mieux détacher l'en-tête */
+.page-head {
+    background: linear-gradient(180deg, transparent 0%, rgba(255,140,0,.03) 100%);
+    border-radius: 14px;
+    padding: .75rem 1rem .5rem;
+}
+html[data-theme="dark"] .page-head {
+    background: linear-gradient(180deg, transparent 0%, rgba(255,140,0,.08) 100%);
+}
+
+/* KPI band unifié (complète la règle « KPI cliquables » ci-dessus) */
+.kpi-band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: .75rem;
+    margin: .5rem 0 1rem;
+}
+.kpi-chip {
+    border-radius: 14px;
+    transition: transform .18s cubic-bezier(.16,1,.3,1), box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.kpi-chip:hover { transform: translateY(-2px); }
+.kpi-chip.is-active,
+a.kpi-chip.is-active,
+button.kpi-chip.is-active {
+    border-color: var(--orange-primary);
+    box-shadow: 0 0 0 2px var(--orange-subtle);
+    background: var(--orange-subtle);
+}
+
+/* Toolbar Orbit (compteur + chips + actions) */
+.orbit-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem .6rem;
+    padding: .45rem .6rem;
+    margin: .25rem 0 .75rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+}
+.orbit-toolbar-count { font-size: .88rem; color: var(--text-secondary); font-weight: 600; }
+.orbit-toolbar-spacer { flex: 1 1 auto; }
+.orbit-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .38rem .6rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: .82rem;
+    font-weight: 600;
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.orbit-tool-btn:hover { background: var(--bg-card-hover); border-color: var(--border-strong); }
+.orbit-tool-btn:active { transform: translateY(1px); }
+.orbit-toolbar [data-orbit-chips] { display: flex; flex-wrap: wrap; gap: .4rem; }
+.orbit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .28rem .55rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-active);
+    background: var(--orange-subtle);
+    color: var(--text-primary);
+    font-size: .72rem;
+    font-weight: 600;
+}
+.orbit-chip button { border: none; background: transparent; color: var(--text-tertiary); line-height: 1; padding: 0 .15rem; }
+.orbit-chip button:hover { color: var(--text-primary); }
+html[data-theme="dark"] .orbit-toolbar { box-shadow: none; }
+
+/* Task board + cartes (Tâches) */
+.task-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.task-card {
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+    transition: transform .2s cubic-bezier(.16,1,.3,1), box-shadow .2s ease, border-color .2s ease;
+    outline: none;
+}
+.task-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+.task-card:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 2px; box-shadow: 0 0 0 4px rgba(255,140,0,.16); }
+.task-card.task-overdue { border-color: rgba(209,67,67,.45); }
+.task-card-header { padding: .65rem .85rem .25rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.task-title { font-size: 1.02rem; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 .25rem; }
+.task-desc { color: var(--text-tertiary); font-size: .92rem; margin: 0 0 .5rem; }
+.task-meta { display: flex; flex-wrap: wrap; gap: .4rem .6rem; color: var(--text-muted); font-size: .8rem; }
+.task-meta-item { display: inline-flex; align-items: center; gap: .35rem; }
+.task-card-footer { padding: .5rem .85rem .75rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; border-top: 1px solid var(--border-color); background: linear-gradient(180deg, transparent 0%, var(--bg-card-hover) 100%); border-radius: 0 0 14px 14px; }
+.btn-task { border-radius: 10px; }
+@media (max-width: 767.98px) {
+    .task-board { grid-template-columns: 1fr; }
+    .orbit-toolbar { gap: .4rem; }
+}
+
+/* Tableaux respirants (Dossiers) */
+.table-premium-breathe tbody td { padding-top: .9rem; padding-bottom: .9rem; vertical-align: middle; }
+.table-premium thead th { background: var(--bg-card-hover); border-bottom: 1px solid var(--border-color); }
+.table-premium tbody tr:hover td { background: var(--bg-card-hover); }
+html[data-theme="dark"] .table-premium thead th { background: rgba(255,255,255,.04); }
+
+/* Filtres Dossiers (barre avm + panneaux) */
+.avm-bar .card-body-premium { padding: .4rem .6rem !important; }
+.avm-iconbar { gap: .25rem; }
+.avm-fico, .avm-select {
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.avm-fico:hover, .avm-select:hover { background: var(--bg-card-hover); border-color: var(--border-strong); }
+.avm-fico.on, .avm-select.on { border-color: var(--orange-primary); background: var(--orange-subtle); }
+
+/* États vides harmonisés */
+.task-empty,
+.empty-state,
+.orbit-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: .5rem;
+    padding: 2.25rem 1.25rem;
+    border-radius: 14px;
+    border: 1px dashed var(--border-color);
+    background: radial-gradient(120% 120% at 50% 0%, var(--bg-card) 0%, transparent 100%);
+}
+.task-empty i,
+.empty-state i,
+.orbit-empty-icon i { font-size: 2rem; color: var(--orange-primary); animation: orbitFloat 5s ease-in-out infinite; }
+.task-empty p,
+.empty-state p,
+.orbit-empty p { color: var(--text-tertiary); margin: 0; max-width: 360px; }
+@media (prefers-reduced-motion: reduce) {
+    .task-empty i,
+    .empty-state i,
+    .orbit-empty-icon i { animation: none !important; }
+}
+
+
+/* =========================================================================
+   SECTION — workspace.css
+   ====================================================================== */
+
+/* ============================================================
+   WORKSPACE — Phase 4 : répartition des données façon Pennylane
+   Chargée APRÈS polish.css. Tout est piloté par des attributs
+   data-orbit-* : aucun impact sur la logique métier existante.
+   ============================================================ */
+
+/* ---------- 1) LISTES : densité + navigation clavier ---------- */
+html.orbit-compact .table-premium tbody td { padding-top: 0.42rem; padding-bottom: 0.42rem; }
+html.orbit-compact .table-premium thead th { font-size: 0.66rem; padding: 0.5rem 0.6rem; }
+html.orbit-compact .task-card { padding: 0.7rem 0.85rem; }
+html.orbit-compact .task-card-body p { margin-bottom: 0.2rem; }
+html.orbit-compact .kpi-chip { padding: 0.6rem 0.75rem; }
+html.orbit-compact .stat-card { padding: 0.9rem; }
+
+[data-orbit-nav] { transition: box-shadow .15s ease, background-color .2s ease, transform .15s ease; }
+[data-orbit-nav].orbit-cursor {
+    box-shadow: inset 3px 0 0 var(--orange-primary);
+    background: var(--orange-subtle);
+}
+[data-orbit-nav].orbit-selected { background: var(--orange-subtle); }
+[data-orbit-nav].orbit-fav { background: linear-gradient(90deg, rgba(255, 140, 0, .10), transparent 40%); }
+
+/* ---------- 2) PANNEAU LATÉRAL (détail à la volée) ---------- */
+.orbit-drawer-backdrop {
+    position: fixed; inset: 0; z-index: 1040;
+    background: rgba(16, 24, 40, .34);
+    backdrop-filter: blur(2px);
+    opacity: 0; transition: opacity .28s ease;
+    pointer-events: none;
+}
+.orbit-drawer-backdrop.is-open { opacity: 1; pointer-events: auto; }
+html[data-theme="dark"] .orbit-drawer-backdrop { background: rgba(0, 0, 0, .58); }
+
+.orbit-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 1045;
+    width: min(460px, 92vw);
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -18px 0 48px -24px rgba(16, 24, 40, .35);
+    transform: translateX(102%);
+    transition: transform .32s cubic-bezier(.16, 1, .3, 1);
+    display: flex; flex-direction: column;
+}
+.orbit-drawer.is-open { transform: none; }
+.orbit-drawer-head {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: 1.1rem 1.25rem .9rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+.orbit-drawer-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .66rem; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--orange-primary); background: var(--orange-subtle);
+    padding: .18rem .5rem; border-radius: 999px; margin-bottom: .35rem;
+}
+.orbit-drawer-title { font-size: 1.1rem; font-weight: 650; letter-spacing: -.015em; color: var(--text-primary); }
+.orbit-drawer-sub { font-size: .85rem; color: var(--text-tertiary); margin-top: .15rem; }
+.orbit-drawer-close {
+    margin-left: auto; border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-secondary); width: 32px; height: 32px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, transform .18s ease;
+}
+.orbit-drawer-close:hover { background: var(--bg-card-hover); color: var(--text-primary); transform: scale(1.05); }
+.orbit-drawer-body { padding: 1rem 1.25rem 1.25rem; overflow-y: auto; flex: 1; }
+.orbit-drawer-row {
+    display: flex; gap: 1rem; align-items: baseline;
+    padding: .55rem 0; border-bottom: 1px dashed var(--border-color);
+}
+.orbit-drawer-row:last-child { border-bottom: 0; }
+.orbit-drawer-label { font-size: .76rem; color: var(--text-tertiary); min-width: 116px; flex-shrink: 0; }
+.orbit-drawer-value { font-size: .88rem; color: var(--text-primary); font-weight: 500; word-break: break-word; }
+.orbit-drawer-foot {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+    padding: .9rem 1.25rem; border-top: 1px solid var(--border-color); background: var(--bg-card);
+}
+.orbit-drawer-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-primary); border-radius: 9px; padding: .45rem .8rem;
+    font-size: .82rem; text-decoration: none; cursor: pointer;
+    transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.orbit-drawer-btn:hover { background: var(--bg-card-hover); border-color: var(--border-strong); transform: translateY(-1px); }
+.orbit-drawer-btn.is-primary { background: var(--orange-primary); border-color: var(--orange-primary); color: #fff; }
+.orbit-drawer-btn.is-primary:hover { filter: brightness(1.05); }
+body.orbit-drawer-open { overflow: hidden; }
+/*PART2*/
+
+
+/* ---------- 3) PALETTE DE COMMANDES (⇧K) ---------- */
+.orbit-palette-backdrop {
+    position: fixed; inset: 0; z-index: 1060;
+    background: rgba(16, 24, 40, .38); backdrop-filter: blur(3px);
+    opacity: 0; transition: opacity .2s ease;
+    pointer-events: none;
+}
+.orbit-palette-backdrop.is-open { opacity: 1; pointer-events: auto; }
+.orbit-palette {
+    position: fixed; z-index: 1065; top: 12vh; left: 50%;
+    width: min(620px, 94vw); transform: translate(-50%, -8px) scale(.985);
+    background: var(--bg-elevated); border: 1px solid var(--border-color);
+    border-radius: 16px; box-shadow: 0 30px 70px -28px rgba(16, 24, 40, .5);
+    overflow: hidden; opacity: 0; pointer-events: none;
+    transition: opacity .2s ease, transform .22s cubic-bezier(.16, 1, .3, 1);
+}
+.orbit-palette.is-open { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+.orbit-palette-input {
+    width: 100%; border: 0; background: transparent; color: var(--text-primary);
+    padding: 1rem 1.1rem; font-size: 1rem; outline: none;
+}
+.orbit-palette-input::placeholder { color: var(--text-muted); }
+.orbit-palette-hint {
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    padding: .55rem 1.1rem; border-top: 1px solid var(--border-color);
+    font-size: .72rem; color: var(--text-tertiary); background: var(--bg-card);
+}
+.orbit-palette-results { max-height: min(52vh, 460px); overflow-y: auto; padding: .4rem; }
+.orbit-palette-group {
+    font-size: .66rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted); padding: .5rem .6rem .3rem;
+}
+.orbit-palette-item {
+    display: flex; align-items: center; gap: .65rem; width: 100%;
+    padding: .5rem .6rem; border-radius: 9px; border: 0; background: transparent;
+    color: var(--text-primary); text-align: left; font-size: .88rem; cursor: pointer;
+    text-decoration: none;
+}
+.orbit-palette-item i { color: var(--text-tertiary); width: 1.1rem; text-align: center; }
+.orbit-palette-item .orbit-palette-sub { margin-left: auto; font-size: .74rem; color: var(--text-muted); }
+.orbit-palette-item.is-active, .orbit-palette-item:hover { background: var(--orange-subtle); color: var(--text-primary); }
+.orbit-palette-item.is-active i { color: var(--orange-primary); }
+.orbit-palette-empty { padding: 1.2rem; text-align: center; color: var(--text-tertiary); font-size: .86rem; }
+kbd.orbit-kbd {
+    display: inline-block; font-family: inherit; font-size: .68rem; font-weight: 600;
+    color: var(--text-secondary); background: var(--bg-card-hover);
+    border: 1px solid var(--border-color); border-bottom-width: 2px;
+    border-radius: 6px; padding: .1rem .38rem; min-width: 1.4rem; text-align: center;
+}
+
+/* ---------- 4) BARRE D'OUTILS COLLANTE (compteur, chips, actions) ---------- */
+.orbit-toolbar {
+    position: sticky; top: 56px; z-index: 20;
+    display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+    padding: .6rem .25rem; margin-bottom: .35rem;
+    background: color-mix(in srgb, var(--bg-dark) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-color);
+}
+html[data-theme="dark"] .orbit-toolbar { background: color-mix(in srgb, var(--bg-dark) 92%, transparent); }
+.orbit-toolbar-count { font-size: .82rem; color: var(--text-tertiary); }
+.orbit-toolbar-count strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.orbit-toolbar-spacer { margin-left: auto; }
+.orbit-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .74rem; font-weight: 500; color: var(--text-secondary);
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 999px; padding: .22rem .6rem;
+}
+
+/* ---------- 5) FAVORIS (étoile) ---------- */
+.orbit-fav-btn {
+    border: 0; background: none; padding: 2px; cursor: pointer; line-height: 1;
+    color: var(--text-muted); font-size: .95rem; border-radius: 6px;
+    transition: color .18s ease, transform .18s cubic-bezier(.34, 1.56, .64, 1);
+}
+.orbit-fav-btn:hover { color: var(--orange-primary); transform: scale(1.18); }
+.orbit-fav-btn.is-on { color: var(--orange-primary); }
+
+/* ---------- 6) SIDEBAR REDIMENSIONNABLE ---------- */
+.orbit-resizer {
+    position: absolute; top: 0; right: -3px; bottom: 0; width: 7px;
+    cursor: col-resize; z-index: 15; background: transparent;
+    transition: background-color .18s ease;
+}
+.orbit-resizer:hover, .orbit-resizer.is-dragging { background: var(--orange-subtle); }
+body.orbit-resizing { cursor: col-resize; user-select: none; }
+
+/* ---------- 7) DATES RELATIVES ---------- */
+.orbit-rel {
+    display: inline-block; margin-left: .4rem; font-size: .7rem;
+    color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.orbit-rel.is-late { color: var(--danger); font-weight: 600; }
+
+/* ---------- 8) GUIDE DES RACCOURCIS ---------- */
+.orbit-help {
+    position: fixed; z-index: 1070; top: 50%; left: 50%;
+    transform: translate(-50%, -48%) scale(.98);
+    width: min(560px, 94vw); max-height: 84vh; overflow-y: auto;
+    background: var(--bg-elevated); border: 1px solid var(--border-color);
+    border-radius: 16px; box-shadow: 0 30px 70px -28px rgba(16, 24, 40, .5);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease, transform .22s cubic-bezier(.16, 1, .3, 1);
+}
+.orbit-help.is-open { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.orbit-help-head { display: flex; align-items: center; padding: 1rem 1.2rem; border-bottom: 1px solid var(--border-color); }
+.orbit-help-head h3 { margin: 0; font-size: 1rem; font-weight: 650; }
+.orbit-help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem 1.5rem; padding: 1rem 1.2rem 1.3rem; }
+@media (max-width: 560px) { .orbit-help-grid { grid-template-columns: 1fr; } }
+.orbit-help-row { display: flex; align-items: center; gap: .6rem; font-size: .84rem; color: var(--text-secondary); }
+.orbit-help-row .orbit-help-keys { margin-left: auto; display: flex; gap: .25rem; }
+
+/* ---------- 9) BOUTON ⇧K dans la barre supérieure ---------- */
+.orbit-search-btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-tertiary); border-radius: 9px; padding: .3rem .55rem;
+    font-size: .8rem; cursor: pointer; margin-right: 12px;
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.orbit-search-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+@media (max-width: 768px) { .orbit-search-btn .orbit-search-label { display: none; } }
+
+/* ---------- 10) TOTAL COLLANT en pied de tableau ---------- */
+.table-premium tfoot.orbit-tfoot {
+    position: sticky; bottom: 0; z-index: 10;
+    background: var(--bg-card); box-shadow: 0 -6px 14px -10px rgba(16, 24, 40, .35);
+}
+.table-premium tfoot.orbit-tfoot td { font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+    .orbit-drawer, .orbit-drawer-backdrop, .orbit-palette, .orbit-palette-backdrop, .orbit-help { transition: none !important; }
+}
+
+/* ---------- 12) BARRE DE FILTRES : le menu doit passer AU-DESSUS ----------
+   Deux bugs corrigés ici :
+   1) .card-premium a overflow:hidden (coins arrondis) -> le menu était rogné.
+   2) .animate-fade-in-up utilise animation-fill-mode:forwards, donc la carte
+      conserve un `transform` => contexte d'empilement : le menu restait piégé
+      dedans et passait DERRIÈRE les .task-card (plus bas dans le DOM, et
+      transform au survol). On remplace l'animation par un fondu SANS transform
+      et on donne explicitement à la barre un z-index prioritaire. */
+.card-premium.avm-bar,
+.card-premium.avm-bar .card-body-premium,
+.card-premium.avm-bar .avm-iconbar { overflow: visible; }
+.card-premium.avm-bar {
+    position: relative;
+    z-index: 1035;
+    transform: none;
+    contain: none;
+    animation: orbitBarIn .35s ease both;
+}
+@keyframes orbitBarIn { from { opacity: 0; } to { opacity: 1; } }
+.card-premium.avm-bar .avm-dd {
+    z-index: 1040;
+    box-shadow: var(--shadow-lg);
+}
+.card-premium.avm-bar .avm-dd .dropdown-item { font-size: .82rem; padding: .4rem .85rem; }
+.card-premium.avm-bar .avm-dd .dropdown-item.active {
+    background: var(--orange-subtle);
+    color: var(--orange-primary);
+    font-weight: 600;
+}
+
+/* La liste est ascendue dans <body> (portail) : son style ne dépend plus
+   d'un parent, on la style donc globalement. */
+.dropdown-menu.avm-dd.avm-portal {
+    position: fixed;
+    display: block;
+    z-index: 2147482000;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: .35rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-xl);
+    animation: orbitMenuIn .16s ease both;
+}
+@keyframes orbitMenuIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: none; }
+}
+.dropdown-menu.avm-dd .dropdown-item {
+    font-size: .82rem;
+    padding: .45rem .8rem;
+    border-radius: 8px;
+    color: var(--text-primary);
+}
+.dropdown-menu.avm-dd .dropdown-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.dropdown-menu.avm-dd .dropdown-item.active {
+    background: var(--orange-subtle);
+    color: var(--orange-primary);
+    font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+    .dropdown-menu.avm-dd.avm-portal { animation: none !important; }
+}
+
+/* ---------- 14) SELECTEURS DE FILTRE NATIFS (/taches) ----------
+   Remplacent les menus déroulants maison : la liste est dessinée par le
+   navigateur (aucun problème d'empilement possible) et le rendu est stylé
+   pour s'accorder à la barre d'icônes existante. */
+.avm-select {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 30px; padding: 0 24px 0 9px;
+    border: 1px solid var(--border-color); border-radius: 8px;
+    background: transparent; color: var(--text-muted);
+    font-size: .85rem; cursor: pointer; flex-shrink: 0;
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+.avm-select:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.avm-select:focus-within { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255, 140, 0, .14); }
+.avm-select.on {
+    border-color: var(--orange-primary);
+    background: var(--orange-subtle);
+    color: var(--orange-primary);
+}
+.avm-select > i:first-child { font-size: .85rem; }
+.avm-select .avm-caret {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    font-size: .6rem; pointer-events: none; color: inherit; opacity: .8;
+}
+.avm-select select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background: transparent; border: 0; outline: none;
+    color: var(--text-primary);
+    font-family: inherit; font-size: .78rem; font-weight: 500;
+    max-width: 132px; cursor: pointer;
+}
+.avm-select.on select { color: var(--orange-primary); font-weight: 600; }
+.avm-select select option { background: var(--bg-elevated); color: var(--text-primary); }
+/* Sombre : --bg-elevated est translucide (orbit-premium.css), la liste native
+   devenait claire avec texte clair. Fond opaque dedie au menu deroulant. */
+[data-theme="dark"] .avm-select select option { background: var(--bg-card); color: var(--text-primary); }
+@media (max-width: 575.98px) { .avm-select select { max-width: 96px; } }
+
+/* ---------- 13) PANNEAU DE FILTRES (/taches) ----------
+   Choix affiché DANS le flux de la page (pas de menu flottant) : il ne peut
+   donc être ni masqué, ni rogné, ni recouvert par les cartes du board. */
+.avm-panel {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+    margin: -.35rem 0 .6rem; padding: .7rem .8rem;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 12px; box-shadow: var(--shadow-md);
+    animation: orbitRise .22s cubic-bezier(.16, 1, .3, 1) both;
+}
+.avm-panel[hidden] { display: none; }
+.avm-panel-label {
+    font-size: .68rem; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary); margin-right: .25rem;
+}
+.avm-panel-chip {
+    border: 1px solid var(--border-color); background: var(--bg-elevated);
+    color: var(--text-secondary); border-radius: 999px;
+    padding: .3rem .78rem; font-size: .8rem; font-weight: 500; cursor: pointer;
+    transition: background-color .15s ease, color .15s ease,
+                border-color .15s ease, transform .15s ease;
+}
+.avm-panel-chip:hover {
+    border-color: var(--border-strong); color: var(--text-primary); transform: translateY(-1px);
+}
+.avm-panel-chip.is-on {
+    background: var(--orange-primary); border-color: var(--orange-primary);
+    color: #fff; font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) { .avm-panel { animation: none !important; } }
+
+/* ---------- 11) DASHBOARD : colonne principale + rail latéral ---------- */
+.orbit-dash {
+    display: grid;
+    gap: 1rem 1.25rem;
+    grid-template-columns: minmax(0, 1fr);
+}
+.orbit-dash > * { grid-column: 1; margin-bottom: 0 !important; }
+@media (min-width: 1200px) {
+    .orbit-dash {
+        grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+        align-items: start;
+    }
+    .orbit-dash > .dash-rail { grid-column: 2; }
+}
+@media (max-width: 1199.98px) {
+    .orbit-dash > .dash-rail { grid-column: 1; }
+}
+.orbit-dash .card-premium { height: 100%; }
+
+.orbit-chip.is-active { border-color: var(--orange-primary); color: var(--orange-primary); background: var(--orange-subtle); }
+.orbit-chip button { border: 0; background: none; color: inherit; cursor: pointer; padding: 0; font-size: .8rem; line-height: 1; opacity: .6; }
+.orbit-chip button:hover { opacity: 1; }
+.orbit-tool-btn {
+    display: inline-flex; align-items: center; gap: .35rem;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-secondary); border-radius: 9px; padding: .32rem .6rem;
+    font-size: .76rem; cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.orbit-tool-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.orbit-tool-btn.is-active { border-color: var(--orange-primary); color: var(--orange-primary); background: var(--orange-subtle); }
+/*PART3*/
+
+/* =========================================================================
+   SECTION — orbit-premium.css
+   ====================================================================== */
+
+/* orbit-premium part 1 */
+:root {
+  --orbit-radius-xl: 20px;
+  --orbit-radius-2xl: 24px;
+  --orbit-ease: cubic-bezier(.16,1,.3,1);
+  --orbit-ease-out: cubic-bezier(.4,0,.2,1);
+  --orbit-shadow-card: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px -12px rgba(16,24,40,.12);
+  --orbit-shadow-float: 0 8px 32px -12px rgba(16,24,40,.18), 0 4px 16px -8px rgba(16,24,40,.10);
+  --orbit-grid: rgba(20,22,26,.035);
+}
+[data-theme="dark"] {
+  --orbit-shadow-card: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -12px rgba(0,0,0,.6);
+  --orbit-shadow-float: 0 16px 48px -16px rgba(0,0,0,.65);
+  --orbit-grid: rgba(255,255,255,.035);
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background:
+    radial-gradient(900px 500px at 12% -8%, rgba(255,140,0,.07), transparent 60%),
+    radial-gradient(700px 400px at 92% 18%, rgba(255,161,73,.06), transparent 55%),
+    radial-gradient(600px 600px at 50% 110%, rgba(47,111,237,.05), transparent 60%),
+    linear-gradient(var(--orbit-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--orbit-grid) 1px, transparent 1px);
+  background-size: auto, auto, auto, 28px 28px, 28px 28px;
+  opacity: .9;
+}
+[data-theme="dark"] body::before { opacity: .55; }
+/* --- Topbar verre + compactation ---------- */
+.app-topbar {
+  backdrop-filter: saturate(1.2) blur(12px);
+  -webkit-backdrop-filter: saturate(1.2) blur(12px);
+  background: color-mix(in srgb, var(--bg-elevated) 82%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent);
+  transition: box-shadow .25s var(--orbit-ease), background-color .25s var(--orbit-ease), padding .25s var(--orbit-ease);
+}
+.app-topbar.is-compact { padding-top: .35rem; padding-bottom: .35rem; box-shadow: var(--orbit-shadow-card); }
+.app-brand-text { letter-spacing: -.02em; font-weight: 750; }
+.app-brand-icon .orbit-logo { filter: drop-shadow(0 2px 10px rgba(255,140,0,.18)); transition: transform .35s var(--orbit-ease); }
+.app-brand:hover .orbit-logo { transform: scale(1.06) rotate(4deg); }
+.orbit-search-btn {
+  border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 10px;
+  padding: .38rem .65rem; gap: .45rem; color: var(--text-tertiary);
+  box-shadow: 0 1px 2px rgba(16,24,40,.06);
+  transition: all .2s var(--orbit-ease);
+}
+.orbit-search-btn:hover { border-color: var(--border-strong); background: var(--bg-elevated); color: var(--text-primary); box-shadow: var(--orbit-shadow-card); }
+.orbit-kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .62rem; letter-spacing: .04em;
+  border: 1px solid var(--border-color); border-bottom-width: 2px; background: var(--bg-elevated);
+  padding: .15rem .35rem; border-radius: 6px; color: var(--text-muted);
+}
+/* --- Sidebar premium --- */
+.sidebar-nav-item { position: relative; border-radius: 10px; transition: background-color .18s var(--orbit-ease), color .18s var(--orbit-ease); }
+.sidebar-nav-item:hover { background: var(--bg-sidebar-hover); }
+.sidebar-nav-item.active {
+  background: var(--orange-subtle) !important; color: var(--orange-primary) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,140,0,.14);
+}
+.sidebar-nav-item.active::before { transform: translateY(-50%) scaleY(1) !important; }
+/* --- Cartes : elevation + bordure degradee au hover --- */
+.card-premium {
+  border-radius: 20px !important;
+  box-shadow: var(--orbit-shadow-card);
+  /* Hover = OMBRE SEULE : jamais de transform ni de bordure coloree
+     (deplacer la boite provoque une oscillation infinie sur ses bords). */
+  transition: box-shadow .25s var(--orbit-ease) !important;
+  position: relative; isolation: isolate;
+}
+.card-premium:hover { box-shadow: var(--orbit-shadow-float); }
+.card-header-premium { letter-spacing: -.01em; font-weight: 650; }
+/* --- KPI / Stat cards --- */
+.stat-card {
+  border-radius: 18px !important; padding: 1.1rem 1.15rem !important;
+  border: 1px solid var(--border-color) !important; background: var(--bg-card) !important;
+  box-shadow: var(--orbit-shadow-card); transition: box-shadow .25s var(--orbit-ease);
+  position: relative; overflow: hidden;
+}
+.stat-card:hover { box-shadow: var(--orbit-shadow-float); }
+.stat-card-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: grid; place-items: center; background: rgba(255,140,0,.08);
+  border: 1px solid rgba(255,140,0,.12); color: #FF8C00;
+  box-shadow: 0 2px 10px rgba(255,140,0,.10);
+}
+.stat-card-value { font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.stat-card-trend { font-size: .78rem; gap: .35rem; }
+/* --- Boutons : shine + press --- */
+.btn-premium {
+  border-radius: 12px !important; font-weight: 650 !important; letter-spacing: -.01em;
+  box-shadow: 0 1px 2px rgba(16,24,40,.06); position: relative; overflow: hidden;
+  transition: box-shadow .25s var(--orbit-ease), filter .2s var(--orbit-ease), background-color .2s var(--orbit-ease) !important;
+}
+.btn-premium:hover { box-shadow: var(--orbit-shadow-card); filter: brightness(1.02); }
+.btn-premium:active { transform: scale(.98); }
+.btn-premium::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,.18) 50%, transparent 80%);
+  transform: translateX(-120%); transition: transform .6s var(--orbit-ease);
+}
+.btn-premium:hover::after { transform: translateX(120%); }
+.btn-premium-primary {
+  background: linear-gradient(135deg, #FF8C00 0%, #FFA149 100%) !important; color: #111 !important; border: none !important;
+  box-shadow: 0 6px 20px -8px rgba(255,140,0,.55) !important;
+}
+.btn-premium-primary:hover { box-shadow: 0 10px 28px -10px rgba(255,140,0,.65) !important; }
+.btn-premium:focus-visible { outline: 2px solid #FF8C00; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(255,140,0,.18); }
+/* --- Inputs : focus glow --- */
+.input-premium, .select-premium, .form-control {
+  border-radius: 12px !important; border: 1px solid var(--border-color) !important;
+  background: var(--bg-card) !important; color: var(--text-primary) !important;
+  transition: border-color .2s var(--orbit-ease), box-shadow .2s var(--orbit-ease), background-color .2s var(--orbit-ease) !important;
+}
+.input-premium::placeholder { color: var(--text-muted); }
+.input-premium:focus, .select-premium:focus, .form-control:focus {
+  border-color: rgba(255,140,0,.38) !important; background: var(--bg-elevated) !important;
+  box-shadow: 0 0 0 4px rgba(255,140,0,.14) !important; outline: none !important;
+}
+.input-wrap:focus-within > i { transform: translateY(-50%) scale(1.08); }
+/* --- Badges pill premium --- */
+.badge, .today-chip, .sidebar-badge {
+  border-radius: 999px !important; font-weight: 650 !important; letter-spacing: .02em;
+  padding: .28rem .6rem !important; border: 1px solid transparent;
+}
+.badge-danger { background: #fdeaea !important; border-color: rgba(209,67,67,.18) !important; }
+.badge-warning { background: #fdf3e2 !important; border-color: rgba(183,121,31,.18) !important; }
+.badge-success { background: #e7f4ec !important; border-color: rgba(26,127,75,.18) !important; }
+[data-theme="dark"] .badge-danger { background: rgba(239,83,80,.14) !important; }
+[data-theme="dark"] .badge-warning { background: rgba(255,152,0,.14) !important; }
+[data-theme="dark"] .badge-success { background: rgba(76,175,80,.14) !important; }
+/* --- Tables : tete sticky + hover --- */
+.table-premium thead th {
+  position: sticky; top: 0; z-index: 1; backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+.table-premium tbody tr { transition: background-color .18s ease; }
+.table-premium tbody tr:hover { background: color-mix(in srgb, var(--bg-card-hover) 88%, transparent); }
+/* --- Task card --- */
+.task-card { border-radius: 16px !important; overflow: hidden; }
+.task-card .task-title { letter-spacing: -.015em; }
+.task-card .progress { height: 6px; border-radius: 999px; background: var(--bg-card-active); overflow: hidden; }
+.task-card .progress-bar { border-radius: 999px; background: linear-gradient(135deg, #FF8C00 0%, #FFA149 100%); }
+/* --- Page head --- */
+.page-head { gap: 1rem; }
+.page-head-icon {
+  width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--bg-card); border: 1px solid var(--border-color); color: #FF8C00;
+  box-shadow: var(--orbit-shadow-card);
+}
+.page-head-titles h2 { letter-spacing: -.025em; font-weight: 800; }
+.page-head-sub { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+/* --- Quick actions grille premium --- */
+.quick-actions { border: 1px solid var(--border-color); border-radius: 18px; background: var(--bg-card); box-shadow: var(--orbit-shadow-card); overflow: hidden; }
+.quick-actions-grid { gap: .6rem !important; }
+.qa-btn {
+  border-radius: 14px !important; border: 1px solid var(--border-color) !important;
+  background: var(--bg-elevated) !important; box-shadow: 0 1px 2px rgba(16,24,40,.05);
+  transition: box-shadow .2s var(--orbit-ease), background-color .2s var(--orbit-ease), border-color .2s var(--orbit-ease) !important;
+}
+.qa-btn:hover { border-color: var(--border-strong) !important; box-shadow: var(--orbit-shadow-float); background: var(--bg-card) !important; }
+.qa-btn i { transition: transform .22s var(--orbit-ease); }
+.qa-btn:hover i { transform: scale(1.06); }
+/* --- Today band hero subtil --- */
+.today-band {
+  overflow: hidden; position: relative; border-radius: 20px !important;
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-card) 100%) !important;
+}
+.today-band::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .9;
+  background:
+    radial-gradient(600px 200px at 18% 0%, rgba(255,140,0,.08), transparent 60%),
+    radial-gradient(500px 300px at 88% 100%, rgba(47,111,237,.06), transparent 60%);
+}
+.today-hello { letter-spacing: -.02em; font-weight: 800; }
+.today-chip { background: var(--bg-elevated); border: 1px solid var(--border-color); box-shadow: 0 1px 2px rgba(16,24,40,.06); }
+.today-chip.danger { background: var(--danger-bg); border-color: rgba(209,67,67,.18); color: var(--danger); }
+.today-item { border-radius: 12px; border: 1px solid transparent; transition: all .2s var(--orbit-ease); }
+.today-item:hover { background: var(--bg-card-hover); border-color: var(--border-color); }
+.today-dot { box-shadow: 0 0 0 4px rgba(255,140,0,.08); }
+/* --- Animations d entree premium --- */
+@keyframes orbitRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.animate-fade-in-up { animation: orbitRise .3s cubic-bezier(.16,1,.3,1) both; }
+.stagger-1 { animation-delay: .03s; } .stagger-2 { animation-delay: .06s; } .stagger-3 { animation-delay: .09s; }
+.stagger-4 { animation-delay: .12s; } .stagger-5 { animation-delay: .15s; } .stagger-6 { animation-delay: .18s; }
+.skeleton-stat, .skeleton-card { position: relative; overflow: hidden; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 18px; }
+.skeleton-stat::after, .skeleton-card::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
+  transform: translateX(-100%); animation: shimmer 1.2s infinite;
+}
+[data-theme="dark"] .skeleton-stat::after, [data-theme="dark"] .skeleton-card::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.08) 50%, transparent 100%);
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+/* --- Toasts premium --- */
+.toast { border-radius: 14px !important; border: 1px solid var(--border-color) !important; box-shadow: var(--orbit-shadow-float) !important; overflow: hidden; backdrop-filter: blur(10px); }
+.toast-success { border-color: rgba(26,127,75,.22) !important; }
+.toast-danger  { border-color: rgba(209,67,67,.22) !important; }
+.toast-warning { border-color: rgba(183,121,31,.22) !important; }
+/* --- Modals premium --- */
+.modal-content-premium {
+  border-radius: 20px !important; border: 1px solid var(--border-color) !important;
+  box-shadow: var(--orbit-shadow-float) !important; overflow: hidden;
+  animation: orbitRise .35s var(--orbit-ease) both;
+}
+.modal-header-premium { background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-elevated) 100%) !important; }
+/* --- Command palette premium --- */
+.orbit-palette { border-radius: 18px !important; box-shadow: var(--orbit-shadow-float) !important; overflow: hidden; }
+/* --- Selection + focus global --- */
+::selection { background: rgba(255,140,0,.18); }
+:focus-visible { outline: 2px solid #FF8C00; outline-offset: 2px; border-radius: 8px; }
+/* Transition de navigation native : l'ancien ecran reste visible pendant le
+   chargement (pas d'ecran noir). Progressif : ignore par les navigateurs
+   qui ne le supportent pas. */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; animation-timing-function: var(--orbit-ease); }
+/* --- Empty states premium --- */
+.empty-state { border: 1px dashed var(--border-color) !important; background: color-mix(in srgb, var(--bg-card) 88%, transparent) !important; border-radius: 18px !important; }
+.empty-state-icon { width: 56px; height: 56px; border-radius: 14px; background: var(--bg-elevated); border: 1px solid var(--border-color); padding: 6px; box-shadow: var(--orbit-shadow-card); }
+/* --- Filtres premium --- */
+.avm-bar .card-premium, .avm-panel { border-radius: 16px !important; box-shadow: var(--orbit-shadow-card) !important; }
+.avm-fico, .avm-select { border-radius: 12px !important; box-shadow: 0 1px 2px rgba(16,24,40,.05); }
+.avm-fico.on, .avm-select.on { box-shadow: 0 0 0 4px rgba(255,140,0,.12), var(--orbit-shadow-card); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .card-premium:hover, .stat-card:hover, .qa-btn:hover, .btn-premium:hover { transform: none !important; }
+}
+@media (max-width: 767.98px) {
+  .page-head-icon { width: 40px; height: 40px; }
+  .stat-card { padding: .95rem !important; }
+  .quick-actions-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+}
+.card-premium .card-header-premium i { transition: transform .25s var(--orbit-ease); }
+.card-premium:hover .card-header-premium i { transform: scale(1.08); }
+.notif-badge { box-shadow: 0 2px 8px rgba(209,67,67,.35); animation: pulseBadge 2s infinite; }
+@keyframes pulseBadge { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+/* ripple host */
+.qa-btn, .btn-login { position: relative; overflow: hidden; }
+
+/* === V2 FLUIDITE ULTRA === */
+html { scrollbar-gutter: stable; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }
+.card-premium, .stat-card, .task-card { contain: layout style paint; }
+.btn-premium:active, .qa-btn:active, .btn-login:active { transform: scale(.98); transition-duration: .08s; }
+.table-premium tbody tr td { transition: background-color .18s ease; }
+.table-premium tbody tr:hover td { background-color: var(--bg-hover); }
+.orbit-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: var(--orange-primary); z-index: 9999; transition: width .2s var(--orbit-ease); opacity: 0; pointer-events: none; }
+.orbit-progress.is-on { opacity: 1; }
+
+/* ============================================================
+   V3B — POLISH PAGES : Dashboard / Tâches / Dossiers / Pennylane
+   Règles §5 respectées : AUCUNE géométrie au hover (ombre/fond
+   seuls), animations <= .3s, aucun glow orange.
+   ============================================================ */
+
+/* --- Tâches : le socle a un hover qui DÉPLACE la carte (translateY)
+       -> flicker d'arêtes. Neutralisé + bordure neutre. --- */
+.task-card {
+  transition: box-shadow .25s var(--orbit-ease), border-color .25s var(--orbit-ease), background-color .25s var(--orbit-ease) !important;
+}
+.task-card:hover {
+  transform: none !important;
+  border-color: var(--border-strong);
+  box-shadow: var(--orbit-shadow-float);
+}
+/* Urgence : accent rouge + teinte de fond douce (fonctionnel, pas décoratif) */
+.task-card.task-overdue {
+  border-left: 3px solid var(--danger);
+  background: color-mix(in srgb, var(--danger-bg) 40%, var(--bg-card));
+}
+
+/* --- Tâches : filtres AVM — hover fond/bordure seule, puce sans translate --- */
+.avm-fico {
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease !important;
+}
+.avm-fico:hover { background: var(--bg-elevated); border-color: var(--border-strong); }
+.avm-panel-chip:hover { transform: none; }   /* le socle déplace la puce -> flicker */
+
+/* --- Tables (Dossiers & co) : chiffres tabulaires + zebra subtil +
+       entrée en fondu des 12 premières lignes (pas de tempête sur les grosses listes) --- */
+.table-premium td { font-variant-numeric: tabular-nums; }
+.table-premium tbody tr:nth-child(even):not(:hover) td {
+  background: color-mix(in srgb, var(--bg-card-hover) 55%, transparent);
+}
+.table-premium tbody tr:nth-child(-n+12) { animation: orbitRowIn .25s var(--orbit-ease) both; }
+@keyframes orbitRowIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- Toolbar sticky (Tâches/Dossiers) : verre plus net --- */
+.orbit-toolbar {
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/* --- Dashboard : le contenu KPI apparaît en fondu au sortir du skeleton
+       (l'animation ne joue que quand #kpiContent passe de none à grid) --- */
+#kpiContent { animation: orbitRise .3s var(--orbit-ease) both; }
+.skeleton-stat::after, .skeleton-card::after { animation-duration: .95s; }
+
+/* --- Pennylane : carte triage — hover neutre sur le détail --- */
+#plTriageCard .pl-tr-row { transition: background-color .18s ease; }
+#plTriageCard .pl-tr-row:hover { background: color-mix(in srgb, var(--orange-subtle) 55%, transparent); }
+#plTriageCard .pl-tr-toggle { transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+#plTriageCard .pl-tr-toggle:hover { box-shadow: 0 0 0 3px var(--bg-hover); }
+#plTriageCard .pl-tr-body { scrollbar-width: thin; }
+#plTriageCard .pl-tr-body::-webkit-scrollbar { width: 6px; }
+#plTriageCard .pl-tr-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+
+/* ============================================================
+   V3B — POLISH PAGES : Dashboard / Tâches / Dossiers / Pennylane (suite)
+   Neutralisation définitive de TOUS les hover déplaçants du socle
+   Règle or : AUCUNE géométrie au hover (ombre/fond seuls)
+   ============================================================ */
+
+/* --- BASE HOVER NEUTRALISATIONS (tout ce qui bouge encore) --- */
+.stat-card:hover,
+.dash-alert:hover,
+.dash-notif:hover,
+.task-card:hover,
+.task-item:hover,
+.badge:hover,
+.sidebar-nav-item:hover i,
+/* --- POLISH.CSS HOVER NEUTRALISATIONS --- */
+.btn-premium:hover,
+.btn-premium-primary:hover,
+.btn-premium-secondary:hover,
+.theme-choice:hover,
+.qa-btn:hover,
+.orbit-logo:hover .orbit-core,
+/* --- STYLE.CSS HOVER NEUTRALISATIONS --- */
+.btn-premium-success:hover,
+.btn-premium-warning:hover,
+.btn-premium-danger:hover,
+.btn-premium-info:hover,
+.hover-lift:hover,
+.tilt-card:hover,
+.interactive:hover,
+.suggestion-card:hover,
+.equipe-cards-container .card-premium:hover,
+/* --- UTILITAIRES & DIVERS --- */
+.avm-panel-chip:hover,
+.orbit-drawer-close:hover,
+.orbit-drawer-btn:hover,
+.orbit-fav-btn:hover,
+.orbit-tool-btn:hover,
+.kpi-chip:hover,
+.dash-alert:hover,
+.dash-notif:hover,
+/* ==== APPLICATION DE LA NEUTRALISATION ==== */
+{
+  transform: none !important;
+}
+
+/* --- Specific overrides where we keep color/shadow but KILL geometry --- */
+.dash-alert:hover {
+  box-shadow: 0 6px 16px -8px rgba(244,67,54,.45);
+  border-color: rgba(244,67,54,.45) !important;
+}
+.dash-notif:hover {
+  background: rgba(255,140,0,.10) !important;
+}
+.theme-choice:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.qa-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+.btn-premium:hover {
+  box-shadow: var(--orbit-shadow-card);
+  filter: brightness(1.02);
+}
+.btn-premium-primary:hover {
+  box-shadow: 0 10px 28px -10px rgba(255,140,0,.65) !important;
+}
+.btn-premium-secondary:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+}
+.btn-premium-success:hover,
+.btn-premium-warning:hover,
+.btn-premium-danger:hover,
+.btn-premium-info:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+}
+.hover-lift:hover,
+.tilt-card:hover,
+.interactive:hover,
+.suggestion-card:hover,
+.equipe-cards-container .card-premium:hover {
+  box-shadow: var(--orbit-shadow-float);
+}
+.badge:hover {
+  background: color-mix(in srgb, var(--orange-subtle) 15%, transparent);
+}
+.sidebar-nav-item:hover i {
+  color: var(--text-primary);
+}
+.avm-panel-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.orbit-drawer-close:hover,
+.orbit-drawer-btn:hover {
+  background: var(--bg-card-hover);
+}
+.orbit-fav-btn:hover {
+  color: var(--orange-primary);
+  transform: scale(1.18);
+}
+.orbit-tool-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+.kpi-chip:hover {
+  background: color-mix(in srgb, var(--orange-subtle) 55%, transparent);
+  border-color: var(--border-strong);
+}
+
+/* ============================================================
+   V3B-BIS — MICRO-OPTIMs PERF (reduire travail compositor)
+   ============================================================ */
+
+/* --- Réduire les peintures inutiles sur les grosses listes --- */
+.table-premium tbody tr {
+  will-change: background-color;
+}
+
+/* --- Animation KPI uniquement au besoin (pas en boucle) --- */
+#kpiContent {
+  animation-fill-mode: forwards;
+}
+
+/* --- Skeleton plus léger --- */
+.skeleton-stat::after,
+.skeleton-card::after {
+  animation-duration: 1.2s;
+}
+
+/* --- Désactiver les effets coûteux si batterie faible ou perf médiocre --- */
+@media (update: slow) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ============================================================
+   V3B-TER — NETTOYAGE & SÉCURITÉ
+   ============================================================ */
+
+/* --- Supprimer les pseudo-classes vides ou dangereux --- */
+body::before {
+  content: "" !important;
+}
+
+/* --- Empêcher les outline agressifs en navigation clavier --- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--orange-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255, 140, 0, .16);
+}
+
+/* --- Sécuriser les variables manquantes --- */
+/* Ne définir ici que les tokens communs aux deux thèmes.
+   --bg-elevated et --bg-card-hover sont propres à chaque thème (style.css) :
+   ne jamais les redéfinir en :root, sinon le thème clair perd ses surfaces. */
+:root {
+  --danger: #EF5350;
+  --danger-bg: rgba(239,83,80,.1);
+  --orange-subtle: rgba(255,140,0,.12);
+  --orbit-ease: cubic-bezier(.16,1,.3,1);
+}
+/* Sombre : valeurs translucides d'origine, conservées à l'identique */
+[data-theme="dark"] {
+  --bg-elevated: rgba(255,255,255,.04);
+  --bg-card-hover: rgba(255,255,255,.03);
+}
+
+/* =========================================================================
+   SECTION — mobile-responsive.css
+   ====================================================================== */
+
+/* ============================================================
+   MOBILE RESPONSIVE STYLES - JMH Orbit (V1)
+   Optimisations spécifiques mobile pour une expérience utilisable
+  =========================================================== */
+
+/* ---------- 1) MEDIA QUERIES PRINCIPALES ---------- */
+@media (max-width: 991.98px) {
+    /* --- Viewport et base --- */
+    html {
+        font-size: 14px;
+    }
+    
+    /* --- Boutons et éléments interactifs --- */
+    .btn, button, .qa-btn, .stat-card, .task-item {
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+    }
+    
+    .qa-btn {
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 1rem 0.75rem;
+        text-align: center;
+    }
+    
+    /* --- Navigation et éléments fixes --- */
+    .app-topbar {
+        padding: 0.75rem 1rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    /* --- Cartes de statistiques --- */
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+        border-radius: var(--radius-md);
+    }
+    
+    /* --- Paniers latéraux (drawers) --- */
+    .orbit-drawer {
+        width: min(320px, 88vw);
+        border-left: none;
+        box-shadow: -12px 0 36px -12px rgba(16, 24, 40, 0.25);
+    }
+    
+    /* --- Barre de recherche et filtres --- */
+    .filter-bar {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    /* --- Listes et éléments de liste --- */
+    .today-list {
+        margin: 0 -1rem;
+    }
+    
+    .today-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    /* --- Formulaires --- */
+    input, select, textarea {
+        font-size: 16px;
+        padding: 0.875rem 1rem;
+        border-radius: var(--radius-md);
+    }
+    
+    /* --- Barre de navigation mobile --- */
+    .mobile-nav-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-elevated);
+        border-top: 1px solid var(--border-color);
+        padding: 0.5rem;
+        display: flex;
+        justify-content: space-around;
+        gap: 0.5rem;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+    }
+    
+    .mobile-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.75rem 0.5rem;
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+    }
+    
+    .mobile-nav-item:hover, .mobile-nav-item.active {
+        background: var(--bg-hover);
+        color: var(--orange-primary);
+    }
+    
+    .mobile-nav-icon {
+        font-size: 1.25rem;
+    }
+    
+    /* --- Zone de contenu pour éviter le recouvrement --- */
+    .content-with-mobile-nav {
+        padding-bottom: 4rem;
+    }
+    
+    /* --- États de survol sur mobile --- */
+    .btn, button, a, .touch-target {
+        -webkit-tap-highlight-color: transparent;
+        transition: all var(--transition-fast);
+    }
+    
+    .btn:active, button:active, a:active, .touch-target:active {
+        transform: scale(0.95);
+    }
+    
+    /* --- Surcharges pour petits écrans --- */
+    @media (max-width: 576px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .quick-actions-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+}
+
+    /* ---------- Drawer / tiroir mobile ---------- */
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(8, 9, 11, .55);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity .2s ease;
+        z-index: 1039;
+    }
+
+    @media (max-width: 767.98px) {
+        body.sidebar-open .sidebar-backdrop {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        #sidebarCol {
+            display: flex !important;
+            position: fixed !important;
+            top: 56px;
+            left: 0;
+            bottom: 0;
+            width: 240px !important;
+            max-width: 82vw;
+            padding: 0;
+            transform: translateX(-100%);
+            transition: transform .26s ease;
+            box-shadow: 0 0 40px rgba(0,0,0,.35);
+            z-index: 1040;
+        }
+
+        #sidebarCol .sidebar {
+            position: static;
+            width: 100% !important;
+            height: 100%;
+            box-shadow: none;
+        }
+
+        #sidebarCol .sidebar-nav-item span,
+        #sidebarCol .sidebar-section-title,
+        #sidebarCol .sidebar-brand-text,
+        #sidebarCol .sidebar-subtitle {
+            display: inline-block !important;
+        }
+
+        #sidebarCol .sidebar-nav-item {
+            justify-content: flex-start !important;
+            padding: .55rem .75rem !important;
+        }
+
+        body.sidebar-open #sidebarCol {
+            transform: translateX(0);
+        }
+
+        body.sidebar-open {
+            overflow: hidden;
+        }
+
+        /* Bouton hamburger réaffiché sur mobile */
+        .app-topbar-toggle {
+            display: flex !important;
+        }
+    }
+
+    /* ---------- Barre du haut compacte (téléphone) ---------- */
+    @media (max-width: 575.98px) {
+        .app-topbar {
+            gap: 0.5rem;
+        }
+
+        .app-brand-text small,
+        .orbit-search-label,
+        .orbit-kbd {
+            display: none !important;
+        }
+
+        .orbit-search-btn {
+            min-width: 44px;
+            min-height: 44px;
+            justify-content: center;
+        }
+
+        .app-topbar-toggle,
+        #themeToggle,
+        .notif-bell-link {
+            min-width: 44px;
+            min-height: 44px;
+        }
+    }
+
+    /* ---------- Tableaux : défilement horizontal contenu dans leur conteneur ---------- */
+    @media (max-width: 991.98px) {
+        .table-responsive,
+        .table-wrap,
+        .dossiers-table-wrap {
+            -webkit-overflow-scrolling: touch;
+            overflow-x: auto;
+        }
+
+        /* Menu des colonnes : ne déborde pas de l'écran */
+        .dropdown-menu {
+            max-width: calc(100vw - 2rem);
+        }
+    }
+
+/* =========================================================================
+   SECTION — filters-premium.css
+   ====================================================================== */
+
+/* ==========================================================================
+   FILTRES PREMIUM — barres de filtres de /taches, /taches/aujourdhui et /dossiers
+   Chargé en dernier : surcharge les règles historiques sans les modifier.
+   ========================================================================== */
+
+/* ---------- Barre d'icônes : conteneur unifié ---------- */
+.card-premium.avm-bar,
+.card-premium.filter-bar-premium {
+    border-radius: 16px !important;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--orbit-shadow-card, 0 1px 2px rgba(16,24,40,.05));
+}
+.avm-bar .card-body-premium { padding: .55rem .7rem !important; }
+.avm-iconbar { gap: .35rem; row-gap: .45rem; }
+
+/* ---------- Boutons icône (filtres rapides) ---------- */
+.avm-fico {
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px !important;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: .95rem;
+    cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.avm-fico:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+.avm-fico.on,
+.filter-btn.active.avm-fico {
+    color: var(--orange-primary);
+    background: var(--orange-subtle);
+    border-color: var(--orange-primary);
+    box-shadow: 0 0 0 3px rgba(255,140,0,.12);
+}
+.avm-fico:focus-visible { outline: 2px solid var(--orange-primary); outline-offset: 2px; }
+
+/* ---------- Sélecteurs natifs stylés (Nature / Membre / Dossier) ---------- */
+.avm-select {
+    height: 34px;
+    padding: 0 26px 0 10px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: .82rem;
+    box-shadow: none;
+    transition: color .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+.avm-select:hover { background: transparent; border-color: var(--border-color); color: var(--text-primary); }
+.avm-select:focus-within { border-color: var(--orange-primary); box-shadow: 0 0 0 3px rgba(255,140,0,.14); }
+.avm-select.on { background: var(--orange-subtle); border-color: var(--orange-primary); color: var(--orange-primary); }
+.avm-select select { font-size: .8rem; font-weight: 500; max-width: 150px; }
+.avm-select .avm-caret { right: 9px; opacity: .6; }
+.avm-fsep { height: 20px; margin: 0 6px; opacity: .8; }
+
+/* Champs de date / recherche de la barre */
+.card-premium.avm-bar .avm-search {
+    height: 34px;
+    border-radius: 10px !important;
+    font-size: .82rem;
+}
+
+/* Compteur à droite */
+.avm-fcount {
+    font-size: .74rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* ---------- Dossiers : boutons « Collaborateurs / Régime / Date » ---------- */
+.btn-filter-advanced {
+    display: inline-flex; align-items: center; gap: .45rem;
+    height: 36px;
+    padding: 0 .9rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: .82rem;
+    font-weight: 500;
+    box-shadow: none;
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+.btn-filter-advanced i { font-size: .95rem; color: var(--text-tertiary); }
+.btn-filter-advanced:hover { background: transparent; border-color: var(--border-strong); color: var(--text-primary); }
+.btn-filter-advanced.active {
+    background: var(--orange-subtle);
+    border-color: var(--orange-primary);
+    color: var(--orange-primary);
+    box-shadow: 0 0 0 3px rgba(255,140,0,.12);
+}
+.btn-filter-advanced.active i { color: var(--orange-primary); }
+.filter-badge { margin-left: .1rem; }
+
+/* Panneaux dépliés : fondu doux, sans transform (évite les décalages) */
+.filter-panel { animation: orbitFilterIn .2s ease both; }
+@keyframes orbitFilterIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Options de régime / date : pastilles arrondies */
+.btn-filter-option {
+    border-radius: 999px;
+    padding: .32rem .8rem;
+    font-size: .8rem;
+    font-weight: 500;
+    background: transparent;
+}
+.btn-filter-option:hover { background: transparent; }
+.btn-filter-option.active { font-weight: 600; box-shadow: 0 0 0 3px rgba(255,140,0,.12); }
+
+/* Vignettes membres : cadre net et état actif lisible */
+.member-filter-item {
+    border: 1px solid transparent;
+    border-radius: 12px !important;
+    transition: background-color .18s ease, border-color .18s ease;
+}
+.member-filter-item:hover { background: transparent; border-color: var(--border-color); }
+
+/* ---------- Barre d'outils (compteur, chips, recherche) ---------- */
+.orbit-toolbar { border-radius: 12px; }
+
+@media (max-width: 575.98px) {
+    .avm-select select { max-width: 110px; }
+    .avm-fico { width: 32px; height: 32px; }
+    .btn-filter-advanced { height: 34px; padding: 0 .7rem; font-size: .78rem; }
+}
+
+
+/* =========================================================================
+   SECTION — orbit-elevate.css
+   ====================================================================== */
+
+/* ============================================================================
+   JMH ORBIT — COUCHE « ELEVATE » (v1)
+   Direction artistique : « Editorial Ink & Amber »
+   ----------------------------------------------------------------------------
+   L'app empilait 6 feuilles de style qui se neutralisaient (style.css,
+   light-theme, polish, workspace, orbit-premium, filters-premium) et parlaient
+   toutes « Bootstrap gris + orange ». On ne réécrit pas 40 templates : on
+   redéfinit les JETONS (variables) et on raffine les COMPOSANTS partagés, donc
+   toutes les pages héritent du changement d'un coup.
+
+   Charger ce fichier EN DERNIER. Les variables sont verrouillées via
+   html[data-theme="..."] (spécificité supérieure aux :root précédents).
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. JETONS — papier chaud / encre / amber
+   ------------------------------------------------------------------------- */
+:root,
+html[data-theme="light"] {
+  --paper: #f5f2ec;
+  --paper-deep: #ebe6dc;
+  --paper-tint: #f9f7f2;
+  --surface: #fcfaf6;
+  --surface-raised: #ffffff;
+
+  --ink: #171a1f;
+  --ink-2: #3d434d;
+  --ink-3: #6a7180;
+  --ink-4: #979daa;
+
+  --rule: #e2dbcf;
+  --rule-soft: #ece6dc;
+  --rule-strong: #cfc7b8;
+
+  --amber: #ff8c00;
+  --amber-deep: #b8590a;
+  --amber-light: #ffab4d;
+  --amber-soft: rgba(255, 140, 0, .10);
+  --amber-line: rgba(255, 140, 0, .30);
+
+  --ok: #1c7a4d;
+  --ok-bg: #e6f3ea;
+  --warn: #9c6213;
+  --warn-bg: #fbf0dd;
+  --bad: #bb3a3a;
+  --bad-bg: #fbe9e9;
+  --info2: #2c5b9e;
+  --info2-bg: #e8effa;
+
+  --font-display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-ui: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 13px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --ease-io: cubic-bezier(.4, 0, .2, 1);
+  --shadow-1: 0 1px 2px rgba(23, 26, 31, .05);
+  --shadow-2: 0 1px 2px rgba(23, 26, 31, .05), 0 10px 26px -16px rgba(23, 26, 31, .18);
+  --shadow-3: 0 2px 4px rgba(23, 26, 31, .06), 0 22px 48px -22px rgba(23, 26, 31, .28);
+  --halo: 0 0 0 4px rgba(255, 140, 0, .16);
+
+  /* ---- Alias legacy : tout le CSS existant s'accroche à ces noms ---- */
+  --bg-dark: var(--paper);
+  --bg-darker: var(--paper-deep);
+  --bg-card: var(--surface);
+  --bg-card-hover: #f3efe7;
+  --bg-card-active: #ebe6dc;
+  --bg-elevated: var(--surface-raised);
+  --bg-sidebar: transparent;
+  --bg-sidebar-hover: rgba(23, 26, 31, .045);
+  --bg-hover: rgba(23, 26, 31, .04);
+  --bg-glass: rgba(252, 250, 246, .82);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-tertiary: var(--ink-3);
+  --text-muted: var(--ink-4);
+  --text-inverse: #ffffff;
+  --white: var(--ink);
+  --border-color: var(--rule);
+  --border-color-hover: var(--rule-strong);
+  --border-whisper: var(--rule-soft);
+  --border-light: var(--rule);
+  --border-strong: var(--rule-strong);
+  --border-active: var(--amber-line);
+  --orange-primary: var(--amber);
+  --orange-dark: var(--amber-deep);
+  --orange-light: var(--amber-light);
+  --orange-subtle: var(--amber-soft);
+  --orange-gradient: linear-gradient(135deg, #ff8c00 0%, #ffab4d 100%);
+  --orange-glow: 0 0 0 rgba(255, 140, 0, 0);
+  --success: var(--ok);
+  --success-bg: var(--ok-bg);
+  --warning: var(--warn);
+  --warning-bg: var(--warn-bg);
+  --danger: var(--bad);
+  --danger-bg: var(--bad-bg);
+  --info: var(--info2);
+  --info-bg: var(--info2-bg);
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
+  --shadow-xl: 0 32px 64px -32px rgba(23, 26, 31, .34);
+  --shadow-orange: 0 8px 22px -12px rgba(255, 140, 0, .55);
+  --orbit-shadow-card: var(--shadow-2);
+  --orbit-shadow-float: var(--shadow-3);
+  --orbit-radius-xl: var(--r-lg);
+  --orbit-radius-2xl: var(--r-xl);
+  --orbit-ease: var(--ease);
+  --orbit-ease-out: var(--ease-io);
+  --orbit-grid: rgba(23, 26, 31, .028);
+  --orbit-sb-w: 232px;
+}
+
+html[data-theme="dark"] {
+  --paper: #0b0c0e;
+  --paper-deep: #08090a;
+  --paper-tint: #101216;
+  --surface: #14161a;
+  --surface-raised: #191c21;
+  --ink: #f2efe8;
+  --ink-2: #c3c7cf;
+  --ink-3: #8e94a1;
+  --ink-4: #6b7280;
+  --rule: #262931;
+  --rule-soft: #1e2127;
+  --rule-strong: #363a44;
+  --amber: #ff9422;
+  --amber-deep: #ffb464;
+  --amber-light: #ffc98b;
+  --amber-soft: rgba(255, 148, 34, .13);
+  --amber-line: rgba(255, 148, 34, .34);
+  --ok: #4ec98a;
+  --ok-bg: rgba(78, 201, 138, .12);
+  --warn: #e3a45a;
+  --warn-bg: rgba(227, 164, 90, .12);
+  --bad: #f07171;
+  --bad-bg: rgba(240, 113, 113, .12);
+  --info2: #79a8ff;
+  --info2-bg: rgba(121, 168, 255, .12);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .5);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 30px -16px rgba(0, 0, 0, .8);
+  --shadow-3: 0 2px 6px rgba(0, 0, 0, .6), 0 24px 52px -24px rgba(0, 0, 0, .95);
+  --bg-card-hover: #1a1d23;
+  --bg-card-active: #20242b;
+  --bg-card: var(--surface);
+  --bg-elevated: var(--surface-raised);
+  --bg-sidebar-hover: rgba(255, 255, 255, .05);
+  --bg-hover: rgba(255, 255, 255, .045);
+  --bg-glass: rgba(20, 22, 26, .84);
+  --orbit-grid: rgba(255, 255, 255, .026);
+}
+
+/* ---------------------------------------------------------------------------
+   2. TYPOGRAPHIE — serif éditorial pour les titres, Figtree pour l'UI,
+      mono pour les chiffres et les micro-libellés
+   ------------------------------------------------------------------------- */
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-ui) !important;
+  background: var(--paper) !important;
+  color: var(--ink);
+  font-size: .9375rem;
+  line-height: 1.55;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, .h1, .h2, .h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -.012em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+h1, .h1 { font-size: clamp(1.9rem, 1.4rem + 1.6vw, 2.5rem); }
+h2, .h2 { font-size: clamp(1.45rem, 1.2rem + .8vw, 1.85rem); }
+h3, .h3 { font-size: clamp(1.15rem, 1.05rem + .4vw, 1.35rem); }
+h4, h5, h6, .h4, .h5, .h6 {
+  font-family: var(--font-ui);
+  font-weight: 650;
+  letter-spacing: -.015em;
+  color: var(--ink);
+}
+
+/* Chiffres alignés = lisibilité comptable */
+body, .table, .stat-card, .badge, td, th { font-variant-numeric: tabular-nums; }
+.mono, .orbit-kbd, .sidebar-section-title, .stat-card-label,
+.data-mono, .orbit-filter-count, .eyebrow, .section-label {
+  font-family: var(--font-mono);
+}
+
+/* Micro-libellé « registre » : signature visuelle de l'app */
+.eyebrow, .section-label {
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+a { color: var(--amber-deep); text-underline-offset: 2px; }
+a:hover { color: var(--amber); }
+::selection { background: rgba(255, 140, 0, .22); color: var(--ink); }
+
+/* Défilement sobre */
+* { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--rule-strong); border-radius: 99px;
+  border: 3px solid transparent; background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-4); background-clip: content-box; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus clavier homogène et visible */
+/* ---------------------------------------------------------------------------
+   3. ATMOSPHÈRE — papier, halo amber, grain typographique
+      (remplace le mesh froid de orbit-premium : même mécanisme, autre lumière)
+   ------------------------------------------------------------------------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(760px 420px at 8% -10%, rgba(255, 140, 0, .11), transparent 62%),
+    radial-gradient(620px 380px at 96% 4%, rgba(184, 89, 10, .07), transparent 58%),
+    radial-gradient(900px 620px at 46% 112%, rgba(23, 26, 31, .06), transparent 64%);
+  opacity: 1;
+}
+html[data-theme="dark"] body::before {
+  background:
+    radial-gradient(760px 420px at 8% -10%, rgba(255, 148, 34, .13), transparent 62%),
+    radial-gradient(620px 380px at 96% 4%, rgba(121, 168, 255, .05), transparent 58%),
+    radial-gradient(900px 620px at 46% 112%, rgba(255, 255, 255, .04), transparent 64%);
+}
+
+/* Grain : texture imprimée, très légère. C'est ce qui retire l'aspect « flat SaaS » */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .34;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.055'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+html[data-theme="dark"] body::after { mix-blend-mode: screen; opacity: .22; }
+
+/* ---------------------------------------------------------------------------
+   4. TOPBAR — filet, verre, marque en serif
+   ------------------------------------------------------------------------- */
+.app-topbar {
+  background: color-mix(in srgb, var(--paper) 78%, transparent) !important;
+  border-bottom: 1px solid var(--rule) !important;
+  backdrop-filter: saturate(1.35) blur(14px);
+  -webkit-backdrop-filter: saturate(1.35) blur(14px);
+  box-shadow: none !important;
+  padding: .55rem 1.15rem !important;
+  min-height: 60px;
+}
+.app-topbar.is-compact { box-shadow: var(--shadow-1) !important; }
+
+.app-brand { text-decoration: none !important; gap: .6rem; align-items: center; }
+.app-brand-text {
+  font-family: var(--font-display) !important;
+  font-size: 1.16rem !important;
+  font-weight: 400 !important;
+  letter-spacing: .005em !important;
+  color: var(--ink) !important;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .45rem;
+}
+.app-brand-text small {
+  font-family: var(--font-mono) !important;
+  font-size: .58rem !important;
+  letter-spacing: .06em !important;
+  color: var(--ink-4) !important;
+  opacity: 1 !important;
+}
+.app-brand-icon .orbit-logo {
+  filter: drop-shadow(0 2px 8px rgba(255, 140, 0, .22));
+  transition: transform .45s var(--ease);
+}
+.app-brand:hover .app-brand-icon .orbit-logo { transform: rotate(-8deg) scale(1.05); }
+
+.app-user-icon {
+  background: var(--amber-soft) !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+}
+.app-user-name { font-weight: 600; letter-spacing: -.01em; }
+
+.app-topbar-right > a,
+.app-topbar-right > button {
+  border-radius: var(--r-sm);
+  transition: background-color .18s var(--ease-io), color .18s var(--ease-io);
+}
+.app-topbar-right > a:hover,
+.app-topbar-right > button:hover { background: var(--bg-hover); }
+
+.orbit-search-btn {
+  border: 1px solid var(--rule) !important;
+  background: var(--surface) !important;
+  border-radius: var(--r-sm) !important;
+  padding: .34rem .55rem .34rem .65rem !important;
+  color: var(--ink-3) !important;
+  box-shadow: none !important;
+  transition: border-color .18s var(--ease-io), color .18s var(--ease-io), background-color .18s var(--ease-io);
+}
+.orbit-search-btn:hover {
+  border-color: var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+  background: var(--amber-soft) !important;
+}
+.orbit-search-label { font-size: .82rem; letter-spacing: -.005em; }
+.orbit-kbd {
+  font-size: .58rem !important;
+  letter-spacing: .06em;
+  border: 1px solid var(--rule) !important;
+  border-bottom-width: 2px !important;
+  background: var(--paper-tint) !important;
+  color: var(--ink-4) !important;
+  border-radius: 5px !important;
+  padding: .08rem .3rem !important;
+}
+
+/* ---------------------------------------------------------------------------
+   5. SIDEBAR — panneau papier, item actif encre + filet amber
+   ------------------------------------------------------------------------- */
+.sidebar {
+  background: transparent !important;
+  border-right: 1px solid var(--rule);
+  padding: .9rem .55rem 1rem .35rem !important;
+}
+.sidebar-brand {
+  padding: .25rem .5rem 1rem !important;
+  border-bottom: 1px solid var(--rule-soft);
+  margin-bottom: .85rem;
+}
+.sidebar-menu { display: flex; flex-direction: column; gap: 1px; }
+
+.sidebar-section-title {
+  font-size: .6rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .17em !important;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  padding: 1.05rem .7rem .42rem !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+}
+.sidebar-section-title::after {
+  content: "";
+  display: block;
+  height: 1px;
+  margin-top: .42rem;
+  background: linear-gradient(90deg, var(--rule-strong), transparent 72%);
+}
+
+.sidebar-nav-item {
+  display: flex !important;
+  align-items: center;
+  gap: .62rem !important;
+  padding: .52rem .7rem !important;
+  border-radius: var(--r-sm) !important;
+  color: var(--ink-2) !important;
+  font-size: .855rem !important;
+  font-weight: 500 !important;
+  letter-spacing: -.008em;
+  text-decoration: none !important;
+  border: 1px solid transparent;
+  position: relative;
+  transition: background-color .16s var(--ease-io), color .16s var(--ease-io),
+              border-color .16s var(--ease-io);
+}
+.sidebar-nav-item i {
+  font-size: .95rem;
+  color: var(--ink-4);
+  width: 1.05rem;
+  text-align: center;
+  transition: color .16s var(--ease-io), transform .3s var(--ease);
+}
+.sidebar-nav-item:hover {
+  background: var(--bg-sidebar-hover) !important;
+  color: var(--ink) !important;
+}
+.sidebar-nav-item:hover i { color: var(--amber); transform: translateX(1px); }
+
+/* SIGNATURE : l'item actif devient un bloc d'encre, filet amber à gauche */
+.sidebar-nav-item.active {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+  border-color: var(--ink) !important;
+  box-shadow: var(--shadow-1) !important;
+  font-weight: 600 !important;
+}
+.sidebar-nav-item.active i { color: var(--amber) !important; }
+.sidebar-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -1px; top: 50%;
+  width: 3px; height: 58%;
+  border-radius: 99px;
+  background: var(--amber);
+  transform: translateY(-50%) scaleY(1);
+}
+html[data-theme="dark"] .sidebar-nav-item.active {
+  background: var(--amber) !important;
+  color: #14161a !important;
+  border-color: var(--amber) !important;
+}
+html[data-theme="dark"] .sidebar-nav-item.active i { color: #14161a !important; }
+html[data-theme="dark"] .sidebar-nav-item.active::before { display: none; }
+
+.sidebar-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: .6rem !important;
+  font-weight: 600 !important;
+  min-width: 18px;
+  padding: .1rem .32rem !important;
+  border-radius: 99px !important;
+  background: var(--amber) !important;
+  color: #17181c !important;
+}
+.sidebar-nav-item.active .sidebar-badge {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: .75rem .35rem .1rem !important;
+  border-top: 1px solid var(--rule-soft);
+}
+.sidebar-user {
+  border-radius: var(--r-sm);
+  padding: .4rem .5rem !important;
+  transition: background-color .16s var(--ease-io);
+}
+.sidebar-user:hover { background: var(--bg-sidebar-hover); }
+.sidebar-user-img, .sidebar-user-icon {
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+}
+
+/* ---------------------------------------------------------------------------
+   6. EN-TÊTE DE PAGE — « ouverture de chapitre » éditoriale
+      (macro page_head de includes/orbit_ui.html : présent sur TOUTES les pages)
+   ------------------------------------------------------------------------- */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+}
+/* Filet amber qui « s'écrit » sous le titre */
+.page-head::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -1px;
+  height: 2px;
+  width: 74px;
+  background: linear-gradient(90deg, var(--amber), transparent);
+  transform-origin: left center;
+  animation: orbit-rule-in .9s var(--ease) both;
+}
+@keyframes orbit-rule-in {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+.page-head-main { display: flex; align-items: center; gap: .95rem; min-width: 0; }
+
+.page-head-icon {
+  width: 44px; height: 44px;
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  color: var(--amber-deep);
+  font-size: 1.12rem;
+  box-shadow: var(--shadow-1);
+  position: relative;
+  overflow: hidden;
+}
+.page-head-icon::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 120% at 0% 0%, var(--amber-soft), transparent 60%);
+}
+
+.page-head-titles { min-width: 0; }
+.page-head-titles h2 {
+  font-family: var(--font-display) !important;
+  font-size: clamp(1.5rem, 1.2rem + .9vw, 2rem) !important;
+  font-weight: 400 !important;
+  letter-spacing: -.018em !important;
+  line-height: 1.05 !important;
+  margin: 0 !important;
+  color: var(--ink) !important;
+  display: flex;
+  align-items: baseline;
+  gap: .55rem;
+  flex-wrap: wrap;
+}
+.page-head-sub {
+  font-family: var(--font-mono);
+  font-size: .7rem !important;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  margin: .32rem 0 0 !important;
+}
+.page-head-count {
+  font-family: var(--font-mono) !important;
+  font-size: .68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .02em;
+  line-height: 1;
+  padding: .26rem .46rem !important;
+  border-radius: 99px !important;
+  background: var(--amber-soft) !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+  transform: translateY(-.25em);
+}
+.page-head-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------------------------
+   7. CARTES — filet chaud, profondeur minimale, survol sobre
+   ------------------------------------------------------------------------- */
+.card,
+.card-premium {
+  background: var(--surface) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: var(--shadow-1) !important;
+  transition: box-shadow .28s var(--ease), border-color .28s var(--ease);
+}
+/* JAMAIS de transform au survol : cela provoquait une oscillation des bords */
+.card:hover,
+.card-premium:hover {
+  box-shadow: var(--shadow-2) !important;
+  border-color: var(--rule-strong) !important;
+}
+.card-body { padding: 1.25rem 1.35rem; }
+.card-header,
+.card-header-premium {
+  background: transparent !important;
+  border-bottom: 1px solid var(--rule) !important;
+  padding: .95rem 1.35rem !important;
+  font-family: var(--font-ui);
+  font-weight: 650 !important;
+  font-size: .92rem !important;
+  letter-spacing: -.012em !important;
+  color: var(--ink) !important;
+}
+.card-footer {
+  background: transparent !important;
+  border-top: 1px solid var(--rule) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   8. KPI / STAT CARDS — le chiffre en mono, l'étiquette en micro-caps
+   ------------------------------------------------------------------------- */
+.stat-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  padding: 1rem 1.1rem !important;
+  box-shadow: var(--shadow-1) !important;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow .28s var(--ease), border-color .28s var(--ease);
+}
+/* Filet amber en haut : repère discret, visible sans crier */
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--amber), var(--amber-line) 45%, transparent);
+  opacity: .55;
+  transition: opacity .28s var(--ease);
+}
+.stat-card:hover { box-shadow: var(--shadow-2) !important; border-color: var(--rule-strong) !important; }
+.stat-card:hover::before { opacity: 1; }
+
+.stat-card-icon {
+  width: 38px; height: 38px;
+  border-radius: var(--r-sm) !important;
+  display: grid; place-items: center;
+  background: var(--amber-soft) !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+  font-size: 1rem;
+  box-shadow: none !important;
+}
+.stat-card-value {
+  font-family: var(--font-mono) !important;
+  font-weight: 600 !important;
+  font-size: 1.65rem !important;
+  letter-spacing: -.02em !important;
+  line-height: 1.1 !important;
+  color: var(--ink) !important;
+  font-variant-numeric: tabular-nums;
+}
+.stat-card-label,
+.stat-card-title {
+  font-size: .64rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .13em !important;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+}
+.stat-card-trend { font-size: .72rem !important; gap: .3rem; font-family: var(--font-mono); }
+
+/* ---------------------------------------------------------------------------
+   9. BOUTONS — l'amber reste le CTA, le reste est en filet
+   ------------------------------------------------------------------------- */
+.btn { font-family: var(--font-ui); font-weight: 600; letter-spacing: -.008em; }
+.btn-premium,
+.btn {
+  border-radius: var(--r-sm) !important;
+  font-size: .855rem !important;
+  padding: .5rem .9rem !important;
+  transition: background-color .18s var(--ease-io), border-color .18s var(--ease-io),
+              color .18s var(--ease-io), box-shadow .22s var(--ease) !important;
+}
+.btn-premium {
+  border: 1px solid transparent;
+  box-shadow: none !important;
+  overflow: hidden;
+  position: relative;
+}
+.btn-premium:active { transform: translateY(1px) !important; }
+
+.btn-premium-primary,
+.btn-primary {
+  background: var(--ink) !important;
+  border-color: var(--ink) !important;
+  color: var(--paper) !important;
+  box-shadow: var(--shadow-1) !important;
+}
+.btn-premium-primary:hover,
+.btn-primary:hover {
+  background: var(--amber) !important;
+  border-color: var(--amber) !important;
+  color: #17181c !important;
+  box-shadow: 0 8px 20px -10px rgba(255, 140, 0, .55) !important;
+}
+/* Balayage lumineux conservé mais plus discret */
+.btn-premium-primary::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 24%, rgba(255, 255, 255, .28) 50%, transparent 76%);
+  transform: translateX(-130%);
+  transition: transform .7s var(--ease);
+  pointer-events: none;
+}
+.btn-premium-primary:hover::after { transform: translateX(130%); }
+
+.btn-premium-secondary,
+.btn-outline-secondary,
+.btn-light {
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--rule) !important;
+  color: var(--ink-2) !important;
+  box-shadow: none !important;
+}
+.btn-premium-secondary:hover,
+.btn-outline-secondary:hover,
+.btn-light:hover {
+  background: var(--amber-soft) !important;
+  border-color: var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+}
+.btn-outline-primary {
+  background: transparent !important;
+  border: 1px solid var(--amber-line) !important;
+  color: var(--amber-deep) !important;
+}
+.btn-outline-primary:hover {
+  background: var(--amber) !important;
+  border-color: var(--amber) !important;
+  color: #17181c !important;
+}
+.btn-danger {
+  background: var(--bad) !important;
+  border-color: var(--bad) !important;
+  color: #fff !important;
+}
+.btn-sm { padding: .3rem .6rem !important; font-size: .78rem !important; }
+.btn-lg { padding: .68rem 1.25rem !important; font-size: .95rem !important; }
+.btn-link { color: var(--amber-deep) !important; text-decoration: none !important; }
+.btn-link:hover { text-decoration: underline !important; text-underline-offset: 3px; }
+
+/* ---------------------------------------------------------------------------
+   10. FORMULAIRES — surface papier, focus halo amber, étiquettes en micro-caps
+   ------------------------------------------------------------------------- */
+.form-label,
+label.form-label {
+  font-family: var(--font-mono);
+  font-size: .64rem !important;
+  font-weight: 500 !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase;
+  color: var(--ink-3) !important;
+  margin-bottom: .34rem !important;
+}
+.input-premium,
+.select-premium,
+.form-control,
+.form-select {
+  border-radius: var(--r-sm) !important;
+  border: 1px solid var(--rule) !important;
+  background: var(--surface-raised) !important;
+  color: var(--ink) !important;
+  font-family: var(--font-ui);
+  font-size: .875rem !important;
+  padding: .52rem .72rem !important;
+  box-shadow: none !important;
+  transition: border-color .18s var(--ease-io), box-shadow .18s var(--ease-io),
+              background-color .18s var(--ease-io) !important;
+}
+.form-control::placeholder,
+.input-premium::placeholder { color: var(--ink-4) !important; opacity: 1; }
+.input-premium:focus,
+.select-premium:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--amber) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--halo) !important;
+  outline: none !important;
+}
+.form-control:disabled,
+.form-control[readonly] {
+  background: var(--paper-tint) !important;
+  color: var(--ink-3) !important;
+}
+.form-check-input {
+  border: 1px solid var(--rule-strong) !important;
+  border-radius: 4px !important;
+  background-color: var(--surface-raised) !important;
+}
+.form-check-input:checked {
+  background-color: var(--amber) !important;
+  border-color: var(--amber) !important;
+}
+.form-check-input:focus { box-shadow: var(--halo) !important; }
+.form-text, .form-text.text-muted { color: var(--ink-4) !important; font-size: .74rem; }
+/* Champs de recherche avec icône */
+.input-wrap > i, .input-icon > i { color: var(--ink-4) !important; }
+.input-wrap:focus-within > i { color: var(--amber) !important; }
+
+/* ---------------------------------------------------------------------------
+   11. PASTILLES DE STATUT (.st-*) — macro status_badge, présente partout
+       Forme : carré arrondi + point de couleur, pas de dégradé criard
+   ------------------------------------------------------------------------- */
+.st,
+.badge {
+  display: inline-flex !important;
+  align-items: center;
+  gap: .34rem;
+  font-family: var(--font-mono);
+  font-size: .66rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .22rem .52rem !important;
+  border-radius: 6px !important;
+  border: 1px solid transparent;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.st::before {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+  opacity: .9;
+}
+.st-neutral { background: var(--paper-tint) !important; border-color: var(--rule) !important; color: var(--ink-3) !important; }
+.st-todo    { background: var(--paper-tint) !important; border-color: var(--rule-strong) !important; color: var(--ink-2) !important; }
+.st-doing   { background: var(--amber-soft) !important; border-color: var(--amber-line) !important; color: var(--amber-deep) !important; }
+.st-done    { background: var(--ok-bg) !important; border-color: color-mix(in srgb, var(--ok) 26%, transparent) !important; color: var(--ok) !important; }
+.st-late    { background: var(--bad-bg) !important; border-color: color-mix(in srgb, var(--bad) 26%, transparent) !important; color: var(--bad) !important; }
+.st-today   { background: var(--info2-bg) !important; border-color: color-mix(in srgb, var(--info2) 26%, transparent) !important; color: var(--info2) !important; }
+.st-soon    { background: var(--warn-bg) !important; border-color: color-mix(in srgb, var(--warn) 26%, transparent) !important; color: var(--warn) !important; }
+
+.badge.bg-success, .badge.text-bg-success { background: var(--ok-bg) !important; color: var(--ok) !important; border-color: color-mix(in srgb, var(--ok) 26%, transparent) !important; }
+.badge.bg-danger, .badge.text-bg-danger { background: var(--bad-bg) !important; color: var(--bad) !important; border-color: color-mix(in srgb, var(--bad) 26%, transparent) !important; }
+.badge.bg-warning, .badge.text-bg-warning { background: var(--warn-bg) !important; color: var(--warn) !important; border-color: color-mix(in srgb, var(--warn) 26%, transparent) !important; }
+.badge.bg-info, .badge.text-bg-info { background: var(--info2-bg) !important; color: var(--info2) !important; border-color: color-mix(in srgb, var(--info2) 26%, transparent) !important; }
+.badge.bg-secondary, .badge.bg-light { background: var(--paper-tint) !important; color: var(--ink-3) !important; border-color: var(--rule) !important; }
+
+/* ---------------------------------------------------------------------------
+   12. TABLEAUX — le « registre » : filets horizontaux, pas de zebra agressif
+   ------------------------------------------------------------------------- */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--ink-2);
+  --bs-table-border-color: var(--rule-soft);
+  margin-bottom: 0;
+  font-size: .855rem;
+}
+.table > thead > tr > th,
+.table thead th {
+  font-family: var(--font-mono) !important;
+  font-size: .62rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  border-bottom: 1px solid var(--rule-strong) !important;
+  border-top: none !important;
+  padding: .62rem .7rem !important;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--paper) 90%, transparent) !important;
+}
+.table > tbody > tr > td,
+.table tbody td {
+  padding: .6rem .7rem !important;
+  border-bottom: 1px solid var(--rule-soft) !important;
+  border-top: none !important;
+  vertical-align: middle;
+  color: var(--ink-2);
+  background: transparent !important;
+}
+.table > tbody > tr:last-child > td { border-bottom: none !important; }
+
+/* Ligne survolée : révèle un filet amber à gauche (repère de lecture) */
+.table > tbody > tr { transition: background-color .14s var(--ease-io); }
+.table > tbody > tr:hover > td { background: var(--bg-hover) !important; }
+.table > tbody > tr:hover > td:first-child { box-shadow: inset 2px 0 0 var(--amber); }
+.table-hover > tbody > tr:hover > * { --bs-table-accent-bg: transparent; color: var(--ink) !important; }
+
+/* Cellules numériques : mono + chiffres alignés */
+.table td.text-end, .table th.text-end,
+.table td.num, .table .money {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background: color-mix(in srgb, var(--paper-tint) 60%, transparent);
+  box-shadow: none;
+}
+.table-responsive { border-radius: var(--r-md); }
+
+/* ---------------------------------------------------------------------------
+   13. ÉTAT VIDE & OUTILS DE FILTRE (macros empty_state / filter_bar)
+   ------------------------------------------------------------------------- */
+.orbit-empty {
+  text-align: center;
+  padding: 3.25rem 1.5rem;
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+.orbit-empty-icon {
+  width: 52px; height: 52px;
+  margin: 0 auto .95rem;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--amber-soft);
+  border: 1px solid var(--amber-line);
+  color: var(--amber-deep);
+  font-size: 1.35rem;
+}
+.orbit-empty h4 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--ink);
+  margin-bottom: .3rem;
+}
+.orbit-empty p {
+  color: var(--ink-3);
+  font-size: .85rem;
+  max-width: 46ch;
+  margin: 0 auto 1.1rem;
+}
+
+.orbit-filter-count {
+  font-size: .68rem !important;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-4) !important;
+  padding: .28rem .55rem;
+  border-radius: 99px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+}
+.orbit-filter-count strong { color: var(--ink); font-weight: 600; }
+.orbit-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .3rem .6rem;
+  border-radius: 99px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink-3);
+  transition: all .18s var(--ease-io);
+}
+.orbit-filter-reset:hover {
+  border-color: var(--amber-line);
+  background: var(--amber-soft);
+  color: var(--amber-deep);
+}
+
+/* ---------------------------------------------------------------------------
+   14. SURCOUCHES — menus, modales, toasts, onglets, accordéons
+   ------------------------------------------------------------------------- */
+.dropdown-menu {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-3) !important;
+  padding: .35rem !important;
+  font-size: .85rem;
+}
+.dropdown-item {
+  border-radius: var(--r-xs) !important;
+  padding: .45rem .6rem !important;
+  color: var(--ink-2) !important;
+  transition: background-color .14s var(--ease-io), color .14s var(--ease-io);
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--amber-soft) !important;
+  color: var(--amber-deep) !important;
+}
+.dropdown-divider { border-color: var(--rule) !important; margin: .3rem 0 !important; }
+.dropdown-item-text { color: var(--ink-4) !important; }
+
+.modal-content {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-lg) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-3) !important;
+}
+.modal-header, .modal-footer { border-color: var(--rule) !important; }
+.modal-header .modal-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+.modal-backdrop.show { opacity: .42; }
+
+.toast {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-3) !important;
+  overflow: hidden;
+}
+.toast-header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--rule-soft) !important;
+  font-size: .78rem;
+  letter-spacing: .02em;
+}
+.toast-body { font-size: .85rem; color: var(--ink-2); }
+.toast-success { border-left: 3px solid var(--ok) !important; }
+.toast-danger { border-left: 3px solid var(--bad) !important; }
+.toast-warning { border-left: 3px solid var(--warn) !important; }
+.toast-info { border-left: 3px solid var(--amber) !important; }
+
+.nav-tabs { border-bottom: 1px solid var(--rule) !important; gap: .15rem; }
+.nav-tabs .nav-link {
+  border: none !important;
+  border-radius: var(--r-sm) var(--r-sm) 0 0 !important;
+  color: var(--ink-3) !important;
+  font-size: .84rem;
+  font-weight: 600;
+  padding: .5rem .8rem !important;
+  position: relative;
+  transition: color .16s var(--ease-io), background-color .16s var(--ease-io);
+}
+.nav-tabs .nav-link:hover { background: var(--bg-hover); color: var(--ink) !important; }
+.nav-tabs .nav-link.active {
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+.nav-tabs .nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: .55rem; right: .55rem; bottom: -1px;
+  height: 2px;
+  background: var(--amber);
+  border-radius: 2px;
+}
+.nav-pills .nav-link {
+  border-radius: 99px !important;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink-3) !important;
+  padding: .34rem .78rem !important;
+}
+.nav-pills .nav-link.active {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+}
+
+.progress {
+  background: var(--paper-deep) !important;
+  border-radius: 99px !important;
+  height: 6px !important;
+  overflow: hidden;
+}
+.progress-bar { background: var(--amber) !important; }
+
+.accordion-item {
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--r-md) !important;
+  background: var(--surface) !important;
+  margin-bottom: .4rem;
+  overflow: hidden;
+}
+.accordion-button {
+  background: transparent !important;
+  color: var(--ink) !important;
+  font-weight: 600;
+  font-size: .88rem;
+  box-shadow: none !important;
+}
+.accordion-button:not(.collapsed) { background: var(--amber-soft) !important; color: var(--amber-deep) !important; }
+.accordion-body { font-size: .86rem; color: var(--ink-2); }
+
+/* =========================================================================
+   SECTION — orbit-hallmark-fix.css
+   ====================================================================== */
+
+/* ===== Orbit Hallmark corrections =====
+   Surcharges cibles pour defauts d'accesibilite et de layout.
+   Charger en dernier pour l'emporter sur les feuilles precedentes.
+*/
+
+/* 1) overflow-x : clip (jamais hidden) pour ne pas casser sticky / position fixed */
+html, body {
+  overflow-x: clip !important;
+}
+
+/* 2) Focus visible : anneau visible au clavier, contraste 3:1 minimum */
+:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--orange-primary, #FF8C00));
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--orange-primary, #FF8C00));
+  outline-offset: 2px;
+}
+
+/* 3) Transitions : eviter 'all', lister les proprietes animees */
+.btn-premium, .btn, button, .filter-btn, .orbit-tool-btn,
+.input-premium, .select-premium, .filter-panel,
+.avm-fico, .kpi-chip, .task-card, .member-filter-item {
+  transition-property: opacity, transform, color, background-color, border-color, box-shadow !important;
+  transition-duration: 0.2s !important;
+  transition-timing-function: ease !important;
+}
+
+/* 4) Elements desactides : curseur + opacity (trois canaux respects) */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* 5) SVG decoratifs : masquer aux technologies d'assistance */
+svg:not([aria-label]):not([aria-labelledby]) {
+  aria-hidden: "true";
+}
+
+/* 6) KPI chips : alignement forcé des valeurs et subtitles sur une ligne de base commune */
+.kpi-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+}
+.kpi-value {
+  line-height: 1;
+}
+.kpi-chip .kpi-sub {
+  margin-top: auto;
+}
+
+/* 7) Labels plus lisibles : letter-spacing réduit, taille adaptée */
+.kpi-label, .sidebar-section-title, .page-head-sub {
+  letter-spacing: 0.02em !important;
+  font-size: 0.85rem !important;
+  opacity: 0.75;
+}
+
+/* 8) Vide-état allégé : réduire le padding intérieur du conteneur vide */
+.task-empty, .empty-state, .card-premium > .empty-state {
+  padding: 1.5rem 1rem !important;
+  min-height: auto !important;
+}
+
+/* 9) Cartes membres : hauteur uniforme, stat boxes alignées */
+.member-card, .avm-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.member-card .stat-box, .avm-card .stat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* 10) Focus visible renforcé sur les boutons d'action principaux */
+.btn-premium:focus-visible,
+.orbit-tool-btn:focus-visible,
+.filter-btn:focus-visible {
+  outline: 3px solid var(--focus-ring, #FF8C00);
+  outline-offset: 3px;
+}
+
+/* =========================================================================
+   SECTION — orbit-ds.css
+   ====================================================================== */
+
+/* ============================================================================
+   JMH ORBIT — DESIGN SYSTEM (couche finale, chargée EN DERNIER)
+   Direction : « Editorial Ink & Amber » — papier chaud, encre profonde,
+   amber net. Complète orbit-elevate.css : typographie, focus, mouvement,
+   tables, formulaires, transitions de page. Aucune dépendance externe.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. TOKENS COMPLÉMENTAIRES
+   -------------------------------------------------------------------------- */
+:root,
+html[data-theme="light"] {
+  color-scheme: light;
+  --ds-amber: var(--amber, #ff8c00);
+  --ds-amber-deep: var(--amber-deep, #b8590a);
+  --ds-amber-soft: var(--amber-soft, rgba(255, 140, 0, .10));
+  --ds-ink: var(--ink, #171a1f);
+  --ds-ink-2: var(--ink-2, #3d434d);
+  --ds-ink-3: var(--ink-3, #6a7180);
+  --ds-paper: var(--paper, #f5f2ec);
+  --ds-surface: var(--surface, #fcfaf6);
+  --ds-raised: var(--surface-raised, #ffffff);
+  --ds-rule: var(--rule, #e2dbcf);
+  --ds-rule-soft: var(--rule-soft, #ece6dc);
+  --ds-ok: var(--ok, #1c7a4d);
+  --ds-warn: var(--warn, #9c6213);
+  --ds-bad: var(--bad, #bb3a3a);
+  --ds-info: var(--info2, #2c5b9e);
+  --ds-shadow-1: 0 1px 2px rgba(23, 26, 31, .05);
+  --ds-shadow-2: 0 1px 2px rgba(23, 26, 31, .05), 0 10px 28px -16px rgba(23, 26, 31, .20);
+  --ds-shadow-3: 0 2px 6px rgba(23, 26, 31, .06), 0 26px 60px -26px rgba(23, 26, 31, .28);
+  --ds-radius: 12px;
+  --ds-tap: 44px;
+  /* Mouvement : durées courtes, courbes franches */
+  --dur-1: 110ms;
+  --dur-2: 180ms;
+  --dur-3: 280ms;
+  --dur-4: 460ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-io: cubic-bezier(.65, 0, .35, 1);
+  --ds-gutter: clamp(16px, 2.2vw, 28px);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ds-paper: var(--paper, #101216);
+  --ds-surface: var(--surface, #16191f);
+  --ds-raised: var(--surface-raised, #1c2028);
+  --ds-ink: var(--ink, #eef1f5);
+  --ds-ink-2: var(--ink-2, #c6ccd6);
+  --ds-ink-3: var(--ink-3, #98a1ae);
+  --ds-rule: var(--rule, #2a2f38);
+  --ds-rule-soft: var(--rule-soft, #23282f);
+  --ds-shadow-1: 0 1px 2px rgba(0, 0, 0, .35);
+  --ds-shadow-2: 0 1px 2px rgba(0, 0, 0, .35), 0 12px 32px -18px rgba(0, 0, 0, .65);
+  --ds-shadow-3: 0 2px 8px rgba(0, 0, 0, .4), 0 28px 64px -28px rgba(0, 0, 0, .7);
+}
+
+/* --------------------------------------------------------------------------
+   2. SOCLE
+   -------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 88px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-ui, "Figtree", system-ui, sans-serif);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+[id] { scroll-margin-top: 88px; }
+
+/* Cibles tactiles fiables, sans délai de double-tap */
+a, button, [role="button"], input, select, textarea, summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ds-amber) 26%, transparent);
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   3. TYPOGRAPHIE
+   -------------------------------------------------------------------------- */
+h1, h2, h3, .page-head-titles h2, .stat-card-value, .modal-title {
+  font-family: var(--font-display, "Instrument Serif", Georgia, serif);
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+
+h1 { font-size: clamp(1.65rem, 1.2rem + 1.2vw, 2.15rem); line-height: 1.15; }
+h2 { font-size: clamp(1.35rem, 1.05rem + .8vw, 1.7rem); line-height: 1.2; }
+h3 { font-size: clamp(1.15rem, 1rem + .45vw, 1.35rem); line-height: 1.25; }
+
+p, li, .page-head-sub { text-wrap: pretty; }
+
+small, .text-tertiary, .form-text { letter-spacing: .005em; }
+
+/* Chiffres alignés pour toutes les données tabulaires */
+.tnum,
+.table td, .table th,
+.stat-card-value, .stat-card-trend,
+.kpi-value, .amount, .money,
+.orbit-filter-count strong {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Utilitaires de contenu */
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line-clamp-2 {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.min-w-0 { min-width: 0; }
+
+/* --------------------------------------------------------------------------
+   4. FOCUS VISIBLE (jamais de focus supprimé sans remplacement)
+   -------------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ds-amber);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.btn-premium:focus-visible,
+.sidebar-nav-item:focus-visible,
+.dropdown-item:focus-visible {
+  outline-offset: 3px;
+}
+
+/* Les champs gèrent leur focus via box-shadow (pas de double anneau) */
+.input-premium:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible {
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. ASCENSEURS DISCRETS
+   -------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ds-ink) 22%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ds-ink) 18%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ds-ink) 32%, transparent);
+  background-clip: content-box;
+}
+
+/* --------------------------------------------------------------------------
+   6. BOUTONS — micro-interactions explicites (jamais transition: all)
+   -------------------------------------------------------------------------- */
+.btn-premium,
+.btn,
+.btn-premium-primary,
+.btn-premium-secondary,
+.btn-premium-success {
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) linear,
+    border-color var(--dur-2) linear,
+    color var(--dur-2) linear;
+  min-height: 40px;
+}
+
+.btn-premium { font-weight: 600; letter-spacing: .005em; }
+
+.btn-premium:hover:not(:disabled) { transform: translateY(-1px); }
+.btn-premium:active:not(:disabled) { transform: translateY(0) scale(.985); }
+
+.btn-premium:disabled,
+.btn-premium.disabled,
+.btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none;
+}
+
+/* État de chargement : spinner intégré, interactions bloquées */
+.btn-premium.is-loading {
+  pointer-events: none;
+  opacity: .85;
+  position: relative;
+  color: transparent !important;
+}
+.btn-premium.is-loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  animation: ds-spin .7s linear infinite;
+}
+
+@keyframes ds-spin { to { transform: rotate(360deg); } }
+
+@media (pointer: coarse) {
+  .btn-premium, .btn { min-height: var(--ds-tap); }
+}
+
+/* --------------------------------------------------------------------------
+   7. CARTES
+   -------------------------------------------------------------------------- */
+.card-premium {
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    box-shadow var(--dur-3) var(--ease-out),
+    border-color var(--dur-2) linear;
+}
+
+.card-premium:hover { transform: translateY(-2px); }
+
+/* Une carte non interactive ne doit pas « sauter » */
+.card-premium.no-lift:hover,
+.card-premium.static:hover { transform: none; }
+
+.card-header-premium h5 { letter-spacing: -.005em; }
+
+/* --------------------------------------------------------------------------
+   8. FORMULAIRES
+   -------------------------------------------------------------------------- */
+.input-premium,
+.form-control,
+.form-select {
+  transition:
+    border-color var(--dur-2) linear,
+    box-shadow var(--dur-2) linear,
+    background-color var(--dur-2) linear;
+}
+
+.input-premium:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--ds-amber);
+  box-shadow: 0 0 0 3px var(--ds-amber-soft);
+  outline: none;
+}
+
+/* Erreur signalée par le navigateur, sans bloquer la saisie */
+.input-premium:user-invalid,
+.form-control:user-invalid,
+.form-select:user-invalid {
+  border-color: var(--ds-bad);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-bad) 14%, transparent);
+}
+
+.form-label { font-weight: 600; color: var(--ds-ink-2); }
+
+/* Cases à cocher : une seule cible cliquable, curseur cohérent */
+.form-check { min-height: 24px; }
+.form-check-input { cursor: pointer; }
+.form-check-label { cursor: pointer; }
+
+/* Sélecteur natif lisible en thème sombre (Windows) */
+.form-select {
+  background-color: var(--ds-raised);
+  color: var(--ds-ink);
+}
+
+/* --------------------------------------------------------------------------
+   9. TABLES — lisibilité type « grand livre »
+   -------------------------------------------------------------------------- */
+.table-responsive {
+  border-radius: var(--ds-radius);
+  border: 1px solid var(--ds-rule-soft);
+  background: var(--ds-surface);
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ds-surface);
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.table tbody tr { transition: background-color var(--dur-1) linear; }
+.table tbody td { vertical-align: middle; }
+.table td .fw-semibold, .table td strong { color: var(--ds-ink); }
+
+/* Indice de défilement horizontal (dégradé sur les bords) */
+.table-responsive.can-scroll-x {
+  background-image:
+    linear-gradient(90deg, var(--ds-surface) 30%, transparent),
+    linear-gradient(270deg, var(--ds-surface) 30%, transparent);
+  background-position: 0 0, 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%;
+}
+
+/* --------------------------------------------------------------------------
+   10. PASTILLES DE STATUT
+   -------------------------------------------------------------------------- */
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: .015em;
+  white-space: nowrap;
+}
+
+.badge {
+  font-weight: 600;
+  letter-spacing: .01em;
+  padding: .34em .62em;
+  border-radius: 999px;
+}
+
+/* --------------------------------------------------------------------------
+   11. NAVIGATION LATÉRALE & BARRE SUPÉRIEURE
+   -------------------------------------------------------------------------- */
+.sidebar-nav-item {
+  transition:
+    background-color var(--dur-2) linear,
+    color var(--dur-2) linear,
+    transform var(--dur-2) var(--ease-out);
+}
+
+.sidebar-nav-item:hover { transform: translateX(2px); }
+
+.sidebar-group-title {
+  transition: color var(--dur-2) linear, background-color var(--dur-2) linear;
+}
+.sidebar-group-title i { transition: transform var(--dur-2) var(--ease-out); }
+.sidebar-group.collapsed .sidebar-group-title i { transform: rotate(-90deg); }
+
+.sidebar-group-items {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--dur-3) var(--ease-out), opacity var(--dur-2) linear;
+  opacity: 1;
+}
+.sidebar-group.collapsed .sidebar-group-items {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* Boutons icônes de la barre supérieure : cible nette + survol */
+#themeToggle,
+.notif-bell-link,
+.app-topbar-right > a,
+.app-topbar-right > button:not(.orbit-search-btn) {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--ds-ink-2);
+  transition: background-color var(--dur-2) linear, color var(--dur-2) linear, transform var(--dur-2) var(--ease-out);
+}
+
+#themeToggle:hover,
+.notif-bell-link:hover,
+.app-topbar-right > a:hover,
+.app-topbar-right > button:not(.orbit-search-btn):hover {
+  background: color-mix(in srgb, var(--ds-ink) 7%, transparent);
+  color: var(--ds-ink);
+}
+
+#themeToggle:active,
+.notif-bell-link:active { transform: scale(.94); }
+
+.app-topbar {
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+  backdrop-filter: saturate(150%) blur(14px);
+}
+
+.app-user-toggle {
+  transition: background-color var(--dur-2) linear, transform var(--dur-2) var(--ease-out);
+}
+.app-user-toggle:hover { background: color-mix(in srgb, var(--ds-ink) 6%, transparent); }
+
+/* Menu d'équipe : élément cliquable = vraie zone interactive */
+.team-context-icon {
+  transition: background-color var(--dur-2) linear, border-color var(--dur-2) linear;
+  cursor: pointer;
+}
+.team-context-icon:hover { background: color-mix(in srgb, var(--ds-ink) 6%, transparent); }
+
+/* --------------------------------------------------------------------------
+   12. ONGLETS, MENUS, MODALES, TOASTS
+   -------------------------------------------------------------------------- */
+.nav-tabs .nav-link {
+  transition: color var(--dur-2) linear, border-color var(--dur-2) linear, background-color var(--dur-2) linear;
+}
+
+.dropdown-item { transition: background-color var(--dur-1) linear, color var(--dur-1) linear; }
+
+.modal-content { border-radius: 16px; box-shadow: var(--ds-shadow-3); }
+
+.toast { border-radius: 12px; box-shadow: var(--ds-shadow-2); }
+
+.progress-bar { transition: width var(--dur-4) var(--ease-out); }
+
+/* --------------------------------------------------------------------------
+   13. MOUVEMENT — révélations orchestrées & transitions de page
+   -------------------------------------------------------------------------- */
+@keyframes ds-rise {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ds-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entrée de page : le contenu monte doucement, une seule fois */
+  main > .row > .col > .container > .page-head,
+  main > .row > .col > .container > .row > [class*="col"] {
+    animation: ds-rise var(--dur-4) var(--ease-out) both;
+  }
+
+  /* Décalage en cascade (limité à 6 éléments pour rester subtil) */
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(2) { animation-delay: 45ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(3) { animation-delay: 90ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(4) { animation-delay: 135ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(5) { animation-delay: 180ms; }
+  main > .row > .col > .container > .row > [class*="col"]:nth-child(6) { animation-delay: 225ms; }
+
+  .animate-fade-in-up { animation: ds-rise var(--dur-4) var(--ease-out) both; }
+
+  /* Les blocs déjà animés par leur classe ne cumulent pas deux animations */
+  .page-head.animate-fade-in-up,
+  .card-premium.animate-fade-in-up { animation-delay: 0ms; }
+}
+
+/* Transitions entre documents (Chrome/Edge/Safari 18+) */
+@view-transition { navigation: auto; }
+
+::view-transition-old(root) {
+  animation: ds-fade var(--dur-2) var(--ease-io) both reverse;
+}
+::view-transition-new(root) {
+  animation: ds-fade var(--dur-3) var(--ease-out) both;
+}
+
+/* Barre de progression de navigation (2px, en haut) */
+#orbitProgress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  z-index: 3000;
+  background: linear-gradient(90deg, var(--ds-amber), var(--amber-light, #ffab4d));
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  opacity: 0;
+  transition: transform var(--dur-4) var(--ease-out), opacity var(--dur-2) linear;
+  pointer-events: none;
+}
+#orbitProgress.is-on { opacity: 1; transform: scaleX(.42); }
+#orbitProgress.is-done {
+  opacity: 0;
+  transform: scaleX(1);
+  transition: transform var(--dur-1) linear, opacity var(--dur-3) linear var(--dur-1);
+}
+
+/* Lien d'évitement (accessibilité clavier) */
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: -64px;
+  z-index: 3100;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--ds-ink);
+  color: var(--ds-paper);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--ds-shadow-2);
+  transition: top var(--dur-2) var(--ease-out);
+}
+.skip-link:focus { top: 12px; }
+
+main#mainContent:focus { outline: none; }
+
+/* --------------------------------------------------------------------------
+   14. PRÉFÉRENCE « MOUVEMENT RÉDUIT » — tout est neutralisé
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-in-up,
+  main > .row > .col > .container > .row > [class*="col"],
+  main > .row > .col > .container > .page-head {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .card-premium:hover,
+  .btn-premium:hover:not(:disabled),
+  .sidebar-nav-item:hover { transform: none; }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none !important; }
+
+  #orbitProgress { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   15. ÉTATS VIDES & DÉTAILS FINAUX
+   -------------------------------------------------------------------------- */
+.orbit-empty { animation: ds-fade var(--dur-4) var(--ease-out) both; }
+
+.orbit-filter-reset {
+  transition: background-color var(--dur-2) linear, color var(--dur-2) linear, border-color var(--dur-2) linear;
+}
+
+/* Images : jamais de décalage de mise en page */
+img { max-width: 100%; height: auto; }
+
+/* Zones sujettes à débordement : on garde le contrôle */
+.table-responsive, .card-body-premium, .dropdown-menu { overscroll-behavior: contain; }
+
+/* =========================================================================
+   SECTION — _orbit-v2-coherence.css (couche de finition, dernier mot)
+   ====================================================================== */
+
+/* ============================================================================
+   JMH ORBIT — COHÉRENCE & FINITIONS (v2)
+   Ajouté après la consolidation des couches. Corrige des défauts MESURÉS sur
+   l'app réelle (métriques DOM) — voir les commentaires pour la cause.
+   Chargé en dernier : ces règles ont le dernier mot.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1) SIDEBAR — la hauteur ne doit plus dépendre du contenu de la page
+   Cause mesurée : `.h-100` (Bootstrap, !important) écrasait `height:100vh` de
+   `.sidebar` → sur une page courte la barre faisait la taille du contenu
+   (569px mesurés pour 1161px de navigation) et la moitié des entrées restait
+   inaccessible. Le pied de barre doit rester visible en permanence.
+   -------------------------------------------------------------------------- */
+.sidebar.h-100,
+.sidebar { height: 100vh !important; }
+.sidebar {
+    overflow: hidden !important;          /* le défilement vit dans .sidebar-menu */
+    overscroll-behavior: contain;
+    padding-bottom: 0 !important;
+}
+.sidebar-menu {
+    flex: 1 1 auto !important;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.sidebar-brand,
+.sidebar-footer { flex: 0 0 auto; }
+
+/* Barre de défilement de la navigation : discrète mais visible */
+.sidebar-menu::-webkit-scrollbar { width: 6px; }
+.sidebar-menu::-webkit-scrollbar-track { background: transparent; }
+.sidebar-menu::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ink) 16%, transparent);
+    border-radius: 99px;
+}
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+
+/* Le survol d'un item ne décale plus le texte (micro-saccade) */
+.sidebar-nav-item:hover { transform: none !important; }
+
+/* ---------------------------------------------------------------------------
+   2) CONTENU — respiration basse : le bouton assistant ne recouvre plus rien
+   Cause mesurée : `main { padding-bottom: 0 }` alors que le bouton flottant est
+   en `bottom:20px` → il masquait la dernière carte / le dernier champ.
+   -------------------------------------------------------------------------- */
+main#mainContent { padding-bottom: 104px; }
+
+/* ---------------------------------------------------------------------------
+   3) KPI — valeurs alignées même quand les libellés passent sur deux lignes
+   Cause : un libellé sur 2 lignes poussait la valeur vers le bas, désalignée
+   d'une carte à l'autre.
+   -------------------------------------------------------------------------- */
+.kpi-band { align-items: stretch; }
+.kpi-chip {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.kpi-chip .kpi-label {
+    min-height: 2.4em;
+    align-items: center;
+}
+.kpi-chip .kpi-value { line-height: 1.05; }
+.kpi-chip .kpi-sub { margin-top: auto; padding-top: .35rem; }
+
+/* .stat-card : même logique (dashboards) */
+.stat-card { display: flex; flex-direction: column; height: 100%; }
+.stat-card .stat-card-label { min-height: 2.4em; }
+
+/* ---------------------------------------------------------------------------
+   4) STATUTS — 4 familles de couleur distinctes, branchées sur les jetons
+   Cause : « à faire » (gris) et « en cours » (orange = couleur d'accent)
+   n'étaient pas distinguables ; les compteurs de l'avancement utilisaient
+   encore l'ancienne palette (#42A5F5 / #66BB6A) au lieu des jetons.
+   Règle : l'ambre est réservé à l'ACTION ; les statuts ont leurs propres teintes.
+   -------------------------------------------------------------------------- */
+.status-a_faire,
+.status-a-faire {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border: 1px solid color-mix(in srgb, var(--warning) 26%, transparent);
+}
+.status-en_cours,
+.status-en-cours {
+    background: var(--info-bg);
+    color: var(--info);
+    border: 1px solid color-mix(in srgb, var(--info) 28%, transparent);
+}
+.status-terminee,
+.status-termine,
+.status-terminée {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+}
+
+.avm-counter.avm-c-af i,
+.avm-counter.avm-c-af strong { color: var(--ink-3); }
+.avm-counter.avm-c-ec i,
+.avm-counter.avm-c-ec strong { color: var(--info); }     /* était orange */
+.avm-counter.avm-c-done i,
+.avm-counter.avm-c-done strong { color: var(--success); }
+.avm-counter.avm-c-late i,
+.avm-counter.avm-c-late strong { color: var(--danger); }
+
+.avm-tx.ok { border-color: color-mix(in srgb, var(--success) 35%, transparent); }
+.avm-tx.rt { border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+
+/* ---------------------------------------------------------------------------
+   5) COULEURS EN DUR QUI IGNORAIENT LE THÈME
+   Cause : ces composants étaient figés sur l'ancienne palette (orange
+   #FF8C00 / bleus Bootstrap) au lieu des jetons → incohérence en thème sombre.
+   -------------------------------------------------------------------------- */
+.text-orange,
+.text-warning-strong { color: var(--amber) !important; }
+
+.badge-orange { background: var(--amber-soft) !important; color: var(--amber-deep) !important; }
+.badge-tertiary {
+    background: var(--bg-hover) !important;
+    color: var(--ink-3) !important;
+    border: 1px solid var(--rule) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   6) FLUIDITÉ — transitions explicites sur les zones qui en manquaient
+   (listes filtrées, lignes de tableau, cartes cliquables)
+   -------------------------------------------------------------------------- */
+.table tbody tr {
+    transition: background-color var(--dur-1) linear, opacity var(--dur-2) linear;
+}
+.avm-card,
+.member-card,
+.task-card,
+.suggestion-card {
+    transition:
+        transform var(--dur-3) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        border-color var(--dur-2) linear;
+}
+.avm-iconbar .avm-fico,
+.orbit-filter-reset,
+.filter-toggle {
+    transition:
+        background-color var(--dur-2) linear,
+        color var(--dur-2) linear,
+        border-color var(--dur-2) linear,
+        transform var(--dur-2) var(--ease-out);
+}
+.avm-fico:active,
+.filter-toggle:active { transform: scale(.94); }
+
+/* Contenu remplacé par du JS (filtres, onglets) : fondu court au lieu d'un saut */
+@keyframes orbit-swap-in {
+    from { opacity: 0; transform: translate3d(0, 4px, 0); }
+    to   { opacity: 1; transform: none; }
+}
+.view-swap,
+.orbit-swap { animation: orbit-swap-in var(--dur-3) var(--ease-out) both; }
+
+/* ---------------------------------------------------------------------------
+   7) ÉTATS VIDES — hauteur proportionnée, plus de bloc « upload » géant
+   -------------------------------------------------------------------------- */
+.orbit-empty,
+.task-empty,
+.empty-state {
+    padding: 2rem 1.25rem !important;
+    min-height: 0 !important;
+    border-radius: var(--r-md);
+}
+.task-empty p,
+.empty-state p { margin-bottom: 0; }
+
+/* ---------------------------------------------------------------------------
+   8) BOUTON ASSISTANT — aligné sur la marque (il était en #E07A5F, un
+   terracotta qui n'existe nulle part ailleurs dans l'app)
+   -------------------------------------------------------------------------- */
+#assistantFab {
+    background: var(--amber) !important;
+    color: #17181c !important;
+    box-shadow: var(--shadow-orange), var(--shadow-2) !important;
+    transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out) !important;
+}
+#assistantFab:hover { transform: translateY(-2px) scale(1.03); }
+#assistantFab:active { transform: scale(.96); }
+
+/* Le panneau flottant suit le thème au lieu d'un blanc/noir figé */
+#assistantPanel {
+    background: var(--surface-raised) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--rule) !important;
+    box-shadow: var(--shadow-3) !important;
+    border-radius: var(--r-lg) !important;
+}
+#assistantPanel .ap-head { background: var(--amber) !important; color: #17181c !important; }
+#assistantPanel .ap-head button { color: #17181c !important; }
+.ap-msg.user { background: var(--amber) !important; color: #17181c !important; }
+.ap-msg.assistant { background: var(--bg-card-hover) !important; color: var(--ink) !important; }
+.ap-msg.error { background: var(--danger-bg) !important; color: var(--danger) !important; }
+.ap-draft { border-color: var(--amber-line) !important; }
+.ap-draft button { background: var(--amber) !important; border-color: var(--amber) !important; color: #17181c !important; }
+.ap-draft button.secondary { background: transparent !important; color: var(--amber-deep) !important; }
+#assistantForm { border-top: 1px solid var(--rule) !important; }
+#assistantForm input { border: 1px solid var(--rule) !important; background: var(--bg-card) !important; }
+#assistantForm button { background: var(--amber) !important; color: #17181c !important; }
+
+/* ---------------------------------------------------------------------------
+   9) DÉTAILS DE FINITION
+   -------------------------------------------------------------------------- */
+/* Le badge de navigation ne doit pas coller au libellé */
+.sidebar-nav-item > span:not(.sidebar-badge) { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* En-tête de page : le sous-titre gagne en lisibilité (contraste/graisse) */
+.page-head-sub {
+    color: var(--ink-3) !important;
+    font-weight: 500;
+    letter-spacing: .01em;
+}
+
+/* Les nombres restent alignés partout, y compris dans les badges */
+.badge, .avm-tx, .avm-counter strong, .sidebar-badge { font-variant-numeric: tabular-nums; }
+
+/* Tableaux : le défilement horizontal ne doit plus casser le rayon des cartes */
+.table-responsive { overflow-x: auto; }
+
+/* Réduction de mouvement : on neutralise aussi les nouvelles règles */
+@media (prefers-reduced-motion: reduce) {
+    .view-swap,
+    .orbit-swap { animation: none !important; }
+    #assistantFab:hover { transform: none; }
+}
+
+/* ============================================================================
+   10) TRANSITIONS DE PAGE — chrome figé, contenu qui glisse
+   Sans isolation, la transition de document (View Transitions) fait clignoter
+   la sidebar et la barre du haut à chaque navigation : l'œil perçoit un
+   « rechargement » au lieu d'un changement de vue. On sort ces deux blocs du
+   fondu global pour que seuls le titre et le contenu bougent.
+   ========================================================================== */
+.sidebar { view-transition-name: orbit-sidebar; }
+.app-topbar { view-transition-name: orbit-topbar; }
+main#mainContent { view-transition-name: orbit-main; }
+
+/* Le chrome reste strictement immobile pendant la navigation */
+::view-transition-group(orbit-sidebar),
+::view-transition-group(orbit-topbar) {
+    animation: none;
+}
+::view-transition-old(orbit-sidebar),
+::view-transition-new(orbit-sidebar),
+::view-transition-old(orbit-topbar),
+::view-transition-new(orbit-topbar) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+/* Le contenu : fondu court + montée de 6px (mouvement perçu, pas subi) */
+@keyframes orbit-page-in {
+    from { opacity: 0; transform: translate3d(0, 6px, 0); }
+    to   { opacity: 1; transform: none; }
+}
+::view-transition-old(orbit-main) {
+    animation: orbit-page-in var(--dur-2) var(--ease-io) both reverse;
+}
+::view-transition-new(orbit-main) {
+    animation: orbit-page-in var(--dur-3) var(--ease-out) both;
+}
+
+/* Repli pour les navigateurs sans View Transitions : entrée douce du contenu */
+@supports not (view-transition-name: none) {
+    @media (prefers-reduced-motion: no-preference) {
+        main#mainContent > .row > .col > .container { animation: orbit-page-in var(--dur-3) var(--ease-out) both; }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar, .app-topbar, main#mainContent { view-transition-name: none; }
+    ::view-transition-old(orbit-main), ::view-transition-new(orbit-main) { animation: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   11) BARRE DU HAUT — séparation nette entre contexte d'équipe et compte
+   Les deux menus déroulants étaient collés et de style identique : on ne
+   distinguait plus « je change d'équipe » de « je gère mon compte ».
+   -------------------------------------------------------------------------- */
+.app-topbar-right { gap: 2px; }
+.app-topbar-right .dropdown + .dropdown {
+    margin-left: 8px;
+    padding-left: 10px;
+    border-left: 1px solid var(--rule);
+}
+
+/* Sélecteurs natifs (année, etc.) : chevron explicite, jamais de champ nu */
+select.form-select:not([multiple]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236a7180' stroke-width='1.6'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .7rem center;
+    background-size: 14px 14px;
+    padding-right: 2rem;
+    appearance: none;
+}

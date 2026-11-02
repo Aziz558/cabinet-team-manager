@@ -19,7 +19,7 @@
     {% if e.equipe_email %}{% set ens.emails = ens.emails + 1 %}{% endif %}
 {% endfor %}
 <div class="kpi-band animate-fade-in-up">
-    <div class="kpi-chip" style="--accent: var(--info);">
+    <div class="kpi-chip" style="--accent: var(--ink-3);">
         <div class="kpi-label"><i class="bi bi-diagram-3"></i> Équipes</div>
         <div class="kpi-value">{{ ens.total }}</div>
         <div class="kpi-sub">structures actives</div>
@@ -32,7 +32,7 @@
     <div class="kpi-chip" style="--accent: var(--orange-primary);">
         <div class="kpi-label"><i class="bi bi-person-gear"></i> Avec responsable</div>
         <div class="kpi-value">{{ ens.avec_mgr }}</div>
-        <div class="kpi-sub">{{ (ens.avec_mgr / ens.total * 100)|round(0) if ens.total else 0 }}% encadrées</div>
+        <div class="kpi-sub">{{ ((ens.avec_mgr / ens.total * 100)|round(0) if ens.total else 0)|pct }} encadrées</div>
     </div>
     <div class="kpi-chip" style="--accent: var(--danger);">
         <div class="kpi-label"><i class="bi bi-person-x"></i> Sans responsable</div>
@@ -56,7 +56,7 @@
                         <i class="bi {{ e.icon }} fs-4" style="color:{{ e.couleur }}"></i>
                         <h5 class="mb-0">{{ e.nom }}</h5>
                     </div>
-                    <span class="badge badge-tertiary">{{ e.nb_membres() }} membre(s)</span>
+                    <span class="badge badge-tertiary">{{ e.nb_membres() }} membre{{ e.nb_membres()|plur }}</span>
                 </div>
                 <p class="text-tertiary small">{{ e.description or 'Aucune description.' }}</p>
                 {% if e.manager %}

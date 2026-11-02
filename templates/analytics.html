@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Analytics{% endblock %}
+{% block title %}Analyses{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -28,7 +28,7 @@
         {% endfor %}
     </select>
 {% endset %}
-{{ page_head('bi-graph-up-arrow', 'Analytics', 'Production ' ~ annee, actions=actions) }}
+{{ page_head('bi-graph-up-arrow', 'Analyses', 'Production ' ~ annee, actions=actions) }}
 
 <!-- KPI -->
 <div class="stats-grid mb-4">
@@ -54,7 +54,7 @@
             <div class="stat-card-label">Fait</div>
             <div class="stat-card-value">{{ data.statuts.fait }}</div>
             <div class="stat-card-trend up"><i class="bi bi-graph-up"></i>
-                <span>{{ ((data.statuts.fait / data.total_taches * 100) | round(1)) if data.total_taches else 0 }}%</span></div>
+                <span>{{ (((data.statuts.fait / data.total_taches * 100) | round(1)) if data.total_taches else 0)|pct }}</span></div>
         </div>
     </div>
     <div class="stat-card">
@@ -92,7 +92,7 @@
                                 stroke-dashoffset="{{ C - (C * pct / 100) | round(1) }}"></circle>
                     </svg>
                     <div class="ring-center">
-                        <span class="ring-pct">{{ pct }}%</span>
+                        <span class="ring-pct">{{ (pct)|pct }}</span>
                         <span class="ring-sub">{{ m.fait }} / {{ tot }} fait</span>
                     </div>
                 </div>
@@ -160,7 +160,7 @@
                 {% for nom, nb in data.secteurs[:8] %}
                 <div class="analytics-list-item">
                     <span style="min-width: 130px; font-size: 0.8rem; color: var(--text-primary);">{{ nom }}</span>
-                    <div class="analytics-list-bar"><div style="width: {{ (nb / max_sect * 100) | round(0) }}%;"></div></div>
+                    <div class="analytics-list-bar"><div style="width: {{ ((nb / max_sect * 100) | round(0) | int) }}%;"></div></div>
                     <span class="badge badge-tertiary">{{ nb }}</span>
                 </div>
                 {% else %}
