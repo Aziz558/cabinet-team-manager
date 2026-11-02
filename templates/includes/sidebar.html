@@ -219,6 +219,9 @@
         if (!menu || menu.dataset.orbitGroups) { return; }
         menu.dataset.orbitGroups = '1';
 
+        /* Ne pas doubler la recherche quand la page a déjà sa propre barre (ex: /dossiers avec rechercheDossier) */
+        if (document.getElementById('rechercheDossier')) { return; }
+
         /* 1) Recherche rapide */
         var search = document.createElement('div');
         search.className = 'sidebar-search';

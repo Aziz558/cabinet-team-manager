@@ -1,0 +1,99 @@
+/* ===== Orbit Hallmark corrections =====
+   Surcharges cibles pour defauts d'accesibilite et de layout.
+   Charger en dernier pour l'emporter sur les feuilles precedentes.
+*/
+
+/* 1) overflow-x : clip (jamais hidden) pour ne pas casser sticky / position fixed */
+html, body {
+  overflow-x: clip !important;
+}
+
+/* 2) Focus visible : anneau visible au clavier, contraste 3:1 minimum */
+:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--orange-primary, #FF8C00));
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--orange-primary, #FF8C00));
+  outline-offset: 2px;
+}
+
+/* 3) Transitions : eviter 'all', lister les proprietes animees */
+.btn-premium, .btn, button, .filter-btn, .orbit-tool-btn,
+.input-premium, .select-premium, .filter-panel,
+.avm-fico, .kpi-chip, .task-card, .member-filter-item {
+  transition-property: opacity, transform, color, background-color, border-color, box-shadow !important;
+  transition-duration: 0.2s !important;
+  transition-timing-function: ease !important;
+}
+
+/* 4) Elements desactides : curseur + opacity (trois canaux respects) */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* 5) SVG decoratifs : masquer aux technologies d'assistance */
+svg:not([aria-label]):not([aria-labelledby]) {
+  aria-hidden: "true";
+}
+
+/* 6) KPI chips : alignement forcé des valeurs et subtitles sur une ligne de base commune */
+.kpi-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+}
+.kpi-value {
+  line-height: 1;
+}
+.kpi-chip .kpi-sub {
+  margin-top: auto;
+}
+
+/* 7) Labels plus lisibles : letter-spacing réduit, taille adaptée */
+.kpi-label, .sidebar-section-title, .page-head-sub {
+  letter-spacing: 0.02em !important;
+  font-size: 0.85rem !important;
+  opacity: 0.75;
+}
+
+/* 8) Vide-état allégé : réduire le padding intérieur du conteneur vide */
+.task-empty, .empty-state, .card-premium > .empty-state {
+  padding: 1.5rem 1rem !important;
+  min-height: auto !important;
+}
+
+/* 9) Cartes membres : hauteur uniforme, stat boxes alignées */
+.member-card, .avm-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.member-card .stat-box, .avm-card .stat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* 10) Focus visible renforcé sur les boutons d'action principaux */
+.btn-premium:focus-visible,
+.orbit-tool-btn:focus-visible,
+.filter-btn:focus-visible {
+  outline: 3px solid var(--focus-ring, #FF8C00);
+  outline-offset: 3px;
+}
