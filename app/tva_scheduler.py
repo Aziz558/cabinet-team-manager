@@ -16,27 +16,62 @@ def prev_working_day(d: date, offset=3) -> date:
         result -= timedelta(days=1)
     return result
 
-def make_task(title, description, deadline, dossier_id, collaborateur_id, priorite='moyenne'):
-    """Crée la tâche de DÉPÔT uniquement (pas de tâche « Préparation »).
+def _month_bounds(d):
+    """Premier et dernier jour du mois de `d`."""
+    first = date(d.year, d.month, 1)
+    nxt = date(d.year + (1 if d.month == 12 else 0), 1 if d.month == 12 else d.month + 1, 1)
+    return first, nxt - timedelta(days=1)
 
-    Le rappel par email est envoyé 2 jours avant l'échéance par
-    envoyer_rappels_depot_j2()."""
+
+def make_task(title, description, deadline, dossier_id, collaborateur_id, priorite='moyenne'):
+    """Crée la tâche de DÉPÔT si elle n'existe pas, sinon aligne son échéance.
+
+    Idempotent et NON destructif — c'est le cœur de la fiabilité de la
+    planification :
+    - clé = (dossier, titre, mois de l'échéance). Les titres TVA ne portent pas
+      le mois, on ne peut donc pas se contenter de (dossier, titre) : la tâche
+      de novembre écraserait celle d'octobre ;
+    - un statut déjà saisi (en cours / terminée) n'est JAMAIS écrasé ;
+    - une échéance passée ne marque plus la tâche « terminée » d'office :
+      la marquer terminée faisait disparaître les retards de la vue alors que
+      rien n'avait été fait.
+    """
     from app.models import Tache
     from app import db
 
-    is_past = deadline < date.today()
+    first, last = _month_bounds(deadline)
+    existing = Tache.query.filter(
+        Tache.dossier_id == dossier_id,
+        Tache.titre == title,
+        Tache.date_echeance >= first,
+        Tache.date_echeance <= last,
+    ).first()
+
+    if existing:
+        changed = False
+        if existing.date_echeance != deadline and existing.statut != 'terminee':
+            existing.date_echeance = deadline
+            changed = True
+        if collaborateur_id and not existing.assigne_a:
+            existing.assigne_a = collaborateur_id
+            changed = True
+        if changed:
+            db.session.add(existing)
+        return existing
+
     t = Tache(
         titre=title,
         description=description,
-        statut='terminee' if is_past else 'a_faire',
+        statut='a_faire',
         priorite=priorite,
         date_echeance=deadline,
         dossier_id=dossier_id,
         assigne_a=collaborateur_id,
         cree_par=None,
-        date_completion=datetime.utcnow() if is_past else None,
+        date_completion=None,
     )
     db.session.add(t)
+    return t
 
 def _cleanup_existing_tasks(dossier_id, keywords):
     """Delete existing tasks matching keywords for a dossier."""
@@ -119,7 +154,6 @@ def _planifier_tva(dossier):
         deadlines = []  # We handle this separately
         regime_label = 'annuel'
     
-    _cleanup_existing_tasks(dossier.id, ['TVA', 'Dépôt TVA', 'Préparation TVA'])
     
     horizon = date.today() + timedelta(days=30)
     
@@ -183,8 +217,6 @@ def _planifier_is(dossier):
     if dossier.regime_fiscale != 'IS':
         return
     
-    # Mots-clés PRÉCIS (ne pas utiliser 'IS' seul : matcherait 'CHOISY', 'PERMIS', etc.)
-    _cleanup_existing_tasks(dossier.id, ['Acompte IS', 'Déclaration IS', 'Préparation Acompte IS', 'Préparation Déclaration IS'])
     
     year = date.today().year
     horizon = date.today() + timedelta(days=30)
@@ -220,7 +252,6 @@ def _planifier_cfe(dossier):
     if not dossier.has_cfe:
         return
     
-    _cleanup_existing_tasks(dossier.id, ['CFE', 'Préparation CFE'])
     
     year = date.today().year
     horizon = date.today() + timedelta(days=30)
@@ -242,12 +273,68 @@ def _planifier_cfe(dossier):
 
 def planifier_impots_dossier(dossier):
     """Generate all tax tasks for a dossier."""
-    # Clean up first
-    _cleanup_existing_tasks(dossier.id, ['TVA', 'IS', 'CFE', 'Acompte', 'Dépôt', 'Préparation', 'Déclaration'])
-    # Generate tasks
     _planifier_tva(dossier)
     _planifier_is(dossier)
     _planifier_cfe(dossier)
+
+def _get_setting(cle):
+    from app.models import AppSetting
+    row = AppSetting.query.filter_by(cle=cle).first()
+    return row.valeur if row and row.valeur else None
+
+
+def _set_setting(cle, valeur, service='systeme'):
+    from app import db
+    from app.models import AppSetting
+    row = AppSetting.query.filter_by(cle=cle).first()
+    if row:
+        row.valeur = valeur
+    else:
+        db.session.add(AppSetting(cle=cle, valeur=valeur, service=service,
+                                  type_valeur='texte', masque=False))
+    db.session.commit()
+
+
+def planifier_si_necessaire(force=False):
+    """Rattrapage de la planification fiscale — appelé au démarrage.
+
+    Pourquoi : l'hébergement met l'instance en veille. Un cron « le 1er à 06:00 »
+    ne se déclenche donc jamais si le process dort à cette heure-là, et
+    APScheduler ne rejoue pas les exécutions manquées. Résultat observé : les
+    tâches restaient sur le mois précédent.
+
+    Ici on ne dépend plus de l'heure : à chaque réveil / redémarrage, si la
+    planification n'a pas tourné depuis plus de 20 h, on la relance. Comme
+    `make_task` est idempotent, relancer ne crée aucun doublon.
+
+    Retourne le nombre de dossiers traités (0 si rien à faire).
+    """
+    from datetime import datetime as _dt
+    from app import db
+
+    today = date.today().isoformat()
+    last = _get_setting('FISCAL_PLAN_LAST_RUN')
+    if not force and last:
+        try:
+            if last[:10] == today:
+                logger.info("Planification fiscale déjà faite aujourd'hui (%s)", last)
+                return 0
+        except Exception:
+            pass
+
+    try:
+        n = planifier_tous_les_dossiers()
+        _set_setting('FISCAL_PLAN_LAST_RUN', _dt.utcnow().isoformat(timespec='seconds'))
+        logger.info("Planification fiscale de rattrapage : %s dossier(s)", n)
+        return n
+    except Exception as e:
+        logger.error("Planification fiscale de rattrapage échouée : %s", e)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return 0
+
 
 def planifier_tous_les_dossiers():
     from app.models import Dossier

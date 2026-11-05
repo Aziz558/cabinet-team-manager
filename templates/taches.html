@@ -83,6 +83,22 @@
         </div>
     </div>
 
+<!-- Pré-filtre reçu du tableau de bord (?retard=1 / ?statut=… / ?membre=…).
+     Affiché comme un filtre actif retirable : l'utilisateur voit toujours d'où
+     vient la sélection et peut revenir à la liste complète en un clic. -->
+{% if prefilter and (prefilter.retard or prefilter.statut or prefilter.membre) %}
+<div class="orbit-prefilter animate-fade-in-up" id="orbitPrefilter"
+     data-retard="{{ '1' if prefilter.retard else '' }}"
+     data-statut="{{ prefilter.statut or '' }}"
+     data-membre="{{ prefilter.membre or '' }}">
+    <span class="op-label"><i class="bi bi-funnel-fill"></i>Filtre :</span>
+    <span class="op-chip" id="orbitPrefilterChip"></span>
+    <a class="op-clear" href="{{ url_for('taches') }}" title="Retirer le filtre et voir toutes les tâches">
+        <i class="bi bi-x-lg"></i>Tout afficher
+    </a>
+</div>
+{% endif %}
+
 <!-- KPI band Tâches -->
 {% set tns = namespace(total=0, af=0, ec=0, done=0, retard=0) %}
 {% for t in taches %}
@@ -323,6 +339,8 @@ function orbitChips() {
 document.addEventListener('DOMContentLoaded', function() {
     // Restaurer les filtres sauvegardés avant d'appliquer
     restoreFilters();
+    // Le pré-filtre d'URL (venu du tableau de bord) prime sur la mémoire locale
+    applyPrefilter();
     // Appliquer le filtre
     applyFilter();
     
@@ -390,6 +408,57 @@ function filterDossierOptions() {
 var fiscalKeywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'];
 var taskStatutSelected = ['a_faire'];
 var FILTERS_KEY = 'tachesFilters';
+
+/* ------------------------------------------------------------------
+   Pré-filtres reçus par l'URL (?retard=1, ?statut=en_cours, ?membre=4).
+   C'est le mécanisme utilisé par les raccourcis du tableau de bord : le
+   dashboard reste une page de synthèse, le détail vit ici, filtré.
+   ------------------------------------------------------------------ */
+var ORBIT_PREF = (function () {
+    var el = document.getElementById('orbitPrefilter');
+    if (!el) { return { retard: false, statut: '', membre: '' }; }
+    return {
+        retard: el.dataset.retard === '1',
+        statut: el.dataset.statut || '',
+        membre: el.dataset.membre || ''
+    };
+})();
+
+function orbitIsLate(card) {
+    var ech = card.dataset.echeance || '';
+    return card.dataset.late === '1'
+        || (card.dataset.statut !== 'terminee' && ech !== '' && ech < orbitTodayISO());
+}
+
+/* Le pré-filtre est appliqué APRÈS la restauration localStorage : il gagne,
+   sinon un filtre mémorisé masquerait les tâches qu'on vient demander. */
+function applyPrefilter() {
+    var chip = document.getElementById('orbitPrefilterChip');
+    var parts = [];
+    if (ORBIT_PREF.retard) {
+        parts.push('Tâches en retard');
+        /* « en retard » traverse les statuts : on libère le filtre de statut. */
+        taskStatutSelected = [];
+    }
+    if (ORBIT_PREF.statut) {
+        taskStatutSelected = [ORBIT_PREF.statut];
+        parts.push({ a_faire: 'À faire', en_cours: 'En cours', terminee: 'Terminées' }[ORBIT_PREF.statut] || ORBIT_PREF.statut);
+    }
+    if (ORBIT_PREF.membre) {
+        var selM = document.getElementById('filterMembre');
+        if (selM) {
+            selM.value = ORBIT_PREF.membre;
+            var opt = selM.options[selM.selectedIndex];
+            if (opt) { parts.push(opt.textContent.trim()); }
+        }
+    }
+    if (parts.length) {
+        if (chip) { chip.textContent = parts.join(' · ') + ' — ' + '{{ taches|length }}' + ' au total'; }
+        updateStatutButtons();
+        try { localStorage.removeItem(FILTERS_KEY); } catch (e) {}
+    }
+}
+
 
 function saveFilters(typeFilter) {
     try {
@@ -602,6 +671,9 @@ function applyFilter(typeFilter) {
         }
         if (show && search) {
             show = titre.indexOf(search) >= 0;
+        }
+        if (show && ORBIT_PREF.retard) {
+            show = orbitIsLate(card);
         }
 
         card.style.display = show ? '' : 'none';

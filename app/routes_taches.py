@@ -190,5 +190,12 @@ def taches():
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
         dossiers=Dossier.query.order_by(Dossier.numero_dossier).all(),
         dossier_filtre=request.args.get('dossier', type=int),
+        # Pré-filtres transmis par les raccourcis du tableau de bord
+        # (?retard=1, ?statut=en_cours, ?membre=4) — voir orbit-prefilter.
+        prefilter={
+            'retard': request.args.get('retard') == '1',
+            'statut': request.args.get('statut', ''),
+            'membre': request.args.get('membre', ''),
+        },
         social_only=social_only,
         date=date, timedelta=timedelta)

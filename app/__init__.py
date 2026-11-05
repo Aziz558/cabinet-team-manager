@@ -820,19 +820,67 @@ try:
             except Exception as e:
                 app.logger.error(f"Digest Pennylane error: {e}")
 
+    # misfire_grace_time + coalesce : si l'instance dormait à l'heure prévue
+    # (cas normal sur un hébergeur qui met le process en veille), le job est
+    # rejoué UNE fois au réveil au lieu d'être silencieusement perdu.
+    GRACE = 6 * 3600
+
     scheduler = BackgroundScheduler()
-    scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0)
-    scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0)
-    scheduler.add_job(regenerer_taches_fiscales, 'cron', day=1, hour=6, minute=0)  # 1er du mois à 06:00
-    scheduler.add_job(generer_taches_dsn, 'cron', hour=6, minute=30)  # chaque jour 06:30 (horizon 20j)
+    scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0,
+                      misfire_grace_time=GRACE, coalesce=True)
+    scheduler.add_job(generer_taches_recurrentes, 'cron', hour=7, minute=0,
+                      misfire_grace_time=GRACE, coalesce=True)
+    # Planification fiscale : TOUS LES JOURS (et non le 1er du mois).
+    # Le calcul est idempotent et ne couvre que 30 j d'horizon glissant :
+    # une exécution quotidienne garantit que le mois en cours est toujours
+    # planifié, même si plusieurs jours ont été manqués.
+    scheduler.add_job(regenerer_taches_fiscales, 'cron', hour=6, minute=0,
+                      misfire_grace_time=GRACE, coalesce=True)
+    scheduler.add_job(generer_taches_dsn, 'cron', hour=6, minute=30,
+                      misfire_grace_time=GRACE, coalesce=True)  # horizon 20j
     scheduler.add_job(envoyer_rappels_depot_j2_job, 'cron', hour=8, minute=15)  # rappel J-2 des dépôts fiscaux
     scheduler.add_job(creer_rappels_echeances_job, 'cron', hour=8, minute=30)  # notifications in-app J et J+1
     scheduler.add_job(verifier_rappels_j1_job, 'cron', hour=9, minute=0)  # email J+1 rappels non lus
     scheduler.add_job(verifier_rappels_echeance_job, 'cron', hour=9, minute=15)  # email date échéance
-    scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0)  # toutes les heures
-    scheduler.add_job(envoyer_digest_pennylane_job, 'cron', minute=5)  # recapitulatif mail, filtre par creneaux (5 min apres la sync)
-    scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10)  # toutes les heures (:10)
+    scheduler.add_job(verifier_nouveaux_pennylane, 'cron', minute=0,
+                      misfire_grace_time=1800, coalesce=True)  # toutes les heures
+    scheduler.add_job(envoyer_digest_pennylane_job, 'cron', minute=5,
+                      misfire_grace_time=1800, coalesce=True)  # recapitulatif mail
+    scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10,
+                      misfire_grace_time=1800, coalesce=True)  # toutes les heures (:10)
     scheduler.start()
     app.logger.info("APScheduler started: daily 08:00, recurring 07:00, fiscal 1st 06:00, pennylane hourly, TVA hourly (:10)")
 except Exception as e:
     app.logger.warning(f"APScheduler not available: {e}")
+
+# ---------------------------------------------------------------------------
+# Rattrapage de la planification fiscale au premier usage du process.
+# Sur un hébergeur qui endort l'instance, le cron de 06:00 peut ne jamais
+# s'exécuter : on profite du premier appel HTTP (donc de la sortie de veille)
+# pour rejouer la planification, en tâche de fond pour ne pas ralentir la page.
+# ---------------------------------------------------------------------------
+_ORBIT_CATCHUP = {'done': False}
+
+
+def _orbit_run_fiscal_catchup():
+    with app.app_context():
+        try:
+            from app.tva_scheduler import planifier_si_necessaire
+            planifier_si_necessaire()
+        except Exception as exc:  # jamais bloquant pour l'utilisateur
+            app.logger.warning("Fiscal catch-up ignoré : %s", exc)
+
+
+@app.before_request
+def _orbit_fiscal_catchup():
+    if _ORBIT_CATCHUP['done']:
+        return
+    _ORBIT_CATCHUP['done'] = True
+    if _SKIP_DB_INIT or os.environ.get('ORBIT_NO_SCHEDULER', '').lower() in ('1', 'true'):
+        return
+    try:
+        import threading
+        threading.Thread(target=_orbit_run_fiscal_catchup, daemon=True).start()
+    except Exception:
+        pass
+

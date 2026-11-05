@@ -133,142 +133,100 @@
 <!-- Triage Pennylane (à traiter par dossier) -->
 {% include '_pl_triage.html' %}
 
-<!-- Alertes -->
-{% if alertes %}
-<div class="card-premium mb-4 animate-fade-in-up stagger-2 dash-rail">
+{# ============ À TRAITER ============
+   Principe : le tableau de bord résume, il ne détaille pas. Chaque sujet tient
+   sur une ligne et le bouton ouvre la page métier avec le filtre déjà appliqué.
+   (Avant : grille d'alertes + tableau de suggestions + liste de notifications.) #}
+{% set mns = namespace(surcharge=0, retard=0, af=0, actifs=0) %}
+{% for m in membres %}
+    {% set r = m.nb_taches_en_retard() %}
+    {% set a = m.nb_taches_a_faire() %}
+    {% if r > 0 %}{% set mns.surcharge = mns.surcharge + 1 %}{% endif %}
+    {% if r > 0 or a > 0 or m.nb_dossiers_en_cours() > 0 %}{% set mns.actifs = mns.actifs + 1 %}{% endif %}
+    {% set mns.retard = mns.retard + r %}
+    {% set mns.af = mns.af + a %}
+{% endfor %}
+<div class="card-premium mb-4 animate-fade-in-up stagger-2">
     <div class="card-header-premium d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2" style="color: var(--danger);"></i>Alertes — Tâches en retard</h5>
-        <span class="badge badge-danger">{{ alertes|length }} alerte(s)</span>
+        <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--amber);"></i>À traiter</h5>
+        <span class="text-tertiary small">Le détail s'ouvre filtré</span>
     </div>
-    <div class="card-body-premium">
-        <div class="row g-2">
-            {% for a in alertes %}
-            <div class="col-md-6 col-lg-4">
-                <div class="p-3 rounded h-100 dash-alert" style="background: rgba(244,67,54,0.06);border:1px solid rgba(244,67,54,0.2);">
-                    <div class="d-flex justify-content-between align-items-start mb-1">
-                        <strong style="font-size:0.85rem;line-height:1.3;">{{ a.tache.titre }}</strong>
-                        <span class="badge badge-{{ 'danger' if (date.today() - a.tache.date_echeance).days <= 7 else 'warning' }}" style="flex-shrink:0;">
-                            +{{ (date.today() - a.tache.date_echeance).days }}j
-                        </span>
-                    </div>
-                    <small class="text-tertiary">
-                        <i class="bi bi-calendar3 me-1"></i>{{ a.tache.date_echeance.strftime('%d/%m/%Y') }}
-                        {% if a.dossier %} | <i class="bi bi-folder me-1"></i>{{ a.dossier.numero_dossier }}{% endif %}
-                        | <i class="bi bi-person me-1"></i>{{ a.tache.assigne.prenom }} {{ a.tache.assigne.nom }}
-                    </small>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-{% endif %}
+    <div class="card-body-premium dash-alerts">
 
-<!-- Notifications récentes -->
-<div class="card-premium mb-4 animate-fade-in-up stagger-3 dash-rail">
-    <div class="card-header-premium d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-bell me-2" style="color: var(--orange-primary);"></i>Notifications récentes</h5>
-        <a href="{{ url_for('notifications_page') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">Voir tout</a>
-    </div>
-    <div class="card-body-premium">
-        {% if notifications_non_lues %}
-            {% for n in notifications_non_lues %}
-            <div class="d-flex align-items-start gap-2 p-2 rounded mb-1 dash-notif" style="background: rgba(255,140,0,0.05);">
-                <i class="bi bi-info-circle" style="color:var(--orange-primary);margin-top:2px;"></i>
-                <div class="flex-grow-1">
-                    <small>{{ n.message }}</small>
-                    <br><small class="text-tertiary" style="font-size:0.7rem;">{{ n.date_envoi.strftime('%d/%m/%Y %H:%M') if n.date_envoi else '' }}</small>
-                </div>
-            </div>
-            {% endfor %}
+        {# 1 — Retards : le sujet le plus sensible, en tête #}
+        {% if kpi.taches_retard and kpi.taches_retard > 0 %}
+        <a class="dash-alert-row" href="{{ url_for('taches', retard=1) }}">
+            <span class="dar-icon is-danger"><i class="bi bi-exclamation-triangle-fill"></i></span>
+            <span class="dar-text">
+                <strong><span class="dar-num">{{ kpi.taches_retard }}</span> tâche{{ kpi.taches_retard|plur }} en retard</strong>
+                <small>
+                    {{ mns.surcharge }} collaborateur{{ mns.surcharge|plur }} concerné{{ mns.surcharge|plur }}
+                    {%- if alertes %} · la plus ancienne : {{ alertes[0].tache.titre|truncate(44, true) }}
+                    ({{ alertes[0].tache.date_echeance.strftime('%d/%m') }}){% endif %}
+                </small>
+            </span>
+            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+        </a>
         {% else %}
-        <div class="text-center py-3">
-            <i class="bi bi-check2-all" style="font-size:1.5rem;color:var(--text-tertiary);"></i>
-            <p class="text-tertiary small mt-1">Tout est à jour, aucune notification non lue.</p>
+        <div class="dash-alert-row is-clear">
+            <span class="dar-icon is-ok"><i class="bi bi-check2-circle"></i></span>
+            <span class="dar-text"><strong>Aucune tâche en retard</strong><small>Toutes les échéances passées sont traitées.</small></span>
         </div>
         {% endif %}
-    </div>
-</div>
 
-<!-- Suggestions -->
-{% if suggestions %}
-<div class="card-premium mb-4 animate-fade-in-up stagger-3">
-    <div class="card-header-premium d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-lightbulb me-2" style="color: var(--warning);"></i>Suggestions automatiques</h5>
-        <div class="d-flex align-items-center gap-2">
-            <span class="text-tertiary small">Basées sur les deadlines déclarées</span>
-            <button class="btn-premium btn-premium-outline btn-premium-secondary" id="refreshSuggestionsBtn">
-                <i class="bi bi-arrow-clockwise me-1"></i>Actualiser
-            </button>
-        </div>
-    </div>
-    <div class="card-body-premium">
+        {# 2 — Triage Pennylane : documents reçus à qualifier #}
+        {% if pl_triage and pl_triage.total %}
+        <a class="dash-alert-row" href="{{ url_for('pennylane_page') }}">
+            <span class="dar-icon is-warn"><i class="bi bi-inboxes-fill"></i></span>
+            <span class="dar-text">
+                <strong><span class="dar-num">{{ pl_triage.total }}</span> document{{ pl_triage.total|plur }} Pennylane à traiter</strong>
+                <small>
+                    {{ pl_triage.lignes|length }} dossier{{ pl_triage.lignes|length|plur }} —
+                    {{ pl_triage.total_vente }} vente{{ pl_triage.total_vente|plur }} ·
+                    {{ pl_triage.total_achat }} achat{{ pl_triage.total_achat|plur }} ·
+                    {{ pl_triage.total_banque }} flux bancaire{{ pl_triage.total_banque|plur }}
+                </small>
+            </span>
+            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+        </a>
+        {% endif %}
+
+        {# 3 — Suggestions automatiques #}
         {% if suggestions %}
-        <div class="table-responsive">
-            <table class="table-premium">
-                <thead>
-                    <tr>
-                        <th>Tâche suggérée</th>
-                        <th>Assignée à</th>
-                        <th>Priorité</th>
-                        <th>Échéance</th>
-                        <th class="text-end"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in suggestions %}
-                    <tr>
-                        <td><strong>{{ s.titre }}</strong></td>
-                        <td>
-                            {% set u = membres | selectattr('id', 'equalto', s.assigne_a) | first %}
-                            <div class="d-flex align-items-center gap-2">
-                                {% set member_photo = u.photo_display_src() if u else None %}
-                                {% if member_photo and (member_photo.startswith('/') or member_photo.startswith('data:')) %}
-                                <span class="user-icon-badge"><img src="{{ member_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
-                                {% else %}
-                                {% set s_init = (u.prenom[:1] ~ (u.nom[:1] or ''))|upper if u else '?' %}
-                                {% set s_variant = ' user-init-mgr' if u and u.role == 'manager' else (' user-init-admin' if u and u.role == 'admin' else '') %}
-                                <span class="user-icon-badge user-init{{ s_variant }}">{{ s_init }}</span>
-                                {% endif %}
-                                <span>{{ u.prenom }} {{ u.nom }}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="badge badge-{{ 'danger' if s.priorite == 'haute' else 'warning' if s.priorite == 'moyenne' else 'success' }}">
-                                {{ s.priorite }}
-                            </span>
-                        </td>
-                        <td class="text-tertiary small">{{ s.date_echeance }}</td>
-                        <td class="text-end">
-                            <form method="POST" action="{{ url_for('taches') }}" class="d-inline">
-                                <input type="hidden" name="titre" value="{{ s.titre }}">
-                                <input type="hidden" name="description" value="Généré automatiquement depuis le dossier.">
-                                <input type="hidden" name="dossier_id" value="{{ s.dossier_id }}">
-                                <input type="hidden" name="assigne_a" value="{{ s.assigne_a }}">
-                                <input type="hidden" name="priorite" value="{{ s.priorite }}">
-                                <input type="hidden" name="date_echeance" value="{{ s.date_echeance.strftime('%Y-%m-%d') }}">
-                                <input type="hidden" name="suggestion_id" value="{{ s.id }}">
-                                <button type="submit" class="btn-premium btn-premium-primary btn-press">
-                                    <i class="bi bi-plus-lg me-1"></i>Créer
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
-            <h4 class="empty-state-title">Aucune suggestion pour le moment</h4>
-            <p class="empty-state-desc">Les suggestions apparaîtront automatiquement quand des deadlines approcheront.</p>
-        </div>
+        <a class="dash-alert-row" href="{{ url_for('suggestions_page') }}">
+            <span class="dar-icon is-info"><i class="bi bi-lightbulb-fill"></i></span>
+            <span class="dar-text">
+                <strong><span class="dar-num">{{ suggestions|length }}</span> suggestion{{ suggestions|length|plur }} à valider</strong>
+                <small>Proposées d'après les échéances déclarées des dossiers</small>
+            </span>
+            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+        </a>
         {% endif %}
-        <div id="suggestionsResult" class="small mt-2"></div>
+
+        {# 4 — Notifications non lues #}
+        <a class="dash-alert-row" href="{{ url_for('notifications_page') }}">
+            <span class="dar-icon {{ 'is-warn' if notifications_non_lues else 'is-ok' }}">
+                <i class="bi {{ 'bi-bell-fill' if notifications_non_lues else 'bi-bell-slash' }}"></i>
+            </span>
+            <span class="dar-text">
+                {% if notifications_non_lues %}
+                <strong><span class="dar-num">{{ notifications_non_lues|length }}</span> notification{{ notifications_non_lues|length|plur }} non lue{{ notifications_non_lues|length|plur }}</strong>
+                <small>{{ notifications_non_lues[0].message|truncate(70, true) }}</small>
+                {% else %}
+                <strong>Aucune notification non lue</strong>
+                <small>Vous êtes à jour.</small>
+                {% endif %}
+            </span>
+            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+        </a>
+    </div>
+    <div class="card-footer-premium border-0 d-flex align-items-center gap-2" style="padding:.5rem .9rem;">
+        <button class="btn-premium btn-premium-outline btn-premium-secondary btn-sm" id="refreshSuggestionsBtn">
+            <i class="bi bi-arrow-clockwise me-1"></i>Recalculer les suggestions
+        </button>
+        <span id="suggestionsResult" class="small"></span>
     </div>
 </div>
-{% endif %}
 
 <!-- Avancement de l'équipe (rail latéral) -->
 <div class="dash-rail">
@@ -295,8 +253,9 @@
     </div><!-- /dash-rail : avancement de l'équipe -->
 <div class="dash-main"><!-- Vue équipe -->
         <div class="card-premium h-100 animate-fade-in-up stagger-5">
-            <div class="card-header-premium">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-people me-2"></i>Vue équipe</h5>
+                <span class="text-tertiary small">{{ mns.actifs }} actif{{ mns.actifs|plur }} · {{ mns.surcharge }} en retard</span>
             </div>
             <div class="card-body-premium">
                 <div class="table-responsive">
@@ -311,6 +270,9 @@
                         </thead>
                         <tbody>
                             {% for m in membres %}
+                            {% set m_ret = m.nb_taches_en_retard() %}
+                            {% set m_af = m.nb_taches_a_faire() %}
+                            {% if m_ret or m_af or m.nb_dossiers_en_cours() %}
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
@@ -326,13 +288,14 @@
                                     </div>
                                 </td>
                                 <td class="text-center">{{ m.nb_dossiers_en_cours() }}</td>
-                                <td class="text-center">{{ m.nb_taches_a_faire() }}</td>
+                                <td class="text-center">{{ m_af }}</td>
                                 <td class="text-center">
-                                    <span class="badge badge-{{ 'danger' if m.nb_taches_en_retard() > 0 else 'success' }}">
-                                        {{ m.nb_taches_en_retard() }}
+                                    <span class="badge badge-{{ 'danger' if m_ret > 0 else 'success' }}">
+                                        {{ m_ret }}
                                     </span>
                                 </td>
                             </tr>
+                            {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -349,8 +312,11 @@
 <!-- Tâches du jour (colonne principale) -->
 <div class="dash-main">
         <div class="card-premium mb-4 animate-fade-in-up stagger-5">
-            <div class="card-header-premium">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Tâches du jour</h5>
+                <a href="{{ url_for('taches_aujourdhui') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
+                    Voir tout <i class="bi bi-arrow-right ms-1"></i>
+                </a>
             </div>
             <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
                 {% if taches_jour %}
@@ -386,8 +352,11 @@
     </div><!-- /dash-main : tâches du jour -->
     <div class="dash-rail"><!-- Tâches de la semaine -->
         <div class="card-premium animate-fade-in-up stagger-6">
-            <div class="card-header-premium">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Tâches de la semaine</h5>
+                <a href="{{ url_for('taches') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
+                    Voir tout <i class="bi bi-arrow-right ms-1"></i>
+                </a>
             </div>
             <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
                 {% if taches_semaine %}

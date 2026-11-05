@@ -129,8 +129,11 @@
     </div>
     <div class="col-lg-8 mb-4">
         <div class="card-premium h-100 animate-fade-in-up stagger-5">
-            <div class="card-header-premium">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Mes tâches d'aujourd'hui</h5>
+                <a href="{{ url_for('taches_aujourdhui') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
+                    Voir tout <i class="bi bi-arrow-right ms-1"></i>
+                </a>
             </div>
             <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
                 {% if taches_jour %}
@@ -168,8 +171,11 @@
 
 <!-- Tâches de la semaine -->
 <div class="card-premium animate-fade-in-up stagger-6">
-    <div class="card-header-premium">
+    <div class="card-header-premium d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Mes tâches de la semaine</h5>
+        <a href="{{ url_for('mes_taches') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
+            Voir tout <i class="bi bi-arrow-right ms-1"></i>
+        </a>
     </div>
     <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
         {% if taches_semaine %}
