@@ -869,6 +869,15 @@ def _orbit_run_fiscal_catchup():
             planifier_si_necessaire()
         except Exception as exc:  # jamais bloquant pour l'utilisateur
             app.logger.warning("Fiscal catch-up ignoré : %s", exc)
+        try:
+            # Même logique pour la synchro des statuts TVA Pennylane : sans
+            # rattrapage, l'application montre un état vieux de plusieurs jours
+            # après chaque mise en veille de l'instance.
+            from app.integrations.pennylane_web import sync_si_necessaire
+            res = sync_si_necessaire()
+            app.logger.info("TVA catch-up : %s", (res or {}).get('message', res))
+        except Exception as exc:
+            app.logger.warning("TVA catch-up ignoré : %s", exc)
 
 
 @app.before_request

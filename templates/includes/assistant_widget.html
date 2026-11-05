@@ -1,41 +1,94 @@
 <style>
-/* Assistant — habillage aligné sur les jetons du design system (plus de #E07A5F) */
-#assistantFab{position:fixed;right:20px;bottom:20px;z-index:1050;width:56px;height:56px;border-radius:50%;border:0;background:var(--amber,#ff8c00);color:#17181c;font-size:24px;box-shadow:var(--shadow-orange,0 8px 22px -12px rgba(255,140,0,.55)),var(--shadow-2,0 10px 26px -16px rgba(23,26,31,.18));cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s cubic-bezier(.22,1,.36,1)}
+/* Assistant Orbit — habillage aligné sur les jetons du design system. */
+#assistantFab{position:fixed;right:20px;bottom:20px;z-index:1050;width:56px;height:56px;border-radius:50%;border:0;background:var(--amber,#ff8c00);color:#17181c;font-size:22px;box-shadow:var(--shadow-orange,0 8px 22px -12px rgba(255,140,0,.55)),var(--shadow-2,0 10px 26px -16px rgba(23,26,31,.18));cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s cubic-bezier(.22,1,.36,1)}
 #assistantFab:hover{transform:translateY(-2px) scale(1.03)}
 #assistantFab:active{transform:scale(.96)}
-#assistantPanel{position:fixed;right:20px;bottom:90px;z-index:1050;width:360px;max-width:calc(100vw - 40px);height:480px;max-height:70vh;display:none;flex-direction:column;background:var(--surface-raised,#fff);color:var(--ink,#171a1f);border:1px solid var(--rule,#e2dbcf);border-radius:var(--r-lg,18px);box-shadow:var(--shadow-3,0 22px 48px -22px rgba(23,26,31,.28));overflow:hidden;font-size:14px}
-#assistantPanel.open{display:flex}
-#assistantPanel .ap-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--amber,#ff8c00);color:#17181c;font-weight:600}
-#assistantPanel .ap-head button{background:none;border:0;color:#17181c;font-size:20px;line-height:1;cursor:pointer}
-#assistantMessages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
-.ap-msg{max-width:85%;padding:8px 11px;border-radius:10px;white-space:pre-wrap;word-wrap:break-word}
-.ap-msg.user{align-self:flex-end;background:var(--amber,#ff8c00);color:#17181c}
-.ap-msg.assistant{align-self:flex-start;background:var(--bg-card-hover,#f1f2f5);color:inherit}
-.ap-msg.error{align-self:flex-start;background:var(--danger-bg,#fbe9e9);color:var(--danger,#bb3a3a)}
-.ap-draft{align-self:stretch;border:1px solid var(--amber-line,rgba(255,140,0,.3));border-radius:10px;padding:10px;background:transparent}
-.ap-draft .ap-draft-to{font-weight:600;margin-bottom:4px}
-.ap-draft .ap-draft-subject{margin-bottom:6px}
-.ap-draft .ap-draft-body{white-space:pre-wrap;margin-bottom:8px;font-size:13px}
+#assistantFab.is-open{background:var(--ink,#171a1f);color:var(--paper,#f5f2ec)}
+
+#assistantPanel{position:fixed;right:20px;bottom:90px;z-index:1060;width:392px;max-width:calc(100vw - 32px);height:min(560px,74vh);display:none;flex-direction:column;background:var(--surface-raised,#fff);color:var(--ink,#171a1f);border:1px solid var(--rule,#e2dbcf);border-radius:var(--r-lg,18px);box-shadow:var(--shadow-3,0 22px 48px -22px rgba(23,26,31,.28));overflow:hidden;font-size:14px}
+#assistantPanel.open{display:flex;animation:ap-in .22s cubic-bezier(.22,1,.36,1)}
+@keyframes ap-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+
+#assistantPanel .ap-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--amber,#ff8c00);color:#17181c}
+#assistantPanel .ap-avatar{width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:rgba(23,26,31,.14);font-size:16px;flex-shrink:0}
+#assistantPanel .ap-head-text{flex:1 1 auto;min-width:0;line-height:1.2}
+#assistantPanel .ap-head-text strong{display:block;font-size:.92rem;font-weight:700}
+#assistantPanel .ap-head-text small{display:block;font-size:.72rem;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#assistantPanel .ap-head button{background:none;border:0;color:#17181c;font-size:17px;line-height:1;cursor:pointer;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:background-color .15s linear}
+#assistantPanel .ap-head button:hover{background:rgba(23,26,31,.14)}
+
+#assistantMessages{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--paper-tint,#f9f7f2)}
+.ap-msg{max-width:86%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;line-height:1.45;font-size:.84rem}
+.ap-msg.user{align-self:flex-end;background:var(--ink,#171a1f);color:var(--paper,#f5f2ec);border-bottom-right-radius:5px}
+.ap-msg.assistant{align-self:flex-start;background:var(--surface-raised,#fff);color:var(--ink);border:1px solid var(--rule);border-bottom-left-radius:5px}
+.ap-msg.error{align-self:stretch;max-width:100%;background:var(--danger-bg,#fbe9e9);color:var(--danger,#bb3a3a);border:1px solid rgba(187,58,58,.25);border-radius:12px;font-size:.8rem}
+.ap-msg.error strong{display:block;margin-bottom:3px}
+
+.ap-typing{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;padding:11px 14px;background:var(--surface-raised,#fff);border:1px solid var(--rule);border-radius:14px;border-bottom-left-radius:5px}
+.ap-typing i{width:6px;height:6px;border-radius:50%;background:var(--ink-4,#979daa);animation:ap-dot 1.1s infinite ease-in-out}
+.ap-typing i:nth-child(2){animation-delay:.15s}
+.ap-typing i:nth-child(3){animation-delay:.3s}
+@keyframes ap-dot{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+.ap-sugg{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px 0;background:var(--paper-tint,#f9f7f2);border-top:1px solid var(--rule-soft,#e9e2d6)}
+.ap-sugg.hidden{display:none}
+.ap-sugg button{font-size:.74rem;font-weight:600;padding:6px 11px;border-radius:999px;border:1px solid var(--rule);background:var(--surface-raised,#fff);color:var(--ink-2);cursor:pointer;transition:border-color .15s linear,color .15s linear,background-color .15s linear}
+.ap-sugg button:hover{border-color:var(--amber);color:var(--amber-deep);background:var(--amber-soft)}
+
+.ap-draft{align-self:stretch;border:1px solid var(--amber-line,rgba(255,140,0,.3));border-radius:12px;padding:11px;background:var(--surface-raised,#fff)}
+.ap-draft .ap-draft-to{font-weight:600;margin-bottom:4px;font-size:.8rem;color:var(--amber-deep)}
+.ap-draft .ap-draft-subject{margin-bottom:6px;font-size:.82rem;font-weight:600}
+.ap-draft .ap-draft-body{white-space:pre-wrap;margin-bottom:9px;font-size:.79rem;color:var(--ink-2);max-height:150px;overflow-y:auto}
 .ap-draft .ap-draft-actions{display:flex;gap:6px}
-.ap-draft button{padding:4px 10px;border-radius:6px;border:1px solid var(--amber,#ff8c00);background:var(--amber,#ff8c00);color:#17181c;cursor:pointer;font-size:13px}
-.ap-draft button.secondary{background:transparent;color:var(--amber-deep,#b8590a)}
-.ap-draft button:disabled{opacity:.6;cursor:default}
-#assistantForm{display:flex;gap:6px;padding:10px;border-top:1px solid var(--rule,#e2dbcf)}
-#assistantForm input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--rule,#e2dbcf);background:var(--bg-card,#fafafb);color:inherit}
-#assistantForm button{padding:8px 12px;border-radius:8px;border:0;background:var(--amber,#ff8c00);color:#17181c;cursor:pointer}
-#assistantForm button:disabled{opacity:.6}
-@media (prefers-reduced-motion: reduce) { #assistantFab:hover, #assistantFab:active { transform: none; } }
+.ap-draft button{padding:6px 12px;border-radius:8px;border:1px solid var(--amber,#ff8c00);background:var(--amber,#ff8c00);color:#17181c;cursor:pointer;font-size:.78rem;font-weight:600}
+.ap-draft button.secondary{background:transparent;color:var(--amber-deep)}
+.ap-draft button:disabled{opacity:.55;cursor:default}
+
+#assistantForm{display:flex;align-items:flex-end;gap:8px;padding:11px 12px;border-top:1px solid var(--rule);background:var(--surface-raised,#fff)}
+#assistantForm textarea{flex:1 1 auto;resize:none;border:1px solid var(--rule);border-radius:12px;padding:9px 12px;font:inherit;font-size:.85rem;line-height:1.4;max-height:96px;background:var(--bg-card,#fafafb);color:inherit}
+#assistantForm textarea:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+#assistantForm button{flex-shrink:0;width:38px;height:38px;border-radius:11px;border:0;background:var(--amber);color:#17181c;cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s ease,opacity .15s linear}
+#assistantForm button:hover{transform:translateY(-1px)}
+#assistantForm button:disabled{opacity:.45;cursor:default;transform:none}
+
+@media (max-width:575.98px){
+  #assistantPanel{right:12px;left:12px;width:auto;bottom:84px;height:min(520px,70vh)}
+}
+@media (prefers-reduced-motion:reduce){
+  #assistantPanel.open{animation:none}
+  .ap-typing i{animation:none;opacity:.6}
+  #assistantFab:hover{transform:none}
+}
 </style>
-<button id="assistantFab" type="button" aria-label="Ouvrir l'assistant" title="Assistant"><i class="bi bi-chat-dots"></i></button>
+
+<button id="assistantFab" type="button" aria-label="Ouvrir l'assistant" title="Assistant Orbit" aria-expanded="false">
+    <i class="bi bi-stars"></i>
+</button>
+
 <div id="assistantPanel" role="dialog" aria-label="Assistant Orbit">
     <div class="ap-head">
-        <strong>Assistant Orbit</strong>
+        <span class="ap-avatar"><i class="bi bi-stars"></i></span>
+        <span class="ap-head-text">
+            <strong>Assistant Orbit</strong>
+            <small id="assistantStatus">Vos dossiers, vos échéances, vos tâches</small>
+        </span>
+        <button id="assistantDiag" type="button" title="Diagnostic de l'assistant" aria-label="Diagnostic">
+            <i class="bi bi-activity"></i>
+        </button>
         <button id="assistantClose" type="button" aria-label="Fermer">&times;</button>
     </div>
+
     <div id="assistantMessages"></div>
+
+    <div class="ap-sugg" id="assistantSugg">
+        <button type="button" data-q="Quelles tâches sont en retard ?">Tâches en retard</button>
+        <button type="button" data-q="Quel est mon résumé du jour ?">Résumé du jour</button>
+        <button type="button" data-q="Quelles échéances arrivent cette semaine ?">Échéances de la semaine</button>
+        <button type="button" data-q="Où en est l'avancement de l'équipe ?">Avancement</button>
+    </div>
+
     <form id="assistantForm" autocomplete="off">
-        <input id="assistantInput" type="text" maxlength="2000" placeholder="Posez une question..." aria-label="Message">
-        <button id="assistantSend" type="submit">Envoyer</button>
+        <textarea id="assistantInput" rows="1" maxlength="2000" placeholder="Posez votre question..." aria-label="Message"></textarea>
+        <button id="assistantSend" type="submit" aria-label="Envoyer"><i class="bi bi-arrow-up"></i></button>
     </form>
 </div>
-

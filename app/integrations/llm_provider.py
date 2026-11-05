@@ -241,11 +241,53 @@ _PROVIDER_CLASSES = {
 class LLMManager:
     """Orchestre les appels LLM : provider primaire configuré, puis OpenRouter en fallback."""
 
+    # Ordre de secours. Le secours était OpenRouter en dur : quand le primaire
+    # EST OpenRouter (cas par défaut), il n'y avait donc AUCUN secours — une
+    # panne ou un quota atteint et l'assistant ne répondait plus du tout.
+    ORDRE_SECOURS = ('openrouter', 'groq', 'nvidia', 'gemini')
+
     def __init__(self) -> None:
         primaire_cle = _env_or_setting('LLM_PROVIDER_PRIMAIRE', 'LLM_PROVIDER_PRIMAIRE', 'openrouter')
         primaire_cls = _PROVIDER_CLASSES.get(primaire_cle, OpenRouterProvider)
         self.primary: LLMProvider = primaire_cls()
         self.fallback: LLMProvider = OpenRouterProvider()
+
+    @property
+    def chain(self) -> List[LLMProvider]:
+        """Primaire, puis secours déclaré, puis tout autre provider configuré.
+
+        Calculée à la demande (et non figée à la construction) : les réglages
+        peuvent changer sans redémarrer, et les tests peuvent remplacer
+        `primary`/`fallback` directement.
+        """
+        out: List[LLMProvider] = []
+
+        def _ajouter(p):
+            if p is None:
+                return
+            if any(isinstance(p, type(q)) for q in out):
+                return
+            out.append(p)
+
+        if self.primary is not None:
+            _ajouter(self.primary)
+        if self.fallback is not None and self.fallback.is_configured():
+            _ajouter(self.fallback)
+        for cle in self.ORDRE_SECOURS:
+            cls = _PROVIDER_CLASSES.get(cle)
+            if not cls or any(isinstance(q, cls) for q in out):
+                continue
+            try:
+                candidat = cls()
+            except Exception:
+                continue
+            if candidat.is_configured():
+                _ajouter(candidat)
+        return out
+
+    def any_configured(self) -> bool:
+        """Vrai dès qu'au moins un provider de la chaîne a une clé."""
+        return any(p.is_configured() for p in self.chain)
 
     def chat(self, messages: List[Dict[str, str]],
              model: Optional[str] = None,
@@ -255,11 +297,10 @@ class LLMManager:
         candidates: List[LLMProvider] = []
         if prefer and prefer in _PROVIDER_CLASSES:
             candidates.append(_PROVIDER_CLASSES[prefer]())
-        elif self.primary and self.primary.is_configured():
-            candidates.append(self.primary)
-        # OpenRouter toujours en dernier recours (même si c'était le primaire, on retry avec sa propre instance)
-        if not any(isinstance(p, OpenRouterProvider) for p in candidates):
-            candidates.append(self.fallback)
+        # Toute la chaîne : primaire puis chaque secours configuré.
+        for prov in self.chain:
+            if not any(isinstance(prov, type(p)) for p in candidates):
+                candidates.append(prov)
 
         dernier_erreur = ''
         for prov in candidates:

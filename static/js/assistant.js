@@ -22,6 +22,27 @@
         return div;
     }
 
+    function ajouterIndicateurFrappe() {
+        var d = document.createElement('div');
+        d.className = 'ap-typing';
+        d.innerHTML = '<i></i><i></i><i></i>';
+        box.appendChild(d);
+        box.scrollTop = box.scrollHeight;
+        return d;
+    }
+
+    function masquerSuggestions() {
+        var s = document.getElementById('assistantSugg');
+        if (s) { s.classList.add('hidden'); }
+    }
+
+    function envoyerTexte(texte) {
+        if (!input || !texte) return;
+        input.value = texte;
+        if (typeof form.requestSubmit === 'function') { form.requestSubmit(); }
+        else { form.dispatchEvent(new Event('submit', {cancelable: true})); }
+    }
+
     function ajouterBrouillon(brouillon) {
         var card = document.createElement('div');
         card.className = 'ap-draft';
@@ -261,7 +282,7 @@
                 r.du_jour.slice(0, 5).forEach(function (t) {
                     lignes.push('• Aujourd\u2019hui : ' + t.titre);
                 });
-                ajouterMessage('assistant', lignes.join('\n'));
+                ajouterMessage('assistant', lignes.join(String.fromCharCode(10)));
                 try { localStorage.setItem(cle, '1'); } catch (e) { /* ignore */ }
             })
             .catch(function () { /* résumé facultatif : silencieux */ });
@@ -269,6 +290,8 @@
 
     function ouvrir() {
         panel.classList.add('open');
+        fab.classList.add('is-open');
+        fab.setAttribute('aria-expanded', 'true');
         if (!bienvenueAffichee) {
             bienvenueAffichee = true;
             ajouterMessage('assistant', 'Bonjour, je peux vous rappeler vos tâches en retard, vos prochaines échéances, vos analyses, ou préparer un email. Que souhaitez-vous ?');
@@ -279,6 +302,56 @@
 
     function fermer() {
         panel.classList.remove('open');
+        fab.classList.remove('is-open');
+        fab.setAttribute('aria-expanded', 'false');
+    }
+
+    /* Entrée envoie, Maj+Entrée ajoute une ligne (textarea). */
+    if (input) {
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (typeof form.requestSubmit === 'function') { form.requestSubmit(); }
+                else { form.dispatchEvent(new Event('submit', {cancelable: true})); }
+            }
+        });
+        input.addEventListener('input', function () {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 96) + 'px';
+        });
+    }
+
+    /* Suggestions de départ : un clic remplit et envoie. */
+    var sugg = document.getElementById('assistantSugg');
+    if (sugg) {
+        sugg.addEventListener('click', function (e) {
+            var b = e.target.closest('button[data-q]');
+            if (b) { envoyerTexte(b.getAttribute('data-q')); }
+        });
+    }
+
+    /* Diagnostic : dit pourquoi l'assistant ne répond pas (clé, modèle, panne). */
+    var diag = document.getElementById('assistantDiag');
+    if (diag) {
+        diag.addEventListener('click', function () {
+            diag.disabled = true;
+            ajouterMessage('assistant', 'Diagnostic en cours...');
+            fetch('/api/assistant/sante?probe=1', {credentials: 'same-origin'})
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    var lignes = [j.etat || 'Etat inconnu.'];
+                    (j.providers || []).forEach(function (p) {
+                        lignes.push('- ' + p.fournisseur + ' (' + p.role + ') : '
+                            + (p.configure ? 'cle OK' : 'non configure')
+                            + (p.modele ? ' | modele ' + p.modele : '')
+                            + (p.ok === true ? ' | repond' : (p.ok === false ? ' | NE REPOND PAS' : ''))
+                            + (p.erreur ? ' | ' + p.erreur : ''));
+                    });
+                    ajouterMessage('assistant', lignes.join(String.fromCharCode(10)));
+                })
+                .catch(function () { ajouterMessage('error', 'Diagnostic impossible (reseau).'); })
+                .then(function () { diag.disabled = false; });
+        });
     }
 
     fab.addEventListener('click', function () {
@@ -304,6 +377,7 @@
           .then(function (res) {
               attente.remove();
               if (res.j && res.j.ok) {
+                  masquerSuggestions();
                   var reponse = res.j.reponse || '';
                   historique.push({role: 'user', content: message});
                   historique.push({role: 'assistant', content: reponse});

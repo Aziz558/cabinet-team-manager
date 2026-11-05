@@ -605,6 +605,36 @@ def sync_checklist_tva() -> dict:
             'erreurs': erreurs[:10], 'message': msg}
 
 
+def sync_si_necessaire(max_age_minutes: int = 120) -> dict:
+    """Synchro TVA de rattrapage — appelée au premier usage du process.
+
+    Même cause que la planification fiscale : la synchro tourne toutes les
+    heures via un cron EN PROCESSUS. Sur un hébergeur qui endort l'instance,
+    elle ne s'exécute presque jamais et l'appli affiche un état vieux de
+    plusieurs jours — d'où des statuts qui ne correspondent plus à Pennylane.
+
+    Ici on relance la synchro si la dernière trace est plus vieille que
+    `max_age_minutes`, au moment où l'instance sort de veille.
+    """
+    if not has_web_session():
+        return {'ok': False, 'skipped': True, 'message': 'Session web non configurée.'}
+    last = get_last_sync() or {}
+    quand = last.get('quand')
+    if quand:
+        try:
+            dt = datetime.strptime(str(quand), '%d/%m/%Y %H:%M')
+            age_min = (datetime.utcnow() - dt).total_seconds() / 60.0
+            # La trace est en heure de Paris dans _save_last_sync ? On tolère
+            # l'écart : un age négatif signifie « très récent », on ne resynce pas.
+            if -180 <= age_min <= max_age_minutes:
+                return {'ok': True, 'skipped': True,
+                        'message': f'Synchro récente ({int(age_min)} min), rien à faire.'}
+        except Exception:
+            pass
+    res = sync_checklist_tva()
+    return res
+
+
 def statuts_pour_grille(dossiers_ids, annee: int) -> dict:
     """Retourne {(dossier_id, mois): TvaStatutPennylane} pour l'affichage grille."""
     from app.models import TvaStatutPennylane

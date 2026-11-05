@@ -33,7 +33,7 @@ def assistant_message():
 
     from .integrations.llm_provider import get_llm_manager
     manager = get_llm_manager()
-    if not manager.primary.is_configured() and not manager.fallback.is_configured():
+    if not manager.any_configured():
         return jsonify({'ok': False,
                         'error': "Assistant non configuré : ajoutez une clé API (OpenRouter, Groq, NVIDIA ou Gemini) dans les réglages."}), 503
     messages = ([{'role': 'system', 'content': construire_prompt(current_user)}]
@@ -120,6 +120,46 @@ def assistant_archiver_rappel(rappel_id):
     r.archive = True
     db.session.commit()
     return jsonify({'ok': True, 'message': 'Rappel archivé.'})
+
+
+@app.route('/api/assistant/sante', methods=['GET'])
+@login_required
+def assistant_sante():
+    """État réel des fournisseurs IA — pour diagnostiquer « l'assistant ne répond pas ».
+
+    Sans paramètre : dit seulement qui est configuré (aucun appel réseau).
+    ?probe=1 : envoie un mini-message à chaque fournisseur configuré et renvoie
+    la vraie erreur (HTTP + extrait), jamais la clé.
+    """
+    from .integrations.llm_provider import get_llm_manager
+    manager = get_llm_manager()
+    probe = request.args.get('probe') == '1'
+    providers = []
+    for i, prov in enumerate(manager.chain or [manager.primary]):
+        role = 'principal' if i == 0 else ('secours %d' % i)
+        info = {
+            'role': role,
+            'fournisseur': getattr(prov, 'NOM', prov.__class__.__name__),
+            'configure': bool(prov.is_configured()),
+            'modele': getattr(prov, 'model', None),
+        }
+        if probe and info['configure']:
+            try:
+                rep = prov.chat([{'role': 'user', 'content': 'Réponds seulement: OK'}])
+                info['ok'] = bool(rep)
+                info['extrait'] = (rep or '')[:80]
+            except Exception as exc:
+                info['ok'] = False
+                info['erreur'] = str(exc)[:200]
+        providers.append(info)
+
+    if not any(p['configure'] for p in providers):
+        etat = "Aucune clé IA configurée : l'assistant ne peut pas répondre aux questions ouvertes (le résumé du jour et les questions sur vos tâches fonctionnent sans IA)."
+    elif probe and not any(p.get('ok') for p in providers):
+        etat = "Clé(s) présente(s) mais aucun fournisseur ne répond : vérifiez le modèle et le crédit du compte."
+    else:
+        etat = "Assistant opérationnel." if probe else "Clé(s) IA configurée(s). Lancez le diagnostic pour tester réellement."
+    return jsonify({'ok': True, 'etat': etat, 'providers': providers})
 
 
 @app.route('/api/assistant/resume', methods=['GET'])
