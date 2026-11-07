@@ -118,3 +118,26 @@ def test_health_reconnait_la_classe_de_worker(monkeypatch):
                         types.ModuleType('gunicorn.workers.base'))
     assert app_package._orbit_worker_gunicorn() == 'sync', (
         'la classe de base gunicorn ne doit pas masquer la classe concrète')
+
+
+# --- Démarrage du planificateur -------------------------------------------
+
+def test_planificateur_non_demarre_a_l_import():
+    """En prod (gunicorn --preload) démarrer à l'import crée des threads qui
+    meurent au fork : le planificateur doit rester à l'arrêt jusque-là."""
+    assert app_package._ORBIT_SCHEDULER['actif'] is False
+
+
+def test_planificateur_demarre_une_seule_fois(monkeypatch):
+    class _Faux:
+        demarrages = 0
+
+        def start(self):
+            _Faux.demarrages += 1
+
+    monkeypatch.setitem(app_package._ORBIT_SCHEDULER, 'objet', _Faux())
+    monkeypatch.setitem(app_package._ORBIT_SCHEDULER, 'actif', False)
+
+    assert app_package._orbit_demarrer_planificateur() is True
+    assert app_package._orbit_demarrer_planificateur() is False, 'idempotence'
+    assert _Faux.demarrages == 1

@@ -932,11 +932,36 @@ try:
                       misfire_grace_time=1800, coalesce=True)  # recapitulatif mail
     scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10,
                       misfire_grace_time=1800, coalesce=True)  # toutes les heures (:10)
-    scheduler.start()
-    _ORBIT_SCHEDULER['actif'] = True
-    app.logger.info("APScheduler started: daily 08:00, recurring 07:00, fiscal 1st 06:00, pennylane hourly, TVA hourly (:10)")
+    # NE PAS démarrer ici : voir _orbit_demarrer_planificateur() plus bas.
+    # gunicorn --preload importe l'application dans le process maître PUIS
+    # fork les workers ; un thread créé avant le fork n'existe pas dans le
+    # worker. Le planificateur serait alors « actif » (drapeau à True) mais
+    # totalement inerte — vérifié en prod le 07/11/2026 : forke=true,
+    # threads=1, planificateur=true, et pourtant aucune tâche cron exécutée.
+    _ORBIT_SCHEDULER['objet'] = scheduler
+    app.logger.info("APScheduler configuré (démarrage différé au 1er appel HTTP)")
 except Exception as e:
     app.logger.warning(f"APScheduler not available: {e}")
+
+
+def _orbit_demarrer_planificateur():
+    """Démarre le planificateur dans le process qui sert RÉELLEMENT les requêtes.
+
+    Appelé depuis le premier `before_request` : à cet instant on est dans le
+    process worker (post-fork), donc les threads créés survivent. Idempotent.
+    """
+    scheduler = _ORBIT_SCHEDULER.get('objet')
+    if scheduler is None or _ORBIT_SCHEDULER['actif']:
+        return False
+    try:
+        scheduler.start()
+        _ORBIT_SCHEDULER['actif'] = True
+        app.logger.info("APScheduler démarré dans le worker (pid=%s, threads=%s)",
+                        os.getpid(), _threading.active_count())
+        return True
+    except Exception as e:
+        app.logger.warning("APScheduler : démarrage impossible (%s)", e)
+        return False
 
 # ---------------------------------------------------------------------------
 # Rattrapage de la planification fiscale au premier usage du process.
@@ -972,9 +997,15 @@ def _orbit_fiscal_catchup():
     _ORBIT_CATCHUP['done'] = True
     if _SKIP_DB_INIT or os.environ.get('ORBIT_NO_SCHEDULER', '').lower() in ('1', 'true'):
         return
+
+    def _demarrage():
+        # Le planificateur doit naître DANS le process qui sert les requêtes :
+        # démarré au niveau module, ses threads mourraient au fork de gunicorn.
+        _orbit_demarrer_planificateur()
+        _orbit_run_fiscal_catchup()
+
     try:
-        import threading
-        threading.Thread(target=_orbit_run_fiscal_catchup, daemon=True).start()
+        _threading.Thread(target=_demarrage, daemon=True).start()
     except Exception:
         pass
 
