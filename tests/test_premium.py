@@ -1,8 +1,13 @@
-﻿"""Premium layer V2 : tags ?v=N, assets statiques, ordre de chargement.
+﻿"""Premium layer V2 : versionnement des assets (?v=mtime), ordre de chargement.
 
-Plan de reference : docs/PLAN_PREMIUM.md (Â§8 checklist).
+Plan de reference : docs/PLAN_PREMIUM.md (§8 checklist).
+
+Depuis le 2026-11-07 les « ?v=3 » ecrits a la main sont remplaces par asset(),
+qui derive la version de la date de modification du fichier. Les tests ne
+peuvent donc plus figer un numero : ils verifient la PRESENCE d'une version.
 """
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -12,8 +17,8 @@ def test_login_charged_la_couche_premium(client):
     r = client.get('/login')
     html = r.get_data(as_text=True)
     assert r.status_code == 200
-    assert 'orbit-premium.css?v=4' in html
-    assert 'orbit-premium.js?v=8' in html
+    assert re.search(r'orbit-premium\.css\?v=\d+', html)
+    assert re.search(r'orbit-premium\.js\?v=\d+', html)
     assert 'class="orbit-premium"' in html
 
 
@@ -29,7 +34,11 @@ def test_pages_authentifiees_chargent_la_feuille_systeme(admin_client):
     """
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
     assert 'orbit-system.css' in html
-    assert 'orbit-premium.js?v=8' in html
+    assert re.search(r'orbit-premium\.js\?v=\d+', html)
+    # Chaque asset de base porte une version -> cache long possible.
+    for fichier in ('css/style.css', 'css/light-theme.css', 'css/orbit-system.css'):
+        assert re.search(re.escape(fichier) + r'\?v=\d+', html), \
+            'asset sans version (donc non cachable) : %s' % fichier
     # Ordre : socle (style) -> thème clair -> feuille système (dernier mot)
     assert (html.index('style.css')
             < html.index('light-theme.css')
@@ -59,16 +68,23 @@ def test_pages_authentifiees_sans_mojibake_ni_pourcentage_anglais(admin_client):
 
 
 def test_cache_statiques_versionnes(client):
-    """CSS/JS avec ?v= : cache longue duree. Sans ?v= : pas de cache long (fichier mutable)."""
+    """Fichier avec ?v= : cache long. Sans ?v= : pas de cache long. sw.js : jamais."""
     r = client.get('/static/js/orbit-premium.js?v=8')
     assert r.status_code == 200
     assert 'max-age=31536000' in r.headers.get('Cache-Control', '')
     r = client.get('/static/css/style.css?v=9')
     assert 'max-age=31536000' in r.headers.get('Cache-Control', '')
+    # Les images versionnees aussi (elles pesent lourd dans les listes).
+    r = client.get('/static/img/logo-jmh.png?v=1')
+    assert 'max-age=31536000' in r.headers.get('Cache-Control', '')
     r = client.get('/static/js/orbit-premium.js')
     assert 'max-age' not in r.headers.get('Cache-Control', '')
     r = client.get('/static/sw.js')
     assert 'no-cache' in r.headers.get('Cache-Control', '')
+    # Meme avec une version, le service worker ne doit JAMAIS etre mis en cache :
+    # un worker fige un an casse l'application pour tous les utilisateurs.
+    r = client.get('/static/sw.js?v=1')
+    assert 'max-age' not in r.headers.get('Cache-Control', '')
 
 
 def test_asset_css_v2_complet(client):

@@ -58,3 +58,15 @@ data/app.db
 # Archives locales des scripts de diagnostic (jamais committer)
 scripts/legacy/
 data/
+
+# Fichiers de travail / debug qui ne doivent jamais etre publies
+active_debug.py
+_check_import.py
+*.log
+email_drop/
+cloudflare_worker.js
+
+# Brouillons de design (hors application)
+concepts_brief.md
+design_draft.md
+scripts/_coin_block.js

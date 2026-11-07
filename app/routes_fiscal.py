@@ -6,7 +6,7 @@ from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
 from sqlalchemy import or_
 import json
 import os
-import re  # sonde v11 (temporaire)
+import re
 from datetime import date, datetime, timedelta
 
 @app.route('/fiscal')

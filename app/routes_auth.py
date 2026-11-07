@@ -7,12 +7,10 @@ from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 import json
 import os
-import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
 from sqlalchemy import or_
 import json
 import os
-import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
 
 @app.route('/')

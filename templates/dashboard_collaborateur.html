@@ -156,7 +156,7 @@
                     {% endfor %}
                 {% else %}
                     <div class="empty-state">
-                        <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
+                        <img src="{{ asset('img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
                         <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
                         <p class="empty-state-desc">Tout est à jour ! Vous pouvez consulter vos tâches hebdomadaires.</p>
                         <a href="{{ url_for('mes_taches') }}" class="btn-premium btn-premium-primary">
@@ -198,7 +198,7 @@
             {% endfor %}
         {% else %}
             <div class="empty-state">
-                <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
+                <img src="{{ asset('img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
                 <h4 class="empty-state-title">Aucune tâche cette semaine</h4>
                 <p class="empty-state-desc">Toutes vos tâches sont à jour. Parfait travail !</p>
             </div>

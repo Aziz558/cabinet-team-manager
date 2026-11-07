@@ -6,7 +6,6 @@ from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
 from sqlalchemy import or_
 import json
 import os
-import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
 
 def _rapport_cookies(info: dict) -> dict:
@@ -1221,15 +1220,7 @@ def pennylane_probe():
 # ==========================
 # Error handlers
 # ==========================
-@app.errorhandler(404)
-def not_found(error):
-    return render_template('error.html', code=404, message="Page non trouvée."), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    app.logger.error(f"500 error: {error}")
-    try:
-        db.session.rollback()
-    except Exception:
-        pass
-    return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos équipes ont été notifiées."), 500
+# Les handlers 404/500 sont déclarés UNE SEULE FOIS dans app/__init__.py
+# (with_error_handlers). Ils étaient recopiés ici à l'identique : le dernier
+# enregistré écrasait le premier, ce qui rendait toute correction future
+# silencieusement inopérante.

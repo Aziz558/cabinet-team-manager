@@ -4,7 +4,14 @@
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/release_migrate.py && gunicorn -w 1 -b 0.0.0.0:$PORT wsgi:application
+    # 1 seul worker : un 2e worker dupliquerait les tâches planifiées
+    # (APScheduler tourne dans le processus web). MAIS en mode synchrone, ce
+    # worker unique traitait UNE requête à la fois : une synchro Pennylane de
+    # 53 dossiers ou un envoi d'emails gelait toute l'application — d'où les
+    # « glitchs » et les timeouts. On garde 1 worker mais multi-threads (gthread),
+    # ce qui suffit pour des requêtes qui attendent surtout le réseau.
+    # --max-requests : recyclage périodique des workers (fuites mémoire).
+    startCommand: python scripts/release_migrate.py && gunicorn -k gthread -w 1 --threads 8 --timeout 120 --graceful-timeout 30 --max-requests 1000 --max-requests-jitter 100 -b 0.0.0.0:$PORT wsgi:application
     envVars:
       - key: SECRET_KEY
         generateValue: true

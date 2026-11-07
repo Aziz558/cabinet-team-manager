@@ -304,7 +304,7 @@
     html[data-theme="light"] .teams-grid .text-center { color: var(--text-tertiary) !important; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;0,600;1,400&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/orbit-elevate.css') }}?v=1" rel="stylesheet">
+    <link href="{{ asset('css/orbit-elevate.css') }}" rel="stylesheet">
     <meta name="theme-color" content="#f5f2ec">
 </head>
 <body>
@@ -313,7 +313,7 @@
     <div class="grid-overlay"></div>
     <div class="container-main">
         <div class="header">
-            <img src="{{ url_for('static', filename='img/logo-jmh-orbit.png') }}" alt="Cabinet JMH" onerror="this.style.display='none'">
+            <img src="{{ asset('img/logo-jmh-orbit.png') }}" alt="Cabinet JMH" onerror="this.style.display='none'">
             <h1>Cabinet JMH</h1>
             <p>Choisissez votre équipe</p>
         </div>

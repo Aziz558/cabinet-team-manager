@@ -3,6 +3,7 @@
 Couvre : intégration des tags/markup, présence des 3 assets,
 et préservation du fallback login classique.
 """
+import re
 
 
 def test_login_integre_la_scene_spatiale(client):
@@ -10,8 +11,8 @@ def test_login_integre_la_scene_spatiale(client):
     r = client.get('/login')
     html = r.get_data(as_text=True)
     assert r.status_code == 200
-    assert 'orbit-space.css?v=1' in html
-    assert 'orbit-space.js?v=4' in html
+    assert re.search(r'orbit-space\.css\?v=\d+', html)
+    assert re.search(r'orbit-space\.js\?v=\d+', html)
     assert 'id="orbitSpace"' in html
     assert 'id="orbitPlanetBtn"' in html
     assert 'id="orbitBackBtn"' in html

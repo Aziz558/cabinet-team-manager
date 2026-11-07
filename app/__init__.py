@@ -56,16 +56,19 @@ def _service_worker():
     return resp
 
 # Pages HTML : jamais de cache navigateur (les correctifs UI doivent arriver immediatement).
-# CSS/JS versionnes (?v=N) : cache longue duree. Toute modification d'un fichier
-# DOIT incrementer son ?v= dans les templates, sinon les clients gardent l'ancienne version.
+# Fichiers statiques versionnes (?v=<mtime>) : cache longue duree, TOUS types —
+# images comprises. Sans ?v= : pas de cache long (fichier potentiellement mutable
+# sous une URL stable, on ne veut pas figer une ancienne version un an).
+# La version est desormais produite par asset() (date de modification du fichier)
+# et NON plus par des ?v=N ecrits a la main dans les gabarits.
 @app.after_request
 def _cache_policy(resp):
     if resp.mimetype == 'text/html':
         resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         resp.headers['Pragma'] = 'no-cache'
     elif (request.path.startswith('/static/')
-          and request.args.get('v')
-          and resp.mimetype in ('text/css', 'application/javascript', 'text/javascript')):
+          and request.path.endswith('/sw.js') is False
+          and request.args.get('v')):
         resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     return resp
 
@@ -502,6 +505,33 @@ def _plural(count, singular="", plural="s"):
 
 app.jinja_env.filters['plur'] = _plural
 
+# --- Versionnement automatique des fichiers statiques ------------------------
+# Les gabarits écrivaient « ?v=3 » à la main. Deux défauts : la version n'était
+# pas incrémentée à chaque modification (le navigateur gardait l'ancien CSS et
+# l'interface semblait cassée après un déploiement), et sans version les
+# fichiers n'étaient pas cachables. asset() dérive la version de la date de
+# modification du fichier : elle change toute seule quand le fichier change.
+_VERSIONS_STATIQUES = {}
+
+
+def _version_statique(filename: str) -> str:
+    version = _VERSIONS_STATIQUES.get(filename)
+    if version is None:
+        try:
+            version = str(int(os.path.getmtime(os.path.join(app.static_folder, filename))))
+        except OSError:
+            version = '0'
+        _VERSIONS_STATIQUES[filename] = version
+    return version
+
+
+@app.template_global()
+def asset(filename: str) -> str:
+    """URL d'un fichier statique versionné par sa date de modification."""
+    from flask import url_for
+    return f"{url_for('static', filename=filename)}?v={_version_statique(filename)}"
+
+
 # Context processor — makes current_equipe available in all templates
 @app.context_processor
 def inject_globals():
@@ -540,32 +570,76 @@ def inject_globals():
             pass
     
     return dict(current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch,
-                cache_buster=int(_datetime.utcnow().timestamp()),
                 _pending_validations=_pending_validations)
 
 # Global error handlers to avoid silent 500s
+def _reference_erreur() -> str:
+    """Identifiant court à montrer à l'utilisateur et à retrouver dans les logs.
+
+    Avant, la page d'erreur affichait le NOM de l'exception Python
+    (« Erreur interne: KeyError ») : fuite d'information interne et message
+    inutile pour l'utilisateur. On affiche une référence, l'exception part
+    entière dans les logs.
+    """
+    import uuid
+    return uuid.uuid4().hex[:8].upper()
+
+
+@app.errorhandler(403)
+def interdit(error):
+    return render_template('error.html', code=403,
+                           message="Accès refusé — ton profil ne permet pas cette action."), 403
+
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('error.html', code=404, message="Page non trouvée."), 404
 
+
+@app.errorhandler(405)
+def methode_non_autorisee(error):
+    return render_template('error.html', code=405,
+                           message="Cette action n'est pas autorisée par cette méthode."), 405
+
+
+@app.errorhandler(413)
+def fichier_trop_volumineux(error):
+    limite = app.config.get('MAX_CONTENT_LENGTH') or 0
+    return render_template('error.html', code=413,
+                           message=f"Fichier trop volumineux (limite {limite // (1024 * 1024)} Mo)."), 413
+
+
+@app.errorhandler(429)
+def trop_de_requetes(error):
+    return render_template('error.html', code=429,
+                           message="Trop de requêtes. Patiente un instant puis réessaie."), 429
+
+
 @app.errorhandler(500)
 def internal_error(error):
-    app.logger.error(f"500 error: {error}")
+    reference = _reference_erreur()
+    app.logger.error("[ref %s] 500 : %s", reference, error)
     try:
         db.session.rollback()
     except Exception:
         pass
-    return render_template('error.html', code=500, message="Une erreur interne est survenue. Nos équipes ont été notifiées."), 500
+    return render_template('error.html', code=500,
+                           message=f"Une erreur interne est survenue (référence {reference}).",
+                           reference=reference), 500
 
 # Global exception handler for debugging
 @app.errorhandler(Exception)
 def handle_all_exceptions(e):
-    app.logger.error(f"Unhandled exception: {type(e).__name__}: {e}", exc_info=True)
+    reference = _reference_erreur()
+    app.logger.error("[ref %s] Exception non gérée: %s: %s", reference,
+                     type(e).__name__, e, exc_info=True)
     try:
         db.session.rollback()
     except Exception:
         pass
-    return render_template('error.html', code=500, message=f"Erreur interne: {type(e).__name__}"), 500
+    return render_template('error.html', code=500,
+                           message=f"Une erreur inattendue s'est produite (référence {reference}).",
+                           reference=reference), 500
 
 # APScheduler for daily notifications
 try:
