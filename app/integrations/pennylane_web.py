@@ -175,12 +175,25 @@ def clear_web_session():
 
 
 def _headers():
+    """En-têtes d'un appel XHR légitime depuis app.pennylane.com.
+
+    Le 418 renvoyé par Pennylane est une protection anti-bot : plus l'appel
+    ressemble à une requête du front (Accept-Language, Origin, sec-fetch-*),
+    moins elle se déclenche. Ces en-têtes ne changent rien à l'authentification
+    (elle se fait par cookies).
+    """
     return {
-        'accept': 'application/json',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0',
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'user-agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                       '(KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0'),
         'x-reseller': 'pennylane',
         'x-plan-used-by-front-end': 'v1_saas_free',
+        'origin': 'https://app.pennylane.com',
         'referer': 'https://app.pennylane.com/',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-dest': 'empty',
     }
 
 
@@ -220,12 +233,42 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
            f'?period_start={period_start}&period_end={period_end}')
     with _pl_session_lock:
         cookies = _pl_session_cookies
-    try:
-        r = requests.get(url, headers=_headers(), cookies=_parse_cookie_header(cookies),
-                         timeout=25)
-    except Exception as e:
-        return {'ok': False, 'message': f'Erreur réseau: {e}',
+
+    # --- Appel avec ré-essais -------------------------------------------------
+    # 418 (anti-bot) et 429 (débit) sont TRANSITOIRES côté Pennylane : sans
+    # nouvelle tentative, un seul 418 faisait échouer le dossier et l'interface
+    # ne bougeait pas. 5xx idem.
+    import random as _random
+    import time as _time
+
+    tentatives = 3
+    r = None
+    derniere_erreur = None
+    for essai in range(tentatives):
+        try:
+            r = requests.get(url, headers=_headers(), cookies=_parse_cookie_header(cookies),
+                             timeout=25)
+        except Exception as e:
+            r = None
+            derniere_erreur = f'Erreur réseau: {e}'
+        if r is not None and r.status_code not in (418, 429) and r.status_code < 500:
+            break
+        if essai < tentatives - 1:
+            attente = (2 ** essai) * 1.5 + _random.uniform(0, 0.9)
+            _time.sleep(attente)
+    if r is None:
+        return {'ok': False, 'message': derniere_erreur or 'Erreur réseau',
                 'vat_returns': [], 'future_vat_returns': []}
+
+    if r.status_code in (418, 429):
+        _msg = (f'Pennylane limite temporairement les appels (HTTP {r.status_code}) après '
+                f'{tentatives} tentative(s). La session est probablement encore valide : '
+                f'réessaie dans 2 à 3 minutes. Si le blocage revient systématiquement, '
+                f'recolle les cookies Pennylane (page Intégration).')
+        _save_last_sync(ok=False, message=_msg)
+        return {'ok': False, 'bloque': True, 'message': _msg,
+                'vat_returns': [], 'future_vat_returns': []}
+
     if r.status_code == 401:
         _msg = 'Session expirée — recolle les cookies Pennylane (page Intégration).'
         _save_last_sync(ok=False, message=_msg)
@@ -472,6 +515,14 @@ def sync_checklist_tva() -> dict:
     dossiers_vides = 0
     erreurs = []
     auto_associes = 0
+    bloques = 0
+    blocages_consecutifs = 0
+    abandonne = False
+    # Cadence : Pennylane déclenche sa protection anti-bot (418) sur des appels
+    # trop rapprochés. On espace les dossiers d'environ 3/4 de seconde.
+    import random as _random
+    import time as _time
+    cadence = 0.7 if len(dossiers) > 1 else 0.0
 
     for d in dossiers:
         if not (d.pennylane_customer_id or '').strip():
@@ -486,16 +537,29 @@ def sync_checklist_tva() -> dict:
             else:
                 erreurs.append(f"{d.numero_dossier}: auto-association échouée — {res_auto.get('message')}")
                 continue
+        if cadence:
+            _time.sleep(cadence + _random.uniform(0, 0.4))
+
         res = fetch_vat_forms(d.pennylane_customer_id)
         if not res['ok']:
             erreurs.append(f"{d.numero_dossier}: {res['message']}")
-            if 'Session expirée' in res['message']:
-                # La session est partagée par tous les dossiers : on marque l'erreur
-                # mais on CONTINUE de tenter les suivants (chacun remonte son propre
-                # statut) plutôt que d'arrêter la boucle net avec break.
-                continue
+            if res.get('bloque'):
+                bloques += 1
+                blocages_consecutifs += 1
+                # Disjoncteur : insister ne fait qu'allonger le blocage.
+                if blocages_consecutifs >= 3:
+                    abandonne = True
+                    erreurs.append(
+                        "Arrêt de la synchro : Pennylane bloque 3 dossiers d'affilée (HTTP 418). "
+                        "Les autres dossiers n'ont pas été interrogés.")
+                    break
+            else:
+                blocages_consecutifs = 0
+            # La session est partagée par tous les dossiers : on marque l'erreur
+            # mais on continue de tenter les suivants (chacun remonte son statut).
             continue
 
+        blocages_consecutifs = 0
         dossiers_ok += 1
         taxe = _vat_taxe_for(d)
         if not (res['vat_returns'] or res['future_vat_returns']):
@@ -594,13 +658,29 @@ def sync_checklist_tva() -> dict:
     if auto_associes:
         msg += f" 🔗 {auto_associes} dossier(s) auto-associé(s) via API Company (token du dossier)."
 
+    if bloques:
+        msg += (f" ⛔ {bloques} dossier(s) bloqué(s) par Pennylane (HTTP 418 — protection "
+                f"anti-bot). Ce n'est PAS une session expirée : attendre 2-3 minutes avant "
+                f"de relancer.")
+    if abandonne:
+        msg += " Synchro interrompue volontairement pour ne pas aggraver le blocage."
+
+    # Le bilan doit dire la VÉRITÉ : sans dossier synchronisé, l'opération a échoué.
+    # (Avant, `ok` était toujours True : l'interface affichait un succès vert alors
+    # que zéro statut n'avait changé — d'où l'impression que « rien ne se passe ».)
+    succes = dossiers_ok > 0 and not abandonne
+    if not succes and not erreurs:
+        msg += " Aucun dossier à synchroniser."
+
     # Trace du dernier passage (carte admin) + alerte email si problème
-    _save_last_sync(ok=(not erreurs), message=msg)
+    _save_last_sync(ok=succes, message=msg)
     if erreurs:
         _alerter_session(msg)
 
-    return {'ok': True, 'synces': synced, 'statuts': statuts_ecrits,
+    return {'ok': succes, 'synces': synced, 'statuts': statuts_ecrits,
             'en_retard': en_retard, 'dossiers_ok': dossiers_ok,
+            'dossiers_total': len(dossiers),
+            'bloques': bloques, 'abandonne': abandonne,
             'auto_associes': auto_associes,
             'erreurs': erreurs[:10], 'message': msg}
 

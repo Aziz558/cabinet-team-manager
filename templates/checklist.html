@@ -542,8 +542,35 @@
         }).then(function(j) {
             btn.innerHTML = original; btn.disabled = false;
             if (!j) return;
-            if (j.ok) { showToast(j.message || 'Synchro terminée.', 'success'); setTimeout(function() { location.reload(); }, 900); }
-            else { showToast('Pennylane : ' + (j.message || 'échec'), 'danger'); }
+            // Bilan rangé dans le bandeau : un toast de 5 s ne suffit pas à lire
+            // pourquoi des dossiers n'ont pas bougé (418, session, association…).
+            var banner = document.getElementById('plSyncBannerText');
+            if (banner) {
+                banner.textContent = '';
+                var ic = document.createElement('i');
+                var erreursReelles = j.erreurs && j.erreurs.length;
+                ic.className = 'bi me-1 ' + ((j.ok && !erreursReelles) ? 'bi-cloud-check' : 'bi-exclamation-triangle-fill');
+                ic.style.color = (j.ok && !erreursReelles) ? 'var(--info)' : 'var(--danger)';
+                banner.appendChild(ic);
+                banner.appendChild(document.createTextNode(
+                    (j.dossiers_ok !== undefined ? j.dossiers_ok + '/' + (j.dossiers_total || '?') + ' dossier(s) mis à jour — ' : '')
+                    + (j.message || 'Synchro terminée.')));
+                if (erreursReelles) {
+                    var det = document.createElement('div');
+                    det.style.cssText = 'font-size:0.7rem;opacity:.85;margin-top:2px;';
+                    det.textContent = j.erreurs.slice(0, 3).join(' | ');
+                    banner.appendChild(det);
+                }
+            }
+            if (j.ok && !(j.erreurs && j.erreurs.length)) {
+                showToast(j.message || 'Synchro terminée.', 'success');
+                setTimeout(function() { location.reload(); }, 900);
+            } else if (j.ok) {
+                showToast('Synchro partielle — voir le détail dans le bandeau.', 'warning');
+                setTimeout(function() { location.reload(); }, 2500);
+            } else {
+                showToast('Pennylane : ' + (j.message || 'échec'), 'danger');
+            }
         }).catch(function() {
             btn.innerHTML = original; btn.disabled = false;
             showToast('Erreur réseau', 'danger');
