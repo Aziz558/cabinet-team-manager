@@ -741,7 +741,8 @@ def sync_checklist_tva() -> dict:
     db.session.commit()
     msg = (f"{dossiers_ok}/{len(dossiers)} dossier(s) synchronisé(s) — "
            f"{statuts_ecrits} statut(s) Pennylane enregistré(s) "
-           f"(visibles dans la grille : pastille bleue au coin des cases), "
+           f"(visibles dans la grille : pastille colorée au coin des cases — vert = acceptée, "
+           f"orange = en cours, bleu = prêt, gris = à déclarer, rouge = en retard), "
            f"{synced} case(s) marquée(s) déclarée(s) (déclarations faites dans Pennylane), "
            f"{forces_annules} forçage(s) manuel(s) annulé(s) sur des périodes connues de Pennylane.")
     if erreurs:
