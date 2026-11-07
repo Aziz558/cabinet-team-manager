@@ -80,3 +80,19 @@ def test_alerte_email_pas_declenchee_sur_422(flask_app, seed, monkeypatch):
     assert res['erreurs'] == [], f'les 422 ne sont pas des erreurs de session : {res["erreurs"]}'
     assert res['sans_tva'], 'les dossiers 422 doivent être listés dans sans_tva'
     assert alertes == [], f'aucune alerte attendue, obtenu {alertes}'
+
+# --- Statuts Pennylane réels : aucun anglais brut dans l'interface -------------
+
+def test_accepted_and_paid_est_traduit_et_compte_comme_declare():
+    """Statut réel observé en prod (13 cellules TVA mensuelle) : il s'affichait
+    en anglais brut et sa pastille restait au bleu par défaut."""
+    assert pw.traduire_statut('accepted_and_paid') == 'Acceptée & payée'
+    assert 'accepted_and_paid' in pw.FILED_STATUSES
+    assert pw.pill_class('accepted_and_paid') == ' sym-pl-ok'
+
+
+def test_statut_inconnu_humanise_jamais_de_snake_case():
+    """Filet de sécurité : un nouveau statut Pennylane ne doit pas fuiter tel quel."""
+    assert pw.traduire_statut('some_new_status') == 'some new status'
+    assert pw.traduire_statut('') == ''
+    assert pw.traduire_statut(None) == ''

@@ -37,8 +37,8 @@ COOKIE_KEY = 'PENNYLANE_WEB_COOKIES'
 # Statuts Pennylane considérés comme "déclarée / terminée"
 # NB : 'ongoing' = envoyée mais pas encore acceptée -> la déclaration EST partie.
 FILED_STATUSES = {'filed', 'sent', 'paid', 'partially_paid', 'completed', 'done',
-                  'validated', 'accepted', 'transmitted', 'accounted', 'teletedeclaree',
-                  'ongoing'}
+                  'validated', 'accepted', 'accepted_and_paid', 'transmitted',
+                  'accounted', 'teletedeclaree', 'ongoing'}
 # Statuts "en retard" selon Pennylane
 LATE_STATUSES = {'late', 'late_to_do', 'overdue', 'en_retard', 'retard'}
 # Statut brut -> libellé FR
@@ -55,6 +55,9 @@ STATUT_FR = {
     'done': 'Terminée',
     'validated': 'Validée',
     'accepted': 'Acceptée',
+    # Statut réel observé en prod le 2026-11-07 (13 cellules en TVA mensuelle) :
+    # sans cette ligne il s'affichait en anglais brut « accepted_and_paid ».
+    'accepted_and_paid': 'Acceptée & payée',
     'transmitted': 'Transmise',
     'accounted': 'Comptabilisée',
     'paid': 'Payée',
@@ -378,8 +381,14 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
 
 
 def traduire_statut(statut: str) -> str:
-    """Statut Pennylane brut -> libellé FR pour l'affichage."""
-    return STATUT_FR.get((statut or '').lower(), statut or '')
+    """Statut Pennylane brut -> libellé FR pour l'affichage.
+
+    Filet de sécurité : un statut inconnu ne doit JAMAIS s'afficher en anglais
+    technique (`accepted_and_paid` apparaissait tel quel dans les infobulles de
+    la grille avant le 2026-11-07). On humanise donc la clé snake_case.
+    """
+    s = (statut or '').strip()
+    return STATUT_FR.get(s.lower(), s.replace('_', ' '))
 
 
 # Couleurs des pastilles Pennylane (demande Aziz — sémantique Pennylane réelle) :
@@ -388,8 +397,8 @@ def traduire_statut(statut: str) -> str:
 # bleu = PRÊT (préparée mais pas encore envoyée) ;
 # gris = À DÉCLARER (ni préparée ni envoyée, échéance à venir) ;
 # rouge = EN RETARD (échéance dépassée, ni préparée ni envoyée ni acceptée).
-PILL_OK = {'accepted', 'validated', 'filed', 'sent', 'completed', 'done', 'transmitted',
-           'accounted', 'paid', 'partially_paid'}
+PILL_OK = {'accepted', 'accepted_and_paid', 'validated', 'filed', 'sent', 'completed',
+           'done', 'transmitted', 'accounted', 'paid', 'partially_paid'}
 PILL_READY = {'ready', 'draft', 'to_send', 'prepared'}          # bleu
 PILL_PROGRESS = {'ongoing', 'in_progress', 'pending', 'processing'}  # orange
 PILL_TODO = {'to_do', 'unknown', ''}                            # gris
