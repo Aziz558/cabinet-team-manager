@@ -199,6 +199,11 @@ def _headers(cookies: str = None):
     """
     h = {
         'accept': 'application/json, text/plain, */*',
+        # Indispensable : sans cet en-tête, Rails/Pennylane ne traite pas la
+        # requête comme un XHR et renvoie la coquille HTML de la SPA
+        # (HTTP 200, text/html, ~14 Ko, <title>Pennylane</title>) au lieu du
+        # JSON attendu. C'était la cause du « Réponse non JSON » en prod.
+        'x-requested-with': 'XMLHttpRequest',
         'accept-language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
         'user-agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                        '(KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0'),
