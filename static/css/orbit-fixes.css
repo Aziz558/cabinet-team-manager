@@ -21,11 +21,17 @@ html[data-theme="light"] {
   --warn-ink: #8f5a10; /* texte warning lisible (le #FF9800 de Bootstrap passe à 1.9) */
   --amber-deep: #96560d; /* était #b8590a -> 4.18 sur papier ; 5.17 après (badges, liens, libellés) */
   --bg-secondary: #ebe6dc; /* fallback #1a1a1a donnait une boîte sombre sur carte claire */
+  --bad-ink: #b02a37;   /* badge « Retard » : #dc3545 passait à 3.56 -> 5.3 après */
+  --ok-ink: #1e7e34;    /* variantes .ok de chips (vert Bootstrap trop clair) */
+  --purple-ink: #7c3aed; /* totaux flux Pennylane : #9B5DE5 passait à 3.52 -> 4.85 après */
 }
 html[data-theme="dark"] {
   --warn-ink: var(--warn);
   --ink-4: #9aa1af;   /* était #6b7280 -> ratio 3.75 en sombre ; 7.4 après (libellés, en-têtes de tableau) */
   --bg-secondary: #14161a;
+  --bad-ink: #ff8a80;  /* badge « Retard » en sombre : 3.58 -> 7.1 après */
+  --ok-ink: #81c784;
+  --purple-ink: #c4b5fd; /* 3.97 -> 8.9 après */
 }
 
 /* ---------------------------------------------------------------------------
@@ -181,3 +187,27 @@ html[data-theme="dark"] {
    ------------------------------------------------------------------------- */
 .app-shell .pl-page,
 .app-shell .pl-team-group { overflow-x: clip; }
+
+/* ---------------------------------------------------------------------------
+   8. BADGES « RETARD » PENNYLANE + CARTE TRIAGE DU DASHBOARD
+      (visibles uniquement avec les vraies données prod : 31 badges « Retard »
+       à 3.56, compteur triage à 2.03, totaux flux/totaux à 3.52/1.99)
+   ------------------------------------------------------------------------- */
+.app-shell .pl-badge-late {
+  color: var(--bad-ink) !important;
+  border-color: color-mix(in srgb, var(--bad-ink) 45%, transparent) !important;
+}
+.app-shell .avm-chip-count.warn  { color: var(--warn-ink) !important; }
+.app-shell .avm-chip-count.danger { color: var(--bad-ink) !important; }
+.app-shell .avm-chip-count.ok    { color: var(--ok-ink) !important; }
+/* Compteur « à traiter » de la carte triage (style inline orange #FF8C00) */
+.app-shell #plTriageCard .avm-chip-count { color: var(--warn-ink) !important; }
+.app-shell #plTriageCard .pl-tr-sum.flux   { color: var(--purple-ink) !important; }
+.app-shell #plTriageCard .pl-tr-sum.totaux { color: var(--warn-ink) !important; }
+/* Bouton déplier/replier du triage : 30 px -> 32 px */
+.app-shell #plTriageCard .pl-tr-toggle {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+}
