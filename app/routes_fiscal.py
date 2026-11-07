@@ -1,11 +1,8 @@
 """fiscal — page fiscal + creation dossier + config equipes (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import render_template, request, redirect, url_for, flash, session
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
-import json
-import os
+from .models import User, Equipe, Dossier, Tache
 import re
 from datetime import date, datetime, timedelta
 

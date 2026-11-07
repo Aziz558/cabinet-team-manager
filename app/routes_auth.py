@@ -1,8 +1,8 @@
 """auth — index, login, logout, team-select, dashboard (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
+from flask import render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
+from .models import User, Equipe, Dossier, Tache, Notification, PennylaneItem
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 import json

@@ -1,15 +1,11 @@
 """dossiers_gest — suppressions + CSV dossiers/equipes/taches (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import request, redirect, url_for, flash, session
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
-import json
-import os
+from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
 import re
-from datetime import date, datetime, timedelta
-from .route_common import (prochaine_echeance_theorique, prochaine_echeance_par_nature,
-                            _tache_accessible, _nettoyer_relations_dossier)
+from datetime import date, datetime
+from .route_common import _nettoyer_relations_dossier
 
 @app.route('/supprimer_dossier/<int:dossier_id>')
 @login_required

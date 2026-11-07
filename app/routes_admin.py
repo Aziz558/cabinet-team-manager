@@ -1,14 +1,11 @@
 """admin — profil, reset admin, photos admin, debug (extrait de app/routes.py)."""
-from flask import (render_template, request, redirect, url_for, flash, jsonify, session,
-                   abort)
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, abort
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
-import json
+from .models import User
 import os
 import time
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 # Limitation des tentatives sur /reset-admin : mémoire du process (suffisant
 # pour une route de secours ; le but est d'arrêter le balayage de clés).

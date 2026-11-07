@@ -1,15 +1,12 @@
 """dossiers_ops — mes vues, modifier/enrichir dossier, admin DB, prise en charge (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import request, redirect, url_for, flash, jsonify, session
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
+from .models import User, Dossier, Tache, Notification
 import json
-import os
 import re
-from datetime import date, datetime, timedelta
-from .route_common import (prochaine_echeance_theorique, prochaine_echeance_par_nature,
-                            _tache_accessible, _nettoyer_relations_dossier)
+from datetime import date, datetime
+from .route_common import _tache_accessible
 
 @app.route('/mes_dossiers')
 @login_required

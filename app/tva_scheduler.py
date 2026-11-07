@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 import logging
 
 logger = logging.getLogger(__name__)

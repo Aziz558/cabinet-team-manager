@@ -19,21 +19,16 @@ import imaplib
 import logging
 import os
 import re
-import time
 from email.header import decode_header
-from email.parser import BytesParser
-from email.policy import default
-from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app import app, db
-from app.models import SuggestionTache, AppSetting, Equipe
+from app.models import SuggestionTache, AppSetting
 
 logger = logging.getLogger(__name__)
 
 # Import the intelligent extractor
 from app.integrations.email_extractor import (
-    extract_pdf_text,
     extract_email_content,
     analyze_email_intelligent,
     create_suggestion_from_analysis,

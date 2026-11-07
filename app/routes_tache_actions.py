@@ -1,14 +1,11 @@
 """tache_actions — changer/terminer statut + photos profil (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import request, redirect, url_for, flash, jsonify, session
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
-import json
+from .models import User, Tache, Notification
 import os
-from datetime import date, datetime, timedelta
-from .route_common import (prochaine_echeance_theorique, prochaine_echeance_par_nature,
-                            _tache_accessible, _nettoyer_relations_dossier)
+from datetime import datetime
+from .route_common import _tache_accessible
 
 @app.route('/changer_statut_tache/<int:tache_id>', methods=['POST'])
 @login_required

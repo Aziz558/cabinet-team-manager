@@ -24,7 +24,7 @@ except ImportError:
     fitz = None
 
 from app import app, db
-from app.models import SuggestionTache, Dossier, User, Equipe
+from app.models import SuggestionTache, Dossier, Equipe
 
 logger = logging.getLogger(__name__)
 

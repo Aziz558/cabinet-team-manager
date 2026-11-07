@@ -1,12 +1,10 @@
 """planning — calendrier + analytics (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
-from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
+from flask import render_template, request, redirect, url_for, jsonify
+from flask_login import login_required, current_user
+from . import app
+from .models import User, Equipe, Dossier, Tache
 import json
-import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 @app.route('/calendrier')
 @login_required

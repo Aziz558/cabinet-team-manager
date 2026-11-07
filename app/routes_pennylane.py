@@ -1,12 +1,10 @@
 """pennylane — integration Pennylane + error handlers (extrait de app/routes.py)."""
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
+from .models import Equipe, Dossier, PennylaneItem
 import json
-import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 def _rapport_cookies(info: dict) -> dict:
     """Vue « affichable » du nettoyage de cookies : des noms, jamais des valeurs."""

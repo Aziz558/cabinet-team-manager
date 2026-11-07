@@ -8,7 +8,7 @@
 from datetime import date, datetime, timedelta
 
 from . import db
-from .models import Dossier, DsnSuivi, Tache, Notification, User
+from .models import Dossier, DsnSuivi, Tache
 
 
 def est_pole_social(user):

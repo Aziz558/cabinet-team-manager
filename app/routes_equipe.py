@@ -1,11 +1,8 @@
 """equipe — equipes, notifications, membres, fiche (extrait de app/routes.py)."""
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
-from sqlalchemy import or_
-import json
-import os
+from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache
 from datetime import date, datetime, timedelta
 from .route_common import membres_visibles_query, membre_visible
 

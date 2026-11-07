@@ -18,7 +18,7 @@ Mapping periode (aligne sur la logique « seed » de la checklist, routes.py) :
   Declaration IS definitive : (annee echeance, 5, declaration)
   CFE : (annee echeance, 12, depot)
 """
-from datetime import date, datetime
+from datetime import datetime
 
 from . import db
 from .models import Tache, ChecklistEntry, Notification, User

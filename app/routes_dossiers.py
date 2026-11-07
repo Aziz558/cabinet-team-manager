@@ -1,15 +1,16 @@
 """dossiers — liste dossiers + tva-taches + planification (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import render_template, request, redirect, url_for, flash, session
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
+from .models import User, Equipe, Dossier, Tache
 from sqlalchemy import or_
-import json
-import os
-from datetime import date, datetime, timedelta
-from .route_common import (prochaine_echeance_theorique, prochaine_echeance_par_nature,
-                            _tache_accessible, _nettoyer_relations_dossier,
-                            dossiers_visibles_query, membres_visibles_query)
+from datetime import date, datetime
+from .route_common import (
+    prochaine_echeance_theorique,
+    prochaine_echeance_par_nature,
+    dossiers_visibles_query,
+    membres_visibles_query,
+)
 
 @app.route('/dossiers')
 @login_required

@@ -1,12 +1,11 @@
 """api — settings + API (mail, notifier, recherche globale) (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import render_template, request, redirect, url_for, jsonify, session
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
+from .models import User, Equipe, Dossier, Tache, Notification
 from sqlalchemy import or_
-import json
 import os
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from .route_common import membres_visibles_query, dossiers_visibles_query
 
 # Réglages dont la valeur n'est JAMAIS renvoyée au navigateur (ni dans le HTML, ni dans le JSON).

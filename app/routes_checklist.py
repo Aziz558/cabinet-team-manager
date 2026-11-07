@@ -1,11 +1,10 @@
 """checklist — checklist des obligations fiscales (extrait de app/routes.py)."""
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import render_template, request, jsonify, session
+from flask_login import login_required, current_user
 from . import app, db
-from .models import User, Equipe, Dossier, Tache, Notification, CommentaireTache, SuggestionTache, PennylaneItem
+from .models import Equipe, Dossier, Tache
 from sqlalchemy import or_
 import json
-import os
 from datetime import date, datetime, timedelta
 
 @app.route('/checklist')
