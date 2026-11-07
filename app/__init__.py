@@ -5,6 +5,8 @@ from flask_login import LoginManager
 import os
 import secrets
 import logging
+import sys as _sys
+import threading as _threading
 from logging.handlers import SMTPHandler
 from datetime import date as _date, datetime as _datetime
 
@@ -642,6 +644,9 @@ def handle_all_exceptions(e):
                            reference=reference), 500
 
 # APScheduler for daily notifications
+# Etat du planificateur, expose par /health (supervision).
+_ORBIT_SCHEDULER = {'actif': False}
+
 try:
     # ORBIT_NO_SCHEDULER=1 : tests/CI — pas de taches de fond dans le processus.
     if os.environ.get('ORBIT_NO_SCHEDULER', '').lower() in ('1', 'true'):
@@ -923,6 +928,7 @@ try:
     scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10,
                       misfire_grace_time=1800, coalesce=True)  # toutes les heures (:10)
     scheduler.start()
+    _ORBIT_SCHEDULER['actif'] = True
     app.logger.info("APScheduler started: daily 08:00, recurring 07:00, fiscal 1st 06:00, pennylane hourly, TVA hourly (:10)")
 except Exception as e:
     app.logger.warning(f"APScheduler not available: {e}")
@@ -966,4 +972,45 @@ def _orbit_fiscal_catchup():
         threading.Thread(target=_orbit_run_fiscal_catchup, daemon=True).start()
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Sonde de supervision /health.
+#
+# Sert d'abord a Render (verification de sante), ensuite a nous : elle indique
+# d'un seul appel quel type de worker sert REELLEMENT la production. C'est le
+# seul moyen de verifier depuis l'exterieur que le passage a gunicorn en mode
+# multi-threads (gthread) a bien ete pris en compte — un `startCommand` modifie
+# dans render.yaml ne s'applique qu'apres redeploiement.
+#
+# N'expose AUCUNE donnee sensible : ni chaine de connexion, ni identifiants,
+# ni secret. Le SHA de commit est deja public (depot GitHub public).
+# ---------------------------------------------------------------------------
+def _orbit_worker_gunicorn():
+    """Classe de worker gunicorn reellement chargee : gthread, gsync, ggevent..."""
+    concrets = ('gthread', 'ggevent', 'gevent_pywsgi', 'gtornado', 'gaiohttp', 'gsync')
+    charges = {m.rsplit('.', 1)[-1] for m in _sys.modules if m.startswith('gunicorn.workers.')}
+    for nom in concrets:
+        if nom in charges:
+            return nom
+    return None
+
+
+@app.route('/health')
+def _orbit_health():
+    """Etat technique du process (worker, threads, base, planificateur)."""
+    from flask import jsonify
+    try:
+        backend = db.engine.url.get_backend_name()
+    except Exception:
+        backend = 'indisponible'
+    return jsonify({
+        'statut': 'ok',
+        'worker': _orbit_worker_gunicorn(),
+        'threads': _threading.active_count(),
+        'commit': (os.environ.get('RENDER_GIT_COMMIT') or '')[:7] or None,
+        'python': '%d.%d.%d' % _sys.version_info[:3],
+        'base': backend,
+        'planificateur': bool(_ORBIT_SCHEDULER['actif']),
+    })
 

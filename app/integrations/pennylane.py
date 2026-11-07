@@ -140,7 +140,20 @@ ALLCHK_STALE_MINUTES = 45
 
 
 def _allchk_save(payload: dict):
-    """Persiste l'état de la vérification globale (AppSetting partagé entre workers)."""
+    """Persiste l'état de la vérification globale (AppSetting partagé entre workers).
+
+    Appelé aussi depuis le thread de fond, notamment dans le `finally` APRÈS la
+    sortie du `with app_context()` : sans le garde-fou ci-dessous l'upsert
+    échouait silencieusement (« Working outside of application context ») et
+    l'état restait figé sur `running: true`. L'application croyait alors qu'une
+    vérification tournait encore et refusait toute relance pendant 45 min.
+    """
+    from flask import has_app_context
+    if not has_app_context():
+        from app import app as flask_app
+        with flask_app.app_context():
+            return _allchk_save(payload)
+
     from app import db
     from app.models import AppSetting
     try:
@@ -274,8 +287,7 @@ def check_all_dossiers_async() -> dict:
             with _ALLCHK_LOCK:
                 _ALLCHK_RUNNING = False
 
-    import threading as _threading
-    _threading.Thread(target=_work, daemon=True).start()
+    threading.Thread(target=_work, daemon=True).start()
     return {'launched': True, 'running': True}
 
 
