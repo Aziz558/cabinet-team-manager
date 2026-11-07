@@ -303,6 +303,18 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
         _alerter_session(_msg)
         return {'ok': False, 'message': _msg,
                 'vat_returns': [], 'future_vat_returns': []}
+    if r.status_code == 422:
+        # 422 = refus MÉTIER de Pennylane pour CETTE entreprise, pas un problème
+        # de session : le reste des dossiers fonctionne très bien avec les mêmes
+        # cookies et les mêmes paramètres. Cause usuelle : aucun régime de TVA
+        # configuré sur la fiche Pennylane, ou entreprise sortie du périmètre
+        # du cabinet. On le signale comme « dossier ignoré » pour ne pas
+        # déclencher l'alerte email « session à revérifier » à chaque synchro.
+        _msg = (f'HTTP 422 sur vat_forms (company {customer_id}) : Pennylane refuse la '
+                f'demande pour cette entreprise — aucun régime de TVA configuré sur la '
+                f'fiche Pennylane, ou entreprise hors du périmètre du cabinet.')
+        return {'ok': False, 'dossier_ignore': True, 'message': _msg,
+                'vat_returns': [], 'future_vat_returns': []}
     if r.status_code != 200:
         _msg = f'HTTP {r.status_code} sur vat_forms (company {customer_id}).'
         if r.status_code in (401, 403):
@@ -579,7 +591,10 @@ def sync_checklist_tva() -> dict:
     taches_liees = 0
     dossiers_ok = 0
     dossiers_vides = 0
+    sans_tva = []          # dossiers dont le régime TVA est absent côté Pennylane (422)
+    vides_noms = []        # dossiers où Pennylane répond mais sans aucune période
     erreurs = []
+    erreurs_session = 0    # seules ces erreurs justifient une alerte email
     auto_associes = 0
     bloques = 0
     blocages_consecutifs = 0
@@ -608,7 +623,13 @@ def sync_checklist_tva() -> dict:
 
         res = fetch_vat_forms(d.pennylane_customer_id)
         if not res['ok']:
+            if res.get('dossier_ignore'):
+                # Régime TVA absent côté Pennylane : ce n'est pas la session qui
+                # est en cause, on l'isole dans son propre compteur.
+                sans_tva.append(d.numero_dossier)
+                continue
             erreurs.append(f"{d.numero_dossier}: {res['message']}")
+            erreurs_session += 1
             if res.get('bloque'):
                 bloques += 1
                 blocages_consecutifs += 1
@@ -630,6 +651,7 @@ def sync_checklist_tva() -> dict:
         taxe = _vat_taxe_for(d)
         if not (res['vat_returns'] or res['future_vat_returns']):
             dossiers_vides += 1
+            vides_noms.append(d.numero_dossier)
             continue  # rien à écrire, mais l'appel a réussi
 
         # --- 1. Miroir brut dans TvaStatutPennylane (toutes périodes, tout statut) ---
@@ -721,8 +743,14 @@ def sync_checklist_tva() -> dict:
         if dossiers_ok == 0:
             msg += f" Première cause : {erreurs[0]}"
     if dossiers_vides:
-        msg += (f" ⚠️ {dossiers_vides} dossier(s) : Pennylane a répondu mais n'a retourné "
-                f"AUCUNE période TVA — session à revérifier (page Intégration).")
+        _noms = ', '.join(vides_noms[:6]) + (' …' if len(vides_noms) > 6 else '')
+        msg += (f" ⚠️ {dossiers_vides} dossier(s) sans aucune période TVA renvoyée par "
+                f"Pennylane ({_noms}) — la session répond pour les autres : vérifie le "
+                f"régime de TVA de ces fiches Pennylane.")
+    if sans_tva:
+        _noms = ', '.join(sans_tva[:6]) + (' …' if len(sans_tva) > 6 else '')
+        msg += (f" ⛔ {len(sans_tva)} dossier(s) refusé(s) par Pennylane (HTTP 422 : pas de "
+                f"régime de TVA configuré) : {_noms}.")
     if en_retard:
         msg += f" ⚠️ {en_retard} déclaration(s) EN RETARD (non saisie(s) dans Pennylane, échéance dépassée)."
 
@@ -740,12 +768,15 @@ def sync_checklist_tva() -> dict:
     # (Avant, `ok` était toujours True : l'interface affichait un succès vert alors
     # que zéro statut n'avait changé — d'où l'impression que « rien ne se passe ».)
     succes = dossiers_ok > 0 and not abandonne
-    if not succes and not erreurs:
+    if not succes and not erreurs and not sans_tva:
         msg += " Aucun dossier à synchroniser."
 
     # Trace du dernier passage (carte admin) + alerte email si problème
     _save_last_sync(ok=succes, message=msg)
-    if erreurs:
+    # Alerte email UNIQUEMENT sur un problème de session / de blocage : un dossier
+    # sans régime TVA ou un dossier vide ne doit pas inonder la boîte à chaque
+    # synchro horaire (l'info reste dans le bilan affiché).
+    if erreurs_session:
         _alerter_session(msg)
 
     return {'ok': succes, 'synces': synced, 'statuts': statuts_ecrits,
@@ -753,6 +784,7 @@ def sync_checklist_tva() -> dict:
             'dossiers_total': len(dossiers),
             'bloques': bloques, 'abandonne': abandonne,
             'auto_associes': auto_associes,
+            'sans_tva': sans_tva, 'sans_periode': vides_noms,
             'erreurs': erreurs[:10], 'message': msg}
 
 
