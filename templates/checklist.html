@@ -528,25 +528,26 @@
             });
     }
     function plVerifyNow(btn) {
-        // Teste la session + resynchronise TOUS les dossiers (comme le passage horaire)
+        // Le travail dure plusieurs minutes : il tourne en arrière-plan et
+        // l'UI suit le job. Une requête synchrone était coupée par le proxy
+        // (JSON vide -> « Unexpected end of JSON input »).
         var original = btn.innerHTML;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Vérification...';
         btn.disabled = true;
-        fetch('/pennylane/tva_session_status').then(function(r) { return r.json(); }).then(function(st) {
-            if (!st.configured) {
-                btn.innerHTML = original; btn.disabled = false;
-                showToast('Session Pennylane non configurée (page Intégration).', 'danger');
-                return null;
-            }
-            return fetch('/checklist/pl_sync_all', { method: 'POST' }).then(function(r) { return r.json(); });
-        }).then(function(j) {
+        var banner = document.getElementById('plSyncBannerText');
+        function dire(texte, couleur) {
+            if (!banner) return;
+            banner.textContent = texte;
+            if (couleur) banner.style.color = couleur;
+        }
+        function fin(j) {
             btn.innerHTML = original; btn.disabled = false;
             if (!j) return;
             // Bilan rangé dans le bandeau : un toast de 5 s ne suffit pas à lire
             // pourquoi des dossiers n'ont pas bougé (418, session, association…).
-            var banner = document.getElementById('plSyncBannerText');
             if (banner) {
                 banner.textContent = '';
+                banner.style.color = '';
                 var ic = document.createElement('i');
                 var erreursReelles = j.erreurs && j.erreurs.length;
                 ic.className = 'bi me-1 ' + ((j.ok && !erreursReelles) ? 'bi-cloud-check' : 'bi-exclamation-triangle-fill');
@@ -571,9 +572,19 @@
             } else {
                 showToast('Pennylane : ' + (j.message || 'échec'), 'danger');
             }
-        }).catch(function() {
+        }
+        if (!window.plSyncJob) {
             btn.innerHTML = original; btn.disabled = false;
-            showToast('Erreur réseau', 'danger');
+            dire('Module de suivi absent — recharge la page (Ctrl+F5).', 'var(--danger)');
+            return;
+        }
+        window.plSyncJob.lancer('/checklist/pl_sync_all',
+            function () { dire('Synchronisation en cours… (les dossiers sont interrogés un par un)'); },
+            fin
+        ).catch(function (e) {
+            btn.innerHTML = original; btn.disabled = false;
+            dire('Erreur : ' + e.message, 'var(--danger)');
+            showToast('Erreur réseau : ' + e.message, 'danger');
         });
     }
     window.plSyncDossier = plSyncDossier;

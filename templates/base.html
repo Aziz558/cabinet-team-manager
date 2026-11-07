@@ -462,6 +462,7 @@ if (!window.__avmMenuBound) {
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAvmDropdowns(); }, true);
 }
 </script>
+<script src="{{ url_for('static', filename='js/pl-sync-job.js') }}"></script>
     {% block scripts %}{% endblock %}
 <script>
 // PWA: Service Worker registration

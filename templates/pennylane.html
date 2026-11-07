@@ -551,16 +551,16 @@ function savePlTvaSession() {
 function syncPlTva() {
     var btns = document.querySelectorAll("button[onclick='syncPlTva()']");
     if (btns.length) { btns[0].innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Synchro...'; btns[0].disabled = true; }
-    fetch('/pennylane/tva_sync', { method: 'POST' })
-        .then(r => r.json())
-        .then(d => {
-            var extra = (d.erreurs && d.erreurs.length) ? (' — ' + d.erreurs.join(' ; ')) : '';
-            showPlTva((d.message || 'OK') + extra, d.ok);
-        })
-        .catch(err => showPlTva('Erreur réseau: ' + err.message, false))
-        .finally(function() {
-            if (btns.length) { btns[0].innerHTML = '<i class="bi bi-cloud-download me-1"></i>Synchroniser les statuts TVA'; btns[0].disabled = false; }
-        });
+    function fin(d) {
+        var extra = (d.erreurs && d.erreurs.length) ? (' — ' + d.erreurs.join(' ; ')) : '';
+        showPlTva((d.message || 'OK') + extra, d.ok);
+        if (btns.length) { btns[0].innerHTML = '<i class="bi bi-cloud-download me-1"></i>Synchroniser les statuts TVA'; btns[0].disabled = false; }
+    }
+    if (!window.plSyncJob) { fin({ ok: false, message: 'Module de suivi absent — recharge la page (Ctrl+F5).' }); return; }
+    window.plSyncJob.lancer('/pennylane/tva_sync',
+        function () { showPlTva('Synchronisation en cours… (les dossiers sont interrogés un par un)', true); },
+        fin
+    ).catch(function (err) { fin({ ok: false, message: 'Erreur réseau : ' + err.message }); });
 }
 function showPlTva(msg, ok) {
     var el = document.getElementById('plTvaStatus');
@@ -572,22 +572,32 @@ function showPlTva(msg, ok) {
           '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + msg + '</div>';
 }
 function verifyPlTva(btn) {
-    // Teste la session puis lance une synchro immédiate de tous les dossiers
+    // Session d'abord (diagnostic lisible), puis synchro en arrière-plan.
     var original = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Vérification...';
     btn.disabled = true;
-    fetch('/pennylane/tva_session_status').then(function(r) { return r.json(); }).then(function(st) {
+    var parse = (window.plSyncJob && window.plSyncJob.jsonOuErreur) || function (r) { return r.json(); };
+    function fin(j) {
+        btn.innerHTML = original; btn.disabled = false;
+        var extra = (j.erreurs && j.erreurs.length) ? (' — ' + j.erreurs.join(' ; ')) : '';
+        showPlTva((j.message || 'OK') + extra, j.ok);
+    }
+    fetch('/pennylane/tva_session_status').then(parse).then(function(st) {
         if (!st.configured) {
+            btn.innerHTML = original; btn.disabled = false;
             showPlTva('Session web non configurée — collez les cookies ci-dessous.', false);
             return null;
         }
-        showPlTva(st.message || 'Session active — synchro en cours...', true);
-        return fetch('/checklist/pl_sync_all', { method: 'POST' }).then(function(r) { return r.json(); });
-    }).then(function(j) {
-        btn.innerHTML = original; btn.disabled = false;
-        if (!j) return;
-        var extra = (j.erreurs && j.erreurs.length) ? (' — ' + j.erreurs.join(' ; ')) : '';
-        showPlTva((j.message || 'OK') + extra, j.ok);
+        if (st.ok === false) {
+            // On affiche la cause mais on laisse tenter la synchro : le bilan
+            // dira précisément quels dossiers ont échoué et pourquoi.
+            showPlTva('Session : ' + (st.message || 'à vérifier') + ' — synchro lancée malgré tout.', false);
+        } else {
+            showPlTva(st.message || 'Session active — synchro en cours...', true);
+        }
+        if (!window.plSyncJob) { fin({ ok: false, message: 'Module de suivi absent — recharge la page (Ctrl+F5).' }); return; }
+        return window.plSyncJob.lancer('/checklist/pl_sync_all',
+            function () {}, fin);
     }).catch(function(err) {
         btn.innerHTML = original; btn.disabled = false;
         showPlTva('Erreur réseau: ' + err.message, false);
@@ -620,7 +630,7 @@ function syncSelectedTva() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({dossier_ids: ids})
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) { return window.plSyncJob ? window.plSyncJob.jsonOuErreur(r) : r.json(); })
     .then(function(d) {
         if (statusEl) {
             if (d.ok) {
@@ -637,10 +647,15 @@ function syncSelectedTva() {
 }
 
 // Statut de la session au chargement de la page (cookies persistés en BDD)
-fetch('/pennylane/tva_session_status').then(r => r.json()).then(d => {
-    if (d.configured) showPlTva(d.message || 'Session Pennylane configurée.', true);
-    else showPlTva('Session web non configurée — collez les cookies ci-dessous.', false);
-}).catch(function() {});
+// `configured` = des cookies sont stockés ; `ok` = ils fonctionnent VRAIMENT.
+// Afficher vert sur un simple `configured` faisait croire à une session saine
+// alors que Pennylane renvoyait une page HTML (0/53 dossiers synchronisés).
+fetch('/pennylane/tva_session_status')
+    .then(function(r) { return window.plSyncJob ? window.plSyncJob.jsonOuErreur(r) : r.json(); })
+    .then(function(d) {
+        if (!d.configured) { showPlTva('Session web non configurée — collez les cookies ci-dessous.', false); return; }
+        showPlTva(d.message || 'Session Pennylane configurée.', d.ok !== false);
+    }).catch(function() {});
 function syncPl() {
     if (!confirm('Lancer la synchronisation des dossiers avec Pennylane ?')) return;
     fetch('/pennylane/sync', { method: 'POST' })

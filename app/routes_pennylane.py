@@ -63,12 +63,18 @@ def pennylane_tva_session_status():
 @app.route('/pennylane/tva_sync', methods=['POST'])
 @login_required
 def pennylane_tva_sync():
-    """Synchronise les statuts de déclaration TVA depuis l'espace web Pennylane."""
+    """Démarre la synchro TVA en arrière-plan (admin).
+
+    La synchro dure plusieurs minutes sur 53 dossiers : la garder dans la
+    requête faisait couper la connexion par le proxy (corps vide côté JS).
+    """
     if current_user.role != 'admin':
         return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
-    from app.integrations.pennylane_web import sync_checklist_tva
-    res = sync_checklist_tva()
-    return jsonify(res)
+    from app.integrations.pennylane_web import has_web_session
+    if not has_web_session():
+        return jsonify({'ok': False, 'message': 'Session web Pennylane non configurée (page Intégration).'}), 400
+    from app.integrations.pl_sync_job import start
+    return jsonify(start()), 202
 
 
 @app.route('/checklist/pl_sync_dossier/<int:dossier_id>', methods=['POST'])
@@ -206,11 +212,30 @@ def checklist_pl_sync_all():
     Accessible managers + admins — même logique que le passage automatique horaire."""
     if current_user.role not in ('admin', 'manager'):
         return jsonify({'ok': False, 'message': 'Accès réservé aux managers.'}), 403
-    from app.integrations.pennylane_web import has_web_session, sync_checklist_tva
+    from app.integrations.pennylane_web import has_web_session
     if not has_web_session():
         return jsonify({'ok': False, 'message': 'Session web Pennylane non configurée (page Intégration).'}), 400
-    res = sync_checklist_tva()
-    return jsonify(res)
+    # 53 dossiers = plusieurs minutes : on répond tout de suite et l'UI suit
+    # l'avancement via /checklist/pl_sync_status (sinon le proxy coupe la
+    # requête et le navigateur reçoit un JSON vide).
+    from app.integrations.pl_sync_job import start
+    return jsonify(start()), 202
+
+
+@app.route('/checklist/pl_sync_status')
+@login_required
+def checklist_pl_sync_status():
+    """Suivi de la synchro TVA lancée en arrière-plan (polling de l'UI)."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+    from app.integrations.pl_sync_job import status
+    etat = status()
+    return jsonify({'ok': True,
+                    'running': bool(etat.get('running')),
+                    'perime': bool(etat.get('perime')),
+                    'quand': etat.get('quand'),
+                    'message': etat.get('message'),
+                    'resultat': etat.get('resultat')})
 
 
 @app.route('/pennylane/associer_dossier', methods=['POST'])

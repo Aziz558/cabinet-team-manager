@@ -308,7 +308,35 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
     try:
         data = r.json()
     except Exception:
-        return {'ok': False, 'message': 'Réponse non JSON',
+        # Un HTTP 200 qui n'est PAS du JSON est presque toujours une page HTML :
+        # redirection vers /login (cookies non reconnus) ou challenge anti-bot.
+        # « Réponse non JSON » n'aidait personne : on dit la cause probable et
+        # l'action à faire, et on marque `bloque` pour que le disjoncteur de la
+        # synchro s'arrête au lieu d'interroger les 53 dossiers pour rien.
+        ct = (r.headers.get('Content-Type') or 'inconnu').split(';')[0].strip()
+        url_finale = getattr(r, 'url', '') or url
+        bas = url_finale.lower()
+        redirection = any(k in bas for k in ('/login', 'sign_in', 'sign-in', '/auth', '/session'))
+        if redirection:
+            msg = ("Session Pennylane NON RECONNUE : Pennylane a renvoyé sa page de "
+                   "connexion au lieu des données. Recolle les cookies depuis un onglet "
+                   "app.pennylane.com réellement connecté (F12 → Network → filtre "
+                   "'pennylane' → Headers → ligne cookie → Copier la valeur).")
+        elif 'html' in ct.lower():
+            msg = (f"Pennylane a renvoyé une page HTML au lieu de JSON (HTTP {r.status_code}, "
+                   f"{ct}) : protection anti-bot ou cookies qui ne correspondent pas à ce "
+                   "compte. Attends 2-3 min puis recolle des cookies frais depuis "
+                   "app.pennylane.com.")
+        else:
+            try:
+                extrait = re.sub(r'\s+', ' ', (r.text or '')[:100]).strip()
+            except Exception:
+                extrait = ''
+            msg = (f"Réponse illisible (HTTP {r.status_code}, {ct})"
+                   + (f" : {extrait[:70]!r}" if extrait else ''))
+        return {'ok': False, 'bloque': True, 'message': msg,
+                'diagnostic': {'http': r.status_code, 'content_type': ct,
+                               'url_finale': url_finale, 'redirection_login': redirection},
                 'vat_returns': [], 'future_vat_returns': []}
     vat = data.get('vat_returns') or []
     future = data.get('future_vat_returns') or []
@@ -672,6 +700,11 @@ def sync_checklist_tva() -> dict:
            f"{forces_annules} forçage(s) manuel(s) annulé(s) sur des périodes connues de Pennylane.")
     if erreurs:
         msg += f" {len(erreurs)} erreur(s)."
+        # Quand TOUT échoue, la cause doit être visible sur la carte admin :
+        # « 0/53, 53 erreurs » sans raison ne permet pas de savoir si c'est
+        # un 418, des cookies morts ou des dossiers non reliés.
+        if dossiers_ok == 0:
+            msg += f" Première cause : {erreurs[0]}"
     if dossiers_vides:
         msg += (f" ⚠️ {dossiers_vides} dossier(s) : Pennylane a répondu mais n'a retourné "
                 f"AUCUNE période TVA — session à revérifier (page Intégration).")
@@ -682,9 +715,9 @@ def sync_checklist_tva() -> dict:
         msg += f" 🔗 {auto_associes} dossier(s) auto-associé(s) via API Company (token du dossier)."
 
     if bloques:
-        msg += (f" ⛔ {bloques} dossier(s) bloqué(s) par Pennylane (HTTP 418 — protection "
-                f"anti-bot). Ce n'est PAS une session expirée : attendre 2-3 minutes avant "
-                f"de relancer.")
+        msg += (f" ⛔ {bloques} dossier(s) refusé(s) par Pennylane. 418/anti-bot = "
+                f"transitoire (attendre 2-3 min) ; page de connexion ou HTML = "
+                f"cookies à recoller depuis app.pennylane.com.")
     if abandonne:
         msg += " Synchro interrompue volontairement pour ne pas aggraver le blocage."
 
@@ -750,7 +783,19 @@ def statuts_pour_grille(dossiers_ids, annee: int) -> dict:
 
 
 def test_web_session(customer_id: str = None) -> dict:
-    """Teste la validité de la session web en appelant vat_forms sur un customer_id de test."""
+    """Teste la validité de la session web en appelant vat_forms sur un customer_id de test.
+
+    Renvoie aussi un diagnostic sur les cookies STOCKÉS (noms uniquement,
+    jamais les valeurs) : un collage issu d'un autre site passe le nettoyage
+    mais ne contient pas `_jeancaisse_session`, et Pennylane renvoie alors une
+    page HTML. Sans ce contrôle, l'appli disait seulement « Réponse non JSON ».
+    """
+    _load_from_db()
+    ck = _parse_cookie_header(_pl_session_cookies or '')
+    noms = sorted(ck.keys())
+    sans_session = '_jeancaisse_session' not in ck
+    rapport = {'nb_cookies': len(ck), 'cles': noms,
+               'session_pennylane': not sans_session}
     cid = customer_id or '23281030'
     res = fetch_vat_forms(cid, period_start=f'{date.today().year}-01-01',
                           period_end=f'{date.today().year}-12-31')
@@ -760,5 +805,21 @@ def test_web_session(customer_id: str = None) -> dict:
         from collections import Counter
         cnt = Counter(((v.get('status') or '?').lower() or '?') for v in all_vr)
         detail = ', '.join(f'{k}:{v}' for k, v in sorted(cnt.items()))
-        return {'ok': True, 'message': f'Session OK — {n} période(s) TVA lue(s) sur company {cid} ({detail}).'}
-    return {'ok': False, 'message': res['message']}
+        out = {'ok': True, 'message': f'Session OK — {n} période(s) TVA lue(s) sur company {cid} ({detail}).'}
+        out.update(rapport)
+        return out
+    if sans_session:
+        out = {'ok': False,
+               'message': (f"Cookies invalides : aucun `_jeancaisse_session` parmi les {len(ck)} "
+                           "cookies enregistrés — tu as probablement copié une requête d'un "
+                           "autre site. Dans F12 → Network, filtre 'pennylane', clique une "
+                           "requête vers app.pennylane.com, onglet Headers → ligne cookie → "
+                           "'Copier la valeur', puis recolle dans le champ ci-dessous.")}
+        out.update(rapport)
+        out['diagnostic'] = res.get('diagnostic')
+        return out
+    out = {'ok': False, 'message': res['message']}
+    out.update(rapport)
+    if res.get('diagnostic'):
+        out['diagnostic'] = res['diagnostic']
+    return out
