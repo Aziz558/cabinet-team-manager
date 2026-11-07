@@ -315,6 +315,14 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
         # synchro s'arrête au lieu d'interroger les 53 dossiers pour rien.
         ct = (r.headers.get('Content-Type') or 'inconnu').split(';')[0].strip()
         url_finale = getattr(r, 'url', '') or url
+        # Extrait TEXTUEL uniquement (balises et attributs retirés) : permet de
+        # distinguer un challenge Cloudflare, une page de maintenance ou une
+        # erreur applicative, sans jamais exposer de jeton ni de cookie.
+        try:
+            corps = re.sub(r'<[^>]+>', ' ', (r.text or '')[:1500])
+            extrait = re.sub(r'\s+', ' ', corps).strip()[:180]
+        except Exception:
+            extrait = ''
         bas = url_finale.lower()
         redirection = any(k in bas for k in ('/login', 'sign_in', 'sign-in', '/auth', '/session'))
         if redirection:
@@ -336,7 +344,9 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
                    + (f" : {extrait[:70]!r}" if extrait else ''))
         return {'ok': False, 'bloque': True, 'message': msg,
                 'diagnostic': {'http': r.status_code, 'content_type': ct,
-                               'url_finale': url_finale, 'redirection_login': redirection},
+                               'url_finale': url_finale, 'redirection_login': redirection,
+                               'extrait': extrait,
+                               'taille_octets': len((r.text or '').encode('utf-8', 'replace'))},
                 'vat_returns': [], 'future_vat_returns': []}
     vat = data.get('vat_returns') or []
     future = data.get('future_vat_returns') or []

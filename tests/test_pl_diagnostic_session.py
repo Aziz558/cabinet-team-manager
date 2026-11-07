@@ -54,6 +54,9 @@ def test_page_html_anti_bot_est_expliquee(monkeypatch):
     assert 'page HTML' in res['message']
     assert 'anti-bot' in res['message']
     assert res['diagnostic']['content_type'].startswith('text/html')
+    # Extrait textuel uniquement : aucune balise, aucun attribut.
+    assert res['diagnostic']['extrait'] == 'Veuillez vous connecter'
+    assert '<' not in res['diagnostic']['extrait']
 
 
 def test_cookies_d_un_autre_site_sont_detectes(monkeypatch):
