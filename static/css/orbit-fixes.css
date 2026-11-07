@@ -1,0 +1,183 @@
+/* ============================================================================
+   JMH ORBIT — COUCHE CORRECTIFS (app uniquement)
+   ----------------------------------------------------------------------------
+   Chargée APRES orbit-elevate.css dans base.html uniquement.
+   La page de login 3D (login.html, autonome) ne charge PAS ce fichier :
+   son rendu « ORBIT DOCKING » reste strictement inchangé.
+
+   Objectifs mesurés (audit WCAG) :
+   - contraste AA sur tous les petits textes (sidebar, badges, kbd, labels)
+   - cibles tactiles >= 32 px
+   - plus de débordement du logo dans la topbar
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. JETONS — encre assez foncée pour passer WCAG AA en thème clair
+      (--ink-3/--ink-4 alimentent --text-tertiary/--text-muted via Elevate)
+   ------------------------------------------------------------------------- */
+html[data-theme="light"] {
+  --ink-3: #5d6470;   /* était #6a7180  -> ratio 4.35, insuffisant en petit texte */
+  --ink-4: #646b78;   /* était #979daa  -> ratio 2.43, illisible */
+  --warn-ink: #8f5a10; /* texte warning lisible (le #FF9800 de Bootstrap passe à 1.9) */
+  --amber-deep: #96560d; /* était #b8590a -> 4.18 sur papier ; 5.17 après (badges, liens, libellés) */
+  --bg-secondary: #ebe6dc; /* fallback #1a1a1a donnait une boîte sombre sur carte claire */
+}
+html[data-theme="dark"] {
+  --warn-ink: var(--warn);
+  --ink-4: #9aa1af;   /* était #6b7280 -> ratio 3.75 en sombre ; 7.4 après (libellés, en-têtes de tableau) */
+  --bg-secondary: #14161a;
+}
+
+/* ---------------------------------------------------------------------------
+   2. TEXTE WARNING — lisible sur papier clair comme sur fond sombre
+   ------------------------------------------------------------------------- */
+.app-shell .text-warning { color: var(--warn-ink) !important; }
+
+/* Rôle utilisateur dans la sidebar : l'orange vif (#FF8C00) passait à 2.09 */
+.app-shell .sidebar-user-role { color: var(--ink-3) !important; }
+
+/* <code> : le rose Bootstrap (#d63384) passait à 3.87 — pastille amber à la place */
+.app-shell code {
+  color: var(--ink-2) !important;
+  background: var(--amber-soft);
+  border: 1px solid var(--amber-line);
+  padding: .12em .42em;
+  border-radius: 6px;
+  font-size: .85em;
+}
+
+/* ---------------------------------------------------------------------------
+   3. BADGES PRIORITÉ / STATUT DE TÂCHE
+      Avant : texte coloré clair sur fond teinté très clair (ratio 1.6–4.5).
+      Après : pastille à point sémantique + texte encre (ratio >= 8 en clair).
+   ------------------------------------------------------------------------- */
+.app-shell .task-priority,
+.app-shell .task-status {
+  display: inline-flex !important;
+  align-items: center;
+  gap: .35rem;
+  font-weight: 600;
+}
+.app-shell .task-priority::before,
+.app-shell .task-status::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--tag-color, currentColor);
+  flex: 0 0 auto;
+}
+.app-shell .priority-haute,
+.app-shell .status-en_cours {
+  --tag-color: var(--bad);
+}
+.app-shell .priority-haute {
+  background: var(--bad-bg) !important;
+  color: var(--ink-2) !important;
+  border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent) !important;
+}
+.app-shell .priority-moyenne {
+  --tag-color: var(--amber);
+  background: var(--amber-soft) !important;
+  color: var(--ink-2) !important;
+  border: 1px solid var(--amber-line) !important;
+}
+.app-shell .priority-basse {
+  --tag-color: var(--ok);
+  background: var(--ok-bg) !important;
+  color: var(--ink-2) !important;
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent) !important;
+}
+.app-shell .status-a_faire {
+  background: var(--paper-tint) !important;
+  color: var(--ink-2) !important;
+  border: 1px solid var(--rule-strong) !important;
+  --tag-color: var(--ink-4);
+}
+.app-shell .status-en_cours {
+  background: var(--info2-bg) !important;
+  color: var(--ink-2) !important;
+  border: 1px solid color-mix(in srgb, var(--info2) 30%, transparent) !important;
+  --tag-color: var(--info2);
+}
+.app-shell .status-terminee {
+  --tag-color: var(--ok);
+  background: var(--ok-bg) !important;
+  color: var(--ink-2) !important;
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   4. CIBLES TACTILES >= 32 px (boutons d'action, cases à cocher, icones)
+   ------------------------------------------------------------------------- */
+.app-shell .btn-task-sm {
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: .3rem .5rem !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.app-shell .orbit-fav-btn,
+.app-shell .orbit-tool-btn,
+.app-shell .sidebar-group-title,
+.app-shell .sidebar-logout,
+.app-shell .pl-act {
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.app-shell .row-checkbox,
+.app-shell .pl-dossier-check,
+.app-shell .select-all-checkbox {
+  width: 20px;
+  height: 20px;
+  min-width: 32px;
+  min-height: 32px;
+  margin: 0;
+  accent-color: var(--amber);
+  cursor: pointer;
+}
+/* Boutons d'action Pennylane (31 px -> 32 px) */
+.app-shell .pl-action-btn-sm { min-width: 32px !important; }
+/* Selects de filtres : 20 px de haut -> 32 px */
+.app-shell select { min-height: 32px !important; }
+/* Chips de filtres actifs + leur bouton « × » */
+.app-shell .orbit-chip { min-height: 32px; }
+.app-shell .orbit-chip button {
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------------------
+   5. LOGO — le conteneur span avait une largeur fixe qui faisait déborder
+      le bloc texte « Cabinet JMH » (scrollWidth 62 > clientWidth 34)
+   ------------------------------------------------------------------------- */
+.app-shell span.orbit-logo {
+  width: auto !important;
+  min-width: 34px;
+  height: auto !important;
+  min-height: 34px;
+  display: inline-flex !important;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.app-shell span.orbit-logo > svg { flex: 0 0 auto; }
+
+/* ---------------------------------------------------------------------------
+   6. KBD — « Ctrl+K » lisible (héritait d'un gris trop clair)
+   ------------------------------------------------------------------------- */
+.app-shell .orbit-kbd {
+  color: var(--ink-3) !important;
+  border-color: var(--rule-strong) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   7. SÉCURITÉ DÉBORDEMENT — aucun scroll horizontal parasite dans le contenu
+   ------------------------------------------------------------------------- */
+.app-shell .pl-page,
+.app-shell .pl-team-group { overflow-x: clip; }

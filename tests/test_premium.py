@@ -36,17 +36,23 @@ def test_pages_authentifiees_chargent_la_feuille_systeme(admin_client):
     assert 'orbit-system.css' in html
     assert re.search(r'orbit-premium\.js\?v=\d+', html)
     # Chaque asset de base porte une version -> cache long possible.
-    for fichier in ('css/style.css', 'css/light-theme.css', 'css/orbit-system.css'):
+    for fichier in ('css/style.css', 'css/light-theme.css', 'css/orbit-system.css',
+                    'css/orbit-elevate.css', 'css/orbit-fixes.css'):
         assert re.search(re.escape(fichier) + r'\?v=\d+', html), \
             'asset sans version (donc non cachable) : %s' % fichier
-    # Ordre : socle (style) -> thème clair -> feuille système (dernier mot)
+    # Ordre : socle (style) -> thème clair -> feuille système -> couche Elevate
+    # (jetons « Editorial Ink & Amber ») -> correctifs accessibilité (dernier mot).
     assert (html.index('style.css')
             < html.index('light-theme.css')
-            < html.index('orbit-system.css'))
-    # Les anciennes couches ne sont plus chargées par l'application.
+            < html.index('orbit-system.css')
+            < html.index('orbit-elevate.css')
+            < html.index('orbit-fixes.css'))
+    # Les anciennes couches fusionnées dans orbit-system.css ne sont plus
+    # chargées séparément par l'application (orbit-elevate.css est desormais
+    # chargee VOLONTAIREMENT en dernier, voir couche Elevate).
     for old in ('polish.css', 'workspace.css', 'orbit-premium.css',
                 'mobile-responsive.css', 'filters-premium.css',
-                'orbit-elevate.css', 'orbit-hallmark-fix.css', 'orbit-ds.css'):
+                'orbit-hallmark-fix.css', 'orbit-ds.css'):
         assert 'css/%s' % old not in html, 'couche obsolete encore chargee : %s' % old
     assert html.index('orbit-workspace.js') < html.index('orbit-premium.js')
 
