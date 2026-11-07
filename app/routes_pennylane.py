@@ -443,7 +443,8 @@ def pennylane_page():
     if not app.config.get('TESTING') and not read_only:
         try:
             import time as _time
-            from app.integrations.pennylane import allchk_status, check_all_dossiers_async
+            from app.integrations.pennylane import (allchk_status, allchk_running,
+                                                   check_all_dossiers_async)
             _st = allchk_status()
             _last = 0.0
             if _st.get('quand'):
@@ -452,7 +453,9 @@ def pennylane_page():
                     _last = _dt.fromisoformat(str(_st['quand']).replace('Z', '+00:00')).timestamp()
                 except Exception:
                     _last = 0.0
-            if not _st.get('running') and (_time.time() - _last) > 900:
+            # Un « running » laissé par un process tué ne doit pas geler la
+            # détection : allchk_running() écarte les verrous périmés.
+            if not allchk_running(etat=_st) and (_time.time() - _last) > 900:
                 _res = check_all_dossiers_async()
                 if _res.get('launched'):
                     pl_auto_check = 'Vérification automatique des nouveaux documents lancée.'
@@ -576,8 +579,8 @@ def pennylane_check_new_docs_status():
     """État de la vérification globale (pour le polling du bouton)."""
     if current_user.role not in ('admin', 'manager'):
         return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
-    from app.integrations.pennylane import allchk_status
-    return jsonify({'ok': True, 'etat': allchk_status()})
+    from app.integrations.pennylane import allchk_status_public
+    return jsonify({'ok': True, 'etat': allchk_status_public()})
 
 
 @app.route('/pennylane/dossier/<int:dossier_id>')

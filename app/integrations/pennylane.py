@@ -132,6 +132,11 @@ def _refresh_in_background(dossier_id):
 _ALLCHK_LOCK = threading.Lock()
 _ALLCHK_RUNNING = False
 ALLCHK_KEY = 'PENNYLANE_NEWDOCS_CHECK'
+# Au-delà de cette durée sans nouvelle trace, un « running » persisté est
+# considéré comme un verrou orphelin (process tué par Render) et non comme un
+# passage en cours. _allchk_save rafraîchit `quand` après CHAQUE dossier, donc
+# un passage légitimement long reste « récent ».
+ALLCHK_STALE_MINUTES = 45
 
 
 def _allchk_save(payload: dict):
@@ -169,6 +174,50 @@ def allchk_status() -> dict:
     return {}
 
 
+def allchk_running(max_age_minutes: int = ALLCHK_STALE_MINUTES, etat: dict = None) -> bool:
+    """True seulement si une vérification est RÉELLEMENT en cours.
+
+    Sur Render (offre gratuite), l'instance est mise en veille ou redéployée
+    sans prévenir : le thread daemon est tué avant son `finally`, et l'état
+    ``running: True`` reste gravé dans AppSetting. Toutes les ouvertures
+    suivantes de /pennylane lisent alors « déjà en cours » et ne relancent
+    JAMAIS la détection : les compteurs « à traiter / traité / archivé »
+    restent figés indéfiniment (observé en prod : blocage du 09/10 au 07/11,
+    soit 29 jours de données périmées).
+
+    `_allchk_save` rafraîchit `quand` après chaque dossier : un passage long
+    garde donc une trace récente. Au-delà de `max_age_minutes` sans trace, le
+    verrou est périmé et une relance est autorisée.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+    etat = etat if etat is not None else allchk_status()
+    if not etat.get('running'):
+        return False
+    q = etat.get('quand')
+    if not q:
+        return False
+    try:
+        horodatage = _dt.fromisoformat(str(q).replace('Z', '+00:00'))
+        if horodatage.tzinfo is None:
+            horodatage = horodatage.replace(tzinfo=_tz.utc)
+        age_min = (_dt.now(_tz.utc) - horodatage).total_seconds() / 60.0
+    except (ValueError, TypeError, OverflowError):
+        return False
+    # Un horodatage absent, invalide ou dans le futur ne doit jamais bloquer.
+    return 0 <= age_min <= max_age_minutes
+
+
+def allchk_status_public() -> dict:
+    """État exposé à l'UI : un verrou orphelin n'est pas présenté comme « en cours »."""
+    etat = dict(allchk_status())
+    if etat.get('running') and not allchk_running(etat=etat):
+        etat['running'] = False
+        etat['perime'] = True
+        etat['message'] = ('Vérification interrompue (instance redémarrée). '
+                           'Relance possible : les compteurs affichés datent du dernier passage.')
+    return etat
+
+
 def check_all_dossiers_async() -> dict:
     """Lance (au plus 1 à la fois) la vérification force_refresh de TOUS les
     dossiers connectés : détection des nouveaux documents -> notifications
@@ -179,6 +228,12 @@ def check_all_dossiers_async() -> dict:
     with _ALLCHK_LOCK:
         if _ALLCHK_RUNNING:
             return {'launched': False, 'running': True}
+        _etat = allchk_status()
+        if allchk_running(etat=_etat):
+            return {'launched': False, 'running': True}
+        if _etat.get('running'):
+            logger.warning('allchk: verrou orphelin détecté (quand=%s) — relance autorisée',
+                           _etat.get('quand'))
         _ALLCHK_RUNNING = True
     _allchk_save({'running': True, 'faits': 0, 'dossiers': 0, 'nouveaux': 0, 'erreurs': 0})
 
