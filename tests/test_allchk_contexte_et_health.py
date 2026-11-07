@@ -83,10 +83,12 @@ def test_health_repond_sans_authentification(flask_app):
     assert r.mimetype == 'application/json'
     corps = r.get_json()
     assert corps['statut'] == 'ok'
-    for cle in ('worker', 'threads', 'base', 'python', 'planificateur'):
+    for cle in ('worker', 'threads', 'base', 'python', 'planificateur', 'pid', 'forke'):
         assert cle in corps, f'clé {cle} absente de /health'
     assert corps['base'] in ('sqlite', 'postgresql', 'indisponible')
     assert isinstance(corps['threads'], int) and corps['threads'] >= 1
+    # Hors gunicorn --preload : le process n'a pas été forké après import.
+    assert corps['forke'] is False
 
 
 def test_health_n_expose_aucun_secret(flask_app):
@@ -99,7 +101,7 @@ def test_health_n_expose_aucun_secret(flask_app):
 
 def test_health_reconnait_la_classe_de_worker(monkeypatch):
     """Sert à vérifier depuis l'extérieur que le déploiement utilise bien gthread."""
-    for module in ('gunicorn.workers.gsync', 'gunicorn.workers.gthread',
+    for module in ('gunicorn.workers.sync', 'gunicorn.workers.gthread',
                    'gunicorn.workers.ggevent'):
         monkeypatch.delitem(sys.modules, module, raising=False)
 
@@ -110,9 +112,9 @@ def test_health_reconnait_la_classe_de_worker(monkeypatch):
     assert app_package._orbit_worker_gunicorn() == 'gthread'
 
     monkeypatch.delitem(sys.modules, 'gunicorn.workers.gthread', raising=False)
-    monkeypatch.setitem(sys.modules, 'gunicorn.workers.gsync',
-                        types.ModuleType('gunicorn.workers.gsync'))
+    monkeypatch.setitem(sys.modules, 'gunicorn.workers.sync',
+                        types.ModuleType('gunicorn.workers.sync'))
     monkeypatch.setitem(sys.modules, 'gunicorn.workers.base',
                         types.ModuleType('gunicorn.workers.base'))
-    assert app_package._orbit_worker_gunicorn() == 'gsync', (
+    assert app_package._orbit_worker_gunicorn() == 'sync', (
         'la classe de base gunicorn ne doit pas masquer la classe concrète')

@@ -17,6 +17,11 @@ app = Flask(
 )
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
+# PID du process qui importe l'application. Sert à détecter un fork après
+# import (gunicorn --preload), qui prive le worker de tous les threads du
+# parent — APScheduler en tête. Exposé par /health.
+_ORBIT_PID_DEMARRAGE = os.getpid()
+
 # === Alertes erreurs 500 par email (SMTPHandler) ============================
 # Envoie un email aux admins quand une erreur 500 survient en production.
 # Nécessite MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD configurés.
@@ -987,8 +992,13 @@ def _orbit_fiscal_catchup():
 # ni secret. Le SHA de commit est deja public (depot GitHub public).
 # ---------------------------------------------------------------------------
 def _orbit_worker_gunicorn():
-    """Classe de worker gunicorn reellement chargee : gthread, gsync, ggevent..."""
-    concrets = ('gthread', 'ggevent', 'gevent_pywsgi', 'gtornado', 'gaiohttp', 'gsync')
+    """Classe de worker gunicorn réellement chargée : gthread, sync, ggevent...
+
+    Les modules de gunicorn s'appellent `gunicorn.workers.sync`,
+    `gunicorn.workers.gthread`, `gunicorn.workers.ggevent`... et NON `gsync` :
+    l'alias de ligne de commande `-k sync` pointe vers `workers.sync:SyncWorker`.
+    """
+    concrets = ('gthread', 'ggevent', 'geventlet', 'gtornado', 'gaiohttp', 'sync')
     charges = {m.rsplit('.', 1)[-1] for m in _sys.modules if m.startswith('gunicorn.workers.')}
     for nom in concrets:
         if nom in charges:
@@ -1004,6 +1014,7 @@ def _orbit_health():
         backend = db.engine.url.get_backend_name()
     except Exception:
         backend = 'indisponible'
+    pid = os.getpid()
     return jsonify({
         'statut': 'ok',
         'worker': _orbit_worker_gunicorn(),
@@ -1012,5 +1023,12 @@ def _orbit_health():
         'python': '%d.%d.%d' % _sys.version_info[:3],
         'base': backend,
         'planificateur': bool(_ORBIT_SCHEDULER['actif']),
+        # `pid_demarrage` est le PID du process qui a IMPORTÉ l'application.
+        # S'il diffère du PID courant, l'application a été importée puis forké
+        # (gunicorn --preload) : les threads du process parent ne survivent PAS
+        # au fork, donc APScheduler est marqué actif alors que ses threads
+        # n'existent plus — plus aucune tâche planifiée ne s'exécute.
+        'pid': pid,
+        'forke': pid != _ORBIT_PID_DEMARRAGE,
     })
 
