@@ -141,3 +141,39 @@ def test_planificateur_demarre_une_seule_fois(monkeypatch):
     assert app_package._orbit_demarrer_planificateur() is True
     assert app_package._orbit_demarrer_planificateur() is False, 'idempotence'
     assert _Faux.demarrages == 1
+
+
+# --- Pool de connexions après fork ----------------------------------------
+
+def test_pool_reinitialise_seulement_apres_un_fork(flask_app, monkeypatch):
+    """Sans fork on ne touche pas au pool ; apres fork on le vide.
+
+    Le remplacement porte sur l'objet `db` lui-meme (et non sur db.engine) pour
+    que le test tourne SANS contexte applicatif : c'est la situation reelle,
+    _orbit_apres_fork() etant appele depuis un thread de fond.
+    """
+    class _FauxMoteur:
+        def __init__(self):
+            self.dispose_appels = 0
+
+        def dispose(self):
+            self.dispose_appels += 1
+
+    class _FauxDb:
+        def __init__(self):
+            self.engine = _FauxMoteur()
+
+    faux = _FauxDb()
+    monkeypatch.setitem(app_package.__dict__, 'db', faux)
+
+    # 1. Pas de fork : PID identique a celui de l'import.
+    monkeypatch.setitem(app_package.__dict__, '_ORBIT_PID_DEMARRAGE',
+                        app_package.os.getpid())
+    assert app_package._orbit_apres_fork() is False
+    assert faux.engine.dispose_appels == 0, 'pool vide sans fork'
+
+    # 2. Fork simule : le PID d'import n'est plus le PID courant.
+    monkeypatch.setitem(app_package.__dict__, '_ORBIT_PID_DEMARRAGE',
+                        app_package.os.getpid() + 1)
+    assert app_package._orbit_apres_fork() is True
+    assert faux.engine.dispose_appels == 1, 'connexions heritees non liberees'

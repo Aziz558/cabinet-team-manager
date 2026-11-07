@@ -944,6 +944,34 @@ except Exception as e:
     app.logger.warning(f"APScheduler not available: {e}")
 
 
+def _orbit_apres_fork():
+    """Réinitialise le pool de connexions si le process a été forké après import.
+
+    Avec `gunicorn --preload`, l'application (donc le moteur SQLAlchemy) est
+    créée dans le process maître, puis forquée. Le pool hérité contient des
+    sockets Postgres partagées entre deux process : les deux écrivent sur le
+    même flux et l'un des deux reçoit fatalement une erreur de protocole
+    (« server closed the connection unexpectedly », « SSL SYSCALL error »).
+    Ces erreurs sont intermittentes et se manifestent par des pages qui
+    échouent au hasard — exactement le ressenti « glitchy ».
+
+    On vide donc le pool au premier appel du worker : les connexions sont
+    recréées par le process qui les utilise réellement.
+    """
+    if os.getpid() == _ORBIT_PID_DEMARRAGE:
+        return False
+    try:
+        # Appelé depuis un thread de fond : aucun contexte applicatif n'existe
+        # encore, or `db.engine` en exige un. On en pousse un explicitement.
+        with app.app_context():
+            db.engine.dispose()
+        app.logger.info("Fork détecté (pid=%s) : pool de connexions réinitialisé", os.getpid())
+        return True
+    except Exception as exc:
+        app.logger.warning("Réinitialisation du pool impossible : %s", exc)
+        return False
+
+
 def _orbit_demarrer_planificateur():
     """Démarre le planificateur dans le process qui sert RÉELLEMENT les requêtes.
 
@@ -999,8 +1027,10 @@ def _orbit_fiscal_catchup():
         return
 
     def _demarrage():
-        # Le planificateur doit naître DANS le process qui sert les requêtes :
-        # démarré au niveau module, ses threads mourraient au fork de gunicorn.
+        # Ordre : d'abord se débarrasser du pool hérité du process parent,
+        # ensuite démarrer le planificateur (il doit naître DANS le process
+        # qui sert les requêtes), enfin le rattrapage fiscal.
+        _orbit_apres_fork()
         _orbit_demarrer_planificateur()
         _orbit_run_fiscal_catchup()
 
