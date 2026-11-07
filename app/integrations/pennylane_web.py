@@ -25,6 +25,8 @@ from datetime import datetime, date
 
 import requests
 
+from app.integrations.pl_cookies import nettoyer_cookies
+
 # Cache mémoire des cookies (lazy-load depuis AppSetting au premier accès)
 _pl_session_lock = threading.Lock()
 _pl_session_cookies = ''
@@ -80,14 +82,23 @@ def _load_from_db():
     _pl_session_loaded = True
 
 
-def set_web_session(cookies: str, firm_id: int = None):
-    """Stocke les cookies de session Pennylane (colle le header -b du cURL) et persiste en BDD."""
-    cookies = (cookies or '').strip()
-    # Enlever un éventuel "-b '...'" collé par erreur
-    m = re.search(r"""-b\s+['"](.+?)['"]""", cookies)
-    if m:
-        cookies = m.group(1)
-    _store_cookies(cookies)
+def set_web_session(cookies: str, firm_id: int = None) -> dict:
+    """Nettoie et enregistre les cookies de session Pennylane, puis persiste en BDD.
+
+    Accepte tout ce que l'utilisateur a sous la main : commande cURL complète
+    (« Copier comme cURL »), option ``-b '...'``, ligne d'en-tête ``Cookie:``,
+    liste brute ``nom=valeur; nom=valeur`` ou JSON. Le nettoyage est fait par
+    ``pl_cookies.nettoyer_cookies`` ; le détail (nombre de cookies, cookies
+    critiques manquants) est renvoyé pour que l'interface puisse en rendre
+    compte au lieu d'un simple « OK ».
+
+    Renvoie le dict de ``nettoyer_cookies`` (dont 'ok', 'header', 'message').
+    """
+    info = nettoyer_cookies(cookies or '')
+    if not info.get('ok') or not info.get('header'):
+        return info
+    _store_cookies(info['header'])
+    return info
 
 
 def _store_cookies(header: str):
@@ -174,15 +185,19 @@ def clear_web_session():
         pass
 
 
-def _headers():
+def _headers(cookies: str = None):
     """En-têtes d'un appel XHR légitime depuis app.pennylane.com.
 
     Le 418 renvoyé par Pennylane est une protection anti-bot : plus l'appel
-    ressemble à une requête du front (Accept-Language, Origin, sec-fetch-*),
-    moins elle se déclenche. Ces en-têtes ne changent rien à l'authentification
-    (elle se fait par cookies).
+    ressemble à une requête du front (Accept-Language, Origin, sec-fetch-*,
+    jeton CSRF), moins elle se déclenche. Ces en-têtes ne changent rien à
+    l'authentification (elle se fait par cookies).
+
+    Le jeton CSRF est le *reflet* du cookie ``my_csrf_token`` : le front envoie
+    exactement la même valeur dans les deux. On le dérive donc du header cookie
+    courant plutôt que de demander à l'utilisateur de le copier.
     """
-    return {
+    h = {
         'accept': 'application/json, text/plain, */*',
         'accept-language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
         'user-agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -195,6 +210,14 @@ def _headers():
         'sec-fetch-mode': 'cors',
         'sec-fetch-dest': 'empty',
     }
+    try:
+        jeton = (_parse_cookie_header(cookies if cookies is not None
+                                      else _pl_session_cookies).get('my_csrf_token') or '').strip()
+        if jeton:
+            h['x-csrf-token'] = jeton
+    except Exception:
+        pass
+    return h
 
 
 def _parse_cookie_header(header: str) -> dict:
@@ -246,7 +269,7 @@ def fetch_vat_forms(customer_id, period_start: str = None, period_end: str = Non
     derniere_erreur = None
     for essai in range(tentatives):
         try:
-            r = requests.get(url, headers=_headers(), cookies=_parse_cookie_header(cookies),
+            r = requests.get(url, headers=_headers(cookies), cookies=_parse_cookie_header(cookies),
                              timeout=25)
         except Exception as e:
             r = None

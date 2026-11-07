@@ -163,10 +163,25 @@
         </p>
         <div id="plTvaStatus" class="mb-3"></div>
         <div class="mb-3">
-            <label class="form-label-premium">Cookies de session Pennylane</label>
-            <textarea id="plCookies" class="form-control" rows="3" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border-color);"
-                      placeholder="Collez ici le header -b '...' du cURL (DevTools → Réseau → Copier comme cURL)"></textarea>
-            <small class="text-tertiary">Les cookies sont enregistrés en base (chiffrés côté serveur, jamais affichés) et survivent aux redéploiements. Si la session expire, recollez-les simplement.</small>
+            <label class="form-label-premium d-flex align-items-center gap-2">
+                Cookies de session Pennylane
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-press py-0 px-2"
+                        style="font-size:.75rem;" onclick="plCollerPressePapier(this)"
+                        title="Coller depuis le presse-papier">
+                    <i class="bi bi-clipboard me-1"></i>Coller
+                </button>
+            </label>
+            <textarea id="plCookies" class="form-control" rows="4" oninput="plCookiesHint()"
+                      style="background:var(--bg-card);color:var(--text);border:1px solid var(--border-color);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;"
+                      placeholder="Colle n'importe quoi de raisonnable : la commande cURL complète (clic droit sur une requête app.pennylane.com → Copier → « Copier comme cURL »), la ligne Cookie: du panneau En-têtes, ou juste les cookies bruts (nom=valeur; nom=valeur)."></textarea>
+            <div id="plCookiesHint" class="small mt-1"></div>
+            <small class="text-tertiary">
+                L'appli <strong>nettoie le collage toute seule</strong> : elle repère le bon appel,
+                supprime le bruit des cURL (analytics, styles, fichiers), garde un seul exemplaire de
+                chaque cookie et retire les espaces parasites. Elle enregistre le résultat en base
+                (survit aux redéploiements) et <strong>te dit combien de cookies elle a lus</strong> —
+                et lesquels manquent, le cas échéant. Si la session expire, recolle simplement.
+            </small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <button type="button" class="btn-premium btn-premium-primary btn-press" onclick="savePlTvaSession()">
@@ -453,6 +468,64 @@ function savePlConfig(e) {
         .catch(err => showPl('Erreur réseau: ' + err.message, false))
         .finally(function() { btn.innerHTML = original; btn.disabled = false; });
 }
+// --- Nettoyage du collage : l'utilisateur voit tout de suite ce qui a été compris ---
+function plCookiesDetectes(txt) {
+    txt = (txt || '').replace(/\r\n?/g, '\n');
+    var cands = [], m, re;
+    re = /(?:^|[^\-\w])-b\s*(['"])([^'"]*)\1/g;
+    while ((m = re.exec(txt)) !== null) cands.push(m[2]);
+    re = /(?:-H|--header)\s*(['"])\s*cookie\s*:\s*([^'"]*)\1/gi;
+    while ((m = re.exec(txt)) !== null) cands.push(m[2]);
+    if (!cands.length) {
+        re = /^[ \t]*cookie[ \t]*:[ \t]*(\S.*)$/gim;
+        while ((m = re.exec(txt)) !== null) cands.push(m[1]);
+    }
+    if (!cands.length) cands.push(txt);
+    function noms(s) {
+        return (s || '').split(';').map(function (p) { return p.trim().replace(/^-b\s*/, '').replace(/^["']|["'\\^]+$/g, '').trim(); })
+            .filter(function (p) { return p.indexOf('=') > 0 && p.indexOf(' ') < 0; })
+            .map(function (p) { return p.split('=')[0]; });
+    }
+    var best = [];
+    cands.forEach(function (c) { var n = noms(c); if (n.length > best.length) best = n; });
+    var manque = [];
+    ['_jeancaisse_session', 'cf_clearance', '__cf_bm'].forEach(function (k) {
+        if (best.indexOf(k) < 0) manque.push(k);
+    });
+    return {n: best.length, manque: manque};
+}
+function plCookiesHint() {
+    var el = document.getElementById('plCookiesHint');
+    var ta = document.getElementById('plCookies');
+    if (!el || !ta) return;
+    if (!(ta.value || '').trim()) { el.innerHTML = ''; return; }
+    var r = plCookiesDetectes(ta.value);
+    if (!r.n) {
+        el.innerHTML = '<span style="color:var(--warning);"><i class="bi bi-exclamation-triangle me-1"></i>Aucun cookie reconnu — colle la commande cURL entière, pas seulement un morceau.</span>';
+        return;
+    }
+    if (r.manque.length) {
+        el.innerHTML = '<span style="color:var(--warning);"><i class="bi bi-exclamation-triangle me-1"></i>' + r.n + ' cookie(s) détecté(s) — il manque : ' + r.manque.join(', ') + '</span>';
+    } else {
+        el.innerHTML = '<span style="color:var(--success);"><i class="bi bi-check-circle me-1"></i>' + r.n + ' cookie(s) détecté(s) — session complète, prêt à enregistrer.</span>';
+    }
+}
+function plCollerPressePapier(btn) {
+    var ta = document.getElementById('plCookies');
+    if (!ta) return;
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+        ta.focus();
+        showPlTva('Ce navigateur ne permet pas le collage automatique — utilise Ctrl+V dans la zone de texte.', false);
+        return;
+    }
+    navigator.clipboard.readText().then(function (t) {
+        ta.value = t || '';
+        plCookiesHint();
+    }).catch(function () {
+        ta.focus();
+        showPlTva('Collage refusé par le navigateur — clique dans la zone puis Ctrl+V.', false);
+    });
+}
 function savePlTvaSession() {
     var cookies = (document.getElementById('plCookies').value || '').trim();
     if (!cookies) { showPlTva('Collez d\'abord les cookies de session.', false); return; }
@@ -462,7 +535,17 @@ function savePlTvaSession() {
         body: JSON.stringify({cookies: cookies, firm_id: 76917})
     })
     .then(r => r.json())
-    .then(d => showPlTva(d.message || 'OK', d.ok))
+    .then(function (d) {
+        var avert = (d.avertissements && d.avertissements.length) ? d.avertissements : [];
+        showPlTva((d.message || 'OK'), d.ok && !avert.length, avert);
+        if (d.nettoyage && d.nettoyage.n) {
+            var ta = document.getElementById('plCookies');
+            if (ta) ta.value = '';   // les cookies sont enregistrés : on ne les laisse pas traîner
+            var el = document.getElementById('plCookiesHint');
+            if (el) el.innerHTML = '<span style="color:var(--success);"><i class="bi bi-shield-check me-1"></i>'
+                + d.nettoyage.n + ' cookie(s) enregistrés (source : ' + (d.nettoyage.source || 'n/a') + ').</span>';
+        }
+    })
     .catch(err => showPlTva('Erreur réseau: ' + err.message, false));
 }
 function syncPlTva() {

@@ -9,18 +9,40 @@ import os
 import re  # sonde v11 (temporaire)
 from datetime import date, datetime, timedelta
 
+def _rapport_cookies(info: dict) -> dict:
+    """Vue « affichable » du nettoyage de cookies : des noms, jamais des valeurs."""
+    return {
+        'n': info.get('n', 0),
+        'source': info.get('source', ''),
+        'cles': info.get('cles', []),
+        'critiques_manquants': info.get('critiques_manquants', []),
+        'antibot_manquants': info.get('antibot_manquants', []),
+        'avertissements': info.get('avertissements', []),
+    }
+
+
 @app.route('/pennylane/tva_session', methods=['POST'])
 @login_required
 def pennylane_tva_session():
-    """Enregistre (en mémoire uniquement) les cookies de session web Pennylane."""
+    """Nettoie puis enregistre les cookies de session web Pennylane (persistés en BDD).
+
+    Le texte collé peut être n'importe quoi de raisonnable : commande cURL
+    complète, option -b, ligne Cookie:, ou liste brute.
+    """
     if current_user.role != 'admin':
         return jsonify({'ok': False, 'message': 'Accès réservé aux administrateurs.'}), 403
     payload = request.get_json(silent=True) or request.form
-    cookies = (payload.get('cookies') or '').strip()
+    cookies = payload.get('cookies') or ''
     firm_id = payload.get('firm_id') or 76917
     from app.integrations.pennylane_web import set_web_session, test_web_session
-    set_web_session(cookies, firm_id)
+    info = set_web_session(cookies, firm_id)
+    if not info.get('ok'):
+        return jsonify({'ok': False, 'message': info.get('message') or 'Collage illisible.',
+                        'nettoyage': _rapport_cookies(info)})
     res = test_web_session()
+    res['message'] = ' '.join(x for x in [(info.get('message') or ''), (res.get('message') or '')] if x)
+    res['avertissements'] = info.get('avertissements') or []
+    res['nettoyage'] = _rapport_cookies(info)
     return jsonify(res)
 
 
