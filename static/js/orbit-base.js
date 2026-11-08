@@ -508,3 +508,86 @@ function changeNotifSound(value) {
         window.addEventListener('pageshow', done);
         window.addEventListener('load', done);
     })();
+
+/* Images hors écran en chargement paresseux (sans toucher au markup) */
+(function () {
+    function lazyImgs() {
+        document.querySelectorAll('img:not([loading])').forEach(function (img) {
+            img.setAttribute('loading', 'lazy');
+            img.setAttribute('decoding', 'async');
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', lazyImgs);
+    } else {
+        lazyImgs();
+    }
+})();
+
+/* Accessibilité : aria-label auto des contrôles icon-only + raccourcis g x */
+(function () {
+    var LABELS = {
+        'bi-search': 'Rechercher', 'bi-bell': 'Notifications', 'bi-alarm': 'Mes rappels',
+        'bi-list': 'Menu', 'bi-sun-fill': 'Passer en thème clair', 'bi-moon-fill': 'Passer en thème sombre',
+        'bi-person': 'Profil', 'bi-person-badge': 'Profil administrateur', 'bi-person-lines-fill': 'Profil manager',
+        'bi-plus-lg': 'Ajouter', 'bi-pencil': 'Modifier', 'bi-trash': 'Supprimer', 'bi-eye': 'Voir',
+        'bi-list-task': 'Voir les tâches', 'bi-link-45deg': 'Ouvrir Pennylane', 'bi-download': 'Télécharger',
+        'bi-upload': 'Importer', 'bi-three-dots': 'Actions', 'bi-chevron-down': 'Déplier',
+        'bi-chevron-up': 'Replier', 'bi-chevron-left': 'Précédent', 'bi-chevron-right': 'Suivant',
+        'bi-x': 'Fermer', 'bi-check': 'Valider', 'bi-check-lg': 'OK',
+        'bi-arrow-left': 'Retour', 'bi-arrow-right': 'Suivant', 'bi-arrow-repeat': 'Rafraîchir',
+        'bi-gear': 'Réglages', 'bi-box-arrow-right': 'Déconnexion', 'bi-star': 'Ajouter aux favoris',
+        'bi-star-fill': 'Retirer des favoris', 'bi-filter': 'Filtres', 'bi-layout-three-columns': 'Colonnes',
+        'bi-arrows-angle-contract': 'Mode compact', 'bi-arrows-angle-expand': 'Mode confort',
+        'bi-info-circle': 'Information', 'bi-exclamation-triangle': 'Attention', 'bi-exclamation-triangle-fill': 'Attention',
+        'bi-check-circle': 'Terminé', 'bi-hourglass-split': 'En cours', 'bi-circle': 'À faire',
+        'bi-funnel': 'Filtrer', 'bi-sort-down': 'Trier', 'bi-grid': 'Vue grille', 'bi-list-ul': 'Vue liste',
+        'bi-calendar-event': 'Date limite', 'bi-cash-stack': 'Régime TVA', 'bi-people': 'Équipe', 'bi-people-fill': 'Collaborateurs',
+        'bi-speedometer2': 'Tableau de bord', 'bi-folder': 'Dossiers', 'bi-journal-check': 'Checklist',
+        'bi-graph-up-arrow': 'Analytique', 'bi-stars': 'Enrichir', 'bi-volume-up': 'Son activé',
+        'bi-lightning-charge': 'Régénérer', 'bi-patch-check-fill': 'Vérifié', 'bi-inboxes': 'Triage'
+    };
+    function labelFor(el) {
+        var icon = el.querySelector('i.bi');
+        if (!icon) return null;
+        var cls = (icon.className || '').split(/\s+/);
+        for (var i = 0; i < cls.length; i++) { if (LABELS[cls[i]]) return LABELS[cls[i]]; }
+        return 'Action';
+    }
+    var pending = false;
+    function applyAria() {
+        if (pending) return;
+        pending = true;
+        setTimeout(function () {
+            pending = false;
+            document.querySelectorAll('button, a[href]').forEach(function (el) {
+                if (el.hasAttribute('aria-label') || el.hasAttribute('title')) return;
+                if ((el.textContent || '').trim()) return;
+                var label = labelFor(el);
+                if (label) el.setAttribute('aria-label', label);
+            });
+        }, 300);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyAria);
+    else applyAria();
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.MutationObserver) return;
+        var mo = new MutationObserver(applyAria);
+        mo.observe(document.body, { childList: true, subtree: true });
+    });
+
+    /* Raccourcis clavier : g puis d/t/o/p/c/a */
+    var NAVI = { d: '/dashboard', t: '/taches', o: '/dossiers', p: '/pennylane', c: '/checklist', a: '/analytics' };
+    var pendingG = false, timer = null;
+    document.addEventListener('keydown', function (e) {
+        if (!e.target || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (pendingG) {
+            pendingG = false; clearTimeout(timer);
+            var k = (e.key || '').toLowerCase();
+            if (NAVI[k]) { e.preventDefault(); window.location.href = NAVI[k]; }
+            return;
+        }
+        if (e.key === 'g') { pendingG = true; timer = setTimeout(function () { pendingG = false; }, 1500); }
+    });
+})();

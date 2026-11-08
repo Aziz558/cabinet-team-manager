@@ -136,7 +136,7 @@
     </div>
 
     <!-- Filtres avancés à icônes dépliables -->
-<div class="card-premium mb-4 animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
+<div class="card-premium mb-4 animate-fade-in-up u-clip">
     <div class="card-body-premium px-4 py-3">
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <button type="button" class="btn-filter-advanced" onclick="toggleFilter('collab')" id="btnFilterCollab">
@@ -154,7 +154,7 @@
         </div>
         <!-- Panneau Collaborateurs -->
         <div class="filter-panel d-none" id="panelCollab">
-            <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);">
+            <div class="d-flex flex-wrap gap-2 pt-3 mt-2 u-border-top">
                 <div class="d-flex flex-column align-items-center gap-1 px-3 py-2 rounded-3 member-filter-item" onclick="filterByMember('all')" id="filterAllMembers" style="cursor:pointer;transition:all 0.2s;background:var(--orange-primary);color:#000;min-width:60px;">
                     <span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;">T</span>
                     <span style="font-size:0.65rem;font-weight:600;white-space:nowrap;">Tous</span>
@@ -185,7 +185,7 @@
         </div>
         <!-- Panneau Régime TVA unifié -->
         <div class="filter-panel d-none" id="panelRegime">
-            <div class="d-flex flex-wrap gap-2 pt-3 mt-2" style="border-top:1px solid var(--border-color);">
+            <div class="d-flex flex-wrap gap-2 pt-3 mt-2 u-border-top">
                 <button type="button" class="btn-filter-option" data-value="all" onclick="setRegimeFilter('all');"><i class="bi bi-check2-all me-1"></i>Tous</button>
                 <button type="button" class="btn-filter-option" data-value="ca3_mensuelle" onclick="setRegimeFilter('ca3_mensuelle');"><i class="bi bi-calendar-month me-1"></i>CA3 Mensuelle</button>
                 <button type="button" class="btn-filter-option" data-value="ca3_trimestrielle" onclick="setRegimeFilter('ca3_trimestrielle');"><i class="bi bi-calendar-range me-1"></i>CA3 Trimestrielle</button>
@@ -241,13 +241,13 @@ function orbitChips() {
     return out;
 }
 </script>
-<div class="card-premium animate-fade-in-up" style="border-radius:16px;overflow:hidden;">
+<div class="card-premium animate-fade-in-up u-clip">
     <div class="card-body-premium p-0">
         <div class="table-responsive">
             <table class="table-premium table-premium-breathe" id="tableDossiers">
                 <thead>
                     <tr>
-                        <th style="width:36px"><input type="checkbox" id="selectAllDossiers" class="select-all-checkbox"></th>
+                        <th class="u-w36"><input type="checkbox" id="selectAllDossiers" class="select-all-checkbox"></th>
                         <th>N°</th>
                         <th>INTITULÉ</th>
                         <th>COLLABORATEUR</th>
@@ -271,7 +271,7 @@ function orbitChips() {
                     {% set orbit_reste = d._tva_taches_restantes if d._tva_taches_restantes is defined else 0 %}
                     {% set orbit_actions = [['Voir les tâches', url_for('voir_taches_dossier', dossier_id=d.id), '', 'bi-list-task'], ['Modifier', 'js:openEditDossier(' ~ d.id ~ ')', 'primary', 'bi-pencil'], ['Pennylane', url_for('pennylane_dossier', dossier_id=d.id), '', 'bi-link-45deg']] %}
                     <tr tabindex="0" data-orbit-nav data-orbit-kind="Dossier" data-orbit-id="{{ d.id }}" data-orbit-title="{{ d.numero_dossier }} — {{ d.intitule }}" data-orbit-sub="{{ orbit_collab or 'Sans collaborateur' }}" data-orbit-f-collaborateur="{{ orbit_collab }}" data-orbit-f-equipe="{{ d.equipe.nom if d.equipe else '—' }}" data-orbit-f-regime="{{ orbit_regime }}" data-orbit-f-echeances="{{ orbit_echeances | join(' · ') if orbit_echeances else '—' }}" data-orbit-f-delai="{{ d._delai_label }}" data-orbit-f-tva="{{ orbit_tva }} tâche{{ orbit_tva|plur }}" data-orbit-f-reste="{{ orbit_reste }} restante{{ orbit_reste|plur }}" data-orbit-f-siren="{{ d.siren or '—' }}" data-orbit-actions='{{ orbit_actions | tojson }}' data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime-combo="{{ d._regime_combo }}" data-date-iso="{{ d._date_iso }}">
-                        <td style="width:36px"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
+                        <td class="u-w36"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
                         <td><strong>{{ d.numero_dossier }}</strong></td>
                         <td>{{ d.intitule }}</td>
                         <td>
@@ -397,7 +397,7 @@ function orbitChips() {
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('importer_csv') }}" enctype="multipart/form-data" id="formImportCSV">
                 <div class="modal-header-premium">
-                    <h5 class="mb-0"><i class="bi bi-upload me-2" style="color:var(--orange-primary)"></i>Importer des dossiers (CSV)</h5>
+                    <h5 class="mb-0"><i class="bi bi-upload me-2 u-txt-orange"></i>Importer des dossiers (CSV)</h5>
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body-premium">
@@ -437,7 +437,7 @@ function orbitChips() {
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('ajouter_dossier') }}" id="formNouveauDossier">
                 <div class="modal-header-premium">
-                    <h5 class="mb-0"><i class="bi bi-folder-plus me-2" style="color:var(--orange-primary)"></i>Nouveau dossier</h5>
+                    <h5 class="mb-0"><i class="bi bi-folder-plus me-2 u-txt-orange"></i>Nouveau dossier</h5>
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body-premium">
@@ -453,9 +453,9 @@ function orbitChips() {
                     </div>
                     <div class="row">
                         <div class="col-12 mb-3">
-                            <label class="form-label-premium"><i class="bi bi-search me-1" style="color:var(--orange-primary)"></i>SIREN — extraction automatique <small class="text-tertiary">(INSEE / Infogreffe)</small></label>
+                            <label class="form-label-premium"><i class="bi bi-search me-1 u-txt-orange"></i>SIREN — extraction automatique <small class="text-tertiary">(INSEE / Infogreffe)</small></label>
                             <div class="d-flex gap-2">
-                                <input type="text" name="siren" id="newSiren" class="input-premium" inputmode="numeric" maxlength="9" placeholder="9 chiffres" style="max-width:200px" autocomplete="off">
+                                <input type="text" name="siren" id="newSiren" class="input-premium u-maxw200" inputmode="numeric" maxlength="9" placeholder="9 chiffres" autocomplete="off">
                                 <button type="button" class="btn-premium btn-premium-secondary" id="btnExtractSiren" onclick="extraireSiren('new')"><i class="bi bi-magic me-1"></i>Extraire</button>
                             </div>
                             <div id="sirenResult" class="small mt-2"></div>
@@ -590,7 +590,7 @@ function orbitChips() {
         <div class="modal-content-premium">
             <form method="POST" id="formModifierDossier">
                 <div class="modal-header-premium">
-                    <h5 class="mb-0"><i class="bi bi-pencil-square me-2" style="color:var(--orange-primary)"></i>Modifier le dossier</h5>
+                    <h5 class="mb-0"><i class="bi bi-pencil-square me-2 u-txt-orange"></i>Modifier le dossier</h5>
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body-premium">
@@ -606,9 +606,9 @@ function orbitChips() {
                     </div>
                     <div class="row">
                         <div class="col-12 mb-3">
-                            <label class="form-label-premium"><i class="bi bi-search me-1" style="color:var(--orange-primary)"></i>SIREN <small class="text-tertiary">(extraction auto : raison sociale, forme juridique, secteur, TVA intracommunautaire…)</small></label>
+                            <label class="form-label-premium"><i class="bi bi-search me-1 u-txt-orange"></i>SIREN <small class="text-tertiary">(extraction auto : raison sociale, forme juridique, secteur, TVA intracommunautaire…)</small></label>
                             <div class="d-flex gap-2 align-items-center flex-wrap">
-                                <input type="text" name="siren" id="editSiren" class="input-premium" inputmode="numeric" maxlength="9" placeholder="9 chiffres" style="max-width:200px" autocomplete="off">
+                                <input type="text" name="siren" id="editSiren" class="input-premium u-maxw200" inputmode="numeric" maxlength="9" placeholder="9 chiffres" autocomplete="off">
                                 <button type="button" class="btn-premium btn-premium-secondary" id="btnExtractSirenEdit" onclick="extraireSiren('edit')"><i class="bi bi-magic me-1"></i>Extraire</button>
                             </div>
                             <div id="sirenResultEdit" class="small mt-2"></div>
@@ -716,7 +716,7 @@ function orbitChips() {
                             <input type="text" name="secteur_activite" id="editSecteurActivite" class="input-premium" placeholder="ex: Hébergement, Conseil, Commerce...">
                         </div>
                     </div>
-                    <h6 class="text-tertiary mb-2" style="font-size:0.78rem;letter-spacing:0.04em;"><i class="bi bi-building me-1" style="color:var(--orange-primary)"></i>INFOS ENTREPRISE — VIA SIREN</h6>
+                    <h6 class="text-tertiary mb-2" style="font-size:0.78rem;letter-spacing:0.04em;"><i class="bi bi-building me-1 u-txt-orange"></i>INFOS ENTREPRISE — VIA SIREN</h6>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">N° TVA intracommunautaire</label>
@@ -960,6 +960,14 @@ function orbitChips() {
                 var COLS_KEY = 'dossiersCols';
                 function applyDossierCols() {
                     var cols = JSON.parse(localStorage.getItem(COLS_KEY) || '{}');
+                    // Défaut mobile (sans préférence enregistrée) : on ne garde que
+                    // checkbox(1), Intitulé(3), Actions(12) ; sous 576px on masque aussi
+                    // N°(2) et Collaborateur(4). -> le tableau passait à 1462px de large
+                    // dans une carte de 336px.
+                    if (localStorage.getItem(COLS_KEY) === null && window.innerWidth < 768) {
+                        var hideCols = window.innerWidth < 576 ? [2, 4, 5, 6, 7, 8, 9, 10, 11] : [5, 6, 7, 8, 9, 10, 11];
+                        hideCols.forEach(function (m) { cols[m] = false; });
+                    }
                     // Par défaut toutes visibles
                     for (var i = 2; i <= 12; i++) {
                         var visible = cols[i] !== false;
@@ -1016,7 +1024,7 @@ function orbitChips() {
             var btn = document.getElementById(mode === 'edit' ? 'btnExtractSirenEdit' : 'btnExtractSiren');
             var s = (input.value || '').replace(/\D/g, '');
             if (s.length !== 9) {
-                box.innerHTML = '<span style="color:var(--red,#e5484d)">Saisissez 9 chiffres.</span>';
+                box.innerHTML = '<span class="u-txt-red">Saisissez 9 chiffres.</span>';
                 return;
             }
             btn.disabled = true;
@@ -1025,7 +1033,7 @@ function orbitChips() {
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     btn.disabled = false;
-                    if (!d.ok) { box.innerHTML = '<span style="color:var(--red,#e5484d)">' + (d.error || 'Erreur') + '</span>'; return; }
+                    if (!d.ok) { box.innerHTML = '<span class="u-txt-red">' + (d.error || 'Erreur') + '</span>'; return; }
                     // Renseigne uniquement les champs vides (ne jamais ecraser une saisie)
                     var intitule = document.getElementById(p + 'Intitule');
                     if (intitule && !intitule.value.trim() && d.nom) intitule.value = d.nom;
@@ -1063,12 +1071,12 @@ function orbitChips() {
                     if (d.adresse) resume.push(d.adresse);
                     if (d.siret) resume.push('SIRET ' + d.siret);
                     box.innerHTML = '<span style="color:var(--green,#30a46c)"><i class="bi bi-check-circle me-1"></i>Infos récupérées :</span> ' +
-                        '<div class="ms-1 mt-1" style="color:var(--text-secondary,#aab)">' + resume.join(' · ') + '</div>' +
-                        (d.dirigeants && d.dirigeants.length > 1 ? '<div class="ms-1" style="color:var(--text-secondary,#aab)">Autres dirigeants : ' + d.dirigeants.slice(1, 5).map(function(x) { return x.texte; }).join(' · ') + '</div>' : '');
+                        '<div class="ms-1 mt-1 u-txt-2">' + resume.join(' · ') + '</div>' +
+                        (d.dirigeants && d.dirigeants.length > 1 ? '<div class="ms-1 u-txt-2">Autres dirigeants : ' + d.dirigeants.slice(1, 5).map(function(x) { return x.texte; }).join(' · ') + '</div>' : '');
                 })
                 .catch(function() {
                     btn.disabled = false;
-                    box.innerHTML = '<span style="color:var(--red,#e5484d)">Service indisponible — vérifiez la connexion.</span>';
+                    box.innerHTML = '<span class="u-txt-red">Service indisponible — vérifiez la connexion.</span>';
                 });
         }
 

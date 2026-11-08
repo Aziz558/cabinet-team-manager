@@ -187,6 +187,10 @@ html[data-theme="dark"] {
    ------------------------------------------------------------------------- */
 .app-shell .pl-page,
 .app-shell .pl-team-group { overflow-x: clip; }
+/* Lignes Bootstrap (.row, marges négatives) dans un conteneur peu paddé :
+   on clippe le résidu de 8 px mesuré sur /checklist */
+.app-shell .mb-4:has(> .row),
+.app-shell .mb-3:has(> .row) { overflow-x: clip; }
 
 /* ---------------------------------------------------------------------------
    8. BADGES « RETARD » PENNYLANE + CARTE TRIAGE DU DASHBOARD
@@ -211,3 +215,175 @@ html[data-theme="dark"] {
   min-width: 32px !important;
   min-height: 32px !important;
 }
+
+/* ---------------------------------------------------------------------------
+   9. RESPONSIVE MOBILE (< 768 px)
+      Mesuré à 390 px : .app-topbar scrollWidth 634-647 pour 380 utiles
+      (.app-topbar-right = 484 px : recherche + thème + cloche + alarm +
+       sélecteur d'équipe avec nom). On replie tout en icônes.
+   ------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  .app-shell .app-topbar { gap: .3rem !important; padding: .5rem .4rem !important; }
+  .app-shell .app-topbar-left { gap: .4rem !important; }
+  .app-shell .app-topbar-right { gap: .15rem !important; }
+  .app-shell .app-topbar-toggle { width: 40px !important; min-width: 40px !important; }
+  /* Le conteneur col-auto de la sidebar (243 px) : on coupe le débordement */
+  .app-shell .col-auto.h-100 { overflow: hidden !important; }
+  /* Toolbar (compteur + chips + boutons) : passe à la ligne en mobile */
+  .app-shell .orbit-toolbar { flex-wrap: wrap; }
+  /* Hero Pennylane : le badge « 57 dossiers » passait à la ligne forcée */
+  .app-shell .pl-hero { flex-wrap: wrap; gap: .5rem; }
+  /* Boutons d'action Pennylane : jamais écrasés par le flex */
+  .app-shell .pl-act, .app-shell .pl-action-btn-sm { flex-shrink: 0; }
+  /* Barre d'actions /dossiers (Nouveau, Importer, Template, Colonnes = 471 px) :
+     passe à la ligne en mobile au lieu de déborder */
+  .app-shell .avm-bar .card-body-premium .d-flex.gap-2 { flex-wrap: wrap; }
+  .app-shell .btn-premium { white-space: nowrap; flex-shrink: 0; }
+  /* Recherche : icône seule (le libellé était déjà masqué, le kbd restait) */
+  .app-shell .orbit-search-btn { padding: .4rem .55rem !important; min-width: 36px; }
+  .app-shell .orbit-search-btn .orbit-kbd,
+  .app-shell .orbit-search-label { display: none !important; }
+  /* Marges inline (12px) des boutons thème/cloche/alarm -> 0 en mobile */
+  .app-shell .app-topbar-right #themeToggle,
+  .app-shell .app-topbar-right .notif-bell-link,
+  .app-shell .app-topbar-right a[aria-label="Mes rappels"] { margin-right: 0 !important; }
+  /* Sélecteur d'équipe : icône seule, sans nom ni caret */
+  .app-shell .team-context-name,
+  .app-shell .team-context-icon > .bi-caret-down-fill { display: none !important; }
+  .app-shell .team-context-icon { padding: .3rem !important; }
+  /* Boutons de la topbar compacts (icône seule, 36 px) */
+  .app-shell .app-topbar-right { flex-wrap: nowrap; }
+  .app-shell .app-topbar-right > button,
+  .app-shell .app-topbar-right > a {
+    padding: .45rem !important;
+    min-width: 36px;
+    font-size: 17px !important;
+  }
+  /* Menu utilisateur : avatar seul, sans nom ni caret */
+  .app-shell .app-user-name,
+  .app-shell .app-user-toggle > .bi-caret-down-fill { display: none !important; }
+  /* Scroll interne du tableau plus fluide au doigt */
+  .app-shell .table-responsive { -webkit-overflow-scrolling: touch; }
+  /* Tableau dossiers : cellules qui wrappent en mobile (les libellés longs
+     en nowrap poussaient les lignes à 797 px) */
+  .app-shell #tableDossiers th,
+  .app-shell #tableDossiers td { white-space: normal !important; }
+  /* Colonnes du tableau dossiers masquées par défaut en mobile : gérées en JS
+     (applyDossierCols) — ici on épingle juste la 1re colonne (checkbox) */
+  .app-shell #tableDossiers th:nth-child(1),
+  .app-shell #tableDossiers td:nth-child(1) {
+    position: sticky; left: 0; z-index: 3;
+    background: var(--bg-card);
+    box-shadow: 1px 0 0 var(--rule);
+  }
+}
+@media (max-width: 575.98px) {
+  /* Très petit écran : le logo suffit, on masque le texte « JMH Orbit » */
+  .app-shell .app-brand-text { display: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   10. ÉCHELLE DE DESIGN TOKENS — un seul langage visuel sur toutes les pages
+       Rayons  : 6 / 10 / 14 / 18 / 26 px + pilule (999px) + cercle (50%)
+       Tailles : 12 / 13 / 14 / 15 / 16 / 18 / 20 / 24 / 32 px
+       Polices : Figtree (UI) + Instrument Serif (titres display) +
+                 JetBrains Mono (chiffres/code) — Inter supprimé.
+       (orbit-fixes.css est chargé APRÈS elevate : les jetons gagnent.)
+   ------------------------------------------------------------------------- */
+/* html[data-theme=...] = même spécificité que Elevate, mais feuille chargée après */
+:root, html[data-theme="light"], html[data-theme="dark"] {
+  --r-xs: 6px;
+  --r-sm: 10px;   /* était 9px dans Elevate */
+  --r-md: 14px;   /* était 13px */
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 15px;
+  --fs-xl: 16px; --fs-2xl: 18px; --fs-3xl: 20px; --fs-4xl: 24px; --fs-5xl: 32px;
+  /* style.css posait Inter en --font-primary/--font-accent : on les branche sur Figtree */
+  --font-primary: var(--font-ui);
+  --font-accent: var(--font-ui);
+}
+
+/* --- Rayons : tout ce qui était hors échelle rejoint 6/10/14/18/26 --- */
+.app-shell .card-premium,
+.app-shell .task-card,
+.app-shell .modal-content,
+.app-shell .modal-content-premium { border-radius: var(--r-lg) !important; }
+.app-shell .task-card-footer { border-radius: 0 0 var(--r-lg) var(--r-lg) !important; }
+.app-shell .stat-card,
+.app-shell .table-responsive,
+.app-shell .page-head,
+.app-shell .kpi-chip,
+.app-shell .pl-stat-card,
+.app-shell .qa-btn,
+.app-shell .wf-card,
+.app-shell .qa-btn, .app-shell .page-head-icon, .app-shell .stat-card-icon,
+.app-shell .toast, .app-shell .orbit-db-warning, .app-shell .orbit-toolbar,
+.app-shell .pl-stat-icon, .app-shell .avm-select { border-radius: var(--r-md) !important; }
+.app-shell .sidebar-nav-item, .app-shell .orbit-search-btn, .app-shell .notif-bell-link,
+.app-shell .sidebar-user, .app-shell .app-topbar-toggle, .app-shell .team-context-icon,
+.app-shell .avm-fico, .app-shell .btn-filter-advanced, .app-shell .pl-team-header,
+.app-shell .orbit-tool-btn, .app-shell .rounded-3 { border-radius: var(--r-sm) !important; }
+.app-shell .rounded-1, .app-shell .rounded-2 { border-radius: var(--r-xs) !important; }
+.app-shell .task-priority, .app-shell .task-status, .app-shell .analytics-list-bar,
+.app-shell .orbit-kbd, .app-shell code, .app-shell .badge,
+.app-shell .sidebar-logout, .app-shell .orbit-fav-btn, .app-shell .btn-group { border-radius: var(--r-xs) !important; }
+.app-shell .filter-badge, .app-shell .avm-fcount, .app-shell .orbit-chip,
+.app-shell .pl-badge { border-radius: 999px !important; }
+
+/* --- Tailles : les rôles texte rejoignent l'échelle, le Inter disparaît --- */
+.app-shell .btn-premium { font-size: var(--fs-md) !important; font-family: var(--font-ui) !important; border-radius: var(--r-sm) !important; }
+.app-shell .btn-sm { font-size: var(--fs-sm) !important; }
+.app-shell .sidebar-nav-item { font-size: var(--fs-md) !important; }
+.app-shell .task-meta, .app-shell .sidebar-user-name, .app-shell .orbit-search-btn,
+.app-shell .btn-filter-advanced, .app-shell .avm-select, .app-shell .orbit-search-label,
+.app-shell .orbit-toolbar-count, .app-shell .orbit-tool-btn { font-size: var(--fs-sm) !important; }
+.app-shell .sidebar-group-title, .app-shell .pl-eyebrow, .app-shell .pl-stat-label,
+.app-shell .sidebar-user-role, .app-shell .task-status, .app-shell .task-priority,
+.app-shell .badge, .app-shell .avm-fcount, .app-shell .orbit-chip, .app-shell .pl-team-title,
+.app-shell .kpi-sub, .app-shell .stat-card-trend, .app-shell .small, .app-shell small { font-size: var(--fs-xs) !important; }
+.app-shell .qa-btn, .app-shell .kpi-label, .app-shell .team-context-icon,
+.app-shell .today-date { font-size: var(--fs-md) !important; }
+.app-shell .card-header-premium, .app-shell .task-desc { font-size: var(--fs-lg) !important; }
+.app-shell code, .app-shell b { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace !important; }
+.app-shell .task-title { font-size: var(--fs-xl) !important; }
+.app-shell svg text { font-family: var(--font-display, 'Instrument Serif', serif); }
+
+/* ---------------------------------------------------------------------------
+   11. PERF — les longues listes ne coûtent plus en rendu hors écran
+       (content-visibility : le navigateur saute le layout/paint des cartes
+        non visibles ; contain-intrinsic-size garde la scrollbar stable)
+   ------------------------------------------------------------------------- */
+.app-shell .task-card { content-visibility: auto; contain-intrinsic-size: auto 150px; }
+.app-shell #tableDossiers tbody tr { content-visibility: auto; contain-intrinsic-size: auto 54px; }
+.app-shell .pl-tr-row { content-visibility: auto; contain-intrinsic-size: auto 58px; }
+
+/* ---------------------------------------------------------------------------
+   12. ACCESSIBILITÉ — anneau de focus visible et uniforme partout
+   ------------------------------------------------------------------------- */
+.app-shell :focus-visible {
+  outline: 2px solid var(--amber, #ff8c00) !important;
+  outline-offset: 2px !important;
+}
+.app-shell .skip-link:focus-visible { outline-offset: 4px !important; }
+.app-shell [tabindex="-1"]:focus { outline: none; }
+
+/* ---------------------------------------------------------------------------
+   13. UTILITAIRES — remplacent les style="..." inline des gabarits
+       (dossiers/pennylane : 51 convertis ; u-txt-warn passe en --warn-ink,
+        donc contraste AA là où var(--warning) passait à 1.9)
+   ------------------------------------------------------------------------- */
+.app-shell .u-txt-orange { color: var(--orange-primary) !important; }
+.app-shell .u-txt-ok { color: var(--success) !important; }
+.app-shell .u-txt-bad { color: var(--danger) !important; }
+.app-shell .u-txt-red { color: var(--red, #e5484d) !important; }
+.app-shell .u-txt-warn { color: var(--warn-ink) !important; }
+.app-shell .u-txt-2 { color: var(--text-secondary, #aab) !important; }
+.app-shell .u-pill-bad { background: var(--danger-bg) !important; border: 1px solid var(--danger) !important; }
+.app-shell .u-pill-ok { background: var(--success-bg) !important; border: 1px solid var(--success) !important; }
+.app-shell .u-pill-neutral { background: var(--bg-card-hover) !important; border: 1px solid var(--border-color) !important; }
+.app-shell .u-border-top { border-top: 1px solid var(--border-color); }
+.app-shell .u-clip { overflow: hidden; }
+.app-shell .u-w36 { width: 36px; }
+.app-shell .u-maxw200 { max-width: 200px; }
+.app-shell .u-fs-xs { font-size: var(--fs-xs); }

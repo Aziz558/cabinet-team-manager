@@ -18,8 +18,8 @@
 
 <!-- Dashboard stats (données réelles) -->
 {% if pl_auto_check %}
-<div class="p-3 rounded-3 mb-3" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
-    <i class="bi bi-arrow-repeat me-2" style="color:var(--orange-primary);"></i>
+<div class="p-3 rounded-3 mb-3 u-pill-neutral">
+    <i class="bi bi-arrow-repeat me-2 u-txt-orange"></i>
     <span class="small">{{ pl_auto_check }} — les notifications partent au fur et à mesure.</span>
 </div>
 {% endif %}
@@ -106,13 +106,13 @@
         <div class="mt-4">
             {% if test_result.ok %}
             <div class="p-3 rounded-3" style="background: var(--success-bg); border:1px solid var(--success);">
-                <i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>
+                <i class="bi bi-check-circle-fill me-2 u-txt-ok"></i>
                 <strong>Connexion réussie</strong>
                 <div class="small mt-1 text-tertiary">Société : {{ test_result.societe }} {% if test_result.siret %}(SIRET {{ test_result.siret }}){% endif %}</div>
             </div>
             {% else %}
             <div class="p-3 rounded-3" style="background: var(--danger-bg); border:1px solid var(--danger);">
-                <i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>
+                <i class="bi bi-x-circle-fill me-2 u-txt-bad"></i>
                 <strong>Connexion impossible</strong>
                 <div class="small mt-1">{{ test_result.message }}</div>
             </div>
@@ -128,8 +128,8 @@
     <div class="card-body-premium">
         <h4 class="fw-semibold mb-3">📊 Déclarations TVA (session web)</h4>
         {% if pl_last_sync %}
-        <div class="p-2 rounded-3 mb-3 small" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
-            <i class="bi bi-clock-history me-1" style="color:var(--orange-primary);"></i>
+        <div class="p-2 rounded-3 mb-3 small u-pill-neutral">
+            <i class="bi bi-clock-history me-1 u-txt-orange"></i>
             <strong>Synchro automatique active</strong> (toutes les heures) — dernier passage :
             {{ pl_last_sync.quand }} UTC
             {% if pl_last_sync.ok %}
@@ -137,10 +137,10 @@
             {% else %}
             <span class="badge badge-danger ms-1">Échec</span>
             {% endif %}
-            <div class="text-tertiary" style="font-size:0.72rem;">{{ pl_last_sync.message }}</div>
+            <div class="text-tertiary u-fs-xs">{{ pl_last_sync.message }}</div>
         </div>
         {% else %}
-        <div class="p-2 rounded-3 mb-3 small" style="background:var(--bg-card-hover);border:1px solid var(--border-color);">
+        <div class="p-2 rounded-3 mb-3 small u-pill-neutral">
             <i class="bi bi-clock-history me-1 text-tertiary"></i>
             <strong>Synchro automatique active</strong> (toutes les heures) — aucun passage enregistré pour le moment.
         </div>
@@ -266,7 +266,7 @@
 
         <!-- Grille : box fixe (1 ligne de 4 dossiers) + défilement interne -->
         <div class="pl-grid-scroll" id="plGridScroll">
-            <div class="pl-grid-skeleton" id="plGridSkeleton" style="display:none;">
+            <div class="pl-grid-skeleton d-none" id="plGridSkeleton">
                 <div class="row g-2">
                     {% for _ in range(8) %}
                     <div class="col-md-4 col-lg-3">
@@ -353,12 +353,12 @@
         </p>
         {% endif %}
         </div>
-        <div id="plNoResults" class="pl-empty" style="display:none;">
+        <div id="plNoResults" class="pl-empty d-none">
             <i class="bi bi-search me-1"></i>Aucun dossier ne correspond aux filtres.
         </div>
 
         {% if dossiers_non_associes and is_admin %}
-        <div class="mt-4 pt-3" style="border-top:1px solid var(--border-color);">
+        <div class="mt-4 pt-3 u-border-top">
             <h6 class="text-tertiary fw-semibold mb-2">Dossiers non associés ({{ dossiers_non_associes|length }})</h6>
             <div class="d-flex flex-wrap gap-2 mb-3">
                 {% for d in dossiers_non_associes[:15] %}
@@ -393,7 +393,7 @@
                         <i class="bi bi-magic me-1"></i>Auto (API)
                     </button>
                 </div>
-                <p class="text-tertiary mb-0 mt-2" style="font-size:0.72rem;">
+                <p class="text-tertiary mb-0 mt-2 u-fs-xs">
                     <i class="bi bi-info-circle me-1"></i>Auto (API) : si le dossier a un token API (champ « Token Pennylane » de la fiche dossier),
                     l'app retrouve le company ID toute seule (match par nom, fallback /me). Sinon la synchro horaire le fera dès l'ajout du token.
                 </p>
@@ -409,10 +409,10 @@ function showPl(msg, ok) {
     var el = document.getElementById('plStatus');
     if (!el) return;
     el.innerHTML = ok
-        ? '<div class="p-3 rounded-3" style="background:var(--success-bg);border:1px solid var(--success);">' +
-          '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + msg + '</div>'
-        : '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);">' +
-          '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + msg + '</div>';
+        ? '<div class="p-3 rounded-3 u-pill-ok">' +
+          '<i class="bi bi-check-circle-fill me-2 u-txt-ok"></i>' + msg + '</div>'
+        : '<div class="p-3 rounded-3 u-pill-bad">' +
+          '<i class="bi bi-x-circle-fill me-2 u-txt-bad"></i>' + msg + '</div>';
 }
 
 function plAutoAssocier() {
@@ -501,13 +501,13 @@ function plCookiesHint() {
     if (!(ta.value || '').trim()) { el.innerHTML = ''; return; }
     var r = plCookiesDetectes(ta.value);
     if (!r.n) {
-        el.innerHTML = '<span style="color:var(--warning);"><i class="bi bi-exclamation-triangle me-1"></i>Aucun cookie reconnu — colle la commande cURL entière, pas seulement un morceau.</span>';
+        el.innerHTML = '<span class="u-txt-warn"><i class="bi bi-exclamation-triangle me-1"></i>Aucun cookie reconnu — colle la commande cURL entière, pas seulement un morceau.</span>';
         return;
     }
     if (r.manque.length) {
-        el.innerHTML = '<span style="color:var(--warning);"><i class="bi bi-exclamation-triangle me-1"></i>' + r.n + ' cookie(s) détecté(s) — il manque : ' + r.manque.join(', ') + '</span>';
+        el.innerHTML = '<span class="u-txt-warn"><i class="bi bi-exclamation-triangle me-1"></i>' + r.n + ' cookie(s) détecté(s) — il manque : ' + r.manque.join(', ') + '</span>';
     } else {
-        el.innerHTML = '<span style="color:var(--success);"><i class="bi bi-check-circle me-1"></i>' + r.n + ' cookie(s) détecté(s) — session complète, prêt à enregistrer.</span>';
+        el.innerHTML = '<span class="u-txt-ok"><i class="bi bi-check-circle me-1"></i>' + r.n + ' cookie(s) détecté(s) — session complète, prêt à enregistrer.</span>';
     }
 }
 function plCollerPressePapier(btn) {
@@ -542,7 +542,7 @@ function savePlTvaSession() {
             var ta = document.getElementById('plCookies');
             if (ta) ta.value = '';   // les cookies sont enregistrés : on ne les laisse pas traîner
             var el = document.getElementById('plCookiesHint');
-            if (el) el.innerHTML = '<span style="color:var(--success);"><i class="bi bi-shield-check me-1"></i>'
+            if (el) el.innerHTML = '<span class="u-txt-ok"><i class="bi bi-shield-check me-1"></i>'
                 + d.nettoyage.n + ' cookie(s) enregistrés (source : ' + (d.nettoyage.source || 'n/a') + ').</span>';
         }
     })
@@ -566,10 +566,10 @@ function showPlTva(msg, ok) {
     var el = document.getElementById('plTvaStatus');
     if (!el) return;
     el.innerHTML = ok
-        ? '<div class="p-3 rounded-3" style="background:var(--success-bg);border:1px solid var(--success);">' +
-          '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + msg + '</div>'
-        : '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);">' +
-          '<i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + msg + '</div>';
+        ? '<div class="p-3 rounded-3 u-pill-ok">' +
+          '<i class="bi bi-check-circle-fill me-2 u-txt-ok"></i>' + msg + '</div>'
+        : '<div class="p-3 rounded-3 u-pill-bad">' +
+          '<i class="bi bi-x-circle-fill me-2 u-txt-bad"></i>' + msg + '</div>';
 }
 function verifyPlTva(btn) {
     // Session d'abord (diagnostic lisible), puis synchro en arrière-plan.
@@ -634,15 +634,15 @@ function syncSelectedTva() {
     .then(function(d) {
         if (statusEl) {
             if (d.ok) {
-                statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--success-bg);border:1px solid var(--success);"><i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' + d.message + '</div>';
+                statusEl.innerHTML = '<div class="p-3 rounded-3 u-pill-ok"><i class="bi bi-check-circle-fill me-2 u-txt-ok"></i>' + d.message + '</div>';
             } else {
-                statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);"><i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>' + (d.message || 'Erreur') + '</div>';
+                statusEl.innerHTML = '<div class="p-3 rounded-3 u-pill-bad"><i class="bi bi-x-circle-fill me-2 u-txt-bad"></i>' + (d.message || 'Erreur') + '</div>';
             }
         }
         if (d.ok) setTimeout(function() { location.reload(); }, 2000);
     })
     .catch(function(err) {
-        if (statusEl) statusEl.innerHTML = '<div class="p-3 rounded-3" style="background:var(--danger-bg);border:1px solid var(--danger);"><i class="bi bi-x-circle-fill me-2" style="color:var(--danger);"></i>Erreur réseau: ' + err.message + '</div>';
+        if (statusEl) statusEl.innerHTML = '<div class="p-3 rounded-3 u-pill-bad"><i class="bi bi-x-circle-fill me-2 u-txt-bad"></i>Erreur réseau: ' + err.message + '</div>';
     });
 }
 
@@ -676,7 +676,7 @@ function plCheckNewDocs(btn) {
         if (!stEl) return;
         stEl.innerHTML = '<div class="p-3 rounded-3" style="background:' +
             (ok ? 'var(--success-bg);border:1px solid var(--success);' : 'var(--bg-card-hover);border:1px solid var(--border-color);') + '">' +
-            (ok ? '<i class="bi bi-check-circle-fill me-2" style="color:var(--success);"></i>' : '<i class="bi bi-hourglass-split me-2" style="color:var(--orange-primary);"></i>') +
+            (ok ? '<i class="bi bi-check-circle-fill me-2 u-txt-ok"></i>' : '<i class="bi bi-hourglass-split me-2 u-txt-orange"></i>') +
             html + '</div>';
     }
     fetch('/pennylane/check_new_docs', { method: 'POST' })
