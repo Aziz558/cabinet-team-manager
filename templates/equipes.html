@@ -82,7 +82,7 @@
                 {% endif %}
                 <div class="mt-2 small">
                     {% if e.equipe_email %}
-                    <i class="bi bi-envelope me-1" style="color:var(--orange-primary)"></i>{{ e.equipe_email }}
+                    <i class="bi bi-envelope me-1" style="color: var(--orange-text)"></i>{{ e.equipe_email }}
                     {% else %}
                     <span class="text-tertiary">Pas d'email dédié</span>
                     {% endif %}
@@ -168,7 +168,7 @@
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('equipes') }}">
                 <div class="modal-header-premium">
-                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2" style="color:var(--orange-primary)"></i>Nouvelle équipe</h5>
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2" style="color: var(--orange-text)"></i>Nouvelle équipe</h5>
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body-premium">
@@ -183,7 +183,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Couleur</label>
-                            <input type="color" name="couleur" class="input-premium input-premium-color" value="#FF8C00">
+                            <input type="color" name="couleur" class="input-premium input-premium-color" value="#C45B32">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label-premium">Icône (Bootstrap)</label>
@@ -208,7 +208,7 @@
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('configurer_email_equipe', equipe_id=e.id) }}">
                 <div class="modal-header-premium">
-                    <h5 class="mb-0"><i class="bi bi-envelope me-2" style="color:var(--orange-primary)"></i>Email dédié - {{ e.nom }}</h5>
+                    <h5 class="mb-0"><i class="bi bi-envelope me-2" style="color: var(--orange-text)"></i>Email dédié - {{ e.nom }}</h5>
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body-premium">
@@ -239,7 +239,7 @@
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('changer_manager_equipe', equipe_id=e.id) }}">
                 <div class="modal-header-premium">
-                    <h5 class="mb-0"><i class="bi bi-person-gear me-2" style="color:var(--orange-primary)"></i>Responsable - {{ e.nom }}</h5>
+                    <h5 class="mb-0"><i class="bi bi-person-gear me-2" style="color: var(--orange-text)"></i>Responsable - {{ e.nom }}</h5>
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body-premium">

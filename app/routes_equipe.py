@@ -167,7 +167,7 @@ def ajouter_membre():
 
         from werkzeug.security import generate_password_hash
         pole = request.form.get('pole', 'comptable')
-        if pole not in ('comptable', 'social', 'les_deux'):
+        if pole not in ('comptable', 'social', 'juridique', 'les_deux'):
             pole = 'comptable'
         user = User(
             prenom=prenom,
@@ -188,6 +188,47 @@ def ajouter_membre():
         app.logger.error(f"Erreur ajout membre: {e}")
         flash('Erreur lors de l\'ajout du membre.', 'danger')
     return redirect(url_for('membres'))
+
+@app.route('/api/membres', methods=['POST'])
+@login_required
+def api_membre_creer():
+    """Création AJAX d'un membre (popup « destinataire sans email » du suivi
+    nouveaux dossiers, et tout autre flux JS). Retourne du JSON."""
+    if current_user.role not in ('admin', 'manager'):
+        return jsonify({'ok': False, 'message': 'Accès refusé.'}), 403
+    data = request.get_json(silent=True) or {}
+    prenom = (data.get('prenom') or '').strip()
+    nom = (data.get('nom') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    if not prenom or not nom or not email:
+        return jsonify({'ok': False, 'message': 'Prénom, nom et email sont obligatoires.'}), 400
+    if User.query.filter_by(email=email).first():
+        return jsonify({'ok': False, 'message': 'Un membre utilise déjà cet email.'}), 400
+    role = data.get('role') if data.get('role') in ('membre', 'manager') else 'membre'
+    if role == 'manager' and current_user.role != 'admin':
+        role = 'membre'
+    pole = data.get('pole') if data.get('pole') in ('comptable', 'social', 'juridique', 'les_deux') else 'comptable'
+    try:
+        from werkzeug.security import generate_password_hash
+        import secrets as _secrets
+        mot_de_passe = (data.get('mot_de_passe') or '').strip() or _secrets.token_urlsafe(12)
+        user = User(
+            prenom=prenom, nom=nom, email=email,
+            password_hash=generate_password_hash(mot_de_passe),
+            role=role, pole=pole,
+            poste=(data.get('poste') or '').strip() or None,
+            telephone=(data.get('telephone') or '').strip() or None,
+            actif=True,
+        )
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'ok': True, 'user_id': user.id,
+                        'nom_complet': user.nom_complet(),
+                        'message': f'Membre {user.nom_complet()} ajouté avec succès.'})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"api_membre_creer: {e}")
+        return jsonify({'ok': False, 'message': 'Erreur lors de la création du membre.'}), 500
 
 @app.route('/assigner_equipe', methods=['POST'])
 @login_required

@@ -207,6 +207,8 @@ def ajouter_dossier():
         siren = re.sub(r'\D', '', request.form.get('siren') or '') or None
         # referent social (facultatif)
         collab_social = request.form.get('collaborateur_social_id', type=int) or None
+        # charge juridique (facultatif)
+        charge_juridique = request.form.get('charge_juridique_id', type=int) or None
         # honoraires: tolerer les formats francais ("1 200,50", espaces insécables)
         hon_raw = re.sub(r'[\s\u202f\xa0]', '', request.form.get('honoraires_mensuel') or '').replace(',', '.')
         try:
@@ -252,6 +254,7 @@ def ajouter_dossier():
             siren=siren,
             honoraires_mensuel=honoraires_mensuel,
             collaborateur_social_id=collab_social,
+            charge_juridique_id=charge_juridique,
             pennylane_api_token=pennylane_api_token
         )
         db.session.add(nouveau_dossier)

@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Annuaire{% endblock %}
+
+{% block content %}
+{% from 'includes/orbit_ui.html' import page_head with context %}
+{% set actions %}
+    {% if peut_editer %}
+    <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalFiche">
+        <i class="bi bi-person-vcard me-1"></i>Ajouter une fiche
+    </button>
+    {% endif %}
+{% endset %}
+{{ page_head('bi-journal-bookmark', 'Annuaire', "Contacts hors cabinet — clients, notaires, intervenants", actions=actions) }}
+
+<!-- KPI band Annuaire -->
+{% set ans = namespace(total=0, mail=0, cats=0) %}
+{% set ans = namespace(total=total, mail=avec_mail, cats=categories|length) %}
+<div class="kpi-band animate-fade-in-up">
+    <div class="kpi-chip" style="--accent: var(--ink-3);">
+        <div class="kpi-label"><i class="bi bi-journal-text"></i> Fiches</div>
+        <div class="kpi-value">{{ ans.total }}</div>
+        <div class="kpi-sub">toutes catégories</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--success);">
+        <div class="kpi-label"><i class="bi bi-envelope-check"></i> Avec email</div>
+        <div class="kpi-value">{{ ans.mail }}</div>
+        <div class="kpi-sub">joignables par mail</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--orange-primary);">
+        <div class="kpi-label"><i class="bi bi-tags"></i> Catégories</div>
+        <div class="kpi-value">{{ ans.cats }}</div>
+        <div class="kpi-sub">gérées dans l'app</div>
+    </div>
+</div>
+
+<div class="card-premium animate-fade-in-up stagger-1">
+    <div class="card-body-premium">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <form method="get" action="{{ url_for('annuaire') }}" class="d-flex gap-2 flex-grow-1" style="max-width: 480px;">
+                <input type="search" name="q" value="{{ q }}" class="input-premium" placeholder="Rechercher un contact…" aria-label="Recherche">
+                {% if fcat %}<input type="hidden" name="categorie" value="{{ fcat }}">{% endif %}
+                <button class="btn-premium btn-premium-secondary" type="submit"><i class="bi bi-search"></i></button>
+            </form>
+            <div class="d-flex flex-wrap gap-1 ms-auto">
+                <a href="{{ url_for('annuaire') }}" class="badge {{ 'badge-orange' if not fcat else 'badge-tertiary' }} text-decoration-none">Toutes</a>
+                {% for c in categories %}
+                <a href="{{ url_for('annuaire', categorie=c.id) }}"
+                   class="badge {{ 'badge-orange' if fcat == c.id else 'badge-tertiary' }} text-decoration-none">{{ c.nom }}</a>
+                {% endfor %}
+                {% if current_user.role == 'admin' %}
+                <button class="badge badge-info text-decoration-none border-0" data-bs-toggle="modal" data-bs-target="#modalCategorie">
+                    <i class="bi bi-plus-lg me-1"></i>Catégorie
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table-premium">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Catégorie</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Organisation</th>
+                        {% if peut_editer %}<th>Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fiches %}
+                    <tr>
+                        <td><strong>{{ f.nom }}</strong></td>
+                        <td><span class="badge badge-tertiary">{{ f.categorie.nom if f.categorie else '—' }}</span></td>
+                        <td class="text-tertiary">{{ f.email or '—' }}</td>
+                        <td class="text-tertiary">{{ f.telephone or '—' }}</td>
+                        <td class="text-tertiary">{{ f.organisation or '—' }}</td>
+                        {% if peut_editer %}
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button class="btn-premium btn-premium-secondary btn-press" style="padding: 0.375rem 0.75rem; font-size: 0.8rem;"
+                                        data-bs-toggle="modal" data-bs-target="#modalEdit{{ f.id }}" aria-label="Modifier {{ f.nom }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% if current_user.role == 'admin' %}
+                                <form method="POST" action="{{ url_for('annuaire_fiche_supprimer', fiche_id=f.id) }}" class="d-inline"
+                                      onsubmit="return confirm('Supprimer définitivement la fiche {{ f.nom }} ?');">
+                                    <button type="submit" class="btn-premium btn-premium-secondary btn-press" style="padding: 0.375rem 0.75rem; font-size: 0.8rem;" aria-label="Supprimer {{ f.nom }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-tertiary py-4">
+                        <i class="bi bi-inbox d-block mb-2" style="font-size:1.6rem;"></i>
+                        Aucune fiche{% if q or fcat %} pour cette recherche{% endif %}.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if peut_editer %}
+<!-- Modal Ajouter fiche -->
+<div class="modal fade" id="modalFiche" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('annuaire_fiche_ajouter') }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-person-vcard me-2" style="color: var(--orange-text)"></i>Ajouter une fiche annuaire</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fCat">Catégorie</label>
+                        <select name="categorie_id" id="fCat" class="select-premium">
+                            <option value="">-- Aucune --</option>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}" {% if c.nom == 'Client' %}selected{% endif %}>{{ c.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fNom">Nom *</label>
+                        <input type="text" name="nom" id="fNom" class="input-premium" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium" for="fEmail">Email</label>
+                            <input type="email" name="email" id="fEmail" class="input-premium">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium" for="fTel">Téléphone</label>
+                            <input type="text" name="telephone" id="fTel" class="input-premium">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fOrga">Organisation</label>
+                        <input type="text" name="organisation" id="fOrga" class="input-premium">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fNote">Note</label>
+                        <textarea name="note" id="fNote" class="input-premium" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Catégorie -->
+<div class="modal fade" id="modalCategorie" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('annuaire_categorie_ajouter') }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-tags me-2" style="color: var(--orange-text)"></i>Nouvelle catégorie</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="catNom">Nom de la catégorie *</label>
+                        <input type="text" name="nom" id="catNom" class="input-premium" required placeholder="ex : Notaire, Ancien EC…">
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press">Créer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modals édition fiches -->
+{% for f in fiches %}
+<div class="modal fade" id="modalEdit{{ f.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content-premium">
+            <form method="POST" action="{{ url_for('annuaire_fiche_maj', fiche_id=f.id) }}">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-pencil me-2" style="color: var(--orange-text)"></i>{{ f.nom }}</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fe{{ f.id }}Cat">Catégorie</label>
+                        <select name="categorie_id" id="fe{{ f.id }}Cat" class="select-premium">
+                            <option value="">-- Aucune --</option>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}" {% if f.categorie_id == c.id %}selected{% endif %}>{{ c.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fe{{ f.id }}Nom">Nom *</label>
+                        <input type="text" name="nom" id="fe{{ f.id }}Nom" class="input-premium" value="{{ f.nom }}" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium" for="fe{{ f.id }}Email">Email</label>
+                            <input type="email" name="email" id="fe{{ f.id }}Email" class="input-premium" value="{{ f.email or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium" for="fe{{ f.id }}Tel">Téléphone</label>
+                            <input type="text" name="telephone" id="fe{{ f.id }}Tel" class="input-premium" value="{{ f.telephone or '' }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fe{{ f.id }}Orga">Organisation</label>
+                        <input type="text" name="organisation" id="fe{{ f.id }}Orga" class="input-premium" value="{{ f.organisation or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium" for="fe{{ f.id }}Note">Note</label>
+                        <textarea name="note" id="fe{{ f.id }}Note" class="input-premium" rows="2">{{ f.note or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary btn-press" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

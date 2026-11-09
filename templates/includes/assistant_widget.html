@@ -1,6 +1,6 @@
 <style>
 /* Assistant Orbit — habillage aligné sur les jetons du design system. */
-#assistantFab{position:fixed;right:20px;bottom:20px;z-index:1050;width:56px;height:56px;border-radius:50%;border:0;background:var(--amber,#ff8c00);color:#17181c;font-size:22px;box-shadow:var(--shadow-orange,0 8px 22px -12px rgba(255,140,0,.55)),var(--shadow-2,0 10px 26px -16px rgba(23,26,31,.18));cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s cubic-bezier(.22,1,.36,1)}
+#assistantFab{position:fixed;right:20px;bottom:20px;z-index:1050;width:56px;height:56px;border-radius:50%;border:0;background:var(--amber,#C45B32);color:#17181c;font-size:22px;box-shadow:var(--shadow-orange,0 8px 22px -12px rgba(196,91,50,.55)),var(--shadow-2,0 10px 26px -16px rgba(23,26,31,.18));cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s cubic-bezier(.22,1,.36,1)}
 #assistantFab:hover{transform:translateY(-2px) scale(1.03)}
 #assistantFab:active{transform:scale(.96)}
 #assistantFab.is-open{background:var(--ink,#171a1f);color:var(--paper,#f5f2ec)}
@@ -9,7 +9,7 @@
 #assistantPanel.open{display:flex;animation:ap-in .22s cubic-bezier(.22,1,.36,1)}
 @keyframes ap-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
 
-#assistantPanel .ap-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--amber,#ff8c00);color:#17181c}
+#assistantPanel .ap-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--amber,#C45B32);color:#17181c}
 #assistantPanel .ap-avatar{width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:rgba(23,26,31,.14);font-size:16px;flex-shrink:0}
 #assistantPanel .ap-head-text{flex:1 1 auto;min-width:0;line-height:1.2}
 #assistantPanel .ap-head-text strong{display:block;font-size:.92rem;font-weight:700}
@@ -35,12 +35,12 @@
 .ap-sugg button{font-size:.74rem;font-weight:600;padding:6px 11px;border-radius:999px;border:1px solid var(--rule);background:var(--surface-raised,#fff);color:var(--ink-2);cursor:pointer;transition:border-color .15s linear,color .15s linear,background-color .15s linear}
 .ap-sugg button:hover{border-color:var(--amber);color:var(--amber-deep);background:var(--amber-soft)}
 
-.ap-draft{align-self:stretch;border:1px solid var(--amber-line,rgba(255,140,0,.3));border-radius:12px;padding:11px;background:var(--surface-raised,#fff)}
+.ap-draft{align-self:stretch;border:1px solid var(--amber-line,rgba(196,91,50,.3));border-radius:12px;padding:11px;background:var(--surface-raised,#fff)}
 .ap-draft .ap-draft-to{font-weight:600;margin-bottom:4px;font-size:.8rem;color:var(--amber-deep)}
 .ap-draft .ap-draft-subject{margin-bottom:6px;font-size:.82rem;font-weight:600}
 .ap-draft .ap-draft-body{white-space:pre-wrap;margin-bottom:9px;font-size:.79rem;color:var(--ink-2);max-height:150px;overflow-y:auto}
 .ap-draft .ap-draft-actions{display:flex;gap:6px}
-.ap-draft button{padding:6px 12px;border-radius:8px;border:1px solid var(--amber,#ff8c00);background:var(--amber,#ff8c00);color:#17181c;cursor:pointer;font-size:.78rem;font-weight:600}
+.ap-draft button{padding:6px 12px;border-radius:8px;border:1px solid var(--amber,#C45B32);background:var(--amber,#C45B32);color:#17181c;cursor:pointer;font-size:.78rem;font-weight:600}
 .ap-draft button.secondary{background:transparent;color:var(--amber-deep)}
 .ap-draft button:disabled{opacity:.55;cursor:default}
 

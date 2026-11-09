@@ -1,0 +1,91 @@
+{% set dpt = p if p is defined else none %}
+<div class="col-md-4">
+    <label class="form-label d-block">Auteur
+        <input type="text" class="form-control mt-1" name="auteur" value="{{ (dpt.auteur or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">Nom du dossier *
+        <input type="text" class="form-control mt-1" name="nom_dossier" required
+               value="{{ (dpt.nom_dossier or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">Nom du client
+        <input type="text" class="form-control mt-1" name="nom_client"
+               value="{{ (dpt.nom_client or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">Mail client
+        <input type="email" class="form-control mt-1" name="mail"
+               value="{{ (dpt.mail or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">Téléphone
+        <input type="tel" class="form-control mt-1" name="telephone"
+               value="{{ (dpt.telephone or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">EC / chef de mission
+        <input type="text" class="form-control mt-1" name="ec_chef_mission"
+               value="{{ (dpt.ec_chef_mission or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-6">
+    <label class="form-label d-block">Établissement
+        <input type="text" class="form-control mt-1" name="etablissement"
+               value="{{ (dpt.etablissement or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-6">
+    <label class="form-label d-block">Collaborateur sortant / en charge
+        <input type="text" class="form-control mt-1" name="collaborateur"
+               value="{{ (dpt.collaborateur or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-6">
+    <label class="form-label d-block">Cause du départ
+        <input type="text" class="form-control mt-1" name="cause_depart"
+               placeholder="Résiliation, Radiation, etc."
+               value="{{ (dpt.cause_depart or '') if dpt else '' }}">
+    </label>
+</div>
+<div class="col-md-6">
+    <label class="form-label d-block">Date de départ
+        <input type="date" class="form-control mt-1" name="date_depart"
+               value="{{ dpt.date_depart.isoformat() if dpt and dpt.date_depart else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">Mail déontologie reçu
+        <input type="date" class="form-control mt-1" name="mail_deontologie_recu"
+               value="{{ dpt.mail_deontologie_recu.isoformat() if dpt and dpt.mail_deontologie_recu else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">Documents envoyés
+        <input type="date" class="form-control mt-1" name="envoi_documents"
+               value="{{ dpt.envoi_documents.isoformat() if dpt and dpt.envoi_documents else '' }}">
+    </label>
+</div>
+<div class="col-md-4">
+    <label class="form-label d-block">Mail facturation
+        <input type="date" class="form-control mt-1" name="mail_facturation"
+               value="{{ dpt.mail_facturation.isoformat() if dpt and dpt.mail_facturation else '' }}">
+    </label>
+</div>
+<div class="col-12">
+    <small class="text-tertiary">
+        <i class="bi bi-info-circle me-1"></i>
+        La saisie de la date « Mail facturation » déclenche l'envoi automatique au service facturation
+        (arrêt facturation + désactivation du dossier Pennylane).
+    </small>
+</div>
+<div class="col-12">
+    <label class="form-label d-block">Commentaires
+        <textarea class="form-control mt-1" name="commentaires" rows="2">{{ (dpt.commentaires or '') if dpt else '' }}</textarea>
+    </label>
+</div>

@@ -16,7 +16,7 @@
     <div class="col-md-6">
         <div class="card-premium animate-fade-in-up">
             <div class="card-header-premium">
-                <h5 class="mb-0"><i class="bi bi-person me-2" style="color: var(--orange-primary);"></i>Mon profil</h5>
+                <h5 class="mb-0"><i class="bi bi-person me-2" style="color: var(--orange-text);"></i>Mon profil</h5>
             </div>
             <div class="card-body-premium">
                 <div class="text-center mb-4">
@@ -49,7 +49,7 @@
                 {% if current_user.role in ['admin','manager','membre'] %}
                 <div class="card-premium mb-3" style="background: var(--bg-card-hover);">
                     <div class="card-body-premium">
-                        <h6 class="mb-2" style="color: var(--orange-primary);"><i class="bi bi-image me-1"></i>Photo de profil</h6>
+                        <h6 class="mb-2" style="color: var(--orange-text);"><i class="bi bi-image me-1"></i>Photo de profil</h6>
                         <form method="POST" enctype="multipart/form-data" id="photoUploadForm">
                             <div class="d-flex align-items-center gap-3 mb-2">
                                 <label for="photoInput" class="btn-premium btn-premium-secondary mb-0" style="cursor: pointer;">

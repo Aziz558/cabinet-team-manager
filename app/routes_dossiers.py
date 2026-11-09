@@ -186,6 +186,7 @@ def dossiers():
             'secteur_activite': d.secteur_activite,
             'siren': d.siren,
             'collaborateur_social_id': d.collaborateur_social_id,
+            'charge_juridique_id': d.charge_juridique_id,
             'tva_intra': d.tva_intra,
             'naf_code': d.naf_code,
             'effectif_label': d.effectif_label,
@@ -200,8 +201,10 @@ def dossiers():
 
     membres_social_list = User.query.filter(
         User.pole.in_(['social', 'les_deux']), User.actif == True).order_by(User.nom).all()
+    membres_juridique_list = User.query.filter(
+        User.pole.in_(['juridique', 'les_deux']), User.actif == True).order_by(User.nom).all()
     return render_template('dossiers.html', dossiers=all_dossiers, membres=membres,
-        membres_social=membres_social_list,
+        membres_social=membres_social_list, membres_juridique=membres_juridique_list,
         equipes=Equipe.query.order_by(Equipe.nom).all(), Tache=Tache,
         current_equipe=current_equipe, all_equipes_for_switch=all_equipes_for_switch, db=db,
         show_actions=True, dossiers_data=dossiers_data, dossiers_par_collab=dossiers_par_collab)

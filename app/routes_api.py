@@ -25,7 +25,15 @@ def settings():
     secrets_enregistres = {
         cle: bool(lignes.get(cle) or os.environ.get(cle)) for cle in _CLES_SECRETES
     }
-    return render_template('settings.html', values=valeurs, secrets_enregistres=secrets_enregistres)
+    # Suivi nouveaux dossiers : responsables standards + actions par étape
+    membres_actifs = User.query.filter_by(actif=True).order_by(User.prenom, User.nom).all()
+    from app.onboarding_steps import ONBOARDING_ETAPES
+    from app.models import OnboardingActionMail
+    actions = {a.etape_code: a for a in OnboardingActionMail.query.all()}
+    return render_template('settings.html', values=valeurs,
+                           secrets_enregistres=secrets_enregistres,
+                           membres_actifs=membres_actifs,
+                           onb_etapes=ONBOARDING_ETAPES, onb_actions=actions)
 
 
 @app.route('/api/settings', methods=['GET', 'POST'])

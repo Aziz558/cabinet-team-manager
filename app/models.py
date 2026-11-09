@@ -23,7 +23,7 @@ class User(UserMixin, db.Model):
     photo_data = deferred(db.Column(db.LargeBinary, nullable=True))
     photo_mimetype = db.Column(db.String(50), nullable=True)
     role = db.Column(db.String(20), nullable=False, default='membre')  # admin | manager | membre
-    pole = db.Column(db.String(20), default='comptable')  # comptable | social | les_deux
+    pole = db.Column(db.String(20), default='comptable')  # comptable | social | juridique | les_deux
     equipe_id = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=True)
     poste = db.Column(db.String(120))  # e.g., "Comptable", "Auditeur"
     telephone = db.Column(db.String(20))
@@ -51,6 +51,11 @@ class User(UserMixin, db.Model):
     def dans_pole_social(self):
         """True si le membre appartient au pole social (ou les deux)."""
         return (self.pole or 'comptable') in ('social', 'les_deux')
+
+    @property
+    def dans_pole_juridique(self):
+        """True si le membre appartient au pole juridique (ou les deux)."""
+        return (self.pole or 'comptable') in ('juridique', 'les_deux')
 
     @property
     def a_des_dossiers_avec_referent_social(self):
@@ -131,6 +136,7 @@ class Dossier(db.Model):
     siren = db.Column(db.String(9), nullable=True, index=True)  # n° SIREN (extraction auto Infogreffe/INSEE)
     honoraires_mensuel = db.Column(db.Float, nullable=True)  # honoraires mensuels € pour rentabilité
     collaborateur_social_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # référent pole social (distinct du comptable)
+    charge_juridique_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # chargé/responsable juridique du dossier
     # --- Champs enrichis automatiquement depuis le SIREN (API recherche-entreprises) ---
     tva_intra = db.Column(db.String(20), nullable=True)          # n° TVA intracommunautaire (FR..)
     naf_code = db.Column(db.String(10), nullable=True)           # code NAF / APE (ex: 70.10Z)
@@ -146,6 +152,7 @@ class Dossier(db.Model):
     taches = db.relationship('Tache', backref='dossier', lazy='dynamic')
     equipe = db.relationship('Equipe', backref='dossiers', lazy=True)
     social = db.relationship('User', foreign_keys=[collaborateur_social_id])
+    charge_juridique = db.relationship('User', foreign_keys=[charge_juridique_id])
 
     def __repr__(self):
         return f'<Dossier {self.numero_dossier}>'
@@ -490,3 +497,218 @@ class SuggestionTache(db.Model):
 
 # Alias pour compatibilité avec les routes (suggestions_page, api_suggestions, etc.)
 Suggestion = SuggestionTache
+
+
+# ===========================================================================
+# Suivi nouveaux dossiers (onboarding) — remplace le classeur Excel cabinet.
+# Les définitions d'étapes vivent dans app/onboarding_steps.py (données pures).
+# ===========================================================================
+class OnboardingDossier(db.Model):
+    __tablename__ = 'onboarding_dossiers'
+    id = db.Column(db.Integer, primary_key=True)
+    auteur = db.Column(db.String(80), nullable=True)               # colonne AUTEUR du fichier
+    nom_dossier = db.Column(db.String(200), nullable=False)
+    nom_client = db.Column(db.String(200), nullable=True)
+    mail = db.Column(db.String(200), nullable=True)
+    telephone = db.Column(db.String(40), nullable=True)
+    ec_chef_mission = db.Column(db.String(80), nullable=True)      # EC / chef de mission
+    etablissement = db.Column(db.String(120), nullable=True)
+    type_dossier = db.Column(db.String(20), nullable=False, default='creation')  # creation | reprise | revision
+    polyacte = db.Column(db.Boolean, default=False)
+    honoraires_an = db.Column(db.Float, nullable=True)             # honoraires /an (compta+jurid) HT
+    date_debut_mission = db.Column(db.Date, nullable=True)
+    social = db.Column(db.Boolean, default=False)                  # Social (oui/non)
+    collab_comptable = db.Column(db.String(80), nullable=True)
+    collab_social = db.Column(db.String(80), nullable=True)
+    collab_juridique = db.Column(db.String(80), nullable=True)
+    statut = db.Column(db.String(20), nullable=False, default='en_cours')  # en_cours | termine
+    commentaires = db.Column(db.Text, nullable=True)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=True)  # lien optionnel au dossier client
+    cree_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_modif = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Responsables du dossier (pré-remplis depuis les réglages, modifiables par dossier) ;
+    # les champs texte collab_* restent la source libre (import Excel).
+    chef_mission_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    expert_comptable_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    resp_juridique_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    resp_social_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    dossier = db.relationship('Dossier', foreign_keys=[dossier_id])
+    cree_par = db.relationship('User', foreign_keys=[cree_par_id])
+    chef_mission = db.relationship('User', foreign_keys=[chef_mission_id])
+    expert_comptable = db.relationship('User', foreign_keys=[expert_comptable_id])
+    resp_juridique = db.relationship('User', foreign_keys=[resp_juridique_id])
+    resp_social = db.relationship('User', foreign_keys=[resp_social_id])
+    steps = db.relationship('OnboardingEtape', backref='onboarding', cascade='all, delete-orphan', lazy='selectin')
+
+    def etape(self, code):
+        for s in self.steps:
+            if s.code == code:
+                return s
+        return None
+
+    def etapes_applicables(self):
+        """[(code, libellé, phase)] filtrées selon le type de dossier."""
+        from .onboarding_steps import etapes_pour_type
+        return etapes_pour_type(self.type_dossier or 'creation')
+
+    def progression(self):
+        """(faites, total) sur les étapes applicables."""
+        app = self.etapes_applicables()
+        total = len(app)
+        faites = sum(1 for c, _l, _p in app if self.etape(c) and self.etape(c).est_fait)
+        return faites, total
+
+    def pourcentage(self):
+        f, t = self.progression()
+        return round(100 * f / t) if t else 100
+
+    def phase_progression(self, phase):
+        app = [(c, l, p) for c, l, p in self.etapes_applicables() if p == phase]
+        faites = sum(1 for c, _l, _p in app if self.etape(c) and self.etape(c).est_fait)
+        return faites, len(app)
+
+    def prochaine_etape(self):
+        """Première étape applicable non faite, dans l'ordre du pipeline."""
+        for c, l, p in self.etapes_applicables():
+            s = self.etape(c)
+            if not s or not s.est_fait:
+                return c, l, p
+        return None
+
+    def jours_attente(self):
+        """Jours écoulés depuis la dernière étape faite (ou la création du suivi)."""
+        dates = [s.date_fait for s in self.steps if s.date_fait]
+        ref = max(dates) if dates else (self.date_debut_mission or (self.date_creation or datetime.utcnow()).date())
+        if isinstance(ref, datetime):
+            ref = ref.date()
+        return (date.today() - ref).days
+
+    def __repr__(self):
+        return f'<OnboardingDossier {self.nom_dossier}>'
+
+
+class OnboardingEtape(db.Model):
+    __tablename__ = 'onboarding_etapes'
+    __table_args__ = (db.UniqueConstraint('dossier_onb_id', 'code', name='uq_onb_etape'),)
+    id = db.Column(db.Integer, primary_key=True)
+    dossier_onb_id = db.Column(db.Integer, db.ForeignKey('onboarding_dossiers.id'), nullable=False, index=True)
+    code = db.Column(db.String(40), nullable=False)
+    date_fait = db.Column(db.Date, nullable=True)          # NULL = à faire (comme la saisie de date Excel)
+    sans_date = db.Column(db.Boolean, default=False)       # « X » du modèle Excel : fait sans date connue
+    fait_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    commentaire = db.Column(db.String(500), nullable=True) # texte libre saisi dans la cellule
+    date_modif = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    fait_par = db.relationship('User', foreign_keys=[fait_par_id])
+
+    @property
+    def est_fait(self):
+        return bool(self.date_fait or self.sans_date)
+
+    def __repr__(self):
+        return f'<OnboardingEtape {self.code} {self.date_fait}>'
+
+
+class OnboardingDepart(db.Model):
+    __tablename__ = 'onboarding_dossiers_partis'
+    id = db.Column(db.Integer, primary_key=True)
+    auteur = db.Column(db.String(80), nullable=True)
+    nom_dossier = db.Column(db.String(200), nullable=False)
+    nom_client = db.Column(db.String(200), nullable=True)
+    mail = db.Column(db.String(200), nullable=True)
+    telephone = db.Column(db.String(40), nullable=True)
+    ec_chef_mission = db.Column(db.String(80), nullable=True)
+    etablissement = db.Column(db.String(120), nullable=True)
+    collaborateur = db.Column(db.String(80), nullable=True)
+    cause_depart = db.Column(db.String(200), nullable=True)
+    date_depart = db.Column(db.Date, nullable=True)
+    mail_deontologie_recu = db.Column(db.Date, nullable=True)
+    envoi_documents = db.Column(db.Date, nullable=True)
+    mail_facturation = db.Column(db.Date, nullable=True)   # stop facturation + désactivation Pennylane
+    commentaires = db.Column(db.Text, nullable=True)
+    dossier_id = db.Column(db.Integer, db.ForeignKey('dossiers.id'), nullable=True)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    dossier = db.relationship('Dossier', foreign_keys=[dossier_id])
+
+    def __repr__(self):
+        return f'<OnboardingDepart {self.nom_dossier}>'
+
+
+class OnboardingMail(db.Model):
+    """Trace des mails automatiques liés au suivi (envoyés ou en erreur)."""
+    __tablename__ = 'onboarding_mails'
+    id = db.Column(db.Integer, primary_key=True)
+    dossier_onb_id = db.Column(db.Integer, db.ForeignKey('onboarding_dossiers.id'), nullable=True)
+    depart_id = db.Column(db.Integer, db.ForeignKey('onboarding_dossiers_partis.id'), nullable=True)
+    type_mail = db.Column(db.String(40), nullable=False)   # ldm_facturation | identite | deontologie | facturation_depart | rappel
+    destinataire = db.Column(db.String(200), nullable=False)
+    sujet = db.Column(db.String(300), nullable=True)
+    statut = db.Column(db.String(20), nullable=False, default='envoye')  # envoye | erreur
+    erreur = db.Column(db.Text, nullable=True)
+    envoye_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<OnboardingMail {self.type_mail} -> {self.destinataire}>'
+
+
+class OnboardingActionMail(db.Model):
+    """Action automatique configurable par étape du suivi : quand l'étape est
+    cochée, un ou plusieurs mails (modèle + destinataires) sont envoyés.
+    Configurable depuis Paramètres ; seeds = anciens mails codés en dur."""
+    __tablename__ = 'onboarding_actions_mail'
+    id = db.Column(db.Integer, primary_key=True)
+    etape_code = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    actif = db.Column(db.Boolean, default=False, nullable=False)
+    sujet = db.Column(db.String(300), nullable=True)
+    corps = db.Column(db.Text, nullable=True)
+    # JSON : liste de tokens destinataires ['client', 'resp:resp_juridique',
+    # 'user:12', 'email:a@b.c', 'setting:ONBOARDING_MAIL_FACTURATION']
+    destinataires = db.Column(db.Text, nullable=True)
+    maj_le = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def tokens(self):
+        import json as _json
+        try:
+            vals = _json.loads(self.destinataires or '[]')
+            return [str(v) for v in vals if str(v).strip()]
+        except Exception:
+            return []
+
+
+class AnnuaireCategorie(db.Model):
+    """Catégories de contacts hors cabinet (Client, Notaire, Ancien EC…),
+    gérées depuis l'application sans toucher au code."""
+    __tablename__ = 'annuaire_categories'
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(80), unique=True, nullable=False)
+    couleur = db.Column(db.String(20), nullable=True)   # token couleur (success/info/orange…)
+    ordre = db.Column(db.Integer, default=0)
+    fiches = db.relationship('FicheAnnuaire', backref='categorie', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<AnnuaireCategorie {self.nom}>'
+
+
+class FicheAnnuaire(db.Model):
+    """Fiche contact hors cabinet (clients, notaires, intervenants externes…)
+    — l'équivalent « fiche membre » pour les personnes hors du cabinet."""
+    __tablename__ = 'annuaire_fiches'
+    id = db.Column(db.Integer, primary_key=True)
+    categorie_id = db.Column(db.Integer, db.ForeignKey('annuaire_categories.id'), nullable=True)
+    nom = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(200), nullable=True)
+    telephone = db.Column(db.String(40), nullable=True)
+    organisation = db.Column(db.String(200), nullable=True)
+    note = db.Column(db.Text, nullable=True)
+    actif = db.Column(db.Boolean, default=True)
+    cree_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    cree_par = db.relationship('User', foreign_keys=[cree_par_id])
+
+    def __repr__(self):
+        return f'<FicheAnnuaire {self.nom}>'

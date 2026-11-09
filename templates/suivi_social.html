@@ -22,7 +22,7 @@
     .dss-grid th.dss-do { text-align:left; min-width:230px; padding-left:16px; }
     .dss-grid td { border-bottom:1px solid var(--border-whisper); padding:6px; text-align:center; vertical-align:middle; }
     .dss-grid tr:last-child td { border-bottom:none; }
-    .dss-grid tr:hover td { background:rgba(255,140,0,0.03); }
+    .dss-grid tr:hover td { background:rgba(196,91,50,0.03); }
     .dss-do-cell { text-align:left !important; padding-left:16px !important; }
     .dss-do-cell .t { font-size:.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:230px; display:block; }
     .dss-do-cell .n { font-size:.68rem; color:var(--text-tertiary); }
@@ -35,7 +35,7 @@
     .dss-chip.s-deposee { color:#42A5F5; background:var(--info-bg); border-color:rgba(66,165,245,.4); }
     .dss-chip.s-validee, .dss-chip.s-integrees { color:#4CAF50; background:var(--success-bg); border-color:rgba(76,175,80,.4); }
     .dss-chip.s-a_faire { color:#FF9800; background:var(--warning-bg); border-color:rgba(255,152,0,.4); }
-    .dss-chip.s-pretes { color:#FFB347; background:rgba(255,179,71,.12); border-color:rgba(255,140,0,.5); }
+    .dss-chip.s-pretes { color:#D97A52; background:rgba(217,122,82,.12); border-color:rgba(196,91,50,.5); }
     .dss-futur { color:var(--text-muted); opacity:.45; }
     .dss-year-nav { display:inline-flex; border:1px solid var(--border-whisper); border-radius:9999px; overflow:hidden; }
     .dss-year-nav a { padding:6px 14px; font-size:.8rem; color:var(--text-secondary); text-decoration:none; }
@@ -46,13 +46,13 @@
     .dss-chip.dss-ro { cursor:default; opacity:.85; }
     .dss-chip.dss-ro:hover { transform:none; border-color:var(--border-whisper); }
     .dss-sync-paie { border:none; background:none; color:var(--text-muted); cursor:pointer; padding:0 0 0 6px; font-size:.75rem; vertical-align:middle; transition:color .15s ease, transform .3s ease; }
-    .dss-sync-paie:hover { color:var(--orange-primary); }
+    .dss-sync-paie:hover { color: var(--orange-text); }
     .dss-sync-paie.spin i { display:inline-block; animation:dss-spin .9s linear infinite; }
     @keyframes dss-spin { to { transform:rotate(360deg); } }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 animate-fade-in-up flex-wrap gap-2">
-    <h2 class="fw-semibold mb-0"><i class="bi bi-people me-2" style="color:var(--orange-primary)"></i>Suivi social — DSN & Paie</h2>
+    <h2 class="fw-semibold mb-0"><i class="bi bi-people me-2" style="color: var(--orange-text)"></i>Suivi social — DSN & Paie</h2>
     {% if lecture_seule %}
     <span class="badge" style="background:var(--info-bg);border:1px solid rgba(66,165,245,.45);color:#42A5F5;" title="Vous voyez vos dossiers dont le volet paie est pris en charge par le pole social">
         <i class="bi bi-eye me-1"></i>Vue comptable — vous validez le volet « écritures »

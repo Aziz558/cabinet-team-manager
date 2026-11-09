@@ -30,6 +30,9 @@
         <a href="{{ url_for('dossiers') }}" class="sidebar-nav-item {% if request.endpoint == 'dossiers' %}active{% endif %}">
             <i class="bi bi-folder"></i><span>Dossiers</span>
         </a>
+        <a href="{{ url_for('onboarding') }}" class="sidebar-nav-item {% if request.endpoint in ('onboarding', 'onboarding_detail', 'onboarding_import') %}active{% endif %}">
+            <i class="bi bi-rocket-takeoff"></i><span>Nouveaux dossiers</span>
+        </a>
         <a href="{{ url_for('taches') }}" class="sidebar-nav-item {% if request.endpoint == 'taches' %}active{% endif %}">
             <i class="bi bi-list-check"></i><span>Tâches</span>
         </a>
@@ -52,6 +55,9 @@
         </a>
         <a href="{{ url_for('equipes') }}" class="sidebar-nav-item {% if request.endpoint == 'equipes' %}active{% endif %}">
             <i class="bi bi-diagram-3"></i><span>Équipes</span>
+        </a>
+        <a href="{{ url_for('annuaire') }}" class="sidebar-nav-item {% if request.endpoint == 'annuaire' %}active{% endif %}">
+            <i class="bi bi-journal-bookmark"></i><span>Annuaire</span>
         </a>
         {% endif %}
 

@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up stagger-1">
-    <h2 class="fw-semibold"><i class="bi bi-receipt-certificate me-2" style="color:var(--orange-primary)"></i>Tâches TVA planifiées</h2>
+    <h2 class="fw-semibold"><i class="bi bi-receipt-certificate me-2" style="color: var(--orange-text)"></i>Tâches TVA planifiées</h2>
     <a href="{{ url_for('dossiers') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
         <i class="bi bi-folder me-1"></i>Retour dossiers
     </a>
@@ -13,8 +13,8 @@
 <div class="card-premium mb-3 animate-fade-in-up">
     <div class="card-body-premium">
         <div class="d-flex align-items-center gap-2">
-            <span class="team-context-icon" style="border-color: transparent; background: rgba(255,140,0,0.1);">
-                <span class="team-icon" style="background: {{ current_equipe.couleur or '#FF8C00' }};color: #fff;">
+            <span class="team-context-icon" style="border-color: transparent; background: rgba(196,91,50,0.1);">
+                <span class="team-icon" style="background: {{ current_equipe.couleur or '#C45B32' }};color: #fff;">
                     <i class="bi {{ current_equipe.icon or 'bi-people' }}"></i>
                 </span>
                 <span class="team-context-name">{{ current_equipe.nom }}</span>

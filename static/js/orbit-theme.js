@@ -24,7 +24,7 @@
     root.setAttribute('data-bs-theme', t);
     window.ORBIT_THEME = t;
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) { meta.setAttribute('content', t === 'light' ? '#f4f6fa' : '#07080c'); }
+    if (meta) { meta.setAttribute('content', t === 'light' ? '#E5E0DA' : '#101010'); }
     var icon = document.getElementById('themeIcon');
     if (icon) { icon.className = t === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill'; }
     var auth = document.getElementById('authThemeToggle');
@@ -51,7 +51,7 @@
       veil.className = 'orbit-theme-veil';
       document.body.appendChild(veil);
     }
-    veil.style.background = theme === 'light' ? '#f4f6fa' : '#07080c';
+    veil.style.background = theme === 'light' ? '#E5E0DA' : '#101010';
     veil.classList.remove('orbit-theme-veil--out');
     void veil.offsetWidth;
     veil.classList.add('orbit-theme-veil--out');

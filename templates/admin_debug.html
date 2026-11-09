@@ -84,7 +84,7 @@ document.getElementById('runActiveDebug').addEventListener('click', async functi
         const data = await response.json();
         if (data.ok) {
             window.showToast('Diagnostic actif terminé', 'success');
-            let html = '<h6 class="mb-2" style="color: var(--orange-primary);">Résultats du diagnostic actif</h6>';
+            let html = '<h6 class="mb-2" style="color: var(--orange-text);">Résultats du diagnostic actif</h6>';
             html += '<div class="list-group">';
             
             (data.results || []).forEach(function(r) {

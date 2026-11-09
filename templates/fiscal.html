@@ -15,10 +15,10 @@
 <style>
 .tab-fiscal { display: flex; gap: 0; border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; }
 .tab-fiscal button { background: none; border: none; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 500; color: var(--text-tertiary); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
-.tab-fiscal button:hover { color: var(--orange-primary); }
-.tab-fiscal button.active { color: var(--orange-primary); border-bottom-color: var(--orange-primary); }
+.tab-fiscal button:hover { color: var(--orange-text); }
+.tab-fiscal button.active { color: var(--orange-text); border-bottom-color: var(--orange-primary); }
 .tab-fiscal button .badge-impot { display: inline-block; background: var(--bg-card); padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.7rem; margin-left: 6px; color: var(--text-secondary); border: 1px solid var(--border-color); }
-.tab-fiscal button.active .badge-impot { background: rgba(255, 140, 0, 0.15); border-color: var(--orange-primary); color: var(--orange-primary); }
+.tab-fiscal button.active .badge-impot { background: rgba(196, 91, 50, 0.15); border-color: var(--orange-primary); color: var(--orange-text); }
 
 .impot-content { display: none; }
 .impot-content.active { display: block; }
@@ -31,7 +31,7 @@
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 animate-fade-in-up">
-    <h2 class="fw-semibold"><i class="bi bi-calc me-2" style="color:var(--orange-primary)"></i>Tableau de bord fiscal</h2>
+    <h2 class="fw-semibold"><i class="bi bi-calc me-2" style="color: var(--orange-text)"></i>Tableau de bord fiscal</h2>
 </div>
 
 <div class="card-premium mb-3 animate-fade-in-up">

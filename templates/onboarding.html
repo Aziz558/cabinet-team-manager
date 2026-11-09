@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+{% block title %}Nouveaux dossiers{% endblock %}
+{% block content %}
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-rocket-takeoff"></i></span>
+        <div class="page-head-titles">
+            <h2>Suivi des nouveaux dossiers</h2>
+            <p class="page-head-sub">Onboarding Création / Reprise / Revision · dossiers partis · mails automatiques</p>
+        </div>
+    </div>
+    <div class="page-head-actions">
+        {% if peut_editer %}
+        <button class="btn btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalNouveau">
+            <i class="bi bi-plus-lg"></i> Nouveau dossier
+        </button>
+        <a class="btn btn-premium-outline" href="{{ url_for('onboarding_import') }}">
+            <i class="bi bi-file-earmark-arrow-up"></i> Importer Excel
+        </a>
+        <form method="post" action="{{ url_for('onboarding_rappels') }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-premium-outline" type="submit" title="Relancer les étapes en attente depuis {{ seuil_rappel }} jours">
+                <i class="bi bi-alarm"></i> Rappels
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.ob-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border-color); margin-bottom: 1.25rem; }
+.ob-tabs a { padding: .7rem 1.4rem; font-size: .92rem; font-weight: 600; color: var(--text-tertiary);
+    text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.ob-tabs a:hover { color: var(--orange-text); }
+.ob-tabs a.active { color: var(--orange-text); border-bottom-color: var(--orange-primary); }
+.ob-tabs a .badge { margin-left: 6px; }
+.ob-progress { display: flex; align-items: center; gap: 8px; min-width: 150px; }
+.ob-progress .bar { flex: 1; height: 6px; border-radius: 99px; background: var(--surface-sunken); overflow: hidden; }
+.ob-progress .bar span { display: block; height: 100%; background: var(--orange-primary); border-radius: 99px; }
+.ob-progress .pct { font-family: var(--font-mono); font-size: .74rem; color: var(--text-secondary); min-width: 3em; text-align: right; }
+.ob-phases { display: inline-flex; gap: 4px; }
+.ob-phase-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--surface-sunken);
+    border: 1px solid var(--line-strong); }
+.ob-phase-dot.done { background: var(--orange-primary); border-color: var(--orange-primary); }
+.ob-phase-dot.started { background: color-mix(in srgb, var(--orange-primary) 45%, transparent);
+    border-color: var(--orange-primary); }
+.ob-badge-type { font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    padding: .18rem .55rem; border-radius: 99px; background: var(--orange-subtle);
+    color: var(--orange-text); border: 1px solid var(--amber-line); }
+.ob-attente { font-family: var(--font-mono); font-size: .74rem; padding: .15rem .55rem;
+    border-radius: 99px; background: var(--surface-sunken); color: var(--text-secondary); }
+.ob-attente.bloque { background: rgba(239,83,80,.15); color: var(--danger-ink); }
+.ob-etape-suivante { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ob-kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 1.25rem; }
+.ob-sortie-pastilles { display: inline-flex; gap: 4px; }
+.ob-sortie-pastilles i { font-size: .95rem; color: var(--ink-4); }
+.ob-sortie-pastilles i.fait { color: var(--orange-text); }
+</style>
+
+<div class="ob-tabs" aria-label="Onglets suivi">
+    <a href="{{ url_for('onboarding', q=q, type=ftype, etab=fetab) }}" class="{% if tab != 'partis' %}active{% endif %}">
+        Nouveaux dossiers <span class="badge badge-tertiary">{{ kpis.total }}</span>
+    </a>
+    <a href="{{ url_for('onboarding', tab='partis', q=q) }}" class="{% if tab == 'partis' %}active{% endif %}">
+        Dossiers partis <span class="badge badge-tertiary">{{ kpis_partis.total }}</span>
+    </a>
+</div>
+
+{% if tab != 'partis' %}
+<div class="ob-kpis">
+    <span class="kpi-chip"><i class="bi bi-hourglass"></i> {{ kpis.en_cours }} en cours</span>
+    <span class="kpi-chip"><i class="bi bi-check2-circle"></i> {{ kpis.termines }} terminés</span>
+    <span class="kpi-chip"><i class="bi bi-exclamation-triangle"></i> {{ kpis.bloques }} en attente &gt; {{ seuil_rappel }} j</span>
+    <span class="kpi-chip"><i class="bi bi-cash"></i> {{ '{:,.0f}'.format(kpis.honoraires).replace(',', ' ') }} € HT /an</span>
+</div>
+
+<div class="card-premium mb-3">
+    <div class="card-body-premium py-2 px-3 d-flex flex-wrap align-items-center gap-2">
+        <form method="get" action="{{ url_for('onboarding') }}" class="d-flex flex-wrap align-items-center gap-2 w-100">
+            <i class="bi bi-search text-tertiary"></i>
+            <input class="form-control form-control-sm" style="max-width:240px;" type="search" name="q"
+                   value="{{ q }}" placeholder="Dossier ou client…" aria-label="Rechercher un dossier">
+            <select class="form-select form-select-sm" style="max-width:170px;" name="type" aria-label="Filtrer par type">
+                <option value="">Tous les types</option>
+                {% for code, lib in types.items() %}
+                <option value="{{ code }}" {% if ftype == code %}selected{% endif %}>{{ lib }}</option>
+                {% endfor %}
+            </select>
+            <select class="form-select form-select-sm" style="max-width:200px;" name="etab" aria-label="Filtrer par établissement">
+                <option value="">Tous les établissements</option>
+                {% for e in etablissements %}
+                <option value="{{ e }}" {% if fetab == e %}selected{% endif %}>{{ e }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-sm btn-premium-outline" type="submit">Filtrer</button>
+        </form>
+    </div>
+</div>
+
+<div class="card-premium">
+    <div class="table-responsive">
+        <table class="table-premium" id="obTable">
+            <thead>
+                <tr>
+                    <th>Dossier</th>
+                    <th>Type</th>
+                    <th>EC / chef de mission</th>
+                    <th>Prochaine étape</th>
+                    <th>Attente</th>
+                    <th style="min-width:180px;">Avancement</th>
+                    <th>Phases</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in dossiers %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('onboarding_detail', dossier_id=d.id) }}" class="fw-semibold text-decoration-none">
+                            {{ d.nom_dossier }}
+                        </a>
+                        <small class="d-block text-tertiary">{{ d.nom_client or '—' }}{% if d.etablissement %} · {{ d.etablissement }}{% endif %}</small>
+                    </td>
+                    <td><span class="ob-badge-type">{{ types[d.type_dossier] }}</span></td>
+                    <td>{{ d.ec_chef_mission or '—' }}</td>
+                    <td class="ob-etape-suivante" title="{{ d.prochaine_etape()[1] if d.prochaine_etape() else 'Pipeline complet' }}">
+                        {% if d.prochaine_etape() %}{{ d.prochaine_etape()[1] }}{% else %}<i class="bi bi-check2-all"></i> Complet{% endif %}
+                    </td>
+                    <td>
+                        {% if d.statut == 'termine' %}
+                        <span class="ob-attente">terminé</span>
+                        {% elif d.prochaine_etape() %}
+                        <span class="ob-attente {% if d.jours_attente() >= seuil_rappel %}bloque{% endif %}">{{ d.jours_attente() }} j</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% set f, t = d.progression() %}
+                        <div class="ob-progress" aria-label="Avancement {{ d.pourcentage() }}%">
+                            <div class="bar" role="presentation"><span style="width:{{ d.pourcentage() }}%"></span></div>
+                            <span class="pct">{{ f }}/{{ t }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="ob-phases">
+                            {% set codes = {1:'Contractuel', 2:'Juridique', 3:'Installation', 4:'Fact. & mandats', 5:'Équipe'} %}
+                            {% for p, lib in codes.items() %}
+                            {% set fp, tp = d.phase_progression(p) %}
+                            <span class="ob-phase-dot {% if tp and fp == tp %}done{% elif fp > 0 %}started{% endif %}"
+                                  title="{{ lib }} : {{ fp }}/{{ tp }}"></span>
+                            {% endfor %}
+                        </span>
+                    </td>
+                    <td><a class="btn btn-sm btn-premium-outline" href="{{ url_for('onboarding_detail', dossier_id=d.id) }}">Ouvrir</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-tertiary py-4">
+                    <i class="bi bi-inbox d-block mb-2" style="font-size:1.6rem;"></i>
+                    Aucun dossier suivi. Créez le premier dossier ou importez une liste Excel.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+
+<div class="ob-kpis">
+    <span class="kpi-chip"><i class="bi bi-door-open"></i> {{ kpis_partis.total }} dossiers partis</span>
+    <span class="kpi-chip"><i class="bi bi-calendar-month"></i> {{ kpis_partis.ce_mois }} ce mois</span>
+</div>
+
+<div class="d-flex justify-content-end mb-3">
+    {% if peut_editer %}
+    <button class="btn btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalDepart">
+        <i class="bi bi-person-dash"></i> Nouveau départ
+    </button>
+    {% endif %}
+</div>
+
+<div class="card-premium">
+    <div class="table-responsive">
+        <table class="table-premium" id="obPartisTable">
+            <thead>
+                <tr>
+                    <th>Dossier</th>
+                    <th>Client</th>
+                    <th>Cause</th>
+                    <th>Départ</th>
+                    <th>Sortie</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in partis %}
+                <tr>
+                    <td class="fw-semibold">{{ p.nom_dossier }}
+                        <small class="d-block text-tertiary">{{ p.etablissement or '' }}</small></td>
+                    <td>{{ p.nom_client or '—' }}</td>
+                    <td>{{ p.cause_depart or '—' }}</td>
+                    <td>{{ p.date_depart.strftime('%d/%m/%Y') if p.date_depart else '—' }}</td>
+                    <td>
+                        <span class="ob-sortie-pastilles">
+                            <i class="bi bi-envelope {% if p.mail_deontologie_recu %}fait{% endif %}"
+                               title="Mail déontologie reçu{% if p.mail_deontologie_recu %} le {{ p.mail_deontologie_recu.strftime('%d/%m/%Y') }}{% endif %}"></i>
+                            <i class="bi bi-box-seam {% if p.envoi_documents %}fait{% endif %}"
+                               title="Documents envoyés{% if p.envoi_documents %} le {{ p.envoi_documents.strftime('%d/%m/%Y') }}{% endif %}"></i>
+                            <i class="bi bi-cash-stack {% if p.mail_facturation %}fait{% endif %}"
+                               title="Mail facturation (stop facturation + désactivation Pennylane){% if p.mail_facturation %} le {{ p.mail_facturation.strftime('%d/%m/%Y') }}{% endif %}"></i>
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        {% if peut_editer %}
+                        <button class="btn btn-sm btn-premium-outline" data-bs-toggle="modal"
+                                data-bs-target="#modalDep{{ p.id }}">Éditer</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-tertiary py-4">
+                    <i class="bi bi-inbox d-block mb-2" style="font-size:1.6rem;"></i>
+                    Aucun départ enregistré.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if peut_editer %}
+{% for p in partis %}
+<div class="modal fade" id="modalDep{{ p.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form class="modal-content" method="post" action="{{ url_for('depart_maj', depart_id=p.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Départ — {{ p.nom_dossier }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body row g-3">
+                {% include 'includes/_onboarding_depart_fields.html' %}
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    {% if current_user.role == 'admin' %}
+                    <button type="submit" formaction="{{ url_for('depart_supprimer', depart_id=p.id) }}"
+                            class="btn btn-premium-outline me-auto text-danger"
+                            onclick="return confirm('Supprimer ce départ ?');">
+                        <i class="bi bi-trash"></i> Supprimer
+                    </button>
+                    {% endif %}
+                    <button type="button" class="btn btn-premium-outline" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-premium-primary">Enregistrer</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<div class="modal fade" id="modalDepart" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form class="modal-content" method="post" action="{{ url_for('depart_nouveau') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouveau départ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body row g-3">
+                {% include 'includes/_onboarding_depart_fields.html' %}
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-premium-outline" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-premium-primary">Enregistrer</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if peut_editer %}
+<div class="modal fade" id="modalNouveau" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form class="modal-content" method="post" action="{{ url_for('onboarding_nouveau') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouveau dossier à suivre</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="obNom">Nom du dossier *</label>
+                    <input class="form-control" id="obNom" name="nom_dossier" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obClient">Nom du client</label>
+                    <input class="form-control" id="obClient" name="nom_client">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obMail">Mail client</label>
+                    <input class="form-control" type="email" id="obMail" name="mail">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obTel">Téléphone</label>
+                    <input class="form-control" id="obTel" name="telephone">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obAuteur">Auteur</label>
+                    <input class="form-control" id="obAuteur" name="auteur" value="{{ current_user.prenom }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obEc">EC / chef de mission</label>
+                    <input class="form-control" id="obEc" name="ec_chef_mission">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obEtab">Établissement</label>
+                    <input class="form-control" id="obEtab" name="etablissement" list="obEtabList">
+                    <datalist id="obEtabList">
+                        {% for e in etablissements %}<option value="{{ e }}"></option>{% endfor %}
+                    </datalist>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obType">Type</label>
+                    <select class="form-select" id="obType" name="type_dossier">
+                        {% for code, lib in types.items() %}
+                        <option value="{{ code }}">{{ lib }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="obHon">Honoraires /an HT (€)</label>
+                    <input class="form-control" type="number" step="0.01" min="0" id="obHon" name="honoraires_an">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="obDebut">Date début mission</label>
+                    <input class="form-control" type="date" id="obDebut" name="date_debut_mission">
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="obPoly" name="polyacte">
+                        <label class="form-check-label" for="obPoly">PolyActe</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="obSocial" name="social">
+                        <label class="form-check-label" for="obSocial">Social</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="obCollabC">Collaborateur comptable</label>
+                    <input class="form-control" id="obCollabC" name="collab_comptable">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="obCollabS">Collaborateur social</label>
+                    <input class="form-control" id="obCollabS" name="collab_social">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="obCollabJ">Collaborateur juridique</label>
+                    <input class="form-control" id="obCollabJ" name="collab_juridique">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obChefMission">Chef de mission <small class="text-tertiary">(pré-rempli)</small></label>
+                    <select class="form-select" id="obChefMission" name="chef_mission_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if resp_prefill.chef_mission_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obExpert">Expert-comptable <small class="text-tertiary">(pré-rempli)</small></label>
+                    <select class="form-select" id="obExpert" name="expert_comptable_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if resp_prefill.expert_comptable_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obRespJ">Responsable juridique <small class="text-tertiary">(pré-rempli)</small></label>
+                    <select class="form-select" id="obRespJ" name="resp_juridique_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if resp_prefill.resp_juridique_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="obRespS">Responsable social <small class="text-tertiary">(pré-rempli)</small></label>
+                    <select class="form-select" id="obRespS" name="resp_social_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if resp_prefill.resp_social_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="obComm">Commentaires</label>
+                    <textarea class="form-control" id="obComm" name="commentaires" rows="2"></textarea>
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-premium-outline" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-premium-primary">Créer le suivi</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -7,12 +7,12 @@
     .wf-card { border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 14px;
         padding: 20px 18px; cursor: pointer; transition: all 0.15s ease; text-decoration: none; display: block; height: 100%; }
     .wf-card:hover { border-color: var(--orange-primary); transform: translateY(-2px); }
-    .wf-card i.lead-ic { font-size: 1.6rem; color: var(--orange-primary); }
+    .wf-card i.lead-ic { font-size: 1.6rem; color: var(--orange-text); }
     .wf-card h6 { color: var(--text-primary); margin: 10px 0 4px; font-weight: 600; }
     .wf-card small { color: var(--text-tertiary); }
     .wf-back { color: var(--text-tertiary); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
-    .wf-back:hover { color: var(--orange-primary); }
-    .wf-count { background: rgba(255,140,0,0.14); color: var(--orange-primary); font-weight: 700;
+    .wf-back:hover { color: var(--orange-text); }
+    .wf-count { background: rgba(196,91,50,0.14); color: var(--orange-text); font-weight: 700;
         border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; float: right; }
     .cl-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
     .cl-table th { padding: 8px 6px; color: var(--text-tertiary); font-weight: 600;
@@ -24,13 +24,13 @@
     .cl-td-dossier strong { color: var(--text-primary); display: block; font-size: 0.8rem; }
     .cl-td-dossier small { color: var(--text-tertiary); display: block; max-width: 190px;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cl-collab { width: 22px; height: 22px; border-radius: 50%; background: var(--orange-primary);
-        color: #fff; font-size: 0.6rem; font-weight: 700; display: inline-flex; align-items: center;
+    .cl-collab { width: 22px; height: 22px; border-radius: 50%; background: var(--orange-subtle);
+        color: var(--orange-text); font-size: 0.6rem; font-weight: 700; display: inline-flex; align-items: center;
         justify-content: center; }
     /* Compteur prochaine échéance */
     .badge-j { border-radius: 20px; padding: 3px 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
-    .badge-j.b-soon { background: rgba(239,83,80,0.15); color: #ef5350; }
-    .badge-j.b-norm { background: rgba(255,140,0,0.14); color: var(--orange-primary); }
+    .badge-j.b-soon { background: rgba(239,83,80,0.15); color: var(--danger-ink); }
+    .badge-j.b-norm { background: rgba(196,91,50,0.14); color: var(--orange-text); }
     .badge-j.b-late { background: rgba(239,83,80,0.22); color: #ef5350; }
     /* Symboles de statut — un seul symbole par case */
     .sym { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center;
@@ -74,21 +74,21 @@
         background: var(--bg-card-hover); color: var(--text-tertiary); font-size: 0.85rem;
         display: inline-flex; align-items: center; justify-content: center;
         cursor: pointer; flex-shrink: 0; padding: 0; transition: all .15s ease; }
-    .btn-pl-detail:hover { color: var(--orange-primary); border-color: var(--orange-primary); background: rgba(255,140,0,.08); }
+    .btn-pl-detail:hover { color: var(--orange-text); border-color: var(--orange-primary); background: rgba(196,91,50,.08); }
     /* Filtres : collaborateur, mois (multi), statut */
     .cl-filters { border-bottom: 1px solid var(--border-color); }
     .cl-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 14px; }
     .cl-filter-row + .cl-filter-row { border-top: 1px dashed var(--border-color); }
     .cl-filter-label { font-size: 0.68rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; min-width: 92px; }
     .cl-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); font-size: 0.74rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
-    .cl-chip:hover { border-color: var(--orange-primary); color: var(--orange-primary); }
-    .cl-chip.active { background: var(--orange-subtle); border-color: var(--orange-primary); color: var(--orange-primary); }
+    .cl-chip:hover { border-color: var(--orange-primary); color: var(--orange-text); }
+    .cl-chip.active { background: var(--orange-subtle); border-color: var(--orange-primary); color: var(--orange-text); }
     .cl-chip .cl-collab { width: 18px; height: 18px; font-size: 0.55rem; }
     .cl-chip-reset { margin-left: auto; }
     .cl-filter-count { font-size: 0.74rem; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
     .cl-hide { display: none !important; }
     .cl-table td.cl-dim { opacity: 0.25; }
-    .btn-pl-detail.active-detail { color: var(--orange-primary); border-color: var(--orange-primary); background: rgba(255,140,0,.12); }
+    .btn-pl-detail.active-detail { color: var(--orange-text); border-color: var(--orange-primary); background: rgba(196,91,50,.12); }
     /* Grille : zone de défilement interne + en-tête / 1re colonne collants */
     .cl-grid-scroll { overflow: auto; max-height: calc(100vh - 340px); min-height: 260px; }
     .cl-table thead th { position: sticky; top: 0; background: var(--bg-card); z-index: 2; }
@@ -119,7 +119,7 @@
 <!-- ===== ÉTAPE 1 : TYPE DE TÂCHES ===== -->
 {% if data.etape == 'type' %}
 <div class="mb-4">
-    <h4 class="mb-1"><i class="bi bi-check2-square me-2" style="color: var(--orange-primary);"></i>Checklist métier</h4>
+    <h4 class="mb-1"><i class="bi bi-check2-square me-2" style="color: var(--orange-text);"></i>Checklist métier</h4>
     <p class="text-tertiary mb-4">Choisissez le type de tâches à afficher.</p>
     <div class="row g-3">
         <div class="col-md-3 col-sm-6">
@@ -162,7 +162,7 @@
         <h4 class="mb-1">Checklist {{ t_label }}</h4>
         <p class="text-tertiary mb-0">Choisissez la fréquence des obligations.</p>
     </div>
-    <select class="select-premium" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='freq', type=request.args.get('type')) }}&annee='+this.value;">
+    <select class="select-premium" aria-label="Année" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='freq', type=request.args.get('type')) }}&annee='+this.value;">
         {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
     </select>
 </div>
@@ -193,7 +193,7 @@
         <h4 class="mb-1">{{ t_label }} — {{ f_label }}</h4>
         <p class="text-tertiary mb-0">Choisissez l'obligation à afficher.</p>
     </div>
-    <select class="select-premium" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='taxe', type=request.args.get('type'), freq=request.args.get('freq')) }}&annee='+this.value;">
+    <select class="select-premium" aria-label="Année" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='taxe', type=request.args.get('type'), freq=request.args.get('freq')) }}&annee='+this.value;">
         {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
     </select>
 </div>
@@ -220,7 +220,7 @@
         <h4 class="mb-1">{{ data.meta.label }} — {{ annee }}</h4>
         <p class="page-head-sub mb-0">Chaque colonne = la période déclarée (ex. juillet → dépôt le 24 août) · cliquez sur un symbole pour changer son statut</p>
     </div>
-    <select class="select-premium" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='grille', type=request.args.get('type'), freq=request.args.get('freq'), taxe=taxe) }}&annee='+this.value;">
+    <select class="select-premium" aria-label="Année" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='grille', type=request.args.get('type'), freq=request.args.get('freq'), taxe=taxe) }}&annee='+this.value;">
         {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
     </select>
 </div>
@@ -321,7 +321,7 @@
         <span class="ms-2"><span class="sym sym-pl-static sym-pl-ok"><i class="bi bi-check-lg"></i></span> <b>PL</b> acceptée (vert) · <span class="sym sym-pl-static sym-pl-progress"><i class="bi bi-hourglass-split"></i></span> en cours (orange) · <span class="sym sym-pl-static sym-pl-ready"><i class="bi bi-tools"></i></span> prêt (bleu) · <span class="sym sym-pl-static sym-pl-todo"><i class="bi bi-three-dots"></i></span> à déclarer (gris) · <span class="sym sym-pl-static sym-pl-late"><i class="bi bi-x-lg"></i></span> en retard (rouge)</span>
     </div>
     <div class="card-body-premium p-0">
-        <div class="cl-grid-scroll">
+        <div class="cl-grid-scroll" tabindex="0" role="region" aria-label="Grille de checklist">
             <table class="cl-table" id="clGrid">
                 <thead>
                     <tr>

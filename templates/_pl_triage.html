@@ -2,9 +2,9 @@
 {% if pl_triage %}
 <div class="card-premium mb-4 animate-fade-in-up" id="plTriageCard">
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--orange-primary);"></i>Triage Pennylane &mdash; à traiter</h5>
+        <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--orange-text);"></i>Triage Pennylane &mdash; à traiter</h5>
         <div class="d-flex align-items-center gap-2">
-            <span class="badge avm-chip-count" style="background:rgba(255,140,0,0.12);border:1px solid rgba(255,140,0,.45);color:var(--orange-primary);" title="Total d'éléments à traiter">{{ pl_triage.total }}</span>
+            <span class="badge avm-chip-count" style="background:rgba(196,91,50,0.12);border:1px solid rgba(196,91,50,.45);color: var(--orange-text);" title="Total d'éléments à traiter">{{ pl_triage.total }}</span>
             <button class="pl-tr-toggle" type="button" id="plTriageToggle" data-bs-toggle="collapse" data-bs-target="#plTriageBody" aria-expanded="false" aria-controls="plTriageBody" title="Afficher ou masquer le détail par dossier">
                 <i class="bi bi-chevron-down"></i>
             </button>
@@ -16,27 +16,27 @@
             #plTriageCard .pl-tr-sum { display:inline-flex; align-items:center; gap:.4rem; font-size:.74rem; line-height:1; font-weight:600; padding:.42rem .7rem; border-radius:9999px; border:1px solid var(--border-whisper); background:var(--bg-card); color:var(--text-secondary); font-variant-numeric:tabular-nums; }
             #plTriageCard .pl-tr-sum i { font-size:.85rem; }
             #plTriageCard .pl-tr-sum.vente { color:var(--info, #0d6efd); background:rgba(13,110,253,.08); border-color:rgba(13,110,253,.28); }
-            #plTriageCard .pl-tr-sum.achat { color:var(--orange-dark, #e06600); background:rgba(255,140,0,.10); border-color:rgba(255,140,0,.35); }
+            #plTriageCard .pl-tr-sum.achat { color:var(--orange-dark, #A34A28); background:rgba(196,91,50,.10); border-color:rgba(196,91,50,.35); }
             #plTriageCard .pl-tr-sum.flux { color:var(--purple, #9B5DE5); background:rgba(155,93,229,.10); border-color:rgba(155,93,229,.30); }
-            #plTriageCard .pl-tr-sum.totaux { color:var(--orange-primary, #ff8c00); background:rgba(255,140,0,.14); border-color:rgba(255,140,0,.5); }
+            #plTriageCard .pl-tr-sum.totaux { color:var(--orange-primary, #C45B32); background:rgba(196,91,50,.14); border-color:rgba(196,91,50,.5); }
             #plTriageCard .pl-tr-sum.dossiers { color:var(--text-tertiary); }
             #plTriageCard .pl-tr-toggle { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; border:1px solid var(--border-whisper); background:var(--bg-card); color:var(--text-secondary); transition:background .15s ease, color .15s ease, border-color .15s ease; }
-            #plTriageCard .pl-tr-toggle:hover { background:rgba(255,140,0,.10); color:var(--orange-primary); border-color:rgba(255,140,0,.45); }
+            #plTriageCard .pl-tr-toggle:hover { background:rgba(196,91,50,.10); color: var(--orange-text); border-color:rgba(196,91,50,.45); }
             #plTriageCard .pl-tr-toggle i { font-size:.85rem; transition:transform .25s ease; }
             #plTriageCard .pl-tr-toggle[aria-expanded="true"] i { transform:rotate(180deg); }
             #plTriageCard .pl-tr-body { max-height:min(460px, 60vh); overflow-y:auto; overscroll-behavior:contain; }
             #plTriageCard .pl-tr-row { display:flex; align-items:center; gap:12px; padding:11px 18px; border-bottom:1px solid var(--border-whisper); text-decoration:none; color:inherit; transition:background .15s ease; }
             #plTriageCard .pl-tr-row:last-child { border-bottom:none; }
-            #plTriageCard .pl-tr-row:hover { background: rgba(255,140,0,0.045); }
+            #plTriageCard .pl-tr-row:hover { background: rgba(196,91,50,0.045); }
             #plTriageCard .pl-tr-nom { flex:1 1 auto; min-width:0; }
             #plTriageCard .pl-tr-nom .t { font-size:.86rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             #plTriageCard .pl-tr-nom .n { font-size:.7rem; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
             #plTriageCard .pl-tr-chips { display:flex; gap:6px; flex-shrink:0; }
             #plTriageCard .pl-tr-chip { display:inline-flex; align-items:center; gap:5px; font-size:.72rem; line-height:1; padding:5px 9px; border-radius:9999px; border:1px solid var(--border-whisper); background:var(--bg-card); color:var(--text-secondary); font-variant-numeric:tabular-nums; }
-            #plTriageCard .pl-tr-chip.hot { border-color:rgba(255,140,0,.45); color:var(--orange-primary); background:rgba(255,140,0,0.10); }
+            #plTriageCard .pl-tr-chip.hot { border-color:rgba(196,91,50,.45); color: var(--orange-text); background:rgba(196,91,50,0.10); }
             #plTriageCard .pl-tr-chip i { font-size:.8rem; }
             #plTriageCard .pl-tr-chevron { color:var(--text-muted); flex-shrink:0; font-size:.8rem; transition:transform .15s ease; }
-            #plTriageCard .pl-tr-row:hover .pl-tr-chevron { transform:translateX(3px); color:var(--orange-primary); }
+            #plTriageCard .pl-tr-row:hover .pl-tr-chevron { transform:translateX(3px); color: var(--orange-text); }
             @media (max-width: 575.98px) { #plTriageCard .pl-tr-summary { padding:0 14px .8rem; } }
         </style>
     {# Barre de synthese : totaux a traiter par nature (toujours visible, meme repliee) #}

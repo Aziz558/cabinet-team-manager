@@ -11,7 +11,7 @@
     <div class="col-12">
         <div class="card-premium animate-fade-in-up">
             <div class="card-header-premium">
-                <h5 class="mb-0"><i class="bi bi-palette me-2" style="color: var(--orange-primary);"></i>Apparence</h5>
+                <h5 class="mb-0"><i class="bi bi-palette me-2" style="color: var(--orange-text);"></i>Apparence</h5>
             </div>
             <div class="card-body-premium">
                 <p class="text-tertiary small mb-3">Le thème s'applique à toutes les fenêtres de JMH Orbit et reste mémorisé sur cet appareil.</p>
@@ -73,7 +73,7 @@
                 <h5 class="mb-0"><i class="bi bi-cpu me-2" style="color: var(--info);"></i>Assistant IA (OpenRouter)</h5>
             </div>
             <div class="card-body-premium">
-                <p class="text-tertiary small mb-3">Clé utilisée par l'assistant de la bulle et par l'analyse des emails. Créez une clé sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+                <p class="text-tertiary small mb-3">Clé utilisée par l'assistant de la bulle et par l'analyse des emails. Créez une clé sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" class="text-decoration-underline">openrouter.ai/keys</a>.</p>
                 <form id="openrouterForm">
                     <div class="mb-3">
                         <label class="form-label" for="orKey">Clé API OpenRouter</label>
@@ -118,7 +118,7 @@
     <div class="col-lg-6">
         <div class="card-premium h-100 animate-fade-in-up stagger-3">
             <div class="card-header-premium">
-                <h5 class="mb-0"><i class="bi bi-bell me-2" style="color: var(--orange-primary);"></i>Notifications</h5>
+                <h5 class="mb-0"><i class="bi bi-bell me-2" style="color: var(--orange-text);"></i>Notifications</h5>
             </div>
             <div class="card-body-premium">
                 <form id="digestForm" class="mb-4">
@@ -138,6 +138,20 @@
                     <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer Brevo</button>
                 </form>
                 <div id="brevoResult" class="small mt-2" aria-live="polite"></div>
+
+                <form id="onboardingForm" class="mt-3 pt-3 border-top" style="border-color: var(--border-color) !important;">
+                    <label class="form-label" for="onbFact">Suivi nouveaux dossiers — destinataire mails de départ</label>
+                    <input id="onbFact" type="text" name="ONBOARDING_MAIL_FACTURATION" class="input-premium"
+                           placeholder="service-facturation@cabinet-jmh.com"
+                           value="{{ values.get('ONBOARDING_MAIL_FACTURATION', '') }}">
+                    <div class="form-text text-tertiary mb-3">Reçoit le mail automatique d'arrêt de facturation (et désactivation Pennylane) dès qu'une date « Mail facturation » est saisie sur un dossier parti.</div>
+                    <label class="form-label" for="onbSeuil">Seuil de rappel des étapes bloquées (jours)</label>
+                    <input id="onbSeuil" type="number" min="1" max="60" name="ONBOARDING_RAPPEL_JOURS" class="input-premium"
+                           value="{{ values.get('ONBOARDING_RAPPEL_JOURS', '7') }}">
+                    <div class="form-text text-tertiary mb-2">Le bouton « Rappels » du suivi relance les dossiers sans mouvement depuis ce nombre de jours.</div>
+                    <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer le suivi onboarding</button>
+                </form>
+                <div id="onboardingResult" class="small mt-2" aria-live="polite"></div>
             </div>
         </div>
     </div>
@@ -174,10 +188,152 @@
                         <span>Groq (IA de secours)</span>
                         <span>{{ 'configurée' if secrets_enregistres.GROQ_API_KEY else 'absente' }}</span>
                     </li>
+                    <li class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--border-color) !important;">
+                        <span>Boîte mail (IMAP)</span>
                         <span>{{ '✔ configuré' if secrets_enregistres.MAIL_PASSWORD else '✖ absent' }}</span>
                     </li>
                 </ul>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-premium mb-4 animate-fade-in-up">
+    <div class="card-header-premium">
+        <h5 class="mb-0"><i class="bi bi-rocket-takeoff me-2" style="color: var(--orange-text);"></i>Suivi nouveaux dossiers — responsables standards &amp; actions automatiques</h5>
+    </div>
+    <div class="card-body-premium">
+        <p class="text-tertiary small mb-3">
+            Ces responsables pré-remplissent les fiches de suivi à la création (modifiables dossier par dossier)
+            et servent de destinataires par défaut des actions mail. Ils sont choisis parmi les
+            <a href="{{ url_for('liste_membres') }}" class="text-decoration-underline">membres</a> du cabinet.
+        </p>
+
+        <form id="respOnboardingForm" class="row g-3 mb-2">
+            <div class="col-md-6">
+                <label class="form-label" for="respChef">Chef de mission</label>
+                <select id="respChef" class="select-premium" name="ONBOARDING_RESP_CHEF_MISSION">
+                    <option value="">-- Aucun --</option>
+                    {% for m in membres_actifs %}
+                    <option value="{{ m.id }}" {% if values.get('ONBOARDING_RESP_CHEF_MISSION')|string == m.id|string %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="respExpert">Expert-comptable</label>
+                <select id="respExpert" class="select-premium" name="ONBOARDING_RESP_EXPERT_COMPTABLE">
+                    <option value="">-- Aucun --</option>
+                    {% for m in membres_actifs %}
+                    <option value="{{ m.id }}" {% if values.get('ONBOARDING_RESP_EXPERT_COMPTABLE')|string == m.id|string %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="respJur">Responsable juridique</label>
+                <select id="respJur" class="select-premium" name="ONBOARDING_RESP_JURIDIQUE">
+                    <option value="">-- Aucun --</option>
+                    {% for m in membres_actifs %}
+                    <option value="{{ m.id }}" {% if values.get('ONBOARDING_RESP_JURIDIQUE')|string == m.id|string %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="respSoc">Responsable social</label>
+                <select id="respSoc" class="select-premium" name="ONBOARDING_RESP_SOCIAL">
+                    <option value="">-- Aucun --</option>
+                    {% for m in membres_actifs %}
+                    <option value="{{ m.id }}" {% if values.get('ONBOARDING_RESP_SOCIAL')|string == m.id|string %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn-premium btn-premium-secondary btn-press">Enregistrer les responsables</button>
+            </div>
+        </form>
+        <div id="respOnboardingResult" class="small mb-4 pb-3 border-bottom" style="border-color: var(--border-color) !important;" aria-live="polite"></div>
+
+        <h6 class="mb-1">Actions automatiques par étape</h6>
+        <p class="text-tertiary small mb-2">
+            Quand une étape est cochée et possède une action active, un mail est envoyé aux destinataires configurés.
+            Le système est optionnel : seules les étapes configurées déclenchent un envoi.
+            Variables disponibles dans sujet/corps :
+            <code>{{ '{{client}}' }}</code> <code>{{ '{{dossier}}' }}</code> <code>{{ '{{etablissement}}' }}</code>
+            <code>{{ '{{ec}}' }}</code> <code>{{ '{{chef_mission}}' }}</code> <code>{{ '{{expert_comptable}}' }}</code>
+            <code>{{ '{{resp_juridique}}' }}</code> <code>{{ '{{resp_social}}' }}</code> <code>{{ '{{etape}}' }}</code>
+        </p>
+
+        <div id="onbActionsList" class="mt-2">
+            {% for code, label, phase, applicable in onb_etapes %}
+            {% set a = onb_actions.get(code) %}
+            <details class="onb-action-item border-bottom pb-2 mb-2" data-code="{{ code }}" data-dests='{{ a.tokens()|tojson if a else "[]" }}' style="border-color: var(--border-color) !important;">
+                <summary class="d-flex align-items-center gap-2 py-1" style="cursor: pointer; list-style: none;">
+                    <i class="bi bi-chevron-right onb-act-chevron text-tertiary" aria-hidden="true"></i>
+                    <strong style="font-size: .92rem;">{{ label }}</strong>
+                    <span class="badge {% if a and a.actif %}badge-success{% else %}badge-tertiary{% endif %}"
+                          data-role="actif-badge">{{ 'Action active' if a and a.actif else 'Sans action' }}</span>
+                </summary>
+                <div class="ps-4 pe-1">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" role="switch" id="act_{{ code }}" {% if a and a.actif %}checked{% endif %}>
+                        <label class="form-check-label" for="act_{{ code }}">Activer l'envoi automatique quand cette étape est cochée</label>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="addDest_{{ code }}">Destinataires</label>
+                        <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                            <div class="d-flex flex-wrap gap-1" data-role="dests-chips">
+                                {% if a %}
+                                {% for t in a.tokens() %}
+                                <span class="badge badge-orange" data-token="{{ t }}">{{ t }} <button type="button" class="btn-close btn-close-white ms-1" style="font-size:.5rem;" aria-label="Retirer {{ t }}"></button></span>
+                                {% endfor %}
+                                {% endif %}
+                            </div>
+                            <select id="addDest_{{ code }}" class="select-premium select-sm" style="max-width: 280px;">
+                                <option value="">-- Ajouter un destinataire --</option>
+                                <optgroup label="Dossier">
+                                    <option value="client">Client du dossier</option>
+                                </optgroup>
+                                <optgroup label="Responsables standards">
+                                    <option value="resp:chef_mission">Chef de mission</option>
+                                    <option value="resp:expert_comptable">Expert-comptable</option>
+                                    <option value="resp:resp_juridique">Responsable juridique</option>
+                                    <option value="resp:resp_social">Responsable social</option>
+                                </optgroup>
+                                <optgroup label="Membres du cabinet">
+                                    {% for m in membres_actifs %}
+                                    <option value="user:{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="Réglages">
+                                    <option value="setting:ONBOARDING_MAIL_FACTURATION">Service facturation (mail de départ)</option>
+                                </optgroup>
+                            </select>
+                            <div class="input-group" style="max-width: 300px;">
+                                <input type="email" class="input-premium" data-role="dest-email-libre" placeholder="email libre (ex: notaire@…)" aria-label="Email libre">
+                                <button type="button" class="btn-premium btn-premium-secondary" data-role="dest-add-email" title="Ajouter cet email">+</button>
+                            </div>
+                        </div>
+                        <div class="form-text text-tertiary">Si le destinataire n'a pas d'email, une popup propose de créer sa fiche (membre du cabinet ou fiche annuaire) au moment de l'envoi.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="sujet_{{ code }}">Sujet</label>
+                        <input class="input-premium" id="sujet_{{ code }}" value="{{ a.sujet if a else '' }}" placeholder="Cabinet JMH — {{ '{{dossier}}' }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="corps_{{ code }}">Corps du mail</label>
+                        <textarea class="input-premium" id="corps_{{ code }}" rows="5">{{ a.corps if a else '' }}</textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn-premium btn-premium-secondary btn-press" data-role="act-save">
+                            <i class="bi bi-save me-1"></i>Enregistrer l'action
+                        </button>
+                        <button type="button" class="btn-premium btn-premium-outline btn-press" data-role="act-test">
+                            <i class="bi bi-send-check me-1"></i>Tester
+                        </button>
+                    </div>
+                    <div class="small mt-2" data-role="act-result" aria-live="polite"></div>
+                </div>
+            </details>
+            {% endfor %}
         </div>
     </div>
 </div>
@@ -187,7 +343,7 @@
     <div class="col-lg-6">
         <div class="card-premium h-100 animate-fade-in-up stagger-3">
             <div class="card-header-premium">
-                <h5 class="mb-0"><i class="bi bi-robot me-2" style="color: var(--orange-primary);"></i>Autres providers IA (Groq, NVIDIA, Gemini)</h5>
+                <h5 class="mb-0"><i class="bi bi-robot me-2" style="color: var(--orange-text);"></i>Autres providers IA (Groq, NVIDIA, Gemini)</h5>
             </div>
             <div class="card-body-premium">
                 <p class="text-tertiary small mb-3">Clés pour les providers de secours. OpenRouter reste le fallback systématique.</p>
@@ -324,6 +480,150 @@ document.getElementById('brevoForm').addEventListener('submit', function(e) {
         {cle: 'BREVO_API_KEY', valeur: f.get('BREVO_API_KEY'), service: 'mail', type_valeur: 'password', masque: true, secret: true},
     ], document.getElementById('brevoResult'), 'Brevo enregistré.');
 });
+
+document.getElementById('onboardingForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'ONBOARDING_MAIL_FACTURATION', valeur: (f.get('ONBOARDING_MAIL_FACTURATION') || '').trim(), service: 'mail', type_valeur: 'string', masque: false},
+        {cle: 'ONBOARDING_RAPPEL_JOURS', valeur: (f.get('ONBOARDING_RAPPEL_JOURS') || '').trim(), service: 'mail', type_valeur: 'string', masque: false},
+    ], document.getElementById('onboardingResult'), 'Réglages du suivi onboarding enregistrés.');
+});
+
+// --- Suivi nouveaux dossiers : responsables standards ---
+document.getElementById('respOnboardingForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'ONBOARDING_RESP_CHEF_MISSION', valeur: (f.get('ONBOARDING_RESP_CHEF_MISSION') || '').trim(), service: 'onboarding', type_valeur: 'string', masque: false},
+        {cle: 'ONBOARDING_RESP_EXPERT_COMPTABLE', valeur: (f.get('ONBOARDING_RESP_EXPERT_COMPTABLE') || '').trim(), service: 'onboarding', type_valeur: 'string', masque: false},
+        {cle: 'ONBOARDING_RESP_JURIDIQUE', valeur: (f.get('ONBOARDING_RESP_JURIDIQUE') || '').trim(), service: 'onboarding', type_valeur: 'string', masque: false},
+        {cle: 'ONBOARDING_RESP_SOCIAL', valeur: (f.get('ONBOARDING_RESP_SOCIAL') || '').trim(), service: 'onboarding', type_valeur: 'string', masque: false},
+    ], document.getElementById('respOnboardingResult'), 'Responsables standards enregistrés.');
+});
+
+// --- Éditeur d'actions automatiques par étape ---
+(function () {
+    const CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+    function libelleToken(t) {
+        if (t === 'client') return 'Client du dossier';
+        if (t === 'resp:chef_mission') return 'Chef de mission';
+        if (t === 'resp:expert_comptable') return 'Expert-comptable';
+        if (t === 'resp:resp_juridique') return 'Responsable juridique';
+        if (t === 'resp:resp_social') return 'Responsable social';
+        if (t === 'setting:ONBOARDING_MAIL_FACTURATION') return 'Service facturation';
+        if (t.startsWith('user:')) {
+            const sel = document.querySelector('#onbActionsList option[value="' + t + '"]');
+            if (sel) return sel.textContent;
+        }
+        return t.replace('email:', '');
+    }
+
+    function dessinerChips(item) {
+        const wrap = item.querySelector('[data-role="dests-chips"]');
+        const dests = JSON.parse(item.dataset.dests || '[]');
+        wrap.replaceChildren();
+        dests.forEach(function (t) {
+            const chip = document.createElement('span');
+            chip.className = 'badge badge-orange';
+            chip.textContent = libelleToken(t);
+            const rm = document.createElement('button');
+            rm.type = 'button';
+            rm.className = 'btn-close btn-close-white ms-1';
+            rm.style.fontSize = '.5rem';
+            rm.setAttribute('aria-label', 'Retirer ' + libelleToken(t));
+            rm.addEventListener('click', function () {
+                item.dataset.dests = JSON.stringify(dests.filter(x => x !== t));
+                dessinerChips(item);
+            });
+            chip.appendChild(rm);
+            wrap.appendChild(chip);
+        });
+    }
+
+    document.querySelectorAll('.onb-action-item').forEach(function (item) {
+        const code = item.dataset.code;
+        dessinerChips(item);
+        const chev = item.querySelector('.onb-act-chevron');
+        item.querySelector('summary').addEventListener('click', function () {
+            setTimeout(function () {
+                const ouvert = item.open;
+                chev.classList.toggle('bi-chevron-down', ouvert);
+                chev.classList.toggle('bi-chevron-right', !ouvert);
+            }, 0);
+        });
+
+        function ajouterDest(token) {
+            if (!token) return;
+            const dests = JSON.parse(item.dataset.dests || '[]');
+            if (!dests.includes(token)) dests.push(token);
+            item.dataset.dests = JSON.stringify(dests);
+            dessinerChips(item);
+        }
+
+        const sel = item.querySelector('select[id^="addDest_"]');
+        sel.addEventListener('change', function () {
+            ajouterDest(sel.value);
+            sel.value = '';
+        });
+
+        item.querySelector('[data-role="dest-add-email"]').addEventListener('click', function () {
+            const input = item.querySelector('[data-role="dest-email-libre"]');
+            const v = (input.value || '').trim();
+            if (v && v.includes('@')) {
+                ajouterDest('email:' + v);
+                input.value = '';
+            } else {
+                showResult(item.querySelector('[data-role="act-result"]'), 'var(--warning)', 'Saisissez une adresse email valide.');
+            }
+        });
+
+        item.querySelector('[data-role="act-save"]').addEventListener('click', function () {
+            const box = item.querySelector('[data-role="act-result"]');
+            box.textContent = 'Enregistrement...';
+            fetch('/api/onboarding/actions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+                body: JSON.stringify({
+                    etape_code: code,
+                    actif: item.querySelector('input[id^="act_"]').checked,
+                    destinataires: JSON.parse(item.dataset.dests || '[]'),
+                    sujet: item.querySelector('input[id^="sujet_"]').value,
+                    corps: item.querySelector('textarea[id^="corps_"]').value,
+                }),
+            }).then(r => r.json()).then(res => {
+                if (res.ok) {
+                    const badge = item.querySelector('[data-role="actif-badge"]');
+                    const actif = item.querySelector('input[id^="act_"]').checked;
+                    badge.textContent = actif ? 'Action active' : 'Sans action';
+                    badge.className = 'badge ' + (actif ? 'badge-success' : 'badge-tertiary');
+                    showResult(box, 'var(--success)', 'Action enregistrée.');
+                } else {
+                    showResult(box, 'var(--danger)', res.message || 'Erreur.');
+                }
+            }).catch(err => showResult(box, 'var(--danger)', 'Erreur réseau : ' + err.message));
+        });
+
+        item.querySelector('[data-role="act-test"]').addEventListener('click', function () {
+            const box = item.querySelector('[data-role="act-result"]');
+            const btn = this;
+            btn.disabled = true;
+            box.textContent = 'Envoi du test...';
+            fetch('/api/onboarding/actions/' + encodeURIComponent(code) + '/test', {
+                method: 'POST',
+                headers: {'X-CSRFToken': CSRF},
+            }).then(r => r.json()).then(res => {
+                btn.disabled = false;
+                showResult(box, res.ok ? 'var(--success)' : 'var(--warning)',
+                           res.message || (res.ok ? 'Test envoyé.' : 'Échec du test.'));
+            }).catch(err => {
+                btn.disabled = false;
+                showResult(box, 'var(--danger)', 'Erreur réseau : ' + err.message);
+            });
+        });
+    });
+})();
 
 document.getElementById('digestForm').addEventListener('submit', function(e) {
     e.preventDefault();

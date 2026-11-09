@@ -7,7 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}JMH Orbit{% endblock %} · Cabinet JMH</title>
     <!-- Fond dès le 1er rendu : aucun flash blanc pendant le chargement des CSS -->
-    <style>html,body{background:#07080c}html[data-theme="light"],html[data-theme="light"] body{background:#f4f6fa}</style>
+    <style>html,body{background:#101010}html[data-theme="light"],html[data-theme="light"] body{background:#E5E0DA}</style>
     <!-- Socle thème unique, synchrone : applique data-theme + data-bs-theme avant le rendu -->
     <script src="{{ asset('js/orbit-theme.js') }}"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -20,7 +20,7 @@
     <link href="{{ asset('css/orbit-system.css') }}" rel="stylesheet">
     <link href="{{ asset('css/orbit.css') }}" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#07080c">
+    <meta name="theme-color" content="#101010">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JMH Orbit">
     <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo-orbit.svg') }}">
@@ -63,7 +63,7 @@
             {% if current_equipe or all_equipes_for_switch %}
             <div class="dropdown">
                 <button class="team-context-icon" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="team-icon" style="background:{{ current_equipe.couleur if current_equipe else '#FF8C00' }};color:#fff;">
+                    <span class="team-icon" style="background:{{ current_equipe.couleur if current_equipe else '#C45B32' }};color:#fff;">
                         <i class="bi {{ current_equipe.icon if current_equipe else 'bi-diagram-2' }}"></i>
                     </span>
                     <span class="team-context-name d-none d-lg-inline">{{ current_equipe.nom if current_equipe else 'Toutes les équipes' }}</span>
@@ -75,7 +75,7 @@
                     {% for eq in all_equipes_for_switch %}
                     <li>
                         <a class="dropdown-item {% if current_equipe and current_equipe.id == eq.id %}active{% endif %}" href="{{ url_for('set_team', equipe_id=eq.id) }}">
-                            <span class="team-icon" style="background:{{ eq.couleur or '#FF8C00' }};color:#fff;"><i class="bi {{ eq.icon or 'bi-people' }}"></i></span>
+                            <span class="team-icon" style="background:{{ eq.couleur or '#C45B32' }};color:#fff;"><i class="bi {{ eq.icon or 'bi-people' }}"></i></span>
                             {{ eq.nom }}
                             {% if eq.nb_membres() > 0 %}<span class="badge badge-tertiary ms-auto">{{ eq.nb_membres() }}</span>{% endif %}
                         </a>

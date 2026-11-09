@@ -31,7 +31,7 @@
                     <div class="pl-stat-label">Dossiers connectés</div>
                     <div class="pl-stat-value" id="plStatConnectes">{{ stats.connectes }}<span class="pl-stat-total">/{{ stats.total }}</span></div>
                 </div>
-                <div class="pl-stat-icon" style="background:rgba(255,140,0,.15);color:var(--orange-primary,#ff8c00);"><i class="bi bi-folder-check"></i></div>
+                <div class="pl-stat-icon" style="background:rgba(196,91,50,.15);color:var(--orange-primary,#C45B32);"><i class="bi bi-folder-check"></i></div>
             </div>
         </div>
     </div>
@@ -935,10 +935,10 @@ function plRefreshData(silent) {
    Orange accent + elevated surfaces + layered shadows
    ============================================================ */
 :root {
-    --pl-accent: var(--orange-primary, #ff8c00);
+    --pl-accent: var(--orange-primary, #C45B32);
     --pl-accent-2: var(--orange-light, #ffa149);
-    --pl-accent-soft: rgba(255, 140, 0, 0.08);
-    --pl-accent-border: rgba(255, 140, 0, 0.35);
+    --pl-accent-soft: rgba(196, 91, 50, 0.08);
+    --pl-accent-border: rgba(196, 91, 50, 0.35);
     --pl-radius-md: var(--radius-md, 10px);
     --pl-radius-lg: var(--radius-lg, 14px);
     --pl-radius-xl: var(--radius-xl, 18px);
@@ -977,7 +977,7 @@ function plRefreshData(silent) {
     border: 1px solid var(--border-color, #e3e5e9);
     border-radius: var(--pl-radius-xl);
     background:
-        radial-gradient(900px 320px at 8% -40%, rgba(255, 140, 0, 0.16), transparent 62%),
+        radial-gradient(900px 320px at 8% -40%, rgba(196, 91, 50, 0.16), transparent 62%),
         radial-gradient(700px 300px at 105% 140%, rgba(255, 161, 73, 0.14), transparent 58%),
         linear-gradient(135deg, var(--bg-elevated, #fff) 0%, var(--bg-card, #fafafb) 100%);
     box-shadow: var(--pl-shadow-1);
@@ -991,7 +991,7 @@ function plRefreshData(silent) {
     width: 320px;
     height: 320px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 140, 0, 0.16) 0%, transparent 68%);
+    background: radial-gradient(circle, rgba(196, 91, 50, 0.16) 0%, transparent 68%);
     pointer-events: none;
 }
 .pl-hero > * { position: relative; z-index: 1; }
@@ -1004,7 +1004,7 @@ function plRefreshData(silent) {
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--orange-dark, #e06600);
+    color: var(--orange-dark, #A34A28);
     background: var(--pl-accent-soft);
     border: 1px solid var(--pl-accent-border);
     border-radius: 999px;
@@ -1173,7 +1173,7 @@ function plRefreshData(silent) {
 }
 #plToolbar .btn-outline-primary {
     border-color: var(--pl-accent-border);
-    color: var(--orange-dark, #e06600);
+    color: var(--orange-dark, #A34A28);
 }
 #plToolbar .btn-outline-primary:hover {
     background: var(--pl-accent);
@@ -1186,7 +1186,7 @@ function plRefreshData(silent) {
     border: 1px solid var(--pl-accent-border);
     border-radius: 999px;
     font-weight: 700;
-    color: var(--orange-dark, #e06600);
+    color: var(--orange-dark, #A34A28);
 }
 
 /* ---- Secondary bar: targeted TVA sync ---- */
@@ -1203,7 +1203,7 @@ function plRefreshData(silent) {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 0.7rem;
-    color: var(--orange-dark, #e06600);
+    color: var(--orange-dark, #A34A28);
 }
 #plTvaBar .btn {
     border-radius: 10px;
@@ -1225,7 +1225,7 @@ function plRefreshData(silent) {
     background: var(--pl-accent);
     border-radius: 4px;
 }
-.pl-grid-scroll::-webkit-scrollbar-thumb:hover { background: var(--orange-dark, #e06600); }
+.pl-grid-scroll::-webkit-scrollbar-thumb:hover { background: var(--orange-dark, #A34A28); }
 
 /* ---- Grid: 4 cards per row, never compressed ---- */
 #plGridGroups .row {
@@ -1299,7 +1299,7 @@ function plRefreshData(silent) {
 .pl-dossier-num {
     font-size: 0.68rem;
     font-weight: 800;
-    color: var(--orange-dark, #e06600);
+    color: var(--orange-dark, #A34A28);
     white-space: nowrap;
     padding: 0.15em 0.5em;
     background: var(--pl-accent-soft);
@@ -1371,9 +1371,9 @@ function plRefreshData(silent) {
     white-space: nowrap;
 }
 .pl-badge-todo {
-    background: rgba(255, 140, 0, 0.16);
-    color: var(--orange-dark, #e06600);
-    border: 1px solid rgba(255, 140, 0, 0.4);
+    background: rgba(196, 91, 50, 0.16);
+    color: var(--orange-dark, #A34A28);
+    border: 1px solid rgba(196, 91, 50, 0.4);
 }
 .pl-badge-late {
     background: rgba(220, 53, 69, 0.14);
@@ -1409,7 +1409,7 @@ function plRefreshData(silent) {
     padding: 0.2em 0.7em;
     font-size: 0.72rem;
     font-weight: 700;
-    color: var(--orange-dark, #e06600);
+    color: var(--orange-dark, #A34A28);
     background: var(--pl-accent-soft);
     border: 1px solid var(--pl-accent-border);
     border-radius: 999px;
@@ -1423,7 +1423,7 @@ function plRefreshData(silent) {
     text-align: center;
     font-size: 0.85rem;
     color: var(--text-tertiary, #676f7c);
-    background: repeating-linear-gradient(135deg, transparent 0 12px, rgba(255, 140, 0, 0.035) 12px 24px);
+    background: repeating-linear-gradient(135deg, transparent 0 12px, rgba(196, 91, 50, 0.035) 12px 24px);
     border: 1.5px dashed var(--border-color, #e3e5e9);
     border-radius: var(--pl-radius-lg);
 }

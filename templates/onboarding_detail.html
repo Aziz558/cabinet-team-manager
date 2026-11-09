@@ -1,0 +1,646 @@
+{% extends "base.html" %}
+{% block title %}{{ d.nom_dossier }} — Suivi nouveaux dossiers{% endblock %}
+{% block content %}
+{% set phase_icons = {1: 'bi-file-earmark-text', 2: 'bi-bank', 3: 'bi-house-gear', 4: 'bi-cash-stack', 5: 'bi-people'} %}
+{% set f_total, t_total = d.progression() %}
+{% set nxt = d.prochaine_etape() %}
+
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-rocket-takeoff"></i></span>
+        <div class="page-head-titles">
+            <h2>{{ d.nom_dossier }}</h2>
+            <p class="page-head-sub">
+                <span class="ob-badge-type">{{ types.get(d.type_dossier, d.type_dossier) }}</span>
+                <span class="ob-badge-statut {% if d.statut == 'termine' %}termine{% endif %}">
+                    {{ 'Terminé' if d.statut == 'termine' else 'En cours' }}
+                </span>
+                {% if d.nom_client %}<span class="ms-1">{{ d.nom_client }}</span>{% endif %}
+                {% if d.etablissement %}<span class="text-tertiary"> · {{ d.etablissement }}</span>{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-premium-outline" href="{{ url_for('onboarding') }}">
+            <i class="bi bi-arrow-left"></i> Liste
+        </a>
+        {% if peut_editer %}
+        <form method="post" action="{{ url_for('onboarding_statut', dossier_id=d.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-premium-outline" type="submit">
+                <i class="bi bi-{{ 'arrow-counterclockwise' if d.statut == 'termine' else 'check2-all' }}"></i>
+                {{ 'Réouvrir' if d.statut == 'termine' else 'Marquer terminé' }}
+            </button>
+        </form>
+        {% endif %}
+        {% if current_user.role == 'admin' %}
+        <form method="post" action="{{ url_for('onboarding_supprimer', dossier_id=d.id) }}" class="d-inline"
+              onsubmit="return confirm('Supprimer ce suivi et tout son pipeline ?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-premium-outline text-danger" type="submit">
+                <i class="bi bi-trash"></i>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.ob-progress { display: flex; align-items: center; gap: 10px; }
+.ob-progress .bar { flex: 1; height: 10px; border-radius: 99px; background: var(--surface-sunken); overflow: hidden; }
+.ob-progress .bar span { display: block; height: 100%; background: var(--orange-primary); border-radius: 99px; transition: width .3s; }
+.ob-progress .pct { font-family: var(--font-mono); font-size: .85rem; color: var(--text-secondary); min-width: 3.2em; text-align: right; }
+.ob-badge-type { font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    padding: .18rem .55rem; border-radius: 99px; background: var(--orange-subtle);
+    color: var(--orange-text); border: 1px solid var(--amber-line); vertical-align: middle; }
+.ob-badge-statut { font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: .18rem .55rem; border-radius: 99px; background: var(--orange-subtle);
+    color: var(--orange-text); border: 1px solid var(--amber-line); vertical-align: middle; }
+.ob-badge-statut.termine { background: rgba(11, 107, 80, .12); color: var(--success-ink); border-color: rgba(11, 107, 80, .35); }
+.ob-phase-title { font-size: 1rem; font-weight: 700; margin: 0; display: flex; gap: 8px; align-items: center; }
+.ob-phase-title i { color: var(--orange-text); }
+.ob-phase-count { font-family: var(--font-mono); font-size: .78rem; color: var(--text-secondary); }
+.ob-step { display: flex; gap: 10px; padding: .6rem 0; align-items: flex-start; }
+.ob-step + .ob-step { border-top: 1px solid var(--border-color); }
+.ob-step-dot { width: 24px; height: 24px; border-radius: 50%; flex: 0 0 auto; display: grid; place-items: center;
+    font-size: .8rem; margin-top: 1px; background: var(--surface-sunken); color: var(--text-tertiary);
+    border: 1px solid var(--line-strong); }
+.ob-step.fait .ob-step-dot { background: var(--orange-subtle); color: var(--orange-text); border-color: var(--amber-line); }
+.ob-step-name { font-weight: 600; font-size: .92rem; }
+.ob-step-meta { font-size: .76rem; color: var(--text-tertiary); }
+.ob-step-comment { font-size: .82rem; color: var(--text-secondary); font-style: italic; }
+.ob-step-form { display: flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ob-step-form [name="date_fait"] { width: 135px; flex: 0 0 auto; }
+.ob-step-note { width: 150px; }
+.ob-step-x { display: inline-flex; align-items: center; gap: 4px; margin: 0;
+    font-size: .8rem; color: var(--text-tertiary); }
+.ob-step-x .form-check-input { margin: 0; width: 1em; height: 1em; }
+.ob-info { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .7rem 1.1rem; margin: 0; }
+.ob-info dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-tertiary); font-weight: 600; }
+.ob-info dd { margin: 2px 0 0; font-size: .9rem; font-weight: 500; overflow-wrap: anywhere; }
+.ob-mail-log { list-style: none; padding: 0; margin: 0; }
+.ob-mail-log li { display: flex; gap: 10px; padding: .55rem 0; border-top: 1px solid var(--border-color); font-size: .86rem; }
+.ob-mail-log li:first-child { border-top: 0; }
+.ob-mail-log li > i { color: var(--success-ink); margin-top: 2px; }
+.ob-mail-log li.erreur > i { color: var(--danger-ink); }
+.ob-mail-log li.erreur .ob-mail-meta { color: var(--danger-ink); }
+.ob-mail-subject { font-weight: 600; overflow-wrap: anywhere; }
+.ob-mail-meta { font-size: .76rem; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.ob-next { font-size: .86rem; color: var(--orange-text); font-weight: 600; }
+.ob-phase-dots { display: inline-flex; gap: 6px; align-items: center; }
+.ob-phase-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--surface-sunken); border: 1px solid var(--line-strong); }
+.ob-phase-dot.started { background: color-mix(in srgb, var(--orange-primary) 45%, transparent); border-color: var(--orange-primary); }
+.ob-phase-dot.done { background: var(--orange-primary); border-color: var(--orange-primary); }
+</style>
+
+<div class="card-premium mb-3 animate-fade-in-up">
+    <div class="card-body-premium d-flex flex-wrap align-items-center gap-3">
+        <div class="ob-progress flex-grow-1" style="min-width: 200px;">
+            <div class="bar"><span style="width: {{ d.pourcentage() }}%;"></span></div>
+            <span class="pct">{{ d.pourcentage() }}%</span>
+        </div>
+        <div class="ob-phase-dots" aria-label="Avancement par phase">
+            {% for phase, nom_phase in phases.items() %}
+            {% set pf, pt = d.phase_progression(phase) %}
+            <span class="ob-phase-dot {% if pt and pf == pt %}done{% elif pf %}started{% endif %}"
+                  title="{{ nom_phase }} : {{ pf }}/{{ pt }}"></span>
+            {% endfor %}
+        </div>
+        {% if nxt %}
+        <span class="ob-next"><i class="bi bi-flag me-1"></i>Prochaine : {{ nxt[1] }}</span>
+        {% else %}
+        <span class="ob-next"><i class="bi bi-check2-all me-1"></i>Pipeline complet</span>
+        {% endif %}
+        <span class="ob-attente" style="font-family: var(--font-mono); font-size: .74rem; padding: .15rem .55rem;
+              border-radius: 99px; background: var(--surface-sunken); color: var(--text-secondary);">
+            Dernier mouvement : il y a {{ d.jours_attente() }} j
+        </span>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+
+        {% for phase, nom_phase in phases.items() %}
+        {% set etapes_phase = par_phase[phase] %}
+        {% if etapes_phase %}
+        <div class="card-premium mb-3">
+            <div class="card-body-premium">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <h3 class="ob-phase-title"><i class="bi {{ phase_icons[phase] }}"></i> {{ nom_phase }}</h3>
+                    {% set pf, pt = d.phase_progression(phase) %}
+                    <span class="ob-phase-count">{{ pf }}/{{ pt }}</span>
+                </div>
+                {% for code, label, s in etapes_phase %}
+                {% set fait = s.est_fait %}
+                <div class="ob-step {% if fait %}fait{% endif %}">
+                    <span class="ob-step-dot"><i class="bi bi-{{ 'check-lg' if fait else 'circle' }}"></i></span>
+                    <div>
+                        <div class="ob-step-name">{{ label }}</div>
+                        {% if s.date_fait %}
+                        <div class="ob-step-meta">
+                            Fait le {{ s.date_fait.strftime('%d/%m/%Y') }}
+                            {% if s.fait_par %} · par {{ s.fait_par.prenom }}{% endif %}
+                        </div>
+                        {% elif s.sans_date %}
+                        <div class="ob-step-meta">Fait (sans date)</div>
+                        {% endif %}
+                        {% if s.commentaire %}<div class="ob-step-comment">{{ s.commentaire }}</div>{% endif %}
+                    </div>
+                    {% if peut_editer %}
+                    <form class="ob-step-form" method="post" action="{{ url_for('onboarding_etape', dossier_id=d.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="code" value="{{ code }}">
+                        <input class="form-control form-control-sm" type="date" name="date_fait"
+                               value="{{ s.date_fait.isoformat() if s.date_fait else '' }}"
+                               aria-label="Date de l'étape {{ label }}">
+                        <label class="form-check ob-step-x" title="Fait sans date (comme « X » dans le modèle Excel)">
+                            <input class="form-check-input" type="checkbox" name="sans_date" value="1"
+                                   {% if s.sans_date %}checked{% endif %} aria-label="Fait sans date">
+                            <span class="form-check-label">X</span>
+                        </label>
+                        <input class="form-control form-control-sm ob-step-note" name="commentaire"
+                               value="{{ s.commentaire or '' }}" placeholder="Note…"
+                               aria-label="Note de l'étape {{ label }}">
+                        {% if not fait %}
+                        <button class="btn btn-sm btn-premium-outline" type="submit" name="marquer" value="1"
+                                title="Marquer fait aujourd'hui">Fait</button>
+                        {% else %}
+                        <button class="btn btn-sm btn-premium-outline text-danger" type="submit"
+                                onclick="var f=this.closest('form'); f.querySelector('[name=date_fait]').value=''; var x=f.querySelector('[name=sans_date]'); if(x) x.checked=false; return confirm('Effacer le marqueur de cette étape ?');"
+                                title="Effacer le marqueur">Effacer</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-premium-primary" type="submit"
+                                title="Enregistrer la date, l'option X et la note saisies">Appliquer</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+    </div>
+    <div class="col-lg-4">
+
+        <div class="card-premium mb-3">
+            <div class="card-body-premium">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h3 class="ob-phase-title"><i class="bi bi-info-circle"></i> Fiche dossier</h3>
+                    {% if peut_editer %}
+                    <button class="btn btn-sm btn-premium-outline" data-bs-toggle="modal" data-bs-target="#modalEdit">
+                        <i class="bi bi-pencil"></i> Modifier
+                    </button>
+                    {% endif %}
+                </div>
+                <dl class="ob-info">
+                    <div><dt>Auteur</dt><dd>{{ d.auteur or '—' }}</dd></div>
+                    <div><dt>Client</dt><dd>{{ d.nom_client or '—' }}</dd></div>
+                    <div><dt>Mail</dt><dd>{{ d.mail or '—' }}</dd></div>
+                    <div><dt>Téléphone</dt><dd>{{ d.telephone or '—' }}</dd></div>
+                    <div><dt>EC / chef de mission</dt><dd>{{ d.ec_chef_mission or '—' }}</dd></div>
+                    <div><dt>Établissement</dt><dd>{{ d.etablissement or '—' }}</dd></div>
+                    <div><dt>Honoraires</dt><dd>
+                        {% if d.honoraires_an %}{{ '{:,.0f}'.format(d.honoraires_an).replace(',', ' ') }} € HT/an{% else %}—{% endif %}
+                    </dd></div>
+                    <div><dt>Début mission</dt><dd>{{ d.date_debut_mission.strftime('%d/%m/%Y') if d.date_debut_mission else '—' }}</dd></div>
+                    <div><dt>Options</dt><dd>
+                        {% if d.polyacte %}<span class="ob-badge-type me-1">PolyActe</span>{% endif %}
+                        {% if d.social %}<span class="ob-badge-type">Social</span>{% endif %}
+                        {% if not d.polyacte and not d.social %}—{% endif %}
+                    </dd></div>
+                    <div><dt>Collab. comptable</dt><dd>{{ d.collab_comptable or '—' }}</dd></div>
+                    <div><dt>Collab. social</dt><dd>{{ d.collab_social or '—' }}</dd></div>
+                    <div><dt>Collab. juridique</dt><dd>{{ d.collab_juridique or '—' }}</dd></div>
+                </dl>
+                {% if d.commentaires %}
+                <p class="mb-0 mt-2 text-secondary" style="font-size: .86rem;">
+                    <i class="bi bi-chat-left-text me-1 text-tertiary"></i>{{ d.commentaires }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-premium mb-3">
+            <div class="card-body-premium">
+                <h3 class="ob-phase-title mb-2"><i class="bi bi-envelope-paper"></i> Mails du suivi</h3>
+                {% if peut_editer %}
+                <form method="post" action="{{ url_for('onboarding_mail', dossier_id=d.id) }}" class="mb-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-2">
+                        <label class="form-label" for="obMailType">Type de mail</label>
+                        <select class="form-select form-select-sm" id="obMailType" name="type_mail">
+                            <option value="deontologie">Déontologie (transmission de dossier)</option>
+                            <option value="ldm_facturation">Lettre de mission &amp; facturation</option>
+                            <option value="identite">Identité des collaborateurs</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="obMailDest">Destinataire</label>
+                        <input class="form-control form-control-sm" type="email" id="obMailDest" name="destinataire"
+                               value="{{ d.mail or '' }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="obMailCorps">Corps personnalisé
+                            <small class="text-tertiary d-block">Vide = modèle standard du cabinet</small>
+                        </label>
+                        <textarea class="form-control form-control-sm" id="obMailCorps" name="corps" rows="3"></textarea>
+                    </div>
+                    <button class="btn btn-sm btn-premium-primary" type="submit">
+                        <i class="bi bi-send"></i> Envoyer
+                    </button>
+                </form>
+                {% endif %}
+                {% if mails %}
+                <ul class="ob-mail-log">
+                    {% for m in mails %}
+                    <li class="{% if m.statut != 'envoye' %}erreur{% endif %}">
+                        <i class="bi bi-{{ 'envelope-check' if m.statut == 'envoye' else 'envelope-exclamation' }}"></i>
+                        <div>
+                            <div class="ob-mail-subject">{{ mail_labels.get(m.type_mail, m.type_mail) }} → {{ m.destinataire }}</div>
+                            <div class="ob-mail-meta">
+                                {{ m.sent_at.strftime('%d/%m/%Y %H:%M') }}{% if m.erreur %} — {{ m.erreur }}{% endif %}
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="mb-0 text-tertiary" style="font-size: .86rem;">
+                    <i class="bi bi-inbox me-1"></i> Aucun mail envoyé pour ce suivi.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% if peut_editer %}
+<div class="modal fade" id="modalEdit" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form class="modal-content" method="post" action="{{ url_for('onboarding_maj', dossier_id=d.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier le suivi — {{ d.nom_dossier }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="edNom">Nom du dossier *</label>
+                    <input class="form-control" id="edNom" name="nom_dossier" required value="{{ d.nom_dossier }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edClient">Nom du client</label>
+                    <input class="form-control" id="edClient" name="nom_client" value="{{ d.nom_client or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edMail">Mail client</label>
+                    <input class="form-control" type="email" id="edMail" name="mail" value="{{ d.mail or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edTel">Téléphone</label>
+                    <input class="form-control" id="edTel" name="telephone" value="{{ d.telephone or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edAuteur">Auteur</label>
+                    <input class="form-control" id="edAuteur" name="auteur" value="{{ d.auteur or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edEc">EC / chef de mission</label>
+                    <input class="form-control" id="edEc" name="ec_chef_mission" value="{{ d.ec_chef_mission or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edEtab">Établissement</label>
+                    <input class="form-control" id="edEtab" name="etablissement" value="{{ d.etablissement or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edType">Type</label>
+                    <select class="form-select" id="edType" name="type_dossier">
+                        {% for code, lib in types.items() %}
+                        <option value="{{ code }}" {% if d.type_dossier == code %}selected{% endif %}>{{ lib }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-tertiary">Changer le type ajoute les étapes manquantes du nouveau pipeline.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edHon">Honoraires /an HT (€)</label>
+                    <input class="form-control" type="number" step="0.01" min="0" id="edHon" name="honoraires_an"
+                           value="{{ d.honoraires_an if d.honoraires_an is not none else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edDebut">Date début mission</label>
+                    <input class="form-control" type="date" id="edDebut" name="date_debut_mission"
+                           value="{{ d.date_debut_mission.isoformat() if d.date_debut_mission else '' }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="edPoly" name="polyacte"
+                               {% if d.polyacte %}checked{% endif %}>
+                        <label class="form-check-label" for="edPoly">PolyActe</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="edSocial" name="social"
+                               {% if d.social %}checked{% endif %}>
+                        <label class="form-check-label" for="edSocial">Social</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edCollabC">Collaborateur comptable</label>
+                    <input class="form-control" id="edCollabC" name="collab_comptable" value="{{ d.collab_comptable or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edCollabS">Collaborateur social</label>
+                    <input class="form-control" id="edCollabS" name="collab_social" value="{{ d.collab_social or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edCollabJ">Collaborateur juridique</label>
+                    <input class="form-control" id="edCollabJ" name="collab_juridique" value="{{ d.collab_juridique or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edChefMission">Chef de mission</label>
+                    <select class="form-select" id="edChefMission" name="chef_mission_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if d.chef_mission_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edExpert">Expert-comptable</label>
+                    <select class="form-select" id="edExpert" name="expert_comptable_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if d.expert_comptable_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edRespJ">Responsable juridique</label>
+                    <select class="form-select" id="edRespJ" name="resp_juridique_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if d.resp_juridique_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edRespS">Responsable social</label>
+                    <select class="form-select" id="edRespS" name="resp_social_id">
+                        <option value="">-- Aucun --</option>
+                        {% for m in membres_actifs %}
+                        <option value="{{ m.id }}" {% if d.resp_social_id == m.id %}selected{% endif %}>{{ m.prenom }} {{ m.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="edComm">Commentaires</label>
+                    <textarea class="form-control" id="edComm" name="commentaires" rows="2">{{ d.commentaires or '' }}</textarea>
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-premium-outline" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-premium-primary">Enregistrer</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if peut_editer %}
+<!-- Popup : destinataire d'une action mail sans email -> compléter la fiche -->
+<div class="modal fade" id="modalDestinataire" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" id="formDestinataire">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Fiche destinataire manquante</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3" style="font-size: .9rem;">
+                    L'action automatique doit écrire à <strong id="destLibelle">—</strong>
+                    mais cette personne n'a pas d'email. Complétez sa fiche :
+                </p>
+                <input type="hidden" id="destToken">
+                <input type="hidden" id="destEtape">
+                <input type="hidden" id="destDeja">
+                <div class="d-flex gap-3 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="destMode" id="destModeHors" value="hors_cabinet" checked>
+                        <label class="form-check-label" for="destModeHors">Personne hors du cabinet</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="destMode" id="destModeCabinet" value="cabinet">
+                        <label class="form-check-label" for="destModeCabinet">Personne du cabinet</label>
+                    </div>
+                </div>
+
+                <div id="destHorsBloc">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label" for="destCat">Catégorie de fiche</label>
+                            <select class="form-select" id="destCat">
+                                {% for c in categories_annuaire %}
+                                <option value="{{ c.id }}" {% if c.nom == 'Client' %}selected{% endif %}>{{ c.nom }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-tertiary">Catégories gérées dans l'<a href="{{ url_for('annuaire') }}">Annuaire</a>.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destNomHors">Nom *</label>
+                            <input class="form-control" id="destNomHors">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destOrga">Organisation</label>
+                            <input class="form-control" id="destOrga">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destEmailHors">Email *</label>
+                            <input class="form-control" type="email" id="destEmailHors">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destTelHors">Téléphone</label>
+                            <input class="form-control" id="destTelHors">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="destCabinetBloc" class="d-none">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label" for="destPrenom">Prénom *</label>
+                            <input class="form-control" id="destPrenom">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destNomCab">Nom *</label>
+                            <input class="form-control" id="destNomCab">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destEmailCab">Email *</label>
+                            <input class="form-control" type="email" id="destEmailCab">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destMdP">Mot de passe <small class="text-tertiary">(vide = généré)</small></label>
+                            <input class="form-control" id="destMdP" type="text" autocomplete="off">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destPole">Pôle</label>
+                            <select class="form-select" id="destPole">
+                                <option value="comptable">Comptable</option>
+                                <option value="social">Social</option>
+                                <option value="juridique">Juridique</option>
+                                <option value="les_deux">Les deux</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="destPoste">Poste</label>
+                            <input class="form-control" id="destPoste">
+                        </div>
+                    </div>
+                    <small class="text-tertiary">Le membre est ajouté normalement dans l'application (module Membres).</small>
+                </div>
+                <div id="destErreur" class="text-danger small mt-2 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-premium-outline" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" class="btn btn-premium-primary" id="destSubmit">
+                    <i class="bi bi-send"></i> Créer la fiche et envoyer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if peut_editer %}
+<script>
+(function () {
+    var DOSSIER_ID = {{ d.id }};
+    var CSRF = document.querySelector('meta[name="csrf-token"]');
+    CSRF = CSRF ? CSRF.content : '';
+
+    function toast(msg, type) {
+        if (window.showToast) { showToast(msg, type || 'info'); }
+        else { console.log(msg); }
+    }
+
+    function afficherManquants(res, code) {
+        var m = (res.manquants && res.manquants[0]) || null;
+        if (!m) { return false; }
+        document.getElementById('destLibelle').textContent = m.libelle || 'un destinataire';
+        document.getElementById('destToken').value = m.token || '';
+        document.getElementById('destEtape').value = code;
+        document.getElementById('destDeja').value = JSON.stringify(
+            (res.mails || []).filter(function (x) { return x.statut === 'envoye'; })
+                .map(function (x) { return x.destinataire; }));
+        var hors = document.getElementById('destModeHors');
+        if (m.type === 'client') { hors.checked = true; }
+        else if (m.type === 'resp') { hors.checked = true; }
+        else { hors.checked = true; }
+        basculerMode();
+        if (m.role_resp === 'resp_juridique' || m.role_resp === 'resp_social') {
+            document.getElementById('destPole').value = m.role_resp === 'resp_juridique' ? 'juridique' : 'social';
+        }
+        var err = document.getElementById('destErreur');
+        err.classList.add('d-none');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDestinataire')).show();
+        return true;
+    }
+
+    function basculerMode() {
+        var cabinet = document.getElementById('destModeCabinet').checked;
+        document.getElementById('destHorsBloc').classList.toggle('d-none', cabinet);
+        document.getElementById('destCabinetBloc').classList.toggle('d-none', !cabinet);
+    }
+    ['destModeHors', 'destModeCabinet'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', basculerMode);
+    });
+
+    // Étapes : soumission AJAX pour intercepter les destinataires manquants
+    document.querySelectorAll('.ob-step-form').forEach(function (form) {
+        form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var code = form.querySelector('[name=code]').value;
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form, ev.submitter),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                if (!res || !res.ok) { location.reload(); return; }
+                if (res.manquants && res.manquants.length) {
+                    afficherManquants(res, code);
+                    (res.mails || []).forEach(function (m) {
+                        toast('Mail → ' + m.destinataire + ' : ' +
+                              (m.statut === 'envoye' ? 'envoyé' : 'échec (' + (m.erreur || '?') + ')'),
+                              m.statut === 'envoye' ? 'success' : 'warning');
+                    });
+                    return;
+                }
+                var echecs = (res.mails || []).filter(function (m) { return m.statut !== 'envoye'; });
+                if (echecs.length) {
+                    echecs.forEach(function (m) {
+                        toast('Mail → ' + m.destinataire + ' en échec (' + (m.erreur || '?') + ')', 'warning');
+                    });
+                } else if ((res.mails || []).length) {
+                    toast('Étape enregistrée — mail envoyé.', 'success');
+                } else {
+                    toast('Étape enregistrée.', 'success');
+                }
+                setTimeout(function () { location.reload(); }, 900);
+            }).catch(function () { form.submit(); });
+        });
+    });
+
+    // Popup : créer la fiche (membre ou annuaire) puis relancer l'action
+    document.getElementById('formDestinataire').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var cabinet = document.getElementById('destModeCabinet').checked;
+        var payload = {
+            token: document.getElementById('destToken').value,
+            deja_envoyes: JSON.parse(document.getElementById('destDeja').value || '[]')
+        };
+        if (cabinet) {
+            payload.mode = 'cabinet';
+            payload.prenom = document.getElementById('destPrenom').value;
+            payload.nom = document.getElementById('destNomCab').value;
+            payload.email = document.getElementById('destEmailCab').value;
+            payload.mot_de_passe = document.getElementById('destMdP').value;
+            payload.pole = document.getElementById('destPole').value;
+            payload.poste = document.getElementById('destPoste').value;
+        } else {
+            payload.mode = 'hors_cabinet';
+            payload.categorie_id = document.getElementById('destCat').value || null;
+            payload.nom = document.getElementById('destNomHors').value;
+            payload.email = document.getElementById('destEmailHors').value;
+            payload.telephone = document.getElementById('destTelHors').value;
+            payload.organisation = document.getElementById('destOrga').value;
+        }
+        var btn = document.getElementById('destSubmit');
+        btn.disabled = true;
+        fetch('/onboarding/' + DOSSIER_ID + '/etape/' + encodeURIComponent(document.getElementById('destEtape').value) + '/destinataire', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(payload)
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            btn.disabled = false;
+            if (!res || !res.ok) {
+                var err = document.getElementById('destErreur');
+                err.textContent = (res && res.message) || 'Erreur inattendue.';
+                err.classList.remove('d-none');
+                return;
+            }
+            bootstrap.Modal.getInstance(document.getElementById('modalDestinataire')).hide();
+            toast(res.message || 'Fiche créée — action relancée.', 'success');
+            setTimeout(function () { location.reload(); }, 900);
+        }).catch(function () {
+            btn.disabled = false;
+            var err = document.getElementById('destErreur');
+            err.textContent = 'Service indisponible.';
+            err.classList.remove('d-none');
+        });
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

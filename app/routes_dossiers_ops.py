@@ -98,6 +98,8 @@ def modifier_dossier(dossier_id):
         nouveau_social = request.form.get('collaborateur_social_id', type=int) or None
         social_changed = (dossier.collaborateur_social_id != nouveau_social)
         dossier.collaborateur_social_id = nouveau_social
+        # Charge juridique (peut etre retire = vide)
+        dossier.charge_juridique_id = request.form.get('charge_juridique_id', type=int) or None
         # SIREN : normaliser + enrichir automatiquement si fourni
         siren_edit = re.sub(r'\D', '', request.form.get('siren') or '') or None
         # Champs "infos entreprise" soumis par le formulaire (values editees manuellement)

@@ -99,6 +99,7 @@
                                 <select name="pole" class="select-premium select-sm" onchange="this.form.submit()" title="Pôle">
                                     <option value="comptable" {% if (m.pole or 'comptable')=='comptable' %}selected{% endif %}>Comptable</option>
                                     <option value="social" {% if m.pole=='social' %}selected{% endif %}>Social</option>
+                                    <option value="juridique" {% if m.pole=='juridique' %}selected{% endif %}>Juridique</option>
                                     <option value="les_deux" {% if m.pole=='les_deux' %}selected{% endif %}>Les deux</option>
                                 </select>
                             </form>
@@ -159,7 +160,7 @@
         <div class="modal-content-premium">
             <form method="POST" action="{{ url_for('ajouter_membre') }}">
                 <div class="modal-header-premium">
-                    <h5 class="mb-0"><i class="bi bi-person-plus me-2" style="color:var(--orange-primary)"></i>Ajouter un membre</h5>
+                    <h5 class="mb-0"><i class="bi bi-person-plus me-2" style="color: var(--orange-text)"></i>Ajouter un membre</h5>
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body-premium">
@@ -198,6 +199,7 @@
                             <select name="pole" class="select-premium">
                                 <option value="comptable">Comptable</option>
                                 <option value="social">Social</option>
+                                <option value="juridique">Juridique</option>
                                 <option value="les_deux">Les deux</option>
                             </select>
                         </div>

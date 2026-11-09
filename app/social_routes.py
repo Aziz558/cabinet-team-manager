@@ -203,13 +203,13 @@ def paie_sync_pennylane(dossier_id):
 @app.route('/assigner_pole/<int:user_id>', methods=['POST'])
 @login_required
 def assigner_pole(user_id):
-    """Admin : affecte le pole (comptable | social | les_deux) d'un membre."""
+    """Admin : affecte le pole (comptable | social | juridique | les_deux) d'un membre."""
     if current_user.role != 'admin':
         flash('Accès refusé.', 'danger')
         return redirect(url_for('membres'))
     u = User.query.get_or_404(user_id)
     pole = request.form.get('pole')
-    if pole not in ('comptable', 'social', 'les_deux'):
+    if pole not in ('comptable', 'social', 'juridique', 'les_deux'):
         flash('Pôle invalide.', 'danger')
         return redirect(url_for('membres'))
     u.pole = pole

@@ -247,7 +247,7 @@ function orbitChips() {
             <table class="table-premium table-premium-breathe" id="tableDossiers">
                 <thead>
                     <tr>
-                        <th class="u-w36"><input type="checkbox" id="selectAllDossiers" class="select-all-checkbox"></th>
+                        <th class="u-w36"><input type="checkbox" id="selectAllDossiers" class="select-all-checkbox" aria-label="Sélectionner tous les dossiers"></th>
                         <th>N°</th>
                         <th>INTITULÉ</th>
                         <th>COLLABORATEUR</th>
@@ -271,7 +271,7 @@ function orbitChips() {
                     {% set orbit_reste = d._tva_taches_restantes if d._tva_taches_restantes is defined else 0 %}
                     {% set orbit_actions = [['Voir les tâches', url_for('voir_taches_dossier', dossier_id=d.id), '', 'bi-list-task'], ['Modifier', 'js:openEditDossier(' ~ d.id ~ ')', 'primary', 'bi-pencil'], ['Pennylane', url_for('pennylane_dossier', dossier_id=d.id), '', 'bi-link-45deg']] %}
                     <tr tabindex="0" data-orbit-nav data-orbit-kind="Dossier" data-orbit-id="{{ d.id }}" data-orbit-title="{{ d.numero_dossier }} — {{ d.intitule }}" data-orbit-sub="{{ orbit_collab or 'Sans collaborateur' }}" data-orbit-f-collaborateur="{{ orbit_collab }}" data-orbit-f-equipe="{{ d.equipe.nom if d.equipe else '—' }}" data-orbit-f-regime="{{ orbit_regime }}" data-orbit-f-echeances="{{ orbit_echeances | join(' · ') if orbit_echeances else '—' }}" data-orbit-f-delai="{{ d._delai_label }}" data-orbit-f-tva="{{ orbit_tva }} tâche{{ orbit_tva|plur }}" data-orbit-f-reste="{{ orbit_reste }} restante{{ orbit_reste|plur }}" data-orbit-f-siren="{{ d.siren or '—' }}" data-orbit-actions='{{ orbit_actions | tojson }}' data-mots="{{ (d.numero_dossier + ' ' + d.intitule + ' ' + (d.collaborateur.prenom if d.collaborateur else '') + ' ' + (d.collaborateur.nom if d.collaborateur else '') + ' ' + (d.regime_tva or '')).lower() }}" data-collab-id="{{ d.collaborateur_id or '' }}" data-regime-combo="{{ d._regime_combo }}" data-date-iso="{{ d._date_iso }}">
-                        <td class="u-w36"><input type="checkbox" class="row-checkbox" value="{{ d.id }}"></td>
+                        <td class="u-w36"><input type="checkbox" class="row-checkbox" value="{{ d.id }}" aria-label="Sélectionner le dossier {{ d.numero_dossier }}"></td>
                         <td><strong>{{ d.numero_dossier }}</strong></td>
                         <td>{{ d.intitule }}</td>
                         <td>
@@ -495,6 +495,15 @@ function orbitChips() {
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Chargé juridique <small class="text-tertiary">(pôle juridique)</small></label>
+                            <select name="charge_juridique_id" class="select-premium" id="dossierJuridiqueSelect">
+                                <option value="">-- Aucun --</option>
+                                {% for m in membres_juridique %}
+                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -644,6 +653,15 @@ function orbitChips() {
                             <select name="collaborateur_social_id" id="editCollaborateurSocialId" class="select-premium">
                                 <option value="">-- Aucun --</option>
                                 {% for m in membres_social %}
+                                <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Chargé juridique <small class="text-tertiary">(pôle juridique)</small></label>
+                            <select name="charge_juridique_id" id="editChargeJuridiqueId" class="select-premium">
+                                <option value="">-- Aucun --</option>
+                                {% for m in membres_juridique %}
                                 <option value="{{ m.id }}">{{ m.prenom }} {{ m.nom }}</option>
                                 {% endfor %}
                             </select>
@@ -1123,6 +1141,8 @@ function orbitChips() {
         document.getElementById('editCollaborateurId').value = d.collaborateur_id || '';
         var selSocial = document.getElementById('editCollaborateurSocialId');
         if (selSocial) selSocial.value = d.collaborateur_social_id || '';
+        var selJuridique = document.getElementById('editChargeJuridiqueId');
+        if (selJuridique) selJuridique.value = d.charge_juridique_id || '';
         document.getElementById('editEquipeId').value = d.equipe_id || '';
         document.getElementById('editRegimeTva').value = d.regime_tva || '';
         document.getElementById('editFrequenceTva').value = d.frequence_tva || '';

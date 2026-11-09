@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Importer un suivi Excel{% endblock %}
+{% block content %}
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-file-earmark-arrow-up"></i></span>
+        <div class="page-head-titles">
+            <h2>Importer un suivi Excel</h2>
+            <p class="page-head-sub">Reprend une liste préparée selon le modèle du cabinet</p>
+        </div>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-premium-outline" href="{{ url_for('onboarding') }}">
+            <i class="bi bi-arrow-left"></i> Liste
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card-premium h-100">
+            <div class="card-body-premium">
+                <h3 class="ob-imp-titre"><i class="bi bi-download"></i> 1 · Récupérer le modèle</h3>
+                <p class="text-secondary" style="font-size: .9rem;">
+                    Le modèle reprend exactement les colonnes du fichier Excel du cabinet
+                    (étapes, types Création / Reprise / Revision, légende incluse).
+                    Préparez votre liste dedans, puis importez-la.
+                </p>
+                <a class="btn btn-premium-primary" href="{{ url_for('onboarding_modele') }}">
+                    <i class="bi bi-file-earmark-excel"></i> Télécharger le modèle .xlsx
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-premium h-100">
+            <div class="card-body-premium">
+                <h3 class="ob-imp-titre"><i class="bi bi-upload"></i> 2 · Importer votre liste</h3>
+                <form method="post" action="{{ url_for('onboarding_import') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label" for="impFichier">Fichier Excel (.xlsx)</label>
+                        <input class="form-control" type="file" id="impFichier" name="fichier" accept=".xlsx" required>
+                    </div>
+                    <button class="btn btn-premium-primary" type="submit">
+                        <i class="bi bi-box-arrow-in-down"></i> Importer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-premium mt-3">
+    <div class="card-body-premium">
+        <h3 class="ob-imp-titre"><i class="bi bi-lightbulb"></i> Comment l'import fonctionne</h3>
+        <ul class="ob-imp-liste">
+            <li>La feuille utilisée est celle dont le nom contient « suivi » (hors dossiers partis).</li>
+            <li>La ligne d'en-têtes est détectée automatiquement : la colonne A doit contenir « N° ».</li>
+            <li>Chaque ligne devient un dossier suivi ; <strong>NOM DOSSIER</strong> est obligatoire.</li>
+            <li>Les étapes acceptent une <strong>date</strong> (jj/mm/aaaa), « X » (fait sans date)
+                ou un texte libre (fait + note).</li>
+            <li>Les lignes sans nom de dossier sont ignorées et signalées dans le rapport final.</li>
+            <li>Les types reconnus : Création, Reprise, Revision — le pipeline d'étapes s'adapte.</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.ob-imp-titre { font-size: 1rem; font-weight: 700; margin: 0 0 .5rem; display: flex; gap: 8px; align-items: center; }
+.ob-imp-titre i { color: var(--orange-text); }
+.ob-imp-liste { margin: 0; padding-left: 1.1rem; font-size: .88rem; color: var(--text-secondary); }
+.ob-imp-liste li { margin-bottom: .35rem; }
+</style>
+{% endblock %}

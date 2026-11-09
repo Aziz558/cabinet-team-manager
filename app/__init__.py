@@ -194,6 +194,8 @@ if _SKIP_DB_INIT:
 
 from app import routes  # noqa: F401
 from app import social_routes  # noqa: F401  (pole social : suivi DSN & écritures de paie)
+from app import routes_onboarding  # noqa: F401  (suivi nouveaux dossiers / dossiers partis)
+from app import routes_annuaire  # noqa: F401  (contacts hors cabinet : clients, notaires…)
 from app.models import User, AppSetting, SuggestionTache, Equipe, Notification  # noqa: F401
 
 # ===== CSRF global : tous les POST authentifiés exigent un token. =====
@@ -297,6 +299,59 @@ with app.app_context():
                     app.logger.info("Added equipe_email column")
     except Exception as e:
         app.logger.warning(f"Migration error (equipes mailbox): {e}")
+
+    # Suivi nouveaux dossiers : colonne « fait sans date » (X du modèle Excel)
+    try:
+        inspector = db.inspect(db.engine)
+        if 'onboarding_etapes' in inspector.get_table_names():
+            onb_cols = [c['name'] for c in inspector.get_columns('onboarding_etapes')]
+            with db.engine.begin() as conn:
+                if 'sans_date' not in onb_cols:
+                    conn.execute(db.text("ALTER TABLE onboarding_etapes ADD COLUMN sans_date BOOLEAN DEFAULT FALSE"))
+                    app.logger.info("Added sans_date column to onboarding_etapes")
+    except Exception as e:
+        app.logger.warning(f"Migration error (onboarding_etapes.sans_date): {e}")
+
+    # Suivi nouveaux dossiers : responsables par dossier + actions mail configurables
+    try:
+        inspector = db.inspect(db.engine)
+        tables = inspector.get_table_names()
+        if 'onboarding_dossiers' in tables:
+            onbd_cols = [c['name'] for c in inspector.get_columns('onboarding_dossiers')]
+            with db.engine.begin() as conn:
+                for _col in ('chef_mission_id', 'expert_comptable_id',
+                             'resp_juridique_id', 'resp_social_id'):
+                    if _col not in onbd_cols:
+                        conn.execute(db.text(f"ALTER TABLE onboarding_dossiers ADD COLUMN {_col} INTEGER"))
+                        app.logger.info(f"Added {_col} column to onboarding_dossiers")
+        if 'dossiers' in tables:
+            dossiers_cols = [c['name'] for c in inspector.get_columns('dossiers')]
+            with db.engine.begin() as conn:
+                if 'charge_juridique_id' not in dossiers_cols:
+                    conn.execute(db.text("ALTER TABLE dossiers ADD COLUMN charge_juridique_id INTEGER"))
+                    app.logger.info("Added charge_juridique_id column to dossiers")
+    except Exception as e:
+        app.logger.warning(f"Migration error (responsables/actions onboarding): {e}")
+
+    # Actions mail par défaut du suivi nouveaux dossiers (idempotent)
+    try:
+        from app.routes_onboarding import _seed_actions_defaut
+        _seed_actions_defaut()
+    except Exception as e:
+        app.logger.warning(f"Seed actions onboarding: {e}")
+
+    # Annuaire : catégorie « Client » par défaut (idempotent)
+    try:
+        from app.models import AnnuaireCategorie
+        if AnnuaireCategorie.query.filter_by(nom='Client').first() is None:
+            db.session.add(AnnuaireCategorie(nom='Client', ordre=0))
+            db.session.commit()
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        app.logger.warning(f"Seed annuaire: {e}")
 
     # Ensure dossiers table has regime_fiscale and has_cfe columns
     try:
