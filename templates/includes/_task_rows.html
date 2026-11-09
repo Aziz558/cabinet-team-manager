@@ -1,0 +1,26 @@
+{% macro statut_dot(t) %}
+<span class="task-dot is-{{ t.statut or 'a_faire' }}">
+    {% if t.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
+    {% elif t.statut == 'terminee' %}<i class="bi bi-check2"></i>
+    {% else %}<i class="bi bi-circle"></i>{% endif %}
+</span>
+{% endmacro %}
+
+{% macro prio_badge(t) %}
+<span class="badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}">{{ t.priorite or 'moyenne' }}</span>
+{% endmacro %}
+
+{% macro task_row(t, show_date=false, href='#') %}
+<a class="task-row" href="{{ href }}">
+    {{ statut_dot(t) }}
+    <span class="flex-grow-1 min-w-0">
+        <span class="task-row-title d-block">{{ t.titre }}</span>
+        <span class="task-row-meta">
+            {% if show_date and t.date_echeance %}{{ t.date_echeance.strftime('%d/%m') }} · {% endif %}
+            {% if t.dossier %}{{ t.dossier.numero_dossier }} · {% endif %}
+            {{ t.assigne.prenom }} {{ t.assigne.nom }}
+        </span>
+    </span>
+    {{ prio_badge(t) }}
+</a>
+{% endmacro %}

@@ -1,226 +1,126 @@
-{% from 'includes/orbit_logo.html' import orbit_logo with context %}
-{% if current_user.role in ('admin', 'manager') %}
-<div class="sidebar h-100">
-    <!-- Brand -->
-    <div class="sidebar-brand">
-        {{ orbit_logo(size=34, with_text=True) }}
-    </div>
-
-    <div class="sidebar-menu">
-        <!-- Principal -->
+{% set is_mgr = current_user.role in ('admin', 'manager') %}
+<div class="sidebar">
+    <nav class="sidebar-menu" aria-label="Menu principal">
         <div class="sidebar-section-title">Principal</div>
         <a href="{{ url_for('dashboard') }}" class="sidebar-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-            <i class="bi bi-speedometer2"></i>
-            <span>Tableau de bord</span>
+            <i class="bi bi-speedometer2"></i><span>Tableau de bord</span>
         </a>
+        {% if is_mgr %}
         <a href="{{ url_for('analytics') }}" class="sidebar-nav-item {% if request.endpoint == 'analytics' %}active{% endif %}">
-            <i class="bi bi-graph-up-arrow"></i>
-            <span>Analyses</span>
+            <i class="bi bi-graph-up-arrow"></i><span>Analyses</span>
         </a>
+        {% endif %}
         <a href="{{ url_for('suivi_avancement') }}" class="sidebar-nav-item {% if request.endpoint == 'suivi_avancement' %}active{% endif %}">
-            <i class="bi bi-calendar3-week"></i>
-            <span>Avancement</span>
+            <i class="bi bi-calendar3-week"></i><span>Avancement</span>
         </a>
-        {% if current_user.role == 'admin' or current_user.dans_pole_social or current_user.a_des_dossiers_avec_referent_social %}
+        {% if is_mgr and (current_user.role == 'admin' or current_user.dans_pole_social or current_user.a_des_dossiers_avec_referent_social) %}
         <a href="{{ url_for('suivi_social') }}" class="sidebar-nav-item {% if request.endpoint == 'suivi_social' %}active{% endif %}">
-            <i class="bi bi-people"></i>
-            <span>Suivi social</span>
+            <i class="bi bi-people"></i><span>Suivi social</span>
         </a>
         {% endif %}
         <a href="{{ url_for('checklist') }}" class="sidebar-nav-item {% if request.endpoint == 'checklist' %}active{% endif %}">
-            <i class="bi bi-check2-square"></i>
-            <span>Checklist</span>
+            <i class="bi bi-check2-square"></i><span>Checklist</span>
         </a>
         <a href="{{ url_for('taches_aujourdhui') }}" class="sidebar-nav-item {% if request.endpoint == 'taches_aujourdhui' %}active{% endif %}">
-            <i class="bi bi-calendar-check"></i>
-            <span>Tâches du jour</span>
+            <i class="bi bi-calendar-check"></i><span>Tâches du jour</span>
         </a>
 
-        <!-- Espace de travail -->
         <div class="sidebar-section-title">Espace de travail</div>
+        {% if is_mgr %}
         <a href="{{ url_for('dossiers') }}" class="sidebar-nav-item {% if request.endpoint == 'dossiers' %}active{% endif %}">
-            <i class="bi bi-folder"></i>
-            <span>Dossiers</span>
+            <i class="bi bi-folder"></i><span>Dossiers</span>
         </a>
         <a href="{{ url_for('taches') }}" class="sidebar-nav-item {% if request.endpoint == 'taches' %}active{% endif %}">
-            <i class="bi bi-check2-square"></i>
-            <span>Tâches</span>
+            <i class="bi bi-list-check"></i><span>Tâches</span>
         </a>
         <a href="{{ url_for('fiscal') }}" class="sidebar-nav-item {% if request.endpoint == 'fiscal' %}active{% endif %}">
-            <i class="bi bi-calc"></i>
-            <span>Tableau fiscal</span>
+            <i class="bi bi-calculator"></i><span>Tableau fiscal</span>
         </a>
+        {% else %}
+        <a href="{{ url_for('mes_dossiers') }}" class="sidebar-nav-item {% if request.endpoint == 'mes_dossiers' %}active{% endif %}">
+            <i class="bi bi-folder"></i><span>Mes dossiers</span>
+        </a>
+        <a href="{{ url_for('mes_taches') }}" class="sidebar-nav-item {% if request.endpoint == 'mes_taches' %}active{% endif %}">
+            <i class="bi bi-check-circle"></i><span>Mes tâches</span>
+        </a>
+        {% endif %}
 
-        <!-- Équipe -->
+        {% if is_mgr %}
         <div class="sidebar-section-title">Équipe</div>
         <a href="{{ url_for('liste_membres') }}" class="sidebar-nav-item {% if request.endpoint == 'liste_membres' %}active{% endif %}">
-            <i class="bi bi-people"></i>
-            <span>Membres</span>
+            <i class="bi bi-people"></i><span>Membres</span>
         </a>
         <a href="{{ url_for('equipes') }}" class="sidebar-nav-item {% if request.endpoint == 'equipes' %}active{% endif %}">
-            <i class="bi bi-diagram-3"></i>
-            <span>Équipes</span>
+            <i class="bi bi-diagram-3"></i><span>Équipes</span>
         </a>
+        {% endif %}
 
-        <!-- Suivi -->
-
-        <!-- Outils -->
-                <div class="sidebar-section-title">Outils</div>
-                <a href="{{ url_for('pennylane_page') }}" class="sidebar-nav-item {% if request.endpoint == 'pennylane_page' %}active{% endif %}">
-                    <i class="bi bi-link-45deg"></i>
-                    <span>Pennylane</span>
-                </a>
-                <a href="{{ url_for('settings') }}#mailbox" class="sidebar-nav-item">
-            <i class="bi bi-envelope"></i>
-            <span>Boîte mail</span>
+        <div class="sidebar-section-title">Outils</div>
+        <a href="{{ url_for('pennylane_page') }}" class="sidebar-nav-item {% if request.endpoint == 'pennylane_page' %}active{% endif %}">
+            <i class="bi bi-link-45deg"></i><span>Pennylane</span>
         </a>
+        {% if is_mgr %}
+        <a href="{{ url_for('settings') }}#mailbox" class="sidebar-nav-item">
+            <i class="bi bi-envelope"></i><span>Boîte mail</span>
+        </a>
+        {% endif %}
         <a href="{{ url_for('suggestions_page') }}" class="sidebar-nav-item {% if request.endpoint == 'suggestions_page' %}active{% endif %}">
-            <i class="bi bi-lightbulb"></i>
-            <span>Suggestions</span>
-            {% if current_user.is_authenticated and _pending_validations > 0 %}
+            <i class="bi bi-lightbulb"></i><span>Suggestions</span>
+            {% if _pending_validations is defined and _pending_validations > 0 %}
             <span class="sidebar-badge">{{ _pending_validations }}</span>
             {% endif %}
         </a>
         <a href="{{ url_for('notifications_page') }}" class="sidebar-nav-item {% if request.endpoint == 'notifications_page' %}active{% endif %}">
-            <i class="bi bi-bell"></i>
-            <span>Notifications</span>
+            <i class="bi bi-bell"></i><span>Notifications</span>
         </a>
+        {% if is_mgr %}
         <a href="{{ url_for('settings') }}" class="sidebar-nav-item {% if request.endpoint == 'settings' %}active{% endif %}">
-            <i class="bi bi-gear"></i>
-            <span>Paramètres</span>
+            <i class="bi bi-gear"></i><span>Paramètres</span>
         </a>
+        {% else %}
+        <a href="{{ url_for('profil') }}" class="sidebar-nav-item {% if request.endpoint == 'profil' %}active{% endif %}">
+            <i class="bi bi-person"></i><span>Mon profil</span>
+        </a>
+        {% endif %}
 
-        <!-- Admin -->
         {% if current_user.role == 'admin' %}
         <div class="sidebar-section-title">Administration</div>
         <a href="{{ url_for('admin_debug') }}" class="sidebar-nav-item {% if request.endpoint == 'admin_debug' %}active{% endif %}">
-            <i class="bi bi-bug"></i>
-            <span>Diagnostic</span>
+            <i class="bi bi-bug"></i><span>Diagnostic</span>
         </a>
         {% endif %}
-    </div>
+    </nav>
 
-    <!-- Bottom: user profile -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
             {% set photo_src = current_user.photo_display_src() %}
             {% if photo_src %}
-            <span class="sidebar-user-icon">
-                <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img">
-            </span>
+            <span class="sidebar-user-icon"><img src="{{ photo_src }}" alt="" class="sidebar-user-img"></span>
             {% else %}
-            {% set role_icon = 'bi-person' %}
-            {% if current_user.role == 'admin' %}
-              {% set role_icon = 'bi-person-badge' %}
-            {% elif current_user.role == 'manager' %}
-              {% set role_icon = 'bi-person-lines-fill' %}
-            {% endif %}
-            <span class="sidebar-user-icon">
-                <i class="bi {{ role_icon }} fs-4"></i>
-            </span>
+            {% set role_icon = 'bi-person-badge' if current_user.role == 'admin' else ('bi-person-lines-fill' if current_user.role == 'manager' else 'bi-person') %}
+            <span class="sidebar-user-icon"><i class="bi {{ role_icon }}"></i></span>
             {% endif %}
             <div class="sidebar-user-info">
                 <span class="sidebar-user-name">{{ current_user.prenom }} {{ current_user.nom }}</span>
                 <span class="sidebar-user-role">{{ current_user.role|capitalize }}</span>
             </div>
-            <a href="{{ url_for('logout') }}" class="sidebar-logout" title="Déconnexion">
+            <a href="{{ url_for('logout') }}" class="sidebar-logout" title="Déconnexion" aria-label="Déconnexion">
                 <i class="bi bi-box-arrow-right"></i>
             </a>
         </div>
     </div>
 </div>
-{% else %}
-<div class="sidebar h-100">
-    <!-- Brand -->
-    <div class="sidebar-brand">
-        {{ orbit_logo(size=34, with_text=True) }}
-    </div>
-
-    <div class="sidebar-menu">
-        <div class="sidebar-section-title">Navigation</div>
-        <a href="{{ url_for('dashboard') }}" class="sidebar-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-            <i class="bi bi-speedometer2"></i>
-            <span>Tableau de bord</span>
-        </a>
-        <a href="{{ url_for('taches_aujourdhui') }}" class="sidebar-nav-item {% if request.endpoint == 'taches_aujourdhui' %}active{% endif %}">
-            <i class="bi bi-calendar-check"></i>
-            <span>Tâches du jour</span>
-        </a>
-        <a href="{{ url_for('mes_taches') }}" class="sidebar-nav-item {% if request.endpoint == 'mes_taches' %}active{% endif %}">
-            <i class="bi bi-check-circle"></i>
-            <span>Mes tâches</span>
-        </a>
-        <a href="{{ url_for('mes_dossiers') }}" class="sidebar-nav-item {% if request.endpoint == 'mes_dossiers' %}active{% endif %}">
-            <i class="bi bi-folder"></i>
-            <span>Mes dossiers</span>
-        </a>
-        <a href="{{ url_for('suivi_avancement') }}" class="sidebar-nav-item {% if request.endpoint == 'suivi_avancement' %}active{% endif %}">
-            <i class="bi bi-calendar3-week"></i>
-            <span>Avancement</span>
-        </a>
-        <a href="{{ url_for('checklist') }}" class="sidebar-nav-item {% if request.endpoint == 'checklist' %}active{% endif %}">
-            <i class="bi bi-check2-square"></i>
-            <span>Checklist</span>
-        </a>
-        <a href="{{ url_for('pennylane_page') }}" class="sidebar-nav-item {% if request.endpoint == 'pennylane_page' %}active{% endif %}">
-            <i class="bi bi-link-45deg"></i>
-            <span>Pennylane</span>
-        </a>
-        <a href="{{ url_for('notifications_page') }}" class="sidebar-nav-item {% if request.endpoint == 'notifications_page' %}active{% endif %}">
-            <i class="bi bi-bell"></i>
-            <span>Notifications</span>
-        </a>
-        <a href="{{ url_for('profil') }}" class="sidebar-nav-item {% if request.endpoint == 'profil' %}active{% endif %}">
-            <i class="bi bi-person"></i>
-            <span>Mon profil</span>
-        </a>
-    </div>
-
-    <!-- Bottom: user profile -->
-    <div class="sidebar-footer">
-        <div class="sidebar-user">
-            {% set photo_src = current_user.photo_display_src() %}
-            {% if photo_src %}
-            <span class="sidebar-user-icon">
-                <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img">
-            </span>
-            {% else %}
-            {% set role_icon = 'bi-person' %}
-            {% if current_user.role == 'admin' %}
-              {% set role_icon = 'bi-person-badge' %}
-            {% elif current_user.role == 'manager' %}
-              {% set role_icon = 'bi-person-lines-fill' %}
-            {% endif %}
-            <span class="sidebar-user-icon">
-                <i class="bi {{ role_icon }} fs-4"></i>
-            </span>
-            {% endif %}
-            <div class="sidebar-user-info">
-                <span class="sidebar-user-name">{{ current_user.prenom }} {{ current_user.nom }}</span>
-                <span class="sidebar-user-role">{{ current_user.role|capitalize }}</span>
-            </div>
-            <a href="{{ url_for('logout') }}" class="sidebar-logout" title="Déconnexion">
-                <i class="bi bi-box-arrow-right"></i>
-            </a>
-        </div>
-    </div>
-</div>
-{% endif %}
 <script>
-/* Navigation : sections repliables (non invasif, dégrade en douceur).
-   La recherche globale vit dans la palette de commandes de la barre du haut
-   (Ctrl+K) — une seule interface de recherche pour toute l'app. */
-(function() {
+/* Sections repliables + persistance + item actif ramené dans la zone visible.
+   Les titres de section sont du texte statique (textContent) : aucun risque XSS. */
+(function () {
     function ready(fn) { if (document.readyState !== 'loading') { fn(); } else { document.addEventListener('DOMContentLoaded', fn); } }
-    ready(function() {
+    ready(function () {
         var menu = document.querySelector('.sidebar-menu');
         if (!menu || menu.dataset.orbitGroups) { return; }
         menu.dataset.orbitGroups = '1';
-
-        /* Regrouper les items en sections repliables */
-        var groups = [];
-        var currentItems = null;
-        Array.prototype.slice.call(menu.children).forEach(function(el) {
+        var groups = [], currentItems = null;
+        Array.prototype.slice.call(menu.children).forEach(function (el) {
             if (el.classList && el.classList.contains('sidebar-section-title')) {
                 var g = document.createElement('div');
                 g.className = 'sidebar-group';
@@ -229,48 +129,41 @@
                 btn.type = 'button';
                 btn.className = 'sidebar-group-title';
                 btn.setAttribute('aria-expanded', 'true');
-                btn.innerHTML = '<span>' + (el.textContent || '').trim() + '</span><i class="bi bi-chevron-down" aria-hidden="true"></i>';
+                var label = document.createElement('span');
+                label.textContent = (el.textContent || '').trim();
+                var chev = document.createElement('i');
+                chev.className = 'bi bi-chevron-down';
+                chev.setAttribute('aria-hidden', 'true');
+                btn.appendChild(label); btn.appendChild(chev);
                 var items = document.createElement('div');
                 items.className = 'sidebar-group-items';
-                g.appendChild(btn);
-                g.appendChild(items);
-                menu.insertBefore(g, el);
-                menu.removeChild(el);
-                currentItems = items;
-                groups.push(g);
-                btn.addEventListener('click', function() {
+                g.appendChild(btn); g.appendChild(items);
+                menu.insertBefore(g, el); menu.removeChild(el);
+                currentItems = items; groups.push(g);
+                btn.addEventListener('click', function () {
                     g.classList.toggle('collapsed');
                     btn.setAttribute('aria-expanded', g.classList.contains('collapsed') ? 'false' : 'true');
                     saveGroups();
                 });
-            } else if (currentItems) {
-                currentItems.appendChild(el);
-            }
+            } else if (currentItems) { currentItems.appendChild(el); }
         });
-
         function saveGroups() {
             try {
                 var state = {};
-                groups.forEach(function(g) { state[g.dataset.group] = g.classList.contains('collapsed'); });
+                groups.forEach(function (g) { state[g.dataset.group] = g.classList.contains('collapsed'); });
                 localStorage.setItem('orbitSidebarGroups', JSON.stringify(state));
             } catch (e) {}
         }
         try {
             var saved = JSON.parse(localStorage.getItem('orbitSidebarGroups') || '{}');
-            groups.forEach(function(g) { if (saved[g.dataset.group]) { g.classList.add('collapsed'); } });
+            groups.forEach(function (g) { if (saved[g.dataset.group]) { g.classList.add('collapsed'); g.querySelector('.sidebar-group-title').setAttribute('aria-expanded', 'false'); } });
         } catch (e) {}
-
-        /* La section qui contient la page courante ne se replie jamais :
-           l'utilisateur garde toujours son repère de navigation. */
         var active = menu.querySelector('.sidebar-nav-item.active');
         if (active && active.closest) {
             var grp = active.closest('.sidebar-group');
-            if (grp) { grp.classList.remove('collapsed'); }
-            /* L'item actif est ramené dans la zone visible du menu défilant :
-               sur une page située en bas (Paramètres), on le perdait de vue. */
+            if (grp) { grp.classList.remove('collapsed'); grp.querySelector('.sidebar-group-title').setAttribute('aria-expanded', 'true'); }
             try {
-                var mRect = menu.getBoundingClientRect();
-                var aRect = active.getBoundingClientRect();
+                var mRect = menu.getBoundingClientRect(), aRect = active.getBoundingClientRect();
                 if (aRect.top < mRect.top || aRect.bottom > mRect.bottom) {
                     menu.scrollTop = active.offsetTop - (menu.clientHeight / 2) + (active.offsetHeight / 2);
                 }
@@ -279,4 +172,3 @@
     });
 })();
 </script>
-

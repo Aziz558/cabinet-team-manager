@@ -105,6 +105,11 @@ def checklist():
             ChecklistEntry.dossier_id.in_([d.id for d in dossiers_f])
         ).all()
         ent_by = {(e.dossier_id, e.mois, e.kind): e for e in entries}
+        # Trace des modifications (infobulle) : nom des auteurs des cases
+        from .models import User as _U
+        _uid_ids = {e.updated_by_id for e in entries if e.updated_by_id}
+        uid_names = {u.id: f"{u.prenom} {u.nom}".strip()
+                     for u in _U.query.filter(_U.id.in_(_uid_ids)).all()} if _uid_ids else {}
 
         # --- Seed plan B : statuts depuis les tâches deadlines existantes ---
         # (par défaut tant que la clé API firm Pennylane n'est pas fournie ;
@@ -168,8 +173,20 @@ def checklist():
             e = ent_by.get((d.id, m, kind))
             declare = bool(e.declare) if e else False
             paye = bool(e.paye) if e else False
+            trace = ''
+            if e:
+                qui = uid_names.get(e.updated_by_id, '')
+                if e.pl_mode or e.source == 'pennylane':
+                    trace = 'Synchronisé depuis Pennylane'
+                elif e.source == 'tache':
+                    trace = 'Via la tâche deadline' + (f' — {qui}' if qui else '')
+                elif qui:
+                    trace = f'Modifié par {qui}'
+                if trace and e.date_modif:
+                    trace += f" le {e.date_modif.strftime('%d/%m/%Y %H:%M')}"
             if e is None and oblig and (d.id, m, kind) in seed_map:
                 declare, paye = seed_map[(d.id, m, kind)]
+                trace = 'État repris de la tâche deadline (terminée)'
             if not oblig:
                 state = 'na'
             elif paye:
@@ -183,7 +200,8 @@ def checklist():
             return {'mois': m, 'kind': kind, 'oblig': oblig,
                     'declare': declare, 'paye': paye, 'state': state,
                     'jour': jour_dt.day if jour_dt else 0,
-                    'date_iso': jour_dt.isoformat() if jour_dt else ''}
+                    'date_iso': jour_dt.isoformat() if jour_dt else '',
+                    'trace': trace}
 
         for d in dossiers_f:
             regime = (d.regime_tva or '').lower().strip()
@@ -306,6 +324,41 @@ def checklist():
                         c['pl_icon'] = pill_icon(st.statut, st.statut_affiche)
         pl_last_sync = get_last_sync()
 
+    # --- Synthèse de la grille (bandeau KPI + retards par mois) ---
+    if grille:
+        _today = date.today()
+        tot_dues = tot_solved = tot_retard = tot_declare = soon_rows = 0
+        retards_mois = [0] * 12
+        for g in grille:
+            for c in g['cols']:
+                if not c['oblig']:
+                    continue
+                if c['state'] == 'retard':
+                    tot_retard += 1
+                    retards_mois[c['mois'] - 1] += 1
+                elif c['state'] == 'declare':
+                    tot_declare += 1
+                if c['state'] in ('solde', 'declare'):
+                    tot_solved += 1
+                if c['date_iso'] and c['date_iso'] < _today.isoformat():
+                    tot_dues += 1
+            if g['jours'] is not None and 0 <= g['jours'] <= 7:
+                soon_rows += 1
+        data['stats'] = {
+            'dossiers': len(grille),
+            'ech': sum(1 for g in grille for c in g['cols'] if c['oblig']),
+            'dues': tot_dues,
+            'retard': tot_retard,
+            'declare': tot_declare,
+            'solde': tot_solved - tot_declare,
+            'soon': soon_rows,
+            'ajour_pct': (round(100 * (tot_dues - tot_retard) / tot_dues) if tot_dues else None),
+        }
+        data['retards_mois'] = retards_mois
+    else:
+        data['stats'] = None
+        data['retards_mois'] = [0] * 12
+
     if request.args.get('format') == 'json':
         from flask import jsonify
         return jsonify({'annee': annee, 'taxe': taxe,
@@ -367,9 +420,13 @@ def checklist_toggle():
         e.declare = declare
         e.paye = paye
     else:
-        # tout désactivé -> supprimer la ligne (retour à l'état calculé : à venir / retard / seed)
-        db.session.delete(e)
+        # tout désactivé -> case vidée mais ligne conservée pour la trace
+        # (source/updated_by/date_modif visibles dans l'infobulle) ; l'affichage
+        # retombe sur l'état calculé : à venir / retard / seed
+        e.declare = False
+        e.paye = False
     e.pl_mode = False  # saisie manuelle : la prochaine synchro fera foi sur les périodes connues de PL
+    e.source = 'checklist'
     e.updated_by_id = current_user.id
     e.date_modif = datetime.utcnow()
     db.session.commit()

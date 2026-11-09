@@ -71,3 +71,6 @@ concepts_brief.md
 design_draft.md
 scripts/_coin_block.js
 _ui/
+
+# Scripts QA locaux (tests bout-en-bout, captures)
+qa/

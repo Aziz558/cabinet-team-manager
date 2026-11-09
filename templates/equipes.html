@@ -3,7 +3,12 @@
 
 {% block content %}
 {% from 'includes/orbit_ui.html' import page_head with context %}
-{% set actions %}{% if current_user.role == 'admin' %}
+{% set actions %}
+<div class="orbit-view-toggle me-2" role="group" aria-label="Mode d'affichage">
+    <button type="button" data-view-mode="cards" aria-pressed="true" title="Vue cartes"><i class="bi bi-grid-3x3-gap"></i>Cartes</button>
+    <button type="button" data-view-mode="table" aria-pressed="false" title="Vue tableau"><i class="bi bi-table"></i>Tableau</button>
+</div>
+{% if current_user.role == 'admin' %}
     <button class="btn-premium btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalEquipe">
         <i class="bi bi-plus-lg me-1"></i>Nouvelle équipe
     </button>
@@ -18,6 +23,7 @@
     {% if e.manager %}{% set ens.avec_mgr = ens.avec_mgr + 1 %}{% endif %}
     {% if e.equipe_email %}{% set ens.emails = ens.emails + 1 %}{% endif %}
 {% endfor %}
+<div data-view-scope="equipes">
 <div class="kpi-band animate-fade-in-up">
     <div class="kpi-chip" style="--accent: var(--ink-3);">
         <div class="kpi-label"><i class="bi bi-diagram-3"></i> Équipes</div>
@@ -46,7 +52,7 @@
     </div>
 </div>
 
-<div class="row equipe-cards-container">
+<div class="row equipe-cards-container" data-view-pane="cards">
     {% for e in equipes %}
     <div class="col-md-6 col-lg-4 mb-4 animate-fade-in-up stagger-1">
         <div class="card-premium h-100" style="border-left:4px solid {{ e.couleur }} !important;">
@@ -109,6 +115,50 @@
         </div>
     </div>
     {% endfor %}
+</div>
+
+<!-- Vue tableau (bascule Cartes / Tableau) -->
+<div class="card-premium" data-view-pane="table" hidden>
+    <div class="table-responsive">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Équipe</th>
+                    <th>Description</th>
+                    <th>Responsable</th>
+                    <th class="text-center">Membres</th>
+                    <th>Email dédié</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in equipes %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi {{ e.icon }}" style="color:{{ e.couleur }}"></i>
+                            <strong>{{ e.nom }}</strong>
+                        </div>
+                    </td>
+                    <td class="text-tertiary small">{{ (e.description or '—')|truncate(60) }}</td>
+                    <td>{% if e.manager %}{{ e.manager.prenom }} {{ e.manager.nom }}{% else %}<span class="text-tertiary">À désigner</span>{% endif %}</td>
+                    <td class="text-center">{{ e.nb_membres() }}</td>
+                    <td class="small">{{ e.equipe_email or '—' }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('team_select') }}" class="btn-premium btn-premium-outline btn-premium-primary btn-sm">Voir</a>
+                        {% if current_user.role == 'admin' %}
+                        <button class="btn-premium btn-premium-outline btn-sm" data-bs-toggle="modal" data-bs-target="#modalManagerEquipe{{ e.id }}" title="Responsable"><i class="bi bi-person-gear"></i></button>
+                        <button class="btn-premium btn-premium-outline btn-sm" data-bs-toggle="modal" data-bs-target="#modalMailEquipe{{ e.id }}" title="Email équipe"><i class="bi bi-envelope"></i></button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-tertiary py-4">Aucune équipe pour le moment.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 </div>
 
 {% if current_user.role == 'admin' %}

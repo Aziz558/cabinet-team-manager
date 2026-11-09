@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'includes/_task_rows.html' import task_row %}
 
 {% block title %}Tableau de bord{% endblock %}
 
@@ -41,196 +42,226 @@
         <a href="{{ url_for('dossiers') }}" class="qa-btn"><i class="bi bi-folder-plus"></i><span>Nouveau dossier</span></a>
         <a href="{{ url_for('taches') }}" class="qa-btn"><i class="bi bi-plus-square"></i><span>Nouvelle tâche</span></a>
         <a href="{{ url_for('suivi_avancement') }}" class="qa-btn"><i class="bi bi-graph-up-arrow"></i><span>Avancement</span></a>
-        <a href="{{ url_for('fiscal') }}" class="qa-btn"><i class="bi bi-calc"></i><span>Fiscal</span></a>
+        <a href="{{ url_for('fiscal') }}" class="qa-btn"><i class="bi bi-calculator"></i><span>Fiscal</span></a>
         <a href="{{ url_for('settings') }}#mailbox" class="qa-btn"><i class="bi bi-envelope-paper"></i><span>Boîte mail</span></a>
         <a href="{{ url_for('notifications_page') }}" class="qa-btn"><i class="bi bi-bell"></i><span>Notifications</span></a>
     </div>
 </div>
 
-<!-- Stats Grid with Skeleton Loading -->
-<div class="stats-grid stagger-1" id="kpiSkeletons">
-    <!-- Skeletons shown while loading -->
-    <div class="skeleton-stat stagger-1"></div>
-    <div class="skeleton-stat stagger-2"></div>
-    <div class="skeleton-stat stagger-3"></div>
-    <div class="skeleton-stat stagger-4"></div>
-    <div class="skeleton-stat stagger-5"></div>
-</div>
-<!-- Actual KPIs (hidden until loaded) -->
-<div class="stats-grid stagger-1" id="kpiContent" style="display: none;">
-    <div class="stat-card stagger-1">
-        <div class="stat-card-icon">
-            <i class="bi bi-people"></i>
-        </div>
+{# ============ KPI ============ #}
+<div class="stats-grid animate-fade-in-up stagger-1">
+    <div class="stat-card">
+        <div class="stat-card-icon"><i class="bi bi-people"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">Membres actifs</div>
-            <div class="stat-card-value" id="kpi-membres">{{ kpi.membres_actifs }}</div>
-            <div class="stat-card-trend up">
-                <i class="bi bi-arrow-up"></i>
-                <span>Équipe complète</span>
-            </div>
+            <div class="stat-card-value">{{ kpi.membres_actifs }}</div>
+            <div class="stat-card-trend up"><i class="bi bi-people-fill"></i><span>Équipe complète</span></div>
         </div>
     </div>
-    <div class="stat-card stagger-2">
-        <div class="stat-card-icon" style="background: rgba(33, 150, 243, 0.15);">
-            <i class="bi bi-folder2-open" style="color: var(--info);"></i>
-        </div>
+    <div class="stat-card">
+        <div class="stat-card-icon is-info"><i class="bi bi-folder2-open"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">Dossiers en cours</div>
-            <div class="stat-card-value" id="kpi-dossiers">{{ kpi.dossiers_en_cours }}</div>
-            <div class="stat-card-trend">
-                <i class="bi bi-archive"></i>
-                <span>Suivi actif</span>
-            </div>
+            <div class="stat-card-value">{{ kpi.dossiers_en_cours }}</div>
+            <div class="stat-card-trend"><i class="bi bi-archive"></i><span>Suivi actif</span></div>
         </div>
     </div>
-    <div class="stat-card stagger-3">
-        <div class="stat-card-icon" style="background: rgba(244, 67, 54, 0.15);">
-            <i class="bi bi-exclamation-triangle" style="color: var(--danger);"></i>
-        </div>
+    <div class="stat-card">
+        <div class="stat-card-icon is-danger"><i class="bi bi-exclamation-triangle"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">Tâches en retard</div>
-            <div class="stat-card-value" id="kpi-retard">{{ kpi.taches_retard }}</div>
-            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ ((kpi.taches_retard / kpi.total_taches * 100)|round(0)|int if kpi.total_taches else 0) }}%; background: var(--danger);"></div></div>
-            <div class="stat-card-trend down">
-                <i class="bi bi-arrow-down"></i>
-                <span>Attention requise</span>
-            </div>
+            <div class="stat-card-value">{{ kpi.taches_retard }}</div>
+            {% if kpi.total_taches %}
+            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ ((kpi.taches_retard / kpi.total_taches * 100)|round(0)|int) }}%; background: var(--danger);"></div></div>
+            {% endif %}
+            <div class="stat-card-trend down"><i class="bi bi-arrow-down"></i><span>Attention requise</span></div>
         </div>
     </div>
-    <div class="stat-card stagger-4">
-        <div class="stat-card-icon" style="background: rgba(255, 152, 0, 0.15);">
-            <i class="bi bi-star" style="color: var(--warning);"></i>
-        </div>
+    <div class="stat-card">
+        <div class="stat-card-icon is-warn"><i class="bi bi-star"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">Haute priorité</div>
-            <div class="stat-card-value" id="kpi-priorite">{{ kpi.taches_haute_priorite }}</div>
-            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ ((kpi.taches_haute_priorite / kpi.total_taches * 100)|round(0)|int if kpi.total_taches else 0) }}%; background: var(--warning);"></div></div>
-            <div class="stat-card-trend">
-                <i class="bi bi-flag"></i>
-                <span>Urgence</span>
-            </div>
+            <div class="stat-card-value">{{ kpi.taches_haute_priorite }}</div>
+            {% if kpi.total_taches %}
+            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ ((kpi.taches_haute_priorite / kpi.total_taches * 100)|round(0)|int) }}%; background: var(--warning);"></div></div>
+            {% endif %}
+            <div class="stat-card-trend"><i class="bi bi-flag"></i><span>Urgence</span></div>
         </div>
     </div>
-    <div class="stat-card stagger-5">
-        <div class="stat-card-icon" style="background: rgba(26, 127, 75, 0.12);">
-            <i class="bi bi-graph-up-arrow" style="color: var(--success);"></i>
-        </div>
+    <div class="stat-card">
+        <div class="stat-card-icon is-success"><i class="bi bi-graph-up-arrow"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">Taux de complétion</div>
-            <div class="stat-card-value">{{ (kpi.taux_completion)|pct }}</div>
-            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ (kpi.taux_completion or 0) | round(0) | int }}%; background: var(--success);"></div></div>
-            <div class="stat-card-trend up">
-                <i class="bi bi-check2-circle"></i>
-                <span>{{ kpi.total_taches }} tâche{{ kpi.total_taches|plur }} sur 3 mois</span>
+            <div class="stat-card-value">{{ (kpi.taux_completion or 0)|pct }}</div>
+            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ (kpi.taux_completion or 0)|round(0)|int }}%; background: var(--success);"></div></div>
+            <div class="stat-card-trend up"><i class="bi bi-check2-circle"></i><span>{{ kpi.total_taches }} tâche{{ kpi.total_taches|plur }} sur 3 mois</span></div>
+        </div>
+    </div>
+</div>
+
+{# ============ ZONE PRINCIPALE + RAIL ============ #}
+<div class="orbit-dash animate-fade-in-up stagger-2">
+    <div class="dash-main">
+        {# --- À traiter : chaque sujet tient sur une ligne, le lien ouvre la page filtrée --- #}
+        <div class="card-premium mb-4">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--amber);"></i>À traiter</h5>
+                <span class="text-tertiary small">Le détail s'ouvre filtré</span>
+            </div>
+            <div class="card-body-premium dash-alerts">
+                {# 1 — Retards #}
+                {% if kpi.taches_retard and kpi.taches_retard > 0 %}
+                <a class="dash-alert-row" href="{{ url_for('taches', retard=1) }}">
+                    <span class="dar-icon is-danger"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                    <span class="dar-text">
+                        <strong><span class="dar-num">{{ kpi.taches_retard }}</span> tâche{{ kpi.taches_retard|plur }} en retard</strong>
+                        <small>
+                            {{ stats.surcharge }} collaborateur{{ stats.surcharge|plur }} concerné{{ stats.surcharge|plur }}
+                            {%- if alertes %} · la plus ancienne : {{ alertes[0].tache.titre|truncate(44, true) }}
+                            ({{ alertes[0].tache.date_echeance.strftime('%d/%m') }}){% endif %}
+                        </small>
+                    </span>
+                    <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+                </a>
+                {% else %}
+                <div class="dash-alert-row is-clear">
+                    <span class="dar-icon is-ok"><i class="bi bi-check2-circle"></i></span>
+                    <span class="dar-text"><strong>Aucune tâche en retard</strong><small>Toutes les échéances passées sont traitées.</small></span>
+                </div>
+                {% endif %}
+
+                {# 2 — Triage Pennylane #}
+                {% if pl_triage and pl_triage.total %}
+                <a class="dash-alert-row" href="{{ url_for('pennylane_page') }}">
+                    <span class="dar-icon is-warn"><i class="bi bi-inboxes-fill"></i></span>
+                    <span class="dar-text">
+                        <strong><span class="dar-num">{{ pl_triage.total }}</span> document{{ pl_triage.total|plur }} Pennylane à traiter</strong>
+                        <small>
+                            {{ pl_triage.lignes|length }} dossier{{ pl_triage.lignes|length|plur }} —
+                            {{ pl_triage.total_vente }} vente{{ pl_triage.total_vente|plur }} ·
+                            {{ pl_triage.total_achat }} achat{{ pl_triage.total_achat|plur }} ·
+                            {{ pl_triage.total_banque }} flux bancaire{{ pl_triage.total_banque|plur }}
+                        </small>
+                    </span>
+                    <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+                </a>
+                {% endif %}
+
+                {# 3 — Suggestions #}
+                {% if suggestions %}
+                <a class="dash-alert-row" href="{{ url_for('suggestions_page') }}">
+                    <span class="dar-icon is-info"><i class="bi bi-lightbulb-fill"></i></span>
+                    <span class="dar-text">
+                        <strong><span class="dar-num">{{ suggestions|length }}</span> suggestion{{ suggestions|length|plur }} à valider</strong>
+                        <small>Proposées d'après les échéances déclarées des dossiers</small>
+                    </span>
+                    <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+                </a>
+                {% endif %}
+
+                {# 4 — Notifications #}
+                <a class="dash-alert-row" href="{{ url_for('notifications_page') }}">
+                    <span class="dar-icon {{ 'is-warn' if notifications_non_lues else 'is-ok' }}">
+                        <i class="bi {{ 'bi-bell-fill' if notifications_non_lues else 'bi-bell-slash' }}"></i>
+                    </span>
+                    <span class="dar-text">
+                        {% if notifications_non_lues %}
+                        <strong><span class="dar-num">{{ notifications_non_lues|length }}</span> notification{{ notifications_non_lues|length|plur }} non lue{{ notifications_non_lues|length|plur }}</strong>
+                        <small>{{ notifications_non_lues[0].message|truncate(70, true) }}</small>
+                        {% else %}
+                        <strong>Aucune notification non lue</strong>
+                        <small>Vous êtes à jour.</small>
+                        {% endif %}
+                    </span>
+                    <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
+                </a>
+            </div>
+            <div class="card-footer-premium border-0 d-flex align-items-center gap-2" style="padding:.5rem .9rem;">
+                <button class="btn-premium btn-premium-outline btn-premium-secondary btn-sm" id="refreshSuggestionsBtn">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Recalculer les suggestions
+                </button>
+                <span id="suggestionsResult" class="small"></span>
+            </div>
+        </div>
+
+        {# --- Vue équipe (compteurs précalculés côté route : aucun N+1) --- #}
+        <div class="card-premium mb-4">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Vue équipe</h5>
+                <span class="text-tertiary small">{{ stats.actifs }} actif{{ stats.actifs|plur }} · {{ stats.surcharge }} en retard</span>
+            </div>
+            <div class="card-body-premium">
+                <div class="table-responsive">
+                    <table class="table-premium">
+                        <thead>
+                            <tr>
+                                <th>Collaborateur</th>
+                                <th class="text-center">Dossiers en cours</th>
+                                <th class="text-center">Tâches à faire</th>
+                                <th class="text-center">En retard</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in stats.lignes %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% set m_photo = s.membre.photo_display_src() %}
+                                        {% if m_photo and (m_photo.startswith('/') or m_photo.startswith('data:')) %}
+                                        <span class="user-icon-badge"><img src="{{ m_photo }}" alt="" class="sidebar-user-img" style="width:24px;height:24px;"></span>
+                                        {% else %}
+                                        {% set m_init2 = (s.membre.prenom[:1] ~ (s.membre.nom[:1] or ''))|upper %}
+                                        {% set m_variant2 = ' user-init-mgr' if s.membre.role == 'manager' else (' user-init-admin' if s.membre.role == 'admin' else '') %}
+                                        <span class="user-icon-badge user-init{{ m_variant2 }}">{{ m_init2 }}</span>
+                                        {% endif %}
+                                        <strong>{{ s.membre.prenom }} {{ s.membre.nom }}</strong>
+                                    </div>
+                                </td>
+                                <td class="text-center">{{ s.dossiers }}</td>
+                                <td class="text-center">{{ s.a_faire }}</td>
+                                <td class="text-center">
+                                    <span class="badge badge-{{ 'danger' if s.retard > 0 else 'success' }}">{{ s.retard }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer-premium border-0" style="padding: 0.5rem 1rem;">
+                <a href="{{ url_for('suivi_avancement') }}" class="btn-premium btn-premium-outline btn-premium-primary btn-sm w-100">
+                    <i class="bi bi-graph-up-arrow me-1"></i>Voir le détail par collaborateur
+                </a>
+            </div>
+        </div>
+
+        {# --- Tâches du jour (équipe) --- #}
+        <div class="card-premium">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Tâches du jour</h5>
+                <a href="{{ url_for('taches_aujourdhui') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
+                    Voir tout <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body-premium" style="max-height:340px;overflow-y:auto;">
+                {% if taches_jour %}
+                    {% for t in taches_jour[:8] %}
+                    {{ task_row(t, href=url_for('taches')) }}
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <img src="{{ asset('img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
+                        <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
+                        <p class="empty-state-desc">Aucune tâche planifiée aujourd'hui pour l'équipe.</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
-</div>
 
-<!-- Zone principale (gauche) + rail latéral (droite) -->
-<div class="orbit-dash">
-<!-- Triage Pennylane (à traiter par dossier) -->
-{% include '_pl_triage.html' %}
-
-{# ============ À TRAITER ============
-   Principe : le tableau de bord résume, il ne détaille pas. Chaque sujet tient
-   sur une ligne et le bouton ouvre la page métier avec le filtre déjà appliqué.
-   (Avant : grille d'alertes + tableau de suggestions + liste de notifications.) #}
-{% set mns = namespace(surcharge=0, retard=0, af=0, actifs=0) %}
-{% for m in membres %}
-    {% set r = m.nb_taches_en_retard() %}
-    {% set a = m.nb_taches_a_faire() %}
-    {% if r > 0 %}{% set mns.surcharge = mns.surcharge + 1 %}{% endif %}
-    {% if r > 0 or a > 0 or m.nb_dossiers_en_cours() > 0 %}{% set mns.actifs = mns.actifs + 1 %}{% endif %}
-    {% set mns.retard = mns.retard + r %}
-    {% set mns.af = mns.af + a %}
-{% endfor %}
-<div class="card-premium mb-4 animate-fade-in-up stagger-2">
-    <div class="card-header-premium d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-inboxes me-2" style="color: var(--amber);"></i>À traiter</h5>
-        <span class="text-tertiary small">Le détail s'ouvre filtré</span>
-    </div>
-    <div class="card-body-premium dash-alerts">
-
-        {# 1 — Retards : le sujet le plus sensible, en tête #}
-        {% if kpi.taches_retard and kpi.taches_retard > 0 %}
-        <a class="dash-alert-row" href="{{ url_for('taches', retard=1) }}">
-            <span class="dar-icon is-danger"><i class="bi bi-exclamation-triangle-fill"></i></span>
-            <span class="dar-text">
-                <strong><span class="dar-num">{{ kpi.taches_retard }}</span> tâche{{ kpi.taches_retard|plur }} en retard</strong>
-                <small>
-                    {{ mns.surcharge }} collaborateur{{ mns.surcharge|plur }} concerné{{ mns.surcharge|plur }}
-                    {%- if alertes %} · la plus ancienne : {{ alertes[0].tache.titre|truncate(44, true) }}
-                    ({{ alertes[0].tache.date_echeance.strftime('%d/%m') }}){% endif %}
-                </small>
-            </span>
-            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
-        </a>
-        {% else %}
-        <div class="dash-alert-row is-clear">
-            <span class="dar-icon is-ok"><i class="bi bi-check2-circle"></i></span>
-            <span class="dar-text"><strong>Aucune tâche en retard</strong><small>Toutes les échéances passées sont traitées.</small></span>
-        </div>
-        {% endif %}
-
-        {# 2 — Triage Pennylane : documents reçus à qualifier #}
-        {% if pl_triage and pl_triage.total %}
-        <a class="dash-alert-row" href="{{ url_for('pennylane_page') }}">
-            <span class="dar-icon is-warn"><i class="bi bi-inboxes-fill"></i></span>
-            <span class="dar-text">
-                <strong><span class="dar-num">{{ pl_triage.total }}</span> document{{ pl_triage.total|plur }} Pennylane à traiter</strong>
-                <small>
-                    {{ pl_triage.lignes|length }} dossier{{ pl_triage.lignes|length|plur }} —
-                    {{ pl_triage.total_vente }} vente{{ pl_triage.total_vente|plur }} ·
-                    {{ pl_triage.total_achat }} achat{{ pl_triage.total_achat|plur }} ·
-                    {{ pl_triage.total_banque }} flux bancaire{{ pl_triage.total_banque|plur }}
-                </small>
-            </span>
-            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
-        </a>
-        {% endif %}
-
-        {# 3 — Suggestions automatiques #}
-        {% if suggestions %}
-        <a class="dash-alert-row" href="{{ url_for('suggestions_page') }}">
-            <span class="dar-icon is-info"><i class="bi bi-lightbulb-fill"></i></span>
-            <span class="dar-text">
-                <strong><span class="dar-num">{{ suggestions|length }}</span> suggestion{{ suggestions|length|plur }} à valider</strong>
-                <small>Proposées d'après les échéances déclarées des dossiers</small>
-            </span>
-            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
-        </a>
-        {% endif %}
-
-        {# 4 — Notifications non lues #}
-        <a class="dash-alert-row" href="{{ url_for('notifications_page') }}">
-            <span class="dar-icon {{ 'is-warn' if notifications_non_lues else 'is-ok' }}">
-                <i class="bi {{ 'bi-bell-fill' if notifications_non_lues else 'bi-bell-slash' }}"></i>
-            </span>
-            <span class="dar-text">
-                {% if notifications_non_lues %}
-                <strong><span class="dar-num">{{ notifications_non_lues|length }}</span> notification{{ notifications_non_lues|length|plur }} non lue{{ notifications_non_lues|length|plur }}</strong>
-                <small>{{ notifications_non_lues[0].message|truncate(70, true) }}</small>
-                {% else %}
-                <strong>Aucune notification non lue</strong>
-                <small>Vous êtes à jour.</small>
-                {% endif %}
-            </span>
-            <span class="dar-go"><i class="bi bi-arrow-right"></i></span>
-        </a>
-    </div>
-    <div class="card-footer-premium border-0 d-flex align-items-center gap-2" style="padding:.5rem .9rem;">
-        <button class="btn-premium btn-premium-outline btn-premium-secondary btn-sm" id="refreshSuggestionsBtn">
-            <i class="bi bi-arrow-clockwise me-1"></i>Recalculer les suggestions
-        </button>
-        <span id="suggestionsResult" class="small"></span>
-    </div>
-</div>
-
-<!-- Avancement de l'équipe (rail latéral) -->
-<div class="dash-rail">
-        <div class="card-premium h-100 animate-fade-in-up stagger-4">
+    <div class="dash-rail">
+        {# --- Avancement --- #}
+        <div class="card-premium mb-4">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-speedometer2 me-2" style="color: var(--orange-primary);"></i>Avancement de l'équipe</h5>
             </div>
@@ -250,135 +281,19 @@
                 <p class="text-tertiary small">Sur {{ kpi.total_taches or 0 }} tâches au total</p>
             </div>
         </div>
-    </div><!-- /dash-rail : avancement de l'équipe -->
-<div class="dash-main"><!-- Vue équipe -->
-        <div class="card-premium h-100 animate-fade-in-up stagger-5">
-            <div class="card-header-premium d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Vue équipe</h5>
-                <span class="text-tertiary small">{{ mns.actifs }} actif{{ mns.actifs|plur }} · {{ mns.surcharge }} en retard</span>
-            </div>
-            <div class="card-body-premium">
-                <div class="table-responsive">
-                    <table class="table-premium">
-                        <thead>
-                            <tr>
-                                <th>Collaborateur</th>
-                                <th class="text-center">Dossiers en cours</th>
-                                <th class="text-center">Tâches à faire</th>
-                                <th class="text-center">En retard</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for m in membres %}
-                            {% set m_ret = m.nb_taches_en_retard() %}
-                            {% set m_af = m.nb_taches_a_faire() %}
-                            {% if m_ret or m_af or m.nb_dossiers_en_cours() %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        {% set m_photo = m.photo_display_src() %}
-                                        {% if m_photo and (m_photo.startswith('/') or m_photo.startswith('data:')) %}
-                                        <span class="user-icon-badge"><img src="{{ m_photo }}" alt="photo" class="sidebar-user-img" style="width:24px;height:24px;"></span>
-                                        {% else %}
-                                        {% set m_init2 = (m.prenom[:1] ~ (m.nom[:1] or ''))|upper %}
-                                        {% set m_variant2 = ' user-init-mgr' if m.role == 'manager' else (' user-init-admin' if m.role == 'admin' else '') %}
-                                        <span class="user-icon-badge user-init{{ m_variant2 }}">{{ m_init2 }}</span>
-                                        {% endif %}
-                                        <strong>{{ m.prenom }} {{ m.nom }}</strong>
-                                    </div>
-                                </td>
-                                <td class="text-center">{{ m.nb_dossiers_en_cours() }}</td>
-                                <td class="text-center">{{ m_af }}</td>
-                                <td class="text-center">
-                                    <span class="badge badge-{{ 'danger' if m_ret > 0 else 'success' }}">
-                                        {{ m_ret }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% endif %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="card-footer-premium border-0" style="padding: 0.5rem 1rem;">
-                <a href="{{ url_for('suivi_avancement') }}" class="btn-premium btn-premium-outline btn-premium-primary btn-sm w-100">
-                    <i class="bi bi-graph-up-arrow me-1"></i>Voir le détail par collaborateur
-                </a>
-            </div>
-        </div>
-    </div>
 
-<!-- Tâches du jour (colonne principale) -->
-<div class="dash-main">
-        <div class="card-premium mb-4 animate-fade-in-up stagger-5">
-            <div class="card-header-premium d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Tâches du jour</h5>
-                <a href="{{ url_for('taches_aujourdhui') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
-                    Voir tout <i class="bi bi-arrow-right ms-1"></i>
-                </a>
-            </div>
-            <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
-                {% if taches_jour %}
-                    {% for t in taches_jour[:8] %}
-                    <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: var(--bg-card); border: 1px solid var(--border-color);">
-                        <!-- Statut icon -->
-                        <span class="flex-shrink-0" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;
-                        {% if t.statut == 'a_faire' %}background:rgba(255,152,0,0.15);color:#FF9800;
-                        {% elif t.statut == 'en_cours' %}background:rgba(66,165,245,0.15);color:#42A5F5;
-                        {% else %}background:rgba(102,187,106,0.15);color:#66BB6A;{% endif %}">
-                            {% if t.statut == 'a_faire' %}<i class="bi bi-circle"></i>
-                            {% elif t.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
-                            {% else %}<i class="bi bi-check2"></i>{% endif %}
-                        </span>
-                        <div class="flex-grow-1 min-w-0">
-                            <strong style="font-size:0.85rem;">{{ t.titre }}</strong>
-                            <br><small class="text-tertiary" style="font-size:0.75rem;">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
-                        </div>
-                        <span class="flex-shrink-0 badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}" style="font-size:0.6rem;">
-                            {{ t.priorite }}
-                        </span>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <img src="{{ asset('img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
-                        <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
-                        <p class="empty-state-desc">Vous n'avez pas de tâches planifiées aujourd'hui. Profitez de cette journée !</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div><!-- /dash-main : tâches du jour -->
-    <div class="dash-rail"><!-- Tâches de la semaine -->
-        <div class="card-premium animate-fade-in-up stagger-6">
+        {# --- Tâches de la semaine --- #}
+        <div class="card-premium">
             <div class="card-header-premium d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Tâches de la semaine</h5>
                 <a href="{{ url_for('taches') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
                     Voir tout <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>
-            <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
+            <div class="card-body-premium" style="max-height:340px;overflow-y:auto;">
                 {% if taches_semaine %}
                     {% for t in taches_semaine[:8] %}
-                    <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: var(--bg-card); border: 1px solid var(--border-color);">
-                        <!-- Statut icon -->
-                        <span class="flex-shrink-0" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;
-                        {% if t.statut == 'a_faire' %}background:rgba(255,152,0,0.15);color:#FF9800;
-                        {% elif t.statut == 'en_cours' %}background:rgba(66,165,245,0.15);color:#42A5F5;
-                        {% else %}background:rgba(102,187,106,0.15);color:#66BB6A;{% endif %}">
-                            {% if t.statut == 'a_faire' %}<i class="bi bi-circle"></i>
-                            {% elif t.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
-                            {% else %}<i class="bi bi-check2"></i>{% endif %}
-                        </span>
-                        <div class="flex-grow-1 min-w-0">
-                            <strong style="font-size:0.85rem;">{{ t.titre }}</strong>
-                            <br><small class="text-tertiary" style="font-size:0.75rem;">{{ t.date_echeance.strftime('%d/%m') if t.date_echeance else '' }} · {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
-                        </div>
-                        <span class="flex-shrink-0 badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}" style="font-size:0.6rem;">
-                            {{ t.priorite }}
-                        </span>
-                    </div>
+                    {{ task_row(t, show_date=true, href=url_for('taches')) }}
                     {% endfor %}
                 {% else %}
                     <div class="empty-state">
@@ -390,28 +305,17 @@
             </div>
         </div>
     </div>
-</div><!-- fin de la grille (rail semaine) -->
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Simulate loading then show real content (shows skeleton loaders briefly)
 document.addEventListener('DOMContentLoaded', function () {
     var dEl = document.getElementById('todayDateLabel');
     if (dEl) {
         var s = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         dEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
     }
-    setTimeout(function () {
-        var skeletons = document.getElementById('kpiSkeletons');
-        var content = document.getElementById('kpiContent');
-        if (skeletons && content) {
-            skeletons.style.display = 'none';
-            content.style.display = 'grid';
-        }
-    }, 0);
-
-    // Refresh suggestions with toast feedback
     var refreshBtn = document.getElementById('refreshSuggestionsBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function () {
@@ -419,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var result = document.getElementById('suggestionsResult');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner spinner-sm me-1"></span>Actualisation...';
-            result.innerHTML = '';
+            result.textContent = '';
             fetch('/api/suggestions/refresh', {method: 'POST'})
                 .then(r => r.json())
                 .then(data => {
@@ -427,18 +331,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
                     var count = (data.suggestions || []).length;
                     if (count) {
-                        result.innerHTML = '<span style="color: var(--success);"><i class="bi bi-check-circle me-1"></i>Suggestions actualisées : ' + count + '</span>';
+                        result.textContent = 'Suggestions actualisées : ' + count;
+                        result.style.color = 'var(--success)';
                         window.showToast('Suggestions actualisées avec succès', 'success');
                     } else {
-                        result.innerHTML = '<span style="color: var(--text-tertiary);">Aucune nouvelle suggestion.</span>';
+                        result.textContent = 'Aucune nouvelle suggestion.';
+                        result.style.color = 'var(--text-tertiary)';
                         window.showToast('Aucune nouvelle suggestion', 'info');
                     }
                 })
                 .catch(() => {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser';
-                    result.innerHTML = '<span style="color: var(--danger);">Échec de l\'actualisation.</span>';
-                    window.showToast('Échec de l\'actualisation des suggestions', 'danger');
+                    result.textContent = "Échec de l'actualisation.";
+                    result.style.color = 'var(--danger)';
+                    window.showToast("Échec de l'actualisation des suggestions", 'danger');
                 });
         });
     }

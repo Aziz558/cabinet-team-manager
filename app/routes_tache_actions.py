@@ -40,7 +40,7 @@ def changer_statut_tache(tache_id):
     # correspondante, remise a « a faire » la decoche (cf. checklist_link).
     try:
         from .checklist_link import appliquer_tache_a_case
-        if appliquer_tache_a_case(tache):
+        if appliquer_tache_a_case(tache, acteur=current_user):
             db.session.commit()
     except Exception as _lk_e:
         db.session.rollback()
@@ -102,7 +102,7 @@ def terminer_tache(tache_id):
     # LIAISON tache -> checklist : terminer l'echeance coche la case correspondante
     try:
         from .checklist_link import appliquer_tache_a_case
-        if appliquer_tache_a_case(tache):
+        if appliquer_tache_a_case(tache, acteur=current_user):
             db.session.commit()
     except Exception as _lk_e:
         db.session.rollback()
@@ -221,6 +221,7 @@ def upload_photo(user_id=None):
     return redirect(url_for('profil'))
 
 @app.route('/user_photo/<int:user_id>')
+@login_required
 def user_photo(user_id):
     """Servir la photo de profil depuis la base de données.
 

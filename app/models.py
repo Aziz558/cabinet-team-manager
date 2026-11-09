@@ -317,6 +317,7 @@ class ChecklistEntry(db.Model):
     declare = db.Column(db.Boolean, default=False)
     paye = db.Column(db.Boolean, default=False)
     pl_mode = db.Column(db.Boolean, default=False)  # True = état imposé par la synchro Pennylane
+    source = db.Column(db.String(20), nullable=True)  # checklist | tache | pennylane (NULL = historique)
     updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     date_modif = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

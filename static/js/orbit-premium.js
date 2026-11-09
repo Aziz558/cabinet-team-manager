@@ -70,10 +70,8 @@
         document.addEventListener('focusin', function(ev){ var a=ev.target.closest('a[href]'); if(a) add(a.getAttribute('href')); });
     }
     function initProgress() {
-        var bar=document.createElement('div'); bar.className='orbit-progress'; bar.setAttribute('aria-hidden','true'); document.body.appendChild(bar);
-        document.addEventListener('click', function(ev){ var a=ev.target.closest('a[href]'); if(!a || a.target==='_blank') return; var h=a.getAttribute('href'); if(!h||h.charAt(0)==='#'||h.indexOf('javascript:')===0) return; bar.style.width='42%'; bar.classList.add('is-on'); }, {passive:true});
-        window.addEventListener('beforeunload', function(){ bar.style.width='100%'; });
-        window.addEventListener('pageshow', function(){ bar.style.width='0'; bar.classList.remove('is-on'); });
+        // #orbitProgress (orbit-base.js) est la barre unique : plus de doublon .orbit-progress.
+        return;
     }
     function initSmoothAnchors() {
         if (reduce) return;

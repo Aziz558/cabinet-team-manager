@@ -726,6 +726,7 @@ def sync_checklist_tva() -> dict:
             e.declare = True
             e.paye = (st == 'paid')
             e.pl_mode = True
+            e.source = 'pennylane'
             synced += 1
             # LIAISON sync -> taches : la tache deadline de la periode declaree
             # dans Pennylane est auto-terminee (ex. aout -> "Dépôt TVA mensuel").

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'includes/_task_rows.html' import task_row %}
 
 {% block title %}Mon tableau de bord{% endblock %}
 
@@ -46,64 +47,68 @@
     </div>
 </div>
 
-<!-- Stats Grid -->
-<div class="stats-grid stagger-1" id="kpiSkeletonsCollab">
-    <div class="skeleton-stat stagger-1"></div>
-    <div class="skeleton-stat stagger-2"></div>
-    <div class="skeleton-stat stagger-3"></div>
-</div>
-
-<!-- Actual KPIs -->
-<div class="stats-grid" id="kpiContentCollab" style="display: none;">
-    <div class="stat-card stagger-1">
-        <div class="stat-card-icon">
-            <i class="bi bi-clipboard-check"></i>
-        </div>
+{# ============ KPI ============ #}
+<div class="stats-grid animate-fade-in-up stagger-1">
+    <div class="stat-card">
+        <div class="stat-card-icon"><i class="bi bi-clipboard-check"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">Mes tâches aujourd'hui</div>
             <div class="stat-card-value">{{ kpi.taches_aujourdhui }}</div>
-            <div class="stat-card-trend">
-                <i class="bi bi-calendar-day"></i>
-                <span>Aujourd'hui</span>
-            </div>
+            <div class="stat-card-trend"><i class="bi bi-calendar-day"></i><span>Aujourd'hui</span></div>
         </div>
     </div>
-    <div class="stat-card stagger-2">
-        <div class="stat-card-icon" style="background: rgba(33, 150, 243, 0.15);">
-            <i class="bi bi-exclamation-triangle" style="color: var(--warning);"></i>
-        </div>
+    <div class="stat-card">
+        <div class="stat-card-icon is-warn"><i class="bi bi-exclamation-triangle"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">À faire</div>
-            <div class="stat-card-value">{{ kpi.taches_a_faire if kpi.taches_a_faire is defined else taches_jour|length }}</div>
-            <div class="stat-card-trend down">
-                <i class="bi bi-exclamation-circle"></i>
-                <span>À traiter en priorité</span>
-            </div>
+            <div class="stat-card-value">{{ taches_semaine|length }}</div>
+            <div class="stat-card-trend down"><i class="bi bi-exclamation-circle"></i><span>À traiter cette semaine</span></div>
         </div>
     </div>
-    <div class="stat-card stagger-3">
-        <div class="stat-card-icon" style="background: rgba(155, 93, 229, 0.15);">
-            <i class="bi bi-graph-up-arrow" style="color: var(--purple, #9B5DE5);"></i>
-        </div>
+    <div class="stat-card">
+        <div class="stat-card-icon is-violet"><i class="bi bi-graph-up-arrow"></i></div>
         <div class="stat-card-content">
             <div class="stat-card-label">Taux d'avancement</div>
             <div class="stat-card-value">{{ (kpi.taux_completion or 0)|pct }}</div>
-            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ (kpi.taux_completion or 0) | round(0) | int }}%; background: var(--orange-primary);"></div></div>
-            <div class="stat-card-trend up">
-                <i class="bi bi-rocket"></i>
-                <span>Progression</span>
-            </div>
+            <div class="stat-mini"><div class="stat-mini-fill" style="width: {{ (kpi.taux_completion or 0)|round(0)|int }}%; background: var(--orange-primary);"></div></div>
+            <div class="stat-card-trend up"><i class="bi bi-rocket"></i><span>Progression</span></div>
         </div>
     </div>
 </div>
 
-<!-- Triage Pennylane (à traiter par dossier) -->
+{# ============ Triage Pennylane ============ #}
 {% include '_pl_triage.html' %}
 
-<!-- Progress Ring -->
-<div class="row mb-4">
-    <div class="col-lg-4 mb-4">
-        <div class="card-premium h-100 animate-fade-in-up stagger-4">
+{# ============ Objectifs + Tâches du jour ============ #}
+<div class="orbit-dash animate-fade-in-up stagger-3">
+    <div class="dash-main">
+        <div class="card-premium mb-4">
+            <div class="card-header-premium d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Mes tâches d'aujourd'hui</h5>
+                <a href="{{ url_for('taches_aujourdhui') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
+                    Voir tout <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body-premium" style="max-height:340px;overflow-y:auto;">
+                {% if taches_jour %}
+                    {% for t in taches_jour[:8] %}
+                    {{ task_row(t, href=url_for('mes_taches')) }}
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <img src="{{ asset('img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
+                        <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
+                        <p class="empty-state-desc">Tout est à jour ! Vous pouvez consulter vos tâches hebdomadaires.</p>
+                        <a href="{{ url_for('mes_taches') }}" class="btn-premium btn-premium-primary">
+                            <i class="bi bi-check2-square me-1"></i>Mes tâches
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="dash-rail">
+        <div class="card-premium mb-4">
             <div class="card-header-premium">
                 <h5 class="mb-0"><i class="bi bi-bullseye me-2" style="color: var(--orange-primary);"></i>Mes objectifs</h5>
             </div>
@@ -121,80 +126,26 @@
                     </div>
                 </div>
                 <p class="text-tertiary small">Sur {{ kpi.total_taches or 0 }} tâches au total</p>
-                <a href="{{ url_for('mes_dossiers') }}" class="btn-premium btn-premium-outline btn-premium-secondary mt-3">
+                <a href="{{ url_for('mes_dossiers') }}" class="btn-premium btn-premium-outline btn-premium-secondary mt-3 w-100">
                     <i class="bi bi-folder me-1"></i>Voir mes dossiers
                 </a>
             </div>
         </div>
     </div>
-    <div class="col-lg-8 mb-4">
-        <div class="card-premium h-100 animate-fade-in-up stagger-5">
-            <div class="card-header-premium d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Mes tâches d'aujourd'hui</h5>
-                <a href="{{ url_for('taches_aujourdhui') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
-                    Voir tout <i class="bi bi-arrow-right ms-1"></i>
-                </a>
-            </div>
-            <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
-                {% if taches_jour %}
-                    {% for t in taches_jour[:8] %}
-                    <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: var(--bg-card); border: 1px solid var(--border-color);">
-                        <span class="flex-shrink-0" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;
-                        {% if t.statut == 'a_faire' %}background:rgba(255,152,0,0.15);color:#FF9800;
-                        {% elif t.statut == 'en_cours' %}background:rgba(66,165,245,0.15);color:#42A5F5;
-                        {% else %}background:rgba(102,187,106,0.15);color:#66BB6A;{% endif %}">
-                            {% if t.statut == 'a_faire' %}<i class="bi bi-circle"></i>
-                            {% elif t.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
-                            {% else %}<i class="bi bi-check2"></i>{% endif %}
-                        </span>
-                        <div class="flex-grow-1 min-w-0">
-                            <strong style="font-size:0.85rem;">{{ t.titre }}</strong>
-                            <br><small class="text-tertiary" style="font-size:0.75rem;">{{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
-                        </div>
-                        <span class="flex-shrink-0 badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}" style="font-size:0.6rem;">{{ t.priorite }}</span>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <img src="{{ asset('img/logo-jmh-orbit.png') }}" alt="" class="empty-state-icon">
-                        <h4 class="empty-state-title">Aucune tâche pour aujourd'hui</h4>
-                        <p class="empty-state-desc">Tout est à jour ! Vous pouvez consulter vos tâches hebdomadaires.</p>
-                        <a href="{{ url_for('mes_taches') }}" class="btn-premium btn-premium-primary">
-                            <i class="bi bi-check2-square me-1"></i>Mes tâches
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
 </div>
 
-<!-- Tâches de la semaine -->
-<div class="card-premium animate-fade-in-up stagger-6">
+{# ============ Tâches de la semaine ============ #}
+<div class="card-premium animate-fade-in-up stagger-4">
     <div class="card-header-premium d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Mes tâches de la semaine</h5>
         <a href="{{ url_for('mes_taches') }}" class="btn-premium btn-premium-outline btn-premium-secondary btn-sm">
             Voir tout <i class="bi bi-arrow-right ms-1"></i>
         </a>
     </div>
-    <div class="card-body-premium" style="max-height:320px;overflow-y:auto;">
+    <div class="card-body-premium" style="max-height:340px;overflow-y:auto;">
         {% if taches_semaine %}
             {% for t in taches_semaine[:8] %}
-            <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: var(--bg-card); border: 1px solid var(--border-color);">
-                <span class="flex-shrink-0" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;
-                {% if t.statut == 'a_faire' %}background:rgba(255,152,0,0.15);color:#FF9800;
-                {% elif t.statut == 'en_cours' %}background:rgba(66,165,245,0.15);color:#42A5F5;
-                {% else %}background:rgba(102,187,106,0.15);color:#66BB6A;{% endif %}">
-                    {% if t.statut == 'a_faire' %}<i class="bi bi-circle"></i>
-                    {% elif t.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
-                    {% else %}<i class="bi bi-check2"></i>{% endif %}
-                </span>
-                <div class="flex-grow-1 min-w-0">
-                    <strong style="font-size:0.85rem;">{{ t.titre }}</strong>
-                    <br><small class="text-tertiary" style="font-size:0.75rem;">{{ t.date_echeance.strftime('%d/%m') if t.date_echeance else '' }} · {{ t.assigne.prenom }} {{ t.assigne.nom }}</small>
-                </div>
-                <span class="flex-shrink-0 badge badge-{{ 'danger' if t.priorite == 'haute' else 'warning' if t.priorite == 'moyenne' else 'success' }}" style="font-size:0.6rem;">{{ t.priorite }}</span>
-            </div>
+            {{ task_row(t, show_date=true, href=url_for('mes_taches')) }}
             {% endfor %}
         {% else %}
             <div class="empty-state">
@@ -209,21 +160,12 @@
 
 {% block scripts %}
 <script>
-// Simulate loading
 document.addEventListener('DOMContentLoaded', function () {
     var dEl = document.getElementById('todayDateLabelCollab');
     if (dEl) {
         var s = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         dEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
     }
-    setTimeout(function () {
-        var sk = document.getElementById('kpiSkeletonsCollab');
-        var ct = document.getElementById('kpiContentCollab');
-        if (sk && ct) {
-            sk.style.display = 'none';
-            ct.style.display = 'grid';
-        }
-    }, 0);
 });
 </script>
 {% endblock %}

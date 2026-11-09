@@ -170,6 +170,7 @@ def checklist_pl_sync_dossier(dossier_id):
         e.declare = True
         e.paye = (st == 'paid')
         e.pl_mode = True
+        e.source = 'pennylane'
         synced += 1
 
     db.session.commit()
@@ -901,6 +902,7 @@ def pennylane_check(dossier_id):
                     e.declare = True
                     e.paye = (st == 'paid')
                     e.pl_mode = True
+                    e.source = 'pennylane'
                     synced += 1
                     try:
                         from .checklist_link import appliquer_case_a_taches as _lk
@@ -1033,6 +1035,7 @@ def pennylane_tva_sync_selected():
             e.declare = True
             e.paye = (st == 'paid')
             e.pl_mode = True
+            e.source = 'pennylane'
             d_synced += 1
             try:
                 from .checklist_link import appliquer_case_a_taches as _lk

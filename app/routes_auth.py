@@ -32,7 +32,10 @@ def login():
                 flash('Votre compte est d\u00e9sactiv\u00e9. Contactez le manager.', 'danger')
                 return redirect(url_for('login'))
             login_user(user, remember=True)
+            # Open redirect : seul un chemin local relatif est accepte.
             next_page = request.args.get('next')
+            if next_page and (not next_page.startswith('/') or next_page.startswith('//')):
+                next_page = None
             flash(f'Bienvenue, {user.prenom} !', 'success')
             return redirect(next_page or url_for('dashboard'))
         else:
@@ -113,7 +116,7 @@ def dashboard():
             'total_banque': total_banque,
         }
     
-    if current_user.role == 'manager':
+    if current_user.role in ('manager', 'admin'):
         from .route_common import dossiers_visibles_query, membres_visibles_query
         # Compute real KPIs for manager
         mes_equipes = Equipe.query.filter_by(manager_id=current_user.id).all()
@@ -121,6 +124,9 @@ def dashboard():
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
         team_member_ids = list(set(team_member_ids))
+        if current_user.role == 'admin':
+            # L'admin pilote toute l'équipe : son dashboard agrège tous les utilisateurs
+            team_member_ids = [u.id for u in User.query.all()]
 
         membres_actifs = membres_visibles_query(current_user).count()
         all_dossiers_ids = [d.id for d in dossiers_visibles_query(current_user).all()]
@@ -180,6 +186,29 @@ def dashboard():
                 suggestions = []
 
         membres = membres_visibles_query(current_user).order_by(User.nom).all()
+
+        # Stats équipe précalculées en 3 requêtes groupées (au lieu de 3 requêtes
+        # par membre dans le template : l'ancienne version faisait jusqu'à ~2N requêtes).
+        stats = {'lignes': [], 'surcharge': 0, 'actifs': 0}
+        m_ids = [m.id for m in membres]
+        if m_ids:
+            doss_counts = dict(db.session.query(Dossier.collaborateur_id, db.func.count(Dossier.id))
+                .filter(Dossier.collaborateur_id.in_(m_ids)).group_by(Dossier.collaborateur_id).all())
+            retard_counts = dict(db.session.query(Tache.assigne_a, db.func.count(Tache.id))
+                .filter(Tache.assigne_a.in_(m_ids), Tache.statut != 'terminee',
+                        Tache.date_echeance < date.today()).group_by(Tache.assigne_a).all())
+            af_counts = dict(db.session.query(Tache.assigne_a, db.func.count(Tache.id))
+                .filter(Tache.assigne_a.in_(m_ids), Tache.statut == 'a_faire')
+                .group_by(Tache.assigne_a).all())
+            for m in membres:
+                d_n = doss_counts.get(m.id, 0)
+                r_n = retard_counts.get(m.id, 0)
+                a_n = af_counts.get(m.id, 0)
+                if r_n > 0:
+                    stats['surcharge'] += 1
+                if r_n > 0 or a_n > 0 or d_n > 0:
+                    stats['actifs'] += 1
+                stats['lignes'].append({'membre': m, 'dossiers': d_n, 'a_faire': a_n, 'retard': r_n})
         
         taches_jour = Tache.query.filter(
             Tache.assigne_a.in_(team_member_ids),
@@ -204,7 +233,7 @@ def dashboard():
         return render_template('dashboard_manager.html', kpi=kpi, alertes=alertes,
             suggestions=suggestions, membres=membres, taches_jour=taches_jour,
             taches_semaine=taches_semaine, notifications_non_lues=notifications_non_lues,
-            horizon_3m=horizon_3m, pl_triage=_pl_triage_stats(all_dossiers_ids))
+            horizon_3m=horizon_3m, pl_triage=_pl_triage_stats(all_dossiers_ids), stats=stats)
     else:
         # Dashboard collaborateur
         team_member_ids = [current_user.id]

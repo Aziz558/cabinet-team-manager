@@ -22,93 +22,133 @@
             if (n === 1) { return one || ''; }
             return many === undefined ? 's' : many;
         };
-        // Convenience function for non-flashed toasts
+        // Convenience function for non-flashed toasts (textContent : jamais de HTML injecté)
         window.showToast = function(message, category) {
+            if (!container) { return; }
+            if (category === 'error') { category = 'danger'; }
             category = category || 'info';
-            var cls = 'toast-info';
-            if (category === 'success') cls = 'toast-success';
-            if (category === 'danger') cls = 'toast-danger';
-            if (category === 'warning') cls = 'toast-warning';
-            var icon = 'bi-info-circle';
-            if (category === 'success') icon = 'bi-check-circle';
-            if (category === 'danger') icon = 'bi-x-circle';
-            if (category === 'warning') icon = 'bi-exclamation-triangle';
-            var html = '<div class="toast ' + cls + '" role="alert" style="min-width: 300px;">' +
-                '<div class="toast-header d-flex align-items-center">' +
-                '<i class="bi ' + icon + ' me-2"></i>' +
-                '<strong class="me-auto">Cabinet JMH</strong>' +
-                '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Fermer"></button>' +
-                '</div><div class="toast-body">' + message + '</div></div>';
-            var wrapper = document.createElement('div');
-            wrapper.innerHTML = html;
-            var t = wrapper.firstElementChild;
+            var known = { success: 'bi-check-circle', danger: 'bi-x-circle', warning: 'bi-exclamation-triangle' };
+            var cls = 'toast-' + (known[category] ? category : 'info');
+            var t = document.createElement('div');
+            t.className = 'toast ' + cls;
+            t.setAttribute('role', 'alert');
+            t.style.minWidth = '300px';
+            var head = document.createElement('div');
+            head.className = 'toast-header d-flex align-items-center';
+            var icon = document.createElement('i');
+            icon.className = 'bi ' + (known[category] || 'bi-info-circle') + ' me-2';
+            var brand = document.createElement('strong');
+            brand.className = 'me-auto';
+            brand.textContent = 'JMH Orbit';
+            var close = document.createElement('button');
+            close.type = 'button';
+            close.className = 'btn-close';
+            close.setAttribute('data-bs-dismiss', 'toast');
+            close.setAttribute('aria-label', 'Fermer');
+            head.appendChild(icon); head.appendChild(brand); head.appendChild(close);
+            var body = document.createElement('div');
+            body.className = 'toast-body';
+            body.textContent = message == null ? '' : String(message);
+            t.appendChild(head); t.appendChild(body);
             container.appendChild(t);
             var bsToast = bootstrap.Toast.getOrCreateInstance(t, {delay: 5000, animation: true});
             bsToast.show();
-            setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 5500);
+            setTimeout(function() { if (t.parentNode) { t.parentNode.removeChild(t); } }, 5500);
         };
     })();
 
 
-    // Sidebar toggle
-    (function() {
-        var sidebarCol = document.getElementById('sidebarCol');
-        var toggle = document.getElementById('sidebarToggle');
-        var sidebar = sidebarCol ? sidebarCol.querySelector('.sidebar') : null;
-
-        if (!sidebarCol || !sidebar || !toggle) return;
-
-        var state = localStorage.getItem('sidebarState') || 'full';
-        applySidebarState(state);
-
-        function applySidebarState(s) {
-            if (s === 'icons') {
-                sidebarCol.style.width = '60px';
-                sidebarCol.classList.add('sidebar-collapsed');
-                sidebar.classList.add('sidebar-collapsed');
-                // Hide text elements
-                document.querySelectorAll('.sidebar-nav-item span, .sidebar-section-title, .sidebar-brand-text, .sidebar-user-info, .sidebar-subtitle').forEach(function(el) {
-                    el.style.display = 'none';
-                });
-                document.querySelectorAll('.sidebar-nav-item').forEach(function(link) {
-                    link.style.justifyContent = 'center';
-                    link.style.padding = '0.55rem 0';
-                });
-                document.querySelectorAll('.sidebar-nav-item i').forEach(function(icon) {
-                    icon.style.margin = '0';
-                });
-                document.querySelectorAll('.sidebar-nav-item.active').forEach(function(item) {
-                    item.style.position = 'relative';
-                });
-                document.querySelectorAll('.sidebar-nav-item.active::before').forEach(function() {});
-                toggle.innerHTML = '<i class="bi bi-caret-right"></i>';
-            } else {
-                sidebarCol.style.width = '240px';
-                sidebarCol.classList.remove('sidebar-collapsed');
-                sidebar.classList.remove('sidebar-collapsed');
-                document.querySelectorAll('.sidebar-nav-item span, .sidebar-section-title, .sidebar-brand-text, .sidebar-user-info, .sidebar-subtitle').forEach(function(el) {
-                    el.style.display = '';
-                });
-                document.querySelectorAll('.sidebar-nav-item').forEach(function(link) {
-                    link.style.justifyContent = '';
-                    link.style.padding = '';
-                });
-                document.querySelectorAll('.sidebar-nav-item i').forEach(function(icon) {
-                    icon.style.margin = '';
-                });
-                toggle.innerHTML = '<i class="bi bi-list"></i>';
+    // CSRF : injecte le token dans chaque <form> au moment du submit (couvre les
+    // formulaires créés dynamiquement) et ajoute l'en-tête X-CSRFToken aux
+    // fetch/XHR same-origin non-GET. Le serveur exige le token sur tout POST.
+    (function () {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        var TOKEN = meta ? meta.getAttribute('content') : '';
+        if (!TOKEN) { return; }
+        document.addEventListener('submit', function (e) {
+            var f = e.target;
+            if (f && f.tagName === 'FORM' && !f.querySelector('input[name="csrf_token"]')) {
+                var i = document.createElement('input');
+                i.type = 'hidden';
+                i.name = 'csrf_token';
+                i.value = TOKEN;
+                f.appendChild(i);
             }
+        }, true);
+        var _fetch = window.fetch;
+        if (_fetch) {
+            window.fetch = function (input, init) {
+                try {
+                    init = init || {};
+                    var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+                    if (method !== 'GET' && method !== 'HEAD') {
+                        var url = typeof input === 'string' ? input : (input && input.url) || '';
+                        if (url.charAt(0) === '/' || url.indexOf(window.location.origin) === 0) {
+                            var h = new Headers(init.headers || (input && input.headers) || {});
+                            if (!h.has('X-CSRFToken')) { h.set('X-CSRFToken', TOKEN); }
+                            init.headers = h;
+                        }
+                    }
+                } catch (e) {}
+                return _fetch.call(this, input, init);
+            };
         }
-
-        toggle.addEventListener('click', function() {
-            if (sidebarCol.style.width === '60px') {
-                state = 'full';
-            } else {
-                state = 'icons';
+        var _open = XMLHttpRequest.prototype.open;
+        var _send = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function (method, url) {
+            this.__orbitMethod = (method || 'GET').toUpperCase();
+            this.__orbitUrl = url || '';
+            return _open.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function () {
+            if (this.__orbitMethod && this.__orbitMethod !== 'GET' && this.__orbitMethod !== 'HEAD') {
+                try {
+                    var u = this.__orbitUrl || '';
+                    if (u.charAt(0) === '/' || u.indexOf(window.location.origin) === 0) {
+                        this.setRequestHeader('X-CSRFToken', TOKEN);
+                    }
+                } catch (e) {}
             }
-            localStorage.setItem('sidebarState', state);
-            applySidebarState(state);
+            return _send.apply(this, arguments);
+        };
+    })();
+
+    // Sidebar : collapse desktop (body.sidebar-collapsed via CSS) + tiroir mobile unifié.
+    // Un seul listener sur #sidebarToggle, un seul écritur de largeur (variables CSS).
+    (function () {
+        var toggle = document.getElementById('sidebarToggle');
+        var col = document.getElementById('sidebarCol');
+        var scrim = document.getElementById('sidebarScrim');
+        if (!toggle || !col) { return; }
+
+        function mobile() { return window.matchMedia('(max-width: 991.98px)').matches; }
+        function applyCollapsed(on) {
+            document.body.classList.toggle('sidebar-collapsed', on);
+            toggle.innerHTML = on ? '<i class="bi bi-caret-right"></i>' : '<i class="bi bi-list"></i>';
+        }
+        function applyOpen(on) { document.body.classList.toggle('sidebar-open', on); }
+        function closeDrawer() { applyOpen(false); }
+
+        var saved = null;
+        try { saved = localStorage.getItem('sidebarState'); } catch (e) {}
+        applyCollapsed(saved === 'icons');
+
+        toggle.addEventListener('click', function () {
+            if (mobile()) {
+                applyOpen(!document.body.classList.contains('sidebar-open'));
+            } else {
+                var next = !document.body.classList.contains('sidebar-collapsed');
+                applyCollapsed(next);
+                try { localStorage.setItem('sidebarState', next ? 'icons' : 'full'); } catch (e) {}
+            }
         });
+        if (scrim) { scrim.addEventListener('click', closeDrawer); }
+        col.addEventListener('click', function (e) {
+            var a = e.target && e.target.closest ? e.target.closest('a') : null;
+            if (a && mobile()) { closeDrawer(); }
+        });
+        window.addEventListener('resize', function () { if (!mobile()) { closeDrawer(); } });
+        window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeDrawer(); } });
     })();
 
 /* ===== bloc extrait de base.html (ligne ~389) ===== */
@@ -118,24 +158,6 @@
 })();
 
 /* ===== bloc extrait de base.html (ligne ~395) ===== */
-// Tiroir de navigation mobile (additif : n'affecte pas l'effondrement desktop)
-(function() {
-    var toggle = document.getElementById('sidebarToggle');
-    if (!toggle) return;
-    var body = document.body;
-    var bd = document.createElement('div');
-    bd.className = 'sidebar-backdrop';
-    body.appendChild(bd);
-    function mobile() { return window.matchMedia('(max-width: 767.98px)').matches; }
-    function close() { body.classList.remove('sidebar-open'); }
-    bd.addEventListener('click', close);
-    toggle.addEventListener('click', function() { if (mobile()) body.classList.toggle('sidebar-open'); });
-    document.querySelectorAll('#sidebarCol a').forEach(function(a) {
-        a.addEventListener('click', function() { if (mobile()) close(); });
-    });
-    window.addEventListener('resize', function() { if (!mobile()) close(); });
-    window.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
-})();
 
 /* ===== bloc extrait de base.html (ligne ~415) ===== */
 // Select All checkboxes functionality
@@ -233,11 +255,22 @@ var NOTIF_SOUNDS = {
     'chime': { freq: 523, type: 'triangle', bips: [[0, 0.3], [0.28, 0.35], [0.56, 0.5]] },
     'alarm': { freq: 440, type: 'sawtooth', bips: [[0, 0.3], [0.35, 0.3], [0.7, 0.45]] }
 };
+// Un seul AudioContext partagé (recréer un contexte par bip fuit de la mémoire GPU/audio)
+var _orbitAudioCtx = null;
+function getOrbitAudioCtx() {
+    if (!_orbitAudioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) { try { _orbitAudioCtx = new AC(); } catch (e) {} }
+    }
+    if (_orbitAudioCtx && _orbitAudioCtx.state === 'suspended') { _orbitAudioCtx.resume(); }
+    return _orbitAudioCtx;
+}
 function playNotificationSound() {
     var soundName = localStorage.getItem('notifSound') || 'classic';
     var s = NOTIF_SOUNDS[soundName] || NOTIF_SOUNDS['classic'];
     try {
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var ctx = getOrbitAudioCtx();
+        if (!ctx) { return; }
         s.bips.forEach(function(bip) {
             var osc = ctx.createOscillator();
             var gain = ctx.createGain();

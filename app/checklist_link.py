@@ -144,31 +144,33 @@ def appliquer_case_a_taches(dossier_id, taxe, annee, mois, kind, declare, paye=F
     return n
 
 
-def appliquer_tache_a_case(tache):
-    """Changement de statut d'une tache deadline -> reflte dans la checklist.
-    terminee -> case declaree (+paye si acompte) ; a_faire -> case supprimee.
-    en_cours -> on ne touche pas. Retourne nb de cases mises a jour (0/1)."""
+def appliquer_tache_a_case(tache, acteur=None):
+    """Changement de statut d'une tache deadline -> reflete dans la checklist.
+    terminee -> case declaree (+paye si acompte) ; a_faire / en_cours -> case videe.
+    La ligne est conservee (declare=paye=False) pour garder la trace : source,
+    updated_by_id, date_modif — affichee dans l'infobulle de la grille.
+    Retourne nb de cases mises a jour (0/1)."""
     m = case_pour_tache(tache)
     if not m or not tache.dossier_id:
         return 0
     taxe, annee, mois, kind, paye = m
     e = ChecklistEntry.query.filter_by(dossier_id=tache.dossier_id, taxe=taxe,
                                        annee=annee, mois=mois, kind=kind).first()
+    if tache.statut not in ('terminee', 'a_faire', 'en_cours'):
+        return 0
+    if not e:
+        e = ChecklistEntry(dossier_id=tache.dossier_id, taxe=taxe,
+                           annee=annee, mois=mois, kind=kind)
+        db.session.add(e)
     if tache.statut == 'terminee':
-        if not e:
-            e = ChecklistEntry(dossier_id=tache.dossier_id, taxe=taxe,
-                               annee=annee, mois=mois, kind=kind)
-            db.session.add(e)
         e.declare = True
         e.paye = bool(paye)
-        e.pl_mode = False
-    elif tache.statut == 'a_faire':
-        if e:
-            db.session.delete(e)
-            # si la synchro PL a impose declare sur la periode, la re-supprimer ici
-            # serait un aller-retour : pl_mode=True ne doit etre annule que par la synchro
-            # (e.pl_mode est False quand cree par l'homme ; les lignes pl_mode=True
-            # n'arrivent ici que si un humain remet la tache a faire -> on laisse partir)
     else:
-        return 0
+        e.declare = False
+        e.paye = False
+    e.pl_mode = False
+    e.source = 'tache'
+    if acteur is not None:
+        e.updated_by_id = acteur.id
+    e.date_modif = datetime.utcnow()
     return 1

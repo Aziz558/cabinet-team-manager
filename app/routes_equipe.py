@@ -150,6 +150,10 @@ def ajouter_membre():
         email = request.form.get('email', '').strip().lower()
         mot_de_passe = request.form.get('mot_de_passe', '').strip()
         role = request.form.get('role', 'membre')
+        # Seul l'admin peut créer un admin ; un manager ne crée que des membres/managers
+        roles_autorises = ('membre', 'manager') + (('admin',) if current_user.role == 'admin' else ())
+        if role not in roles_autorises:
+            role = 'membre'
         poste = request.form.get('poste', '').strip()
         telephone = request.form.get('telephone', '').strip()
 
@@ -224,7 +228,7 @@ def assigner_equipe_manager():
             flash(f'Équipe mise à jour pour {user.prenom} {user.nom}.', 'success')
     return redirect(url_for('membres'))
 
-@app.route('/supprimer_membre/<int:user_id>', methods=['GET', 'POST'])
+@app.route('/supprimer_membre/<int:user_id>', methods=['POST'])
 @login_required
 def supprimer_membre(user_id):
     """Supprime un membre de façon définitive."""

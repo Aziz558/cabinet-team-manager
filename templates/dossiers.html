@@ -369,7 +369,11 @@ function orbitChips() {
                                     <li><a class="dropdown-item" href="#" onclick="enrichirDossier({{ d.id }}, this);return false;"><i class="bi bi-stars me-2"></i>Enrichir via SIREN</a></li>
                                     {% endif %}
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="{{ url_for('supprimer_dossier', dossier_id=d.id) }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce dossier ? Cette action est irréversible.');"><i class="bi bi-trash me-2"></i>Supprimer</a></li>
+                                    <li>
+                                        <form method="POST" action="{{ url_for('supprimer_dossier', dossier_id=d.id) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce dossier ? Cette action est irréversible.');">
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Supprimer</button>
+                                        </form>
+                                    </li>
                                 </ul>
                             </div>
                         </td>

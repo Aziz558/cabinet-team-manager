@@ -9,6 +9,12 @@ import sys as _sys
 import threading as _threading
 from logging.handlers import SMTPHandler
 from datetime import date as _date, datetime as _datetime
+from dotenv import load_dotenv
+
+# Charge le .env local AVANT toute lecture de configuration. Sans ceci, le
+# développement local ignorait silencieusement SECRET_KEY / BOOTSTRAP_* /
+# DATABASE_URL (seules les variables plateforme étaient vues en prod).
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env'))
 
 app = Flask(
     __name__,
@@ -190,6 +196,19 @@ from app import routes  # noqa: F401
 from app import social_routes  # noqa: F401  (pole social : suivi DSN & écritures de paie)
 from app.models import User, AppSetting, SuggestionTache, Equipe, Notification  # noqa: F401
 
+# ===== CSRF global : tous les POST authentifiés exigent un token. =====
+# Les pages auth autonomes (login 3D / register / team_select) sont exemptées :
+# elles gèrent leur propre flux de soumission. Les tokens circulent via
+# meta csrf-token + injection JS (orbit-base.js) dans les <form> et les fetch/XHR.
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import generate_csrf
+csrf = CSRFProtect(app)
+app.jinja_env.globals['csrf_token'] = generate_csrf
+for _ep in ('login', 'register', 'team_select'):
+    _view = app.view_functions.get(_ep)
+    if _view is not None:
+        csrf.exempt(_view)
+
 with app.app_context():
     if not _SKIP_DB_INIT:
         try:
@@ -197,9 +216,17 @@ with app.app_context():
         except Exception as e:
             app.logger.warning(f"db.create_all failed: {e}")
 
-    # 🆘 Bootstrap admin de secours : si AUCUN utilisateur dans la base (ex: base
+    # Bootstrap admin de secours : si AUCUN utilisateur dans la base (ex: base
     # Render expirée/recréée), on crée automatiquement un compte admin pour
     # permettre le login et la recréation des équipes/dossiers.
+    def _print_safe(msg):
+        # Un emoji dans un print() plante le demarrage si la console est
+        # cp1252 (Windows) : on degrade au lieu de lever.
+        try:
+            print(msg)
+        except UnicodeEncodeError:
+            print(msg.encode('ascii', 'replace').decode('ascii'))
+
     try:
         if not _SKIP_DB_INIT and db.session.query(User).count() == 0:
             admin = User(
@@ -218,10 +245,10 @@ with app.app_context():
             db.session.add(admin)
             db.session.commit()
             if _pwd_generee:
-                print("🆘 Base vide -> admin de secours créé : admin@cabinet-jmh.com")
-                print(f"   Mot de passe GÉNÉRÉ (à enregistrer tout de suite) : {_bootstrap_pwd}")
+                _print_safe("Base vide -> admin de secours créé : admin@cabinet-jmh.com")
+                _print_safe(f"   Mot de passe GÉNÉRÉ (à enregistrer tout de suite) : {_bootstrap_pwd}")
             else:
-                print("🆘 Base vide -> admin de secours créé : admin@cabinet-jmh.com (mot de passe = variable BOOTSTRAP_ADMIN_PASSWORD)")
+                _print_safe("Base vide -> admin de secours créé : admin@cabinet-jmh.com (mot de passe = variable BOOTSTRAP_ADMIN_PASSWORD)")
             app.logger.info("Bootstrap admin créé (base vide)")
     except Exception as e:
         try:
@@ -249,9 +276,9 @@ with app.app_context():
                 db.session.add(AppSetting(cle='_pwd_reset_2026_09_incident',
                                           valeur='done', service='general'))
                 db.session.commit()
-                print("🔑 Reset one-time admin appliqué : admin@cabinet-jmh.com (mot de passe = variable ADMIN_RESET_PASSWORD)")
+                _print_safe("Reset one-time admin appliqué : admin@cabinet-jmh.com (mot de passe = variable ADMIN_RESET_PASSWORD)")
             else:
-                print("ℹ️ Reset one-time admin ignoré : définir ADMIN_RESET_PASSWORD pour l'activer (aucun mot de passe en dur)")
+                _print_safe("Reset one-time admin ignoré : définir ADMIN_RESET_PASSWORD pour l'activer (aucun mot de passe en dur)")
     except Exception as e:
         try:
             db.session.rollback()
@@ -298,6 +325,9 @@ with app.app_context():
                 if cl_cols and 'pl_mode' not in cl_cols:
                     conn.execute(db.text("ALTER TABLE checklist_entries ADD COLUMN pl_mode BOOLEAN DEFAULT FALSE"))
                     app.logger.info("Added pl_mode column to checklist_entries")
+                if cl_cols and 'source' not in cl_cols:
+                    conn.execute(db.text("ALTER TABLE checklist_entries ADD COLUMN source VARCHAR(20)"))
+                    app.logger.info("Added source column to checklist_entries")
                 # Seed de reliage Pennylane (idempotent) : matching nom/SIRET auto a
                 # deja echoue pour Pro Store (nom client PL different) — on force le lien.
                 try:
@@ -440,6 +470,32 @@ with app.app_context():
     except Exception as e:
         app.logger.warning(f"Migration error (new columns): {e}")
 
+    # Index de performance (idempotent, SQLite + PostgreSQL) : les filtres les plus
+    # fréquents de l'app (échéances, assignations, notifications non lues, filtrage équipe).
+    try:
+        with db.engine.begin() as conn:
+            _indexes = [
+                "CREATE INDEX IF NOT EXISTS ix_taches_assigne_a ON taches (assigne_a)",
+                "CREATE INDEX IF NOT EXISTS ix_taches_dossier_id ON taches (dossier_id)",
+                "CREATE INDEX IF NOT EXISTS ix_taches_date_echeance ON taches (date_echeance)",
+                "CREATE INDEX IF NOT EXISTS ix_taches_statut ON taches (statut)",
+                "CREATE INDEX IF NOT EXISTS ix_notifications_user_id ON notifications (user_id)",
+                "CREATE INDEX IF NOT EXISTS ix_notifications_lu ON notifications (lu)",
+                "CREATE INDEX IF NOT EXISTS ix_dossiers_collaborateur_id ON dossiers (collaborateur_id)",
+                "CREATE INDEX IF NOT EXISTS ix_dossiers_equipe_id ON dossiers (equipe_id)",
+                "CREATE INDEX IF NOT EXISTS ix_users_equipe_id ON users (equipe_id)",
+                "CREATE INDEX IF NOT EXISTS ix_users_role ON users (role)",
+                "CREATE INDEX IF NOT EXISTS ix_commentaires_tache ON commentaires_taches (tache_id)",
+            ]
+            for _ix in _indexes:
+                try:
+                    conn.execute(db.text(_ix))
+                except Exception as e2:
+                    app.logger.warning(f"Index skipped ({_ix.split()[5] if len(_ix.split()) > 5 else _ix}): {e2}")
+        app.logger.info("Performance indexes ensured")
+    except Exception as e:
+        app.logger.warning(f"Index migration error: {e}")
+
     # Create default team if none exists
     try:
         admin_user = User.query.filter_by(role='admin').first()
@@ -522,6 +578,13 @@ _VERSIONS_STATIQUES = {}
 
 
 def _version_statique(filename: str) -> str:
+    # En debug, on relit le mtime a chaque rendu : un edit de CSS/JS est
+    # immediatement servi avec une nouvelle URL de cache (pas de restart requis).
+    if app.debug:
+        try:
+            return str(int(os.path.getmtime(os.path.join(app.static_folder, filename))))
+        except OSError:
+            return '0'
     version = _VERSIONS_STATIQUES.get(filename)
     if version is None:
         try:
@@ -637,6 +700,16 @@ def internal_error(error):
 # Global exception handler for debugging
 @app.errorhandler(Exception)
 def handle_all_exceptions(e):
+    # Les erreurs HTTP attendues (404, 400 CSRF, 401...) gardent leur code réel :
+    # les transformer en 500 masquerait la cause et casserait les clients d'API.
+    from werkzeug.exceptions import HTTPException
+    from flask_wtf.csrf import CSRFError
+    if isinstance(e, (HTTPException, CSRFError)):
+        code = getattr(e, 'code', 400) or 400
+        if request.path.startswith('/api/'):
+            from flask import jsonify
+            return jsonify({'erreur': e.description if hasattr(e, 'description') else str(e)}), code
+        return e
     reference = _reference_erreur()
     app.logger.error("[ref %s] Exception non gérée: %s: %s", reference,
                      type(e).__name__, e, exc_info=True)
@@ -644,6 +717,9 @@ def handle_all_exceptions(e):
         db.session.rollback()
     except Exception:
         pass
+    if request.path.startswith('/api/'):
+        from flask import jsonify
+        return jsonify({'erreur': f"Erreur interne (référence {reference})."}), 500
     return render_template('error.html', code=500,
                            message=f"Une erreur inattendue s'est produite (référence {reference}).",
                            reference=reference), 500

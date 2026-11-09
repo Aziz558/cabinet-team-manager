@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="{{ request.cookies.get('theme') or 'light' }}">
+<html lang="fr" data-theme="{{ request.cookies.get('theme') or 'dark' }}">
 <head>
     <meta charset="UTF-8">
     <script>
@@ -7,13 +7,13 @@
     (function() {
         var t = null;
         try { t = localStorage.getItem('theme'); } catch (e) {}
-        if (!t) { t = "{{ request.cookies.get('theme') or 'light' }}"; }
-        if (t !== 'dark' && t !== 'light') { t = 'light'; }
+        if (!t) { t = "{{ request.cookies.get('theme') or 'dark' }}"; }
+        if (t !== 'dark' && t !== 'light') { t = 'dark'; }
         try { localStorage.setItem('theme', t); document.cookie = 'theme=' + t + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {}
         document.documentElement.setAttribute('data-theme', t);
         window.ORBIT_THEME = t;
         window.setOrbitTheme = function(theme, persist, instant) {
-            if (theme !== 'dark' && theme !== 'light') { theme = 'light'; }
+            if (theme !== 'dark' && theme !== 'light') { theme = 'dark'; }
             if (persist !== false) { try { localStorage.setItem('theme', theme); document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {} }
 
             // Application effective du theme (appelee dans la transition)

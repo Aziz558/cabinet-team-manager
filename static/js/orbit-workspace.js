@@ -416,8 +416,15 @@
     function initResizer() {
         var col = doc.getElementById('sidebarCol');
         if (!col) { return; }
+        // Largeur écrite dans la variable CSS --sidebar-w (jamais de width inline :
+        // elle aurait écrasé l'état replié body.sidebar-collapsed).
+        function setWidth(px) {
+            if (px) { doc.documentElement.style.setProperty('--sidebar-w', px + 'px'); }
+            else { doc.documentElement.style.removeProperty('--sidebar-w'); }
+            store.set('orbitSidebarWidth', px || 0);
+        }
         var saved = store.get('orbitSidebarWidth', 0);
-        if (saved) { col.style.width = saved + 'px'; }
+        if (saved) { setWidth(saved); }
         var handle = mk('div', 'orbit-resizer');
         handle.title = 'Glisser pour redimensionner';
         col.appendChild(handle);
@@ -427,17 +434,16 @@
             handle.classList.add('is-dragging');
             doc.body.classList.add('orbit-resizing');
         });
-        handle.addEventListener('dblclick', function () { col.style.width = ''; store.set('orbitSidebarWidth', 0); });
+        handle.addEventListener('dblclick', function () { setWidth(0); });
         doc.addEventListener('mousemove', function (ev) {
             if (!dragging) { return; }
-            col.style.width = Math.min(420, Math.max(170, ev.clientX - col.getBoundingClientRect().left)) + 'px';
+            setWidth(Math.min(420, Math.max(170, ev.clientX - col.getBoundingClientRect().left)));
         });
         doc.addEventListener('mouseup', function () {
             if (!dragging) { return; }
             dragging = false;
             handle.classList.remove('is-dragging');
             doc.body.classList.remove('orbit-resizing');
-            store.set('orbitSidebarWidth', parseInt(col.style.width, 10) || 0);
         });
     }
     function humanWhen(iso) {
@@ -474,9 +480,18 @@
         function refresh() {
             if (countEl) {
                 var n = 0;
-                Array.prototype.forEach.call(doc.querySelectorAll('[data-orbit-nav]'), function (el) {
-                    if (el.offsetParent !== null) { n++; }
-                });
+                var tablePane = doc.querySelector('[data-view-pane="table"]');
+                if (tablePane && !tablePane.hidden && tablePane.querySelector('tbody tr')) {
+                    /* Mode tableau actif : les cartes [data-orbit-nav] sont cachées,
+                       on compte les lignes du panneau tableau (hors ligne vide). */
+                    Array.prototype.forEach.call(tablePane.querySelectorAll('tbody tr'), function (tr) {
+                        if (!tr.querySelector('td[colspan]')) { n++; }
+                    });
+                } else {
+                    Array.prototype.forEach.call(doc.querySelectorAll('[data-orbit-nav]'), function (el) {
+                        if (el.offsetParent !== null) { n++; }
+                    });
+                }
                 countEl.innerHTML = '<strong>' + n + '</strong> ' + esc(unit);
             }
             if (chipsEl) {
@@ -601,8 +616,8 @@
             closeCursor();
             return;
         }
-        if (k === '?') { ev.preventDefault(); toggleHelp(); return; }
         if (isTyping(ev.target) || ev.ctrlKey || ev.metaKey || ev.altKey) { return; }
+        if (k === '?') { ev.preventDefault(); toggleHelp(); return; }
         if (k === 'ArrowDown') { ev.preventDefault(); moveCursor(1, ev.shiftKey); }
         else if (k === 'ArrowUp') { ev.preventDefault(); moveCursor(-1, ev.shiftKey); }
         else if (k === 'ArrowRight' || k === 'Enter') {

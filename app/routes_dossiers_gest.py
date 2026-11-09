@@ -7,7 +7,7 @@ import re
 from datetime import date, datetime
 from .route_common import _nettoyer_relations_dossier
 
-@app.route('/supprimer_dossier/<int:dossier_id>')
+@app.route('/supprimer_dossier/<int:dossier_id>', methods=['POST'])
 @login_required
 def supprimer_dossier(dossier_id):
     """Supprimer un dossier et toutes ses tâches associées."""
@@ -428,7 +428,7 @@ def importer_csv():
 
     return redirect(url_for('dossiers'))
 
-@app.route('/supprimer_equipe/<int:equipe_id>')
+@app.route('/supprimer_equipe/<int:equipe_id>', methods=['POST'])
 @login_required
 def supprimer_equipe(equipe_id):
     """Supprime une equipe (admin) : detache membres et dossiers au prealable."""

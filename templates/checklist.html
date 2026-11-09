@@ -89,6 +89,19 @@
     .cl-hide { display: none !important; }
     .cl-table td.cl-dim { opacity: 0.25; }
     .btn-pl-detail.active-detail { color: var(--orange-primary); border-color: var(--orange-primary); background: rgba(255,140,0,.12); }
+    /* Grille : zone de défilement interne + en-tête / 1re colonne collants */
+    .cl-grid-scroll { overflow: auto; max-height: calc(100vh - 340px); min-height: 260px; }
+    .cl-table thead th { position: sticky; top: 0; background: var(--bg-card); z-index: 2; }
+    .cl-table th.cl-th-left, .cl-table td.cl-td-dossier { position: sticky; left: 0; background: var(--bg-card); z-index: 1; }
+    .cl-table thead th.cl-th-left { z-index: 3; }
+    .cl-table tbody tr:hover td, .cl-table tbody tr:hover th { background: var(--bg-card-hover); }
+    /* Affordance de clic : halo au survol d'une case changeable */
+    .sym[data-field]:hover { box-shadow: 0 0 0 3px var(--orange-subtle); }
+    /* Indicateur de retards sous la lettre de mois */
+    .cl-th-flag { display: block; font-size: 0.58rem; font-weight: 700; color: var(--danger-ink);
+        line-height: 1; margin-top: 1px; }
+    /* Bandeau synchro Pennylane : plus compact */
+    .cl-pl-banner { padding: .45rem .75rem !important; font-size: .74rem !important; margin-bottom: .5rem !important; }
 </style>
 {% endblock %}
 
@@ -201,19 +214,51 @@
 <!-- ===== ÉTAPE 4 : GRILLE ===== -->
 {% elif data.etape == 'grille' and data.meta %}
 {% set taxe = data.taxe %}
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
     <div>
         <a class="wf-back mb-2" href="{{ url_for('checklist', etape='taxe', type=request.args.get('type'), freq=request.args.get('freq'), annee=annee) }}"><i class="bi bi-arrow-left"></i> Obligations</a>
-        <h4 class="mb-0">{{ data.meta.label }} — {{ annee }}</h4>
+        <h4 class="mb-1">{{ data.meta.label }} — {{ annee }}</h4>
+        <p class="page-head-sub mb-0">Chaque colonne = la période déclarée (ex. juillet → dépôt le 24 août) · cliquez sur un symbole pour changer son statut</p>
     </div>
     <select class="select-premium" style="width:auto;" onchange="location.href='{{ url_for('checklist', etape='grille', type=request.args.get('type'), freq=request.args.get('freq'), taxe=taxe) }}&annee='+this.value;">
         {% for a in annees %}<option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>{% endfor %}
     </select>
 </div>
 
+{% if data.stats %}
+{% set st = data.stats %}
+<div class="kpi-band animate-fade-in-up mb-3">
+    <div class="kpi-chip" style="--accent: var(--ink-3);">
+        <div class="kpi-label"><i class="bi bi-folder2-open"></i> Dossiers suivis</div>
+        <div class="kpi-value">{{ st.dossiers }}</div>
+        <div class="kpi-sub">{{ st.ech }} échéances sur l'année</div>
+    </div>
+    <div class="kpi-chip" style="--accent: {{ 'var(--success)' if st.ajour_pct is not none and st.ajour_pct >= 90 else 'var(--orange-primary)' }};">
+        <div class="kpi-label"><i class="bi bi-check2-circle"></i> À jour</div>
+        <div class="kpi-value">{{ st.ajour_pct ~ ' %' if st.ajour_pct is not none else '—' }}</div>
+        <div class="kpi-sub">{{ st.dues }} échéances échues</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--danger);">
+        <div class="kpi-label"><i class="bi bi-x-circle"></i> En retard</div>
+        <div class="kpi-value">{{ st.retard }}</div>
+        <div class="kpi-sub">dépôts non faits</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--orange-primary);">
+        <div class="kpi-label"><i class="bi bi-circle-half"></i> Déclarées à payer</div>
+        <div class="kpi-value">{{ st.declare }}</div>
+        <div class="kpi-sub">paiement à suivre</div>
+    </div>
+    <div class="kpi-chip" style="--accent: var(--warning);">
+        <div class="kpi-label"><i class="bi bi-hourglass-split"></i> Échéance ≤ 7 j</div>
+        <div class="kpi-value">{{ st.soon }}</div>
+        <div class="kpi-sub">dossiers concernés</div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card-premium">
 {% if data.taxe in ('tva_mensuel', 'tva_trimestriel') %}
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2 mb-2 rounded-3" style="background:var(--bg-card-hover);border:1px solid var(--border-color);font-size:0.76rem;">
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2 mb-2 rounded-3 cl-pl-banner" style="background:var(--bg-card-hover);border:1px solid var(--border-color);font-size:0.76rem;">
     <span id="plSyncBannerText">
         {% if pl_last_sync is defined and pl_last_sync and pl_last_sync.quand %}
         <i class="bi bi-cloud-check me-1" style="color:var(--info);"></i>
@@ -259,8 +304,9 @@
         </div>
     </div>
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — chaque colonne = la période déclarée (ex. juillet → dépôt 24 août) · cliquez sur un symbole pour changer son statut</h6>
+        <h6 class="mb-0">{{ data.grille|length }} dossier{{ 's' if data.grille|length != 1 }} — cliquez sur un symbole pour changer son statut</h6>
         <div class="d-flex align-items-center gap-2">
+            <span class="text-tertiary" style="font-size:0.72rem;">Chaque colonne = la période déclarée (ex. juillet → dépôt 24 août)</span>
             <button type="button" class="btn-pl-detail" id="btnPlDetail" title="Afficher / masquer le détail des statuts" onclick="togglePlDetail(this)">
                 <i class="bi bi-question-lg"></i>
             </button>
@@ -275,7 +321,7 @@
         <span class="ms-2"><span class="sym sym-pl-static sym-pl-ok"><i class="bi bi-check-lg"></i></span> <b>PL</b> acceptée (vert) · <span class="sym sym-pl-static sym-pl-progress"><i class="bi bi-hourglass-split"></i></span> en cours (orange) · <span class="sym sym-pl-static sym-pl-ready"><i class="bi bi-tools"></i></span> prêt (bleu) · <span class="sym sym-pl-static sym-pl-todo"><i class="bi bi-three-dots"></i></span> à déclarer (gris) · <span class="sym sym-pl-static sym-pl-late"><i class="bi bi-x-lg"></i></span> en retard (rouge)</span>
     </div>
     <div class="card-body-premium p-0">
-        <div style="overflow-x: auto;">
+        <div class="cl-grid-scroll">
             <table class="cl-table" id="clGrid">
                 <thead>
                     <tr>
@@ -283,7 +329,7 @@
                         <th>Régime</th>
                         <th>Jour d'échéance</th>
                         <th>Prochaine</th>
-                        {% for m in range(1, 13) %}<th data-mois="{{ m }}" title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][m-1] }}">{{ ['J','F','M','A','M','J','J','A','S','O','N','D'][m-1] }}</th>{% endfor %}
+                        {% for m in range(1, 13) %}{% set nb_r = data.retards_mois[m-1] if data.retards_mois else 0 %}<th data-mois="{{ m }}" title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][m-1] }}{% if nb_r %} — {{ nb_r }} en retard{% endif %}">{{ ['J','F','M','A','M','J','J','A','S','O','N','D'][m-1] }}{% if nb_r %}<span class="cl-th-flag">{{ nb_r }}</span>{% endif %}</th>{% endfor %}
                     </tr>
                 </thead>
                 <tbody>
@@ -340,7 +386,7 @@
                                       {% if use_pl %}data-pl="1" {% endif %}data-dossier="{{ g.dossier.id }}" data-mois="{{ c.mois }}" data-kind="{{ c.kind }}"
                                       data-state="{{ c.state }}" data-declare="{{ 1 if c.declare else 0 }}" data-paye="{{ 1 if c.paye else 0 }}"
                                       data-jour="{{ c.jour }}"
-                                      title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][c.mois-1] }} — clic pour changer le statut{% if pl_here %} · Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} ({{ '%.0f'|format(c.pl_montant) }} €){% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}{% endif %}">
+                                      title="{{ ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][c.mois-1] }} — clic pour changer le statut{% if c.trace %} · {{ c.trace }}{% endif %}{% if pl_here %} · Pennylane : {{ c.pl_statut_fr }}{% if c.pl_montant %} ({{ '%.0f'|format(c.pl_montant) }} €){% endif %}{% if c.pl_deadline %} · échéance {{ c.pl_deadline }}{% endif %}{% if c.pl_sync %} · synchro {{ c.pl_sync }}{% endif %}{% endif %}">
                                     {% if use_pl %}{{ c.pl_icon|default('', true)|safe }}
                                     {% elif c.state == 'solde' %}<i class="bi bi-check-lg"></i>
                                     {% elif c.state == 'declare' %}<i class="bi bi-circle-half"></i>

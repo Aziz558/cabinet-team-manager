@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Tâches{% endblock %}
 {% block content %}
+<div data-view-scope="taches">
 {% if current_user.role == 'manager' %}
 <div class="page-head animate-fade-in-up">
     <div class="page-head-main">
@@ -14,6 +15,10 @@
         </div>
     </div>
     <div class="page-head-actions">
+        <div class="orbit-view-toggle me-2" role="group" aria-label="Mode d'affichage">
+            <button type="button" data-view-mode="cards" aria-pressed="true" title="Vue cartes"><i class="bi bi-grid-3x3-gap"></i>Cartes</button>
+            <button type="button" data-view-mode="table" aria-pressed="false" title="Vue tableau"><i class="bi bi-table"></i>Tableau</button>
+        </div>
         <button class="btn-premium btn-premium-primary btn-press" data-bs-toggle="modal" data-bs-target="#modalTache">
             <i class="bi bi-plus-lg me-1"></i>Nouvelle tâche
         </button>
@@ -26,6 +31,12 @@
         <div class="page-head-titles">
             <h2>Mes tâches</h2>
             <p class="page-head-sub">Vos tâches assignées</p>
+        </div>
+    </div>
+    <div class="page-head-actions">
+        <div class="orbit-view-toggle" role="group" aria-label="Mode d'affichage">
+            <button type="button" data-view-mode="cards" aria-pressed="true" title="Vue cartes"><i class="bi bi-grid-3x3-gap"></i>Cartes</button>
+            <button type="button" data-view-mode="table" aria-pressed="false" title="Vue tableau"><i class="bi bi-table"></i>Tableau</button>
         </div>
     </div>
 </div>
@@ -181,7 +192,7 @@ function orbitChips() {
 }
 </script>
 <!-- Task Board -->
-<div class="task-board" id="taskBoard">
+<div class="task-board" id="taskBoard" data-view-pane="cards">
     {% set fiscal_keywords = ['tva','is ','cfe ','acompte','dépôt','préparation','déclaration','prépa'] %}
     {% set horizon_1m = date.today() + timedelta(days=30) %}
     {% for t in taches %}
@@ -258,6 +269,27 @@ function orbitChips() {
         {% endif %}
     </div>
     {% endfor %}
+</div>
+
+<!-- Vue tableau (bascule Cartes / Tableau) : lignes reconstruites en JS
+     depuis les cartes visibles, donc toujours synchronisée avec les filtres. -->
+<div class="card-premium" data-view-pane="table" hidden>
+    <div class="table-responsive">
+        <table class="table-premium" id="tachesTable">
+            <thead>
+                <tr>
+                    <th>Tâche</th>
+                    <th>Statut</th>
+                    <th>Priorité</th>
+                    <th>Échéance</th>
+                    <th>Assigné</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
 </div>
 
 <!-- Modal Nouvelle Tâche -->
@@ -763,6 +795,121 @@ document.addEventListener('click', function(ev) {
             showToast('Erreur réseau', 'danger');
         });
 });
+</script>
+<script>
+/* Vue tableau : reconstruite depuis les cartes VISIBLES (style.display) —
+   les filtres existants continuent de fonctionner dans les deux vues. */
+(function () {
+    var scope = document.querySelector('[data-view-scope="taches"]');
+    var tbody = document.querySelector('#tachesTable tbody');
+    var tablePane = document.querySelector('[data-view-pane="table"]');
+    if (!scope || !tbody || !tablePane) { return; }
+
+    function buildRow(card) {
+        var tr = document.createElement('tr');
+        if (card.classList.contains('task-overdue')) { tr.classList.add('task-overdue'); }
+
+        var tdTitre = document.createElement('td');
+        var link = card.querySelector('.task-title a');
+        if (link) {
+            var strong = document.createElement('strong');
+            strong.appendChild(link.cloneNode(true));
+            tdTitre.appendChild(strong);
+        } else {
+            tdTitre.textContent = card.getAttribute('data-orbit-title') || '';
+        }
+        var sub = document.createElement('div');
+        sub.className = 'text-tertiary small';
+        sub.textContent = card.getAttribute('data-orbit-sub') || '';
+        tdTitre.appendChild(sub);
+        tr.appendChild(tdTitre);
+
+        var tdStatut = document.createElement('td');
+        var st = card.querySelector('.task-status');
+        if (st) { tdStatut.appendChild(st.cloneNode(true)); }
+        tr.appendChild(tdStatut);
+
+        var tdPrio = document.createElement('td');
+        var pr = card.querySelector('.task-priority');
+        if (pr) { tdPrio.appendChild(pr.cloneNode(true)); }
+        tr.appendChild(tdPrio);
+
+        var tdEch = document.createElement('td');
+        tdEch.textContent = card.getAttribute('data-orbit-f-echeance') || '—';
+        if (card.classList.contains('task-overdue')) { tdEch.className = 'text-danger fw-semibold'; }
+        tr.appendChild(tdEch);
+
+        var tdAss = document.createElement('td');
+        tdAss.textContent = card.getAttribute('data-orbit-f-assigne') || '—';
+        tr.appendChild(tdAss);
+
+        var tdAct = document.createElement('td');
+        tdAct.className = 'text-end';
+        card.querySelectorAll('.task-card-footer .d-flex').forEach(function (grp) {
+            var clone = grp.cloneNode(true);
+            clone.classList.add('justify-content-end');
+            tdAct.appendChild(clone);
+        });
+        var open = card.getAttribute('data-orbit-actions');
+        if (!tdAct.querySelector('a') && open) {
+            try {
+                var acts = JSON.parse(open);
+                if (acts[0] && acts[0][1]) {
+                    var a = document.createElement('a');
+                    a.href = acts[0][1];
+                    a.className = 'btn-task btn-task-sm btn-task-inactive';
+                    a.title = acts[0][0] || 'Ouvrir';
+                    a.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
+                    tdAct.appendChild(a);
+                }
+            } catch (e) {}
+        }
+        tr.appendChild(tdAct);
+        return tr;
+    }
+
+    function rebuild() {
+        if (tablePane.hidden) { return; }
+        tbody.innerHTML = '';
+        var n = 0;
+        document.querySelectorAll('#taskBoard .task-card').forEach(function (card) {
+            if (card.style.display === 'none') { return; }
+            tbody.appendChild(buildRow(card));
+            n++;
+        });
+        if (n === 0) {
+            var tr = document.createElement('tr');
+            var td = document.createElement('td');
+            td.colSpan = 6;
+            td.className = 'text-center text-tertiary py-4';
+            td.textContent = 'Aucune tâche ne correspond aux filtres actifs.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+    }
+
+    scope.addEventListener('orbit:viewchange', function (ev) {
+        if (ev.detail && ev.detail.mode === 'table') { rebuild(); }
+    });
+
+    /* Les filtres modifient style.display sur les cartes : on observe. */
+    var timer = null;
+    var board = document.getElementById('taskBoard');
+    if (board && 'MutationObserver' in window) {
+        new MutationObserver(function () {
+            if (tablePane.hidden) { return; }
+            clearTimeout(timer);
+            timer = setTimeout(rebuild, 120);
+        }).observe(board, { subtree: true, childList: true, attributes: true, attributeFilter: ['style', 'class'] });
+    }
+
+    /* Si la préférence enregistrée est « table », la bascule s'applique au
+       DOMContentLoaded de orbit-view-toggle.js — l'événement reconstruit la
+       vue. Filet de sécurité au cas où l'ordre diffère : */
+    setTimeout(function () {
+        if (!tablePane.hidden && tbody.children.length === 0) { rebuild(); }
+    }, 300);
+})();
 </script>
 {% endblock %}
 

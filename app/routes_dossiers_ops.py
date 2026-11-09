@@ -400,6 +400,14 @@ def prendre_en_charge(tache_id):
     tache.statut = 'en_cours'
     tache.date_prise_en_charge = datetime.utcnow()
     db.session.commit()
+    # LIAISON tache -> checklist : prise en charge -> case videe + trace acteur
+    try:
+        from .checklist_link import appliquer_tache_a_case
+        if appliquer_tache_a_case(tache, acteur=current_user):
+            db.session.commit()
+    except Exception as _lk_e:
+        db.session.rollback()
+        app.logger.warning(f"Liaison tache->case (prise en charge): {_lk_e}")
     
     # Notifier le créateur (manager) + in-app
     collab_nom = f"{current_user.prenom} {current_user.nom}"

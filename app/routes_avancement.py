@@ -257,7 +257,7 @@ def suivi_changer_statut(tache_id):
     # LIAISON tache -> checklist (meme logique que changer_statut_tache)
     try:
         from .checklist_link import appliquer_tache_a_case
-        if appliquer_tache_a_case(tache):
+        if appliquer_tache_a_case(tache, acteur=current_user):
             db.session.commit()
     except Exception as _lk_e:
         db.session.rollback()

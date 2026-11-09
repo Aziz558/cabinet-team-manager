@@ -118,6 +118,13 @@ def taches():
                 t.statut = 'terminee'
                 t.date_completion = datetime.utcnow()
                 db.session.commit()
+                try:
+                    from .checklist_link import appliquer_tache_a_case
+                    if appliquer_tache_a_case(t, acteur=current_user):
+                        db.session.commit()
+                except Exception as _lk_e:
+                    db.session.rollback()
+                    app.logger.warning(f"Liaison tache->case (auto-terminee): {_lk_e}")
             # Créer notification in-app
             notif_msg = f"Nouvelle tâche assignée : {t.titre}"
             notif = Notification(user_id=t.assigne_a, tache_id=t.id, message=notif_msg, type_notification='assignation')

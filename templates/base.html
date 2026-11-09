@@ -1,179 +1,83 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="{{ request.cookies.get('theme') or 'light' }}">
+<html lang="fr" data-theme="{{ request.cookies.get('theme') or 'dark' }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="light dark">
-    <title>{% block title %}Cabinet Manager{% endblock %}</title>
-    <!-- Fond du thème dès le 1er rendu : évite le flash blanc pendant le chargement des CSS -->
-    <style>html,body{background:#f5f2ec}html[data-theme="dark"],html[data-theme="dark"] body{background:#0f0f12}</style>
-    <!-- Appliquer le thème AVANT le premier rendu (évite flash/latence de changement de page) -->
-    <script>
-    // ===== Socle thème JMH Orbit (source unique, appliqué à toutes les fenêtres) =====
-    // Priorité : préférence navigateur (localStorage) > préférence servie (cookie) > clair.
-    // Le choix est écrit dans le cookie pour s'appliquer aussi aux pages hors app
-    // (login / register / sélection d'équipe).
-    (function() {
-        var t = null;
-        try { t = localStorage.getItem('theme'); } catch (e) {}
-        if (!t) { t = "{{ request.cookies.get('theme') or 'light' }}"; }
-        if (t !== 'dark' && t !== 'light') { t = 'light'; }
-        try {
-            localStorage.setItem('theme', t);
-            document.cookie = 'theme=' + t + ';path=/;max-age=31536000;SameSite=Lax';
-        } catch (e) {}
-        document.documentElement.setAttribute('data-theme', t);
-        window.ORBIT_THEME = t;
-
-        window.setOrbitTheme = function(theme, persist, instant) {
-            if (theme !== 'dark' && theme !== 'light') { theme = 'light'; }
-            if (persist !== false) {
-                try {
-                    localStorage.setItem('theme', theme);
-                    document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
-                } catch (e) {}
-            }
-
-            // Application effective du theme (appelee dans la transition)
-            var apply = function() {
-                document.documentElement.setAttribute('data-theme', theme);
-                window.ORBIT_THEME = theme;
-                var icon = document.getElementById('themeIcon');
-                if (icon) { icon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill'; }
-                document.querySelectorAll('.sidebar-logo').forEach(function(img) {
-                    img.src = "{{ asset('img/logo-jmh-orbit-symbole.svg') }}";
-                });
-                document.querySelectorAll('[data-theme-choice]').forEach(function(el) {
-                    el.classList.toggle('active', el.getAttribute('data-theme-choice') === theme);
-                });
-                var meta = document.querySelector('meta[name="theme-color"]');
-                if (meta) { meta.setAttribute('content', theme === 'light' ? '#f5f2ec' : '#0f0f12'); }
-                window.dispatchEvent(new CustomEvent('orbit:theme', { detail: theme }));
-            };
-
-            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            // Premier rendu / mouvement reduit / appel systeme : sans animation
-            if (reduced || instant === true || !window.ORBIT_THEME_READY) { apply(); return; }
-
-            var root = document.documentElement;
-            var veil = document.getElementById('orbitThemeVeil');
-            if (!veil) {
-                veil = document.createElement('div');
-                veil.id = 'orbitThemeVeil';
-                veil.className = 'orbit-theme-veil';
-                document.body.appendChild(veil);
-            }
-            veil.classList.remove('orbit-theme-veil--out');
-            void veil.offsetWidth;                          // force le reflow -> relance l'animation
-            veil.style.background = theme === 'light' ? '#f3f4f6' : '#0f0f12';
-            veil.classList.add('orbit-theme-veil--out');
-
-            if (document.startViewTransition) {
-                document.startViewTransition(apply);        // fondu croise global (Chrome/Edge/Safari)
-            } else {
-                root.classList.add('orbit-theme-anim');     // repli : degrade CSS progressif
-                apply();
-                setTimeout(function() { root.classList.remove('orbit-theme-anim'); }, 470);
-            }
-        };
-
-        window.toggleTheme = function() {
-            window.setOrbitTheme(window.ORBIT_THEME === 'light' ? 'dark' : 'light', true);
-        };
-
-        // N'animer qu'a partir du moment ou la page est chargee (jamais au 1er affichage)
-        window.addEventListener('load', function() {
-            var m = document.querySelector('meta[name="theme-color"]');
-            if (m) { m.setAttribute('content', window.ORBIT_THEME === 'light' ? '#f5f2ec' : '#0f0f12'); }
-            window.ORBIT_THEME_READY = true;
-        });
-    })();
-    </script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}JMH Orbit{% endblock %} · Cabinet JMH</title>
+    <!-- Fond dès le 1er rendu : aucun flash blanc pendant le chargement des CSS -->
+    <style>html,body{background:#07080c}html[data-theme="light"],html[data-theme="light"] body{background:#f4f6fa}</style>
+    <!-- Socle thème unique, synchrone : applique data-theme + data-bs-theme avant le rendu -->
+    <script src="{{ asset('js/orbit-theme.js') }}"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="{{ asset('css/style.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/light-theme.css') }}" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;0,600;1,400&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-    <!-- Feuille système unique : consolidation des 8 couches précédentes + finitions v2 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Composants legacy (structure) puis design system Orbit (source unique, en dernier) -->
     <link href="{{ asset('css/orbit-system.css') }}" rel="stylesheet">
-    <!-- Couche « Elevate » (Editorial Ink & Amber) : jetons + composants premium — charger EN DERNIER -->
-    <link href="{{ asset('css/orbit-elevate.css') }}" rel="stylesheet">
-    <!-- Correctifs accessibilité/finition de l'app (PAS chargés par la page login 3D autonome) -->
-    <link href="{{ asset('css/orbit-fixes.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/orbit.css') }}" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#f5f2ec">
+    <meta name="theme-color" content="#07080c">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Cabinet JMH">
+    <meta name="apple-mobile-web-app-title" content="JMH Orbit">
     <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo-orbit.svg') }}">
-        <link rel="apple-touch-icon" href="{{ asset('img/logo-orbit.png') }}">
-    <!-- Toast container -->
-    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;" role="status" aria-live="polite"></div>
+    <link rel="apple-touch-icon" href="{{ asset('img/logo-orbit.png') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="app-shell" data-logo-orbit="{{ asset('img/logo-jmh-orbit.png') }}">
+    {% from 'includes/orbit_logo.html' import orbit_logo with context %}
     <a class="skip-link" href="#mainContent">Aller au contenu</a>
     <div id="orbitProgress" aria-hidden="true"></div>
-    <!-- Minimal top bar (replaces bulky Bootstrap navbar) -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1080;" role="status" aria-live="polite"></div>
+
     <header class="app-topbar">
         <div class="app-topbar-left">
-            <a class="app-brand" href="{{ url_for('dashboard') }}" title="JMH Orbit — build serveur {{ app_build }}">
-                {% from 'includes/orbit_logo.html' import orbit_logo with context %}
-                <span class="app-brand-icon">{{ orbit_logo(size=24) }}</span>
-                <span class="app-brand-text">JMH Orbit</span>
-            </a>
             {% if current_user.is_authenticated %}
-            <button class="app-topbar-toggle" id="sidebarToggle" type="button" aria-label="Replier / déplier la navigation">
-                <i class="bi bi-list fs-4"></i>
+            <button class="app-topbar-toggle" id="sidebarToggle" type="button" aria-label="Replier / déplier la navigation" aria-controls="sidebarCol">
+                <i class="bi bi-list"></i>
             </button>
             {% endif %}
+            <a class="app-brand" href="{{ url_for('dashboard') }}" title="JMH Orbit — build {{ app_build }}">
+                <span class="app-brand-icon">{{ orbit_logo(size=26) }}</span>
+                <span class="app-brand-text">JMH Orbit</span>
+            </a>
         </div>
         <div class="app-topbar-right">
-                {% if current_user.is_authenticated %}
-                <!-- Recherche rapide (palette de commandes) -->
-                <button type="button" class="orbit-search-btn" data-orbit-open-palette title="Recherche rapide (Ctrl+K)">
-                    <i class="bi bi-search"></i><span class="orbit-search-label">Rechercher</span><kbd class="orbit-kbd">Ctrl+K</kbd>
-                </button>
-                <!-- Theme toggle -->
-                <button id="themeToggle" aria-label="Changer de thème" style="background:none;border:none;color:var(--text-primary);font-size:18px;cursor:pointer;margin-right:12px;" onclick="toggleTheme()" title="Changer le thème">
-                    <i id="themeIcon" class="bi bi-sun-fill"></i>
-                </button>
-                <!-- Notification bell -->
-            <a href="{{ url_for('notifications_page') }}" class="notif-bell-link" aria-label="Notifications" style="margin-right:12px;position:relative;text-decoration:none;color:var(--text-primary);font-size:18px;">
+            {% if current_user.is_authenticated %}
+            <button type="button" class="orbit-search-btn" data-orbit-open-palette title="Recherche rapide (Ctrl+K)">
+                <i class="bi bi-search"></i><span class="orbit-search-label">Rechercher</span><kbd class="orbit-kbd">Ctrl K</kbd>
+            </button>
+            <button id="themeToggle" class="icon-btn" type="button" aria-label="Changer de thème" onclick="toggleTheme()" title="Changer le thème">
+                <i id="themeIcon" class="bi bi-sun-fill"></i>
+            </button>
+            <a href="{{ url_for('notifications_page') }}" class="icon-btn" aria-label="Notifications" title="Notifications">
                 <i class="bi bi-bell"></i>
-                <span class="notif-badge" id="notifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:8px;padding:0 4px;">0</span>
+                <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
             </a>
-            <a href="{{ url_for('rappels_suivi') }}" aria-label="Mes rappels" style="margin-right:12px;text-decoration:none;color:var(--text-primary);font-size:18px;" title="Mes rappels">
+            <a href="{{ url_for('rappels_suivi') }}" class="icon-btn" aria-label="Mes rappels" title="Mes rappels">
                 <i class="bi bi-alarm"></i>
             </a>
             {% if current_equipe or all_equipes_for_switch %}
             <div class="dropdown">
-                <div class="team-context-icon" style="border-color: var(--border-color);" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                    <span class="team-icon" style="background: {{ current_equipe.couleur if current_equipe else '#FF8C00' }};color: #fff;">
-                        {% if current_equipe %}
-                        <i class="bi {{ current_equipe.icon or 'bi-people' }}"></i>
-                        {% else %}
-                        <i class="bi bi-diagram-2"></i>
-                        {% endif %}
+                <button class="team-context-icon" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="team-icon" style="background:{{ current_equipe.couleur if current_equipe else '#FF8C00' }};color:#fff;">
+                        <i class="bi {{ current_equipe.icon if current_equipe else 'bi-diagram-2' }}"></i>
                     </span>
-                    <span class="team-context-name">{{ current_equipe.nom if current_equipe else 'Toutes les équipes' }}</span>
-                    <i class="bi bi-caret-down-fill ms-1"></i>
-                </div>
-                <ul class="dropdown-menu dropdown-menu-dark team-switcher">
-                    {% if current_equipe %}
-                    <li><span class="dropdown-item-text text-tertiary small"><i class="bi bi-info-circle me-1"></i>Contexte équipe active</span></li>
-                    {% else %}
-                    <li><span class="dropdown-item-text text-tertiary small"><i class="bi bi-diagram-3 me-1"></i>Choisir une équipe</span></li>
-                    {% endif %}
+                    <span class="team-context-name d-none d-lg-inline">{{ current_equipe.nom if current_equipe else 'Toutes les équipes' }}</span>
+                    <i class="bi bi-caret-down-fill"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end team-switcher">
+                    <li><span class="dropdown-item-text text-tertiary small"><i class="bi bi-diagram-3 me-1"></i>{{ 'Contexte équipe active' if current_equipe else 'Choisir une équipe' }}</span></li>
                     <li><hr class="dropdown-divider"></li>
                     {% for eq in all_equipes_for_switch %}
                     <li>
-                        <a class="dropdown-item {% if current_equipe and current_equipe.id == eq.id %}active fw-medium{% endif %}" href="{{ url_for('set_team', equipe_id=eq.id) }}">
-                            <span class="team-icon" style="background: {{ eq.couleur or '#FF8C00' }};color: #fff;"><i class="bi {{ eq.icon or 'bi-people' }}"></i></span>
+                        <a class="dropdown-item {% if current_equipe and current_equipe.id == eq.id %}active{% endif %}" href="{{ url_for('set_team', equipe_id=eq.id) }}">
+                            <span class="team-icon" style="background:{{ eq.couleur or '#FF8C00' }};color:#fff;"><i class="bi {{ eq.icon or 'bi-people' }}"></i></span>
                             {{ eq.nom }}
-                            {% if eq.nb_membres() > 0 %}<span class="badge badge-tertiary ms-1">{{ eq.nb_membres() }}</span>{% endif %}
+                            {% if eq.nb_membres() > 0 %}<span class="badge badge-tertiary ms-auto">{{ eq.nb_membres() }}</span>{% endif %}
                         </a>
                     </li>
                     {% endfor %}
@@ -181,36 +85,29 @@
             </div>
             {% endif %}
             <div class="dropdown">
-                <a class="app-user-toggle" href="#" data-bs-toggle="dropdown">
+                <button class="app-user-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {% set photo_src = current_user.photo_display_src() %}
                     {% if photo_src %}
-                    <span class="app-user-icon">
-                        <img src="{{ photo_src }}" alt="photo" class="sidebar-user-img" style="width:32px;height:32px;">
-                    </span>
+                    <span class="app-user-icon"><img src="{{ photo_src }}" alt="" class="sidebar-user-img"></span>
                     {% else %}
-                    {% set top_icon = 'bi-person' %}
-                    {% if current_user.role == 'admin' %}
-                      {% set top_icon = 'bi-person-badge' %}
-                    {% elif current_user.role == 'manager' %}
-                      {% set top_icon = 'bi-person-lines-fill' %}
-                    {% endif %}
+                    {% set top_icon = 'bi-person-badge' if current_user.role == 'admin' else ('bi-person-lines-fill' if current_user.role == 'manager' else 'bi-person') %}
                     <span class="app-user-icon"><i class="bi {{ top_icon }}"></i></span>
                     {% endif %}
                     <span class="app-user-name d-none d-md-inline">{{ current_user.prenom }}</span>
-                    <i class="bi bi-caret-down-fill ms-1"></i>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end border-0 rounded-3">
-                    <li><a class="dropdown-item rounded-2" href="{{ url_for('profil') }}"><i class="bi bi-person me-2 text-tertiary"></i>Mon profil</a></li>
+                    <i class="bi bi-caret-down-fill"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{{ url_for('profil') }}"><i class="bi bi-person me-2 text-tertiary"></i>Mon profil</a></li>
                     {% if current_user.role == 'admin' %}
-                    <li><a class="dropdown-item rounded-2" href="{{ url_for('settings') }}"><i class="bi bi-gear me-2 text-tertiary"></i>Réglages</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('settings') }}"><i class="bi bi-gear me-2 text-tertiary"></i>Réglages</a></li>
                     {% endif %}
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item rounded-2" href="#" id="soundToggleLink" onclick="toggleSound(); return false;"><i class="bi bi-volume-up me-2 text-tertiary"></i>Son activé</a></li>
+                    <li><a class="dropdown-item" href="#" id="soundToggleLink" onclick="toggleSound(); return false;"><i class="bi bi-volume-up me-2 text-tertiary"></i>Son activé</a></li>
                     <li>
-                        <div class="dropdown-item rounded-2 d-flex align-items-center gap-2">
+                        <div class="dropdown-item d-flex align-items-center gap-2">
                             <i class="bi bi-music-note me-2 text-tertiary"></i>
-                            <span class="text-tertiary small">Son :</span>
-                            <select class="form-select form-select-sm" id="notifSoundSelect" onchange="changeNotifSound(this.value)" style="width:auto;font-size:0.75rem;background:var(--bg-card-hover);color:var(--text-primary);border-color:var(--border-color);">
+                            <span class="text-tertiary small">Son</span>
+                            <select class="form-select form-select-sm ms-auto" id="notifSoundSelect" onchange="changeNotifSound(this.value)" style="width:auto;font-size:.75rem;">
                                 <option value="classic">Classique</option>
                                 <option value="soft">Doux</option>
                                 <option value="digital">Digital</option>
@@ -220,78 +117,64 @@
                         </div>
                     </li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item rounded-2 text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Déconnexion</a></li>
+                    <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Déconnexion</a></li>
                 </ul>
             </div>
             {% endif %}
         </div>
     </header>
 
-    <main class="container-fluid" id="mainContent" tabindex="-1" style="padding-top: 72px;">
-        <div class="row">
-            {% if current_user.is_authenticated %}
-            <div class="col-auto h-100 d-block d-md-block" id="sidebarCol" style="width: 220px; position: relative;">
-                {% include 'includes/sidebar.html' %}
-            </div>
-            {% endif %}
-            <div class="col">
-                <div class="container mt-4">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    {% set toast_class = {
-                        'success': 'toast-success',
-                        'danger': 'toast-danger',
-                        'warning': 'toast-warning',
-                        'info': 'toast-info'
-                    }.get(category, 'toast-info') %}
-                    <div class="toast show fade {{ toast_class }}" role="alert" style="min-width: 300px;">
-                        <div class="toast-header d-flex align-items-center">
-                            <i class="bi {% if category == 'success' %}bi-check-circle{% elif category == 'danger' %}bi-x-circle{% elif category == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
-                            <strong class="me-auto">Cabinet JMH</strong>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Fermer"></button>
-                        </div>
-                        <div class="toast-body">{{ message }}</div>
+    <div class="app-body">
+        {% if current_user.is_authenticated %}
+        <aside class="app-sidebar" id="sidebarCol" aria-label="Navigation principale">
+            {% include 'includes/sidebar.html' %}
+        </aside>
+        {% endif %}
+        <main class="app-main" id="mainContent" tabindex="-1">
+            <div class="app-content">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                {% set toast_class = {'success':'toast-success','danger':'toast-danger','warning':'toast-warning','info':'toast-info'}.get(category, 'toast-info') %}
+                <div class="toast show fade {{ toast_class }}" role="alert" style="min-width:300px;">
+                    <div class="toast-header d-flex align-items-center">
+                        <i class="bi {% if category == 'success' %}bi-check-circle{% elif category == 'danger' %}bi-x-circle{% elif category == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
+                        <strong class="me-auto">JMH Orbit</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fermer"></button>
                     </div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
-                    {% if orbit_db_warning %}
-                    <div class="orbit-db-warning" id="orbitDbWarning" role="alert">
-                        <i class="bi bi-database-exclamation"></i>
-                        <div class="orbit-db-warning-text">
-                            <strong>Configuration base de données à corriger</strong>
-                            <span>{{ orbit_db_warning }}</span>
-                        </div>
-                        <button type="button" class="orbit-db-warning-close" aria-label="Masquer"
-                                onclick="this.parentNode.style.display='none'; try{localStorage.setItem('orbitDbWarnDismissed','1');}catch(e){}">&times;</button>
-                    </div>
-                    <script>
-                    try { if (localStorage.getItem('orbitDbWarnDismissed') === '1') { var _w = document.getElementById('orbitDbWarning'); if (_w) { _w.style.display = 'none'; } } } catch (e) {}
-                    </script>
-                    {% endif %}
-                    {% block content %}{% endblock %}
+                    <div class="toast-body">{{ message }}</div>
                 </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+                {% if orbit_db_warning %}
+                <div class="orbit-db-warning" id="orbitDbWarning" role="alert">
+                    <i class="bi bi-database-exclamation"></i>
+                    <div class="orbit-db-warning-text">
+                        <strong>Configuration base de données à corriger</strong>
+                        <span>{{ orbit_db_warning }}</span>
+                    </div>
+                    <button type="button" class="orbit-db-warning-close" aria-label="Masquer" onclick="this.parentNode.style.display='none';try{localStorage.setItem('orbitDbWarnDismissed','1');}catch(e){}">&times;</button>
+                </div>
+                <script>try{if(localStorage.getItem('orbitDbWarnDismissed')==='1'){var _w=document.getElementById('orbitDbWarning');if(_w){_w.style.display='none';}}}catch(e){}</script>
+                {% endif %}
+                {% block content %}{% endblock %}
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
+    <div class="sidebar-scrim" id="sidebarScrim" aria-hidden="true"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{{ asset('js/pl-sync-job.js') }}"></script>
+    <script src="{{ asset('js/pl-sync-job.js') }}"></script>
     {% block scripts %}{% endblock %}
-    <!-- ================= UI : micro-interactions (compteur KPI, topbar) ================= -->
-    <!-- Phase 4 : panneau latéral, palette ⇧K, clavier, favoris, densité -->
     <script src="{{ asset('js/orbit-workspace.js') }}" defer></script>
-    
-    <!-- Premium layer : micro-interactions studio (ripple, reveal, tilt) -->
     <script src="{{ asset('js/orbit-premium.js') }}" defer></script>
-<!-- Mobile Enhancement Script -->
     {% if current_user.is_authenticated %}
     {% include 'includes/assistant_widget.html' %}
     <script src="{{ asset('js/assistant.js') }}" defer></script>
     {% endif %}
     <script src="{{ asset('js/orbit-base.js') }}" defer></script>
+    <script src="{{ asset('js/orbit-view-toggle.js') }}" defer></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-
