@@ -18,10 +18,16 @@ def taches():
         # Isolation par equipe : valider assigne_a et dossier_id selon le role
         assigne_a = request.form.get('assigne_a', type=int) or None
         dossier_id = request.form.get('dossier_id', type=int) or None
+        manager_equipe = None  # manager responsable de l'equipe d'un collaborateur
         if current_user.role == 'membre':
-            # Un membre assigne uniquement a lui-meme et a un dossier de son perimetre
-            if assigne_a and assigne_a != current_user.id:
-                flash('Vous ne pouvez assigner une tâche qu\u2019à vous-même.', 'danger')
+            # Un collaborateur cree pour lui-meme ou pour le manager de son equipe
+            autorises = {current_user.id}
+            if current_user.equipe_id:
+                manager_equipe = Equipe.query.get(current_user.equipe_id)
+                if manager_equipe and manager_equipe.manager_id:
+                    autorises.add(manager_equipe.manager_id)
+            if assigne_a and assigne_a not in autorises:
+                flash('Vous pouvez assigner uniquement à vous-même ou au manager de votre équipe.', 'danger')
                 return redirect(url_for('taches'))
             if dossier_id:
                 d = Dossier.query.get(dossier_id)
@@ -128,21 +134,46 @@ def taches():
                 except Exception as _lk_e:
                     db.session.rollback()
                     app.logger.warning(f"Liaison tache->case (auto-terminee): {_lk_e}")
-            # Créer notification in-app
-            notif_msg = f"Nouvelle tâche assignée : {t.titre}"
-            notif = Notification(user_id=t.assigne_a, tache_id=t.id, message=notif_msg, type_notification='assignation')
-            db.session.add(notif)
+            # Le manager assigne par un collaborateur recoit la notification
+            # dediee plus bas (pas de doublon).
+            assigne_est_manager = bool(manager_equipe and manager_equipe.manager_id == t.assigne_a)
+            if not assigne_est_manager:
+                # Créer notification in-app
+                notif_msg = f"Nouvelle tâche assignée : {t.titre}"
+                notif = Notification(user_id=t.assigne_a, tache_id=t.id, message=notif_msg, type_notification='assignation')
+                db.session.add(notif)
+                db.session.commit()
+
+                # Email d'assignation : UNIQUEMENT pour les tâches urgentes (priorité haute).
+                # Les autres priorités → notification in-app seulement (économie quota Brevo).
+                # Pour rappeler une tâche non urgente : bouton 🔔 sur la carte (email + notif).
+                if t.priorite == 'haute':
+                    try:
+                        from app.integrations.brevo import send_task_assigned_email_brevo
+                        send_task_assigned_email_brevo(t, t.assigne_a)
+                    except Exception as e:
+                        app.logger.warning(f"Send email failed: {e}")
+
+        # Collaborateur : le manager responsable de son equipe est toujours notifie
+        # (tache pour soi ou pour lui) ; si la tache est urgente, un email suit.
+        if current_user.role == 'membre' and manager_equipe and manager_equipe.manager_id:
+            mgr_id = manager_equipe.manager_id
+            auteur = f'{current_user.prenom} {current_user.nom}'
+            if t.assigne_a == mgr_id:
+                msg = f'{auteur} vous a créé une tâche : {t.titre}'
+            elif t.assigne_a == current_user.id:
+                msg = f'{auteur} a créé une tâche pour lui-même : {t.titre}'
+            else:
+                msg = f'{auteur} a créé une tâche : {t.titre}'
+            db.session.add(Notification(user_id=mgr_id, tache_id=t.id, message=msg,
+                                        type_notification='assignation'))
             db.session.commit()
-            
-            # Email d'assignation : UNIQUEMENT pour les tâches urgentes (priorité haute).
-            # Les autres priorités → notification in-app seulement (économie quota Brevo).
-            # Pour rappeler une tâche non urgente : bouton 🔔 sur la carte (email + notif).
             if t.priorite == 'haute':
                 try:
-                    from app.integrations.brevo import send_task_assigned_email_brevo
-                    send_task_assigned_email_brevo(t, t.assigne_a)
+                    from app.integrations.brevo import send_tache_creee_manager_email_brevo
+                    send_tache_creee_manager_email_brevo(t, mgr_id, auteur)
                 except Exception as e:
-                    app.logger.warning(f"Send email failed: {e}")
+                    app.logger.warning(f"Send email manager failed: {e}")
         
         flash('Tâche créée avec succès.', 'success')
         return redirect(url_for('taches'))
@@ -188,7 +219,10 @@ def taches():
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
         membres = User.query.filter(User.id.in_(team_member_ids), User.actif==True).all()
-        all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
+        # Mes taches + celles que j'ai creees (pour soi-meme ou mon manager)
+        all_taches = Tache.query.filter(
+            db.or_(Tache.assigne_a.in_(team_member_ids), Tache.cree_par == current_user.id)
+        ).all()
 
     # Pole social pur : ne voir que les taches sociales (DSN, paie, RH) — filtre dur
     social_only = (current_user.role not in ('admin', 'manager')

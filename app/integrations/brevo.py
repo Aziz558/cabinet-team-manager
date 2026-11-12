@@ -164,6 +164,50 @@ def send_task_assigned_email_brevo(tache, assignee_id: int) -> bool:
     )
 
 
+def send_tache_creee_manager_email_brevo(tache, manager_id: int, auteur: str) -> bool:
+    """Email au manager quand un collaborateur cree une tache urgente."""
+    from app.models import User
+
+    manager = User.query.get(manager_id)
+    if not manager or not manager.email:
+        return False
+
+    assigne = User.query.get(tache.assigne_a) if tache.assigne_a else None
+    if assigne and assigne.id == manager.id:
+        cible = 'vous'
+    elif assigne:
+        cible = f'{assigne.prenom} {assigne.nom}'
+    else:
+        cible = '—'
+
+    subject = f"Tâche urgente créée par {auteur} : {tache.titre}"
+    template = _email_layout(
+        header_title="Tâche urgente dans votre équipe",
+        header_emoji="🚨",
+        intro_html=(
+            f'<p style="color:#e0e0e0;font-size:15px;margin:0 0 4px 0;">Bonjour <strong style="color:#FF8C00;">{manager.prenom} {manager.nom}</strong>,</p>'
+            f'<p style="color:#9a9a9a;font-size:13px;margin:0;">{auteur} a créé une tâche de priorité haute :</p>'
+        ),
+        rows=[
+            ('Tâche', tache.titre),
+            ('Assignée à', cible),
+            ('Priorité', f'<span style="color:#FF8C00;font-weight:bold;">{tache.priorite.capitalize()}</span>'),
+            ('Échéance', tache.date_echeance.strftime('%d/%m/%Y') if tache.date_echeance else '—'),
+        ],
+        cta_url=f'{APP_URL}/taches',
+        cta_text='Suivre l\'avancement',
+        footer_note="Tâche créée par un collaborateur de votre équipe.",
+    )
+
+    return send_email_via_brevo_api(
+        to_email=manager.email,
+        subject=subject,
+        body=f"Bonjour {manager.prenom}, {auteur} a créé une tâche urgente : {tache.titre}. "
+             f"Suivi sur {APP_URL}/taches",
+        html_content=template,
+    )
+
+
 def send_task_taken_email_brevo(tache, collab_nom) -> bool:
     from app.models import User
     from flask import render_template_string

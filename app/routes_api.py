@@ -168,6 +168,14 @@ def api_dossiers_membres():
     dossiers = query.all()
     
     membres = membres_visibles_query(current_user).order_by(User.prenom).all()
+    if current_user.role == 'membre':
+        # Affectation possible : soi-meme + le manager de son equipe.
+        ids = {current_user.id}
+        if current_user.equipe_id:
+            eq = Equipe.query.get(current_user.equipe_id)
+            if eq and eq.manager_id:
+                ids.add(eq.manager_id)
+        membres = User.query.filter(User.id.in_(ids), User.actif == True).order_by(User.prenom).all()
     
     return jsonify({
         'ok': True,

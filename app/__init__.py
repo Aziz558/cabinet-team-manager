@@ -666,8 +666,9 @@ def inject_globals():
         equipe_id = session.get('current_equipe_id')
         if equipe_id:
             current_equipe = Equipe.query.get(equipe_id)
-        # Default to user's assigned team
-        if current_user.equipe:
+        # Default to user's assigned team (sauf admin : contexte global par
+        # defaut, il choisit une equipe explicitement via le switcher)
+        if current_user.equipe and current_user.role != 'admin':
             current_equipe = current_user.equipe
     # Teams visible in the navbar team-switcher dropdown (admin sees all, manager sees their teams + unassigned)
     from flask import session

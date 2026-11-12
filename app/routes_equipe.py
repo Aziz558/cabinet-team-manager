@@ -65,6 +65,14 @@ def set_team(equipe_id):
     flash(f'\u00c9quipe s\u00e9lectionn\u00e9e : {equipe.nom}', 'success')
     return redirect(url_for('dossiers'))
 
+@app.route('/toutes_equipes')
+@login_required
+def toutes_equipes():
+    """Retire le contexte equipe (admin) pour suivre toutes les taches."""
+    session.pop('current_equipe_id', None)
+    flash('Contexte : toutes les équipes.', 'info')
+    return redirect(url_for('taches'))
+
 # ==========================
 # Routes membres
 # ==========================
