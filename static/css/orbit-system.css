@@ -1390,7 +1390,7 @@ body::before {
   content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .9;
   background:
     radial-gradient(600px 200px at 18% 0%, rgba(196,91,50,.08), transparent 60%),
-    radial-gradient(500px 300px at 88% 100%, rgba(47,111,237,.06), transparent 60%);
+    radial-gradient(500px 300px at 88% 100%, rgba(196,91,50,.04), transparent 60%);
 }
 .today-hello { letter-spacing: -.02em; font-weight: 800; }
 .today-chip { background: var(--bg-elevated); border: 1px solid var(--border-color); box-shadow: 0 1px 2px rgba(16,24,40,.06); }
@@ -2125,7 +2125,7 @@ html[data-theme="light"] {
   --paper-deep: #D9D3CA;
   --paper-tint: #EFEBE4;
   --surface: #EFEBE4;
-  --surface-raised: #F7F4EF;
+  --surface-raised: #F3EFE8;
 
   --ink: #1C1A17;
   --ink-2: #4A453F;
@@ -2171,13 +2171,13 @@ html[data-theme="light"] {
   --bg-dark: var(--paper);
   --bg-darker: var(--paper-deep);
   --bg-card: var(--surface);
-  --bg-card-hover: #F1EDE6;
+  --bg-card-hover: #F2EDE6;
   --bg-card-active: #E5E0DA;
   --bg-elevated: var(--surface-raised);
   --bg-sidebar: transparent;
   --bg-sidebar-hover: rgba(23, 26, 31, .045);
   --bg-hover: rgba(23, 26, 31, .04);
-  --bg-glass: rgba(247, 244, 239, .82);
+  --bg-glass: rgba(243, 239, 232, .86);
   --text-primary: var(--ink);
   --text-secondary: var(--ink-2);
   --text-tertiary: var(--ink-3);

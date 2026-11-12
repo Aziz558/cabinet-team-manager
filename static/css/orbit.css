@@ -23,10 +23,12 @@
   --danger: #ef5350;
   --info: #4cc3ff;
 
-  /* Mode clair : off-white chaud du cabinet */
+  /* Mode clair : papier chaud du cabinet.
+     Échelle volontairement courte et teintée : aucune surface ne dépasse
+     #F3EFE8, sinon elle se lit comme du blanc pur contre le papier. */
   --paper: #E5E0DA;
   --surface: #EFEBE4;
-  --surface-raised: #F7F4EF;
+  --surface-raised: #F3EFE8;
   --surface-sunken: #D9D3CA;
   --overlay: rgba(16, 16, 16, .48);
   --scrim: rgba(16, 16, 16, .62);
@@ -40,8 +42,8 @@
   --line-strong: rgba(28, 26, 23, .20);
 
   --bg-dark: var(--paper);
-  --bg-card: var(--surface-raised);
-  --bg-card-hover: #F1EDE6;
+  --bg-card: var(--surface);
+  --bg-card-hover: #F2EDE6;
   --bg-elevated: var(--surface-raised);
   --border-color: var(--line);
   --text-primary: var(--ink-1);
@@ -88,6 +90,20 @@
   --sidebar-w-collapsed: 72px;
 
   --orbit-grid: rgba(16, 19, 26, .045);
+
+  /* Composants Bootstrap : ils lisent --bs-body-bg (#fff par défaut) pour les
+     modales, toasts, dropdowns, accordéons, offcanvas. On les branche sur le
+     papier chaud — sinon ces couches réintroduisent du blanc pur. */
+  --bs-body-bg: var(--surface);
+  --bs-body-bg-rgb: 239, 235, 228;
+  --bs-body-color: var(--ink-1);
+  --bs-secondary-bg: var(--surface-raised);
+  --bs-tertiary-bg: var(--surface-raised);
+  --bs-white: var(--surface-raised);
+  --bs-white-rgb: 243, 239, 232;
+  --bs-light: var(--surface-raised);
+  --bs-border-color: var(--line);
+
   color-scheme: light;
 }
 
