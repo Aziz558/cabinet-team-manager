@@ -1,7 +1,7 @@
 /* ============================================================
    ORBIT DOCKING — scène spatiale 3D du login (V1)
    États : boot -> far -> approach -> docked (+ static, + warp)
-   Progressif : si non armé, reduce, pas de WebGL, échec d'import
+   Progressif : si non armé, pas de WebGL, échec d'import
    Three ou fps < 35 -> on désarme proprement = login classique.
    ============================================================ */
 (function () {
@@ -29,10 +29,9 @@
         if (backBtn) { backBtn.hidden = true; }
     }
 
-    /* Non armé (reduced-motion, pas de WebGL, ou inline head absent) :
+    /* Non armé (pas de WebGL, ou inline head absent) :
        on ne touche à rien, le login classique s'affiche tel quel. */
     if (!html.classList.contains('orbit-space-armed')) { return; }
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { disarm(); return; }
     if (!canvas || !planetBtn || !backBtn || !form) { disarm(); return; }
 
     // URL du Three local : passée par le template (url_for) via data-three,

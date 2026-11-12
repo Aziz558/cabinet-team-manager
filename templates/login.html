@@ -74,41 +74,20 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo-orbit.svg') }}">
     <link rel="apple-touch-icon" href="{{ asset('img/logo-orbit.png') }}">
     <script>
-    /* ORBIT DOCKING — armement anticipé de la scène spatiale.
-       Masque le login classique le temps que la scène démarre (anti-flash).
-
-       ⚠️ La scène tire three.js : 670 Ko à télécharger AVANT que l'utilisateur
-       puisse se connecter. Sur mobile en 4G c'est plusieurs secondes d'écran
-       noir — le premier contact avec l'application. On ne l'arme donc QUE sur
-       un poste confortable :
-         - mouvement réduit ou pas de WebGL  -> jamais
-         - « économiseur de données »        -> jamais
-         - réseau 2G/3G/slow-2G              -> jamais
-         - moins de 4 Go de RAM annoncés     -> jamais
-         - moins de 4 cœurs                  -> jamais
-         - écran < 1024 px (mobile/tablette) -> jamais (le docking est un effet
-           de bureau ; le login classique est plus rapide et plus lisible)
-       Surcharge manuelle : ?space=1 force la scène, ?space=0 la désactive.
-       Si la scène n'est pas active à temps -> désarmement = login classique. */
+    /* ORBIT DOCKING — scène spatiale affichée pour TOUT LE MONDE.
+       La scène est armée sur tous les appareils (bureau ET mobile) afin que
+       chacun voie le même login animé. Garde-fous techniques conservés :
+         - pas de WebGL -> login classique (la scène ne peut pas s'afficher)
+         - scène pas prête à temps -> désarmement = login classique
+       Surcharge manuelle : ?space=0 désactive la scène (dépannage/tests). */
     (function () {
         try {
-            var force = new URLSearchParams(location.search).get('space');
-            if (force === '0') { return; }
-            if (force !== '1') {
-                if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { return; }
-                var nav = navigator;
-                var conn = nav.connection || nav.mozConnection || nav.webkitConnection || {};
-                if (conn.saveData) { return; }
-                if (/^(slow-2g|2g|3g)$/.test(conn.effectiveType || '')) { return; }
-                if (nav.deviceMemory && nav.deviceMemory < 4) { return; }
-                if (nav.hardwareConcurrency && nav.hardwareConcurrency < 4) { return; }
-                if (window.innerWidth < 1024) { return; }
-            }
+            if (new URLSearchParams(location.search).get('space') === '0') { return; }
             var probe = document.createElement('canvas');
             if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) { return; }
             document.documentElement.classList.add('orbit-space-armed');
-            /* Rescue : 2,5 s au lieu de 3 s — le temps d'armement se paie en
-               écran vide, on ne laisse pas l'utilisateur attendre plus. */
+            /* Rescue : anti-écran noir — si la scène n'est pas prête en 2,5 s,
+               on revient au login classique. */
             setTimeout(function () {
                 if (!document.documentElement.classList.contains('orbit-space-active')) {
                     document.documentElement.classList.remove('orbit-space-armed');
