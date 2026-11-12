@@ -32,7 +32,10 @@ def taches():
             team_ids = {current_user.id}
             for eq in Equipe.query.filter_by(manager_id=current_user.id).all():
                 team_ids.update(m.id for m in eq.membres.all())
-            if assigne_a and assigne_a not in team_ids:
+            # Delegation possible vers les comptes admin (supervision).
+            assignables = set(team_ids)
+            assignables.update(u.id for u in User.query.filter_by(role='admin').all())
+            if assigne_a and assigne_a not in assignables:
                 flash('Assignation refusée : ce membre ne fait pas partie de vos équipes.', 'danger')
                 return redirect(url_for('taches'))
             if dossier_id:
@@ -156,7 +159,10 @@ def taches():
             all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
             team_user_ids = [m.id for m in equipe.membres.all()] if equipe else []
             membres = User.query.filter(User.id.in_(team_user_ids), User.actif==True).all()
-            all_taches = Tache.query.filter(Tache.assigne_a.in_(team_user_ids)).all() if team_user_ids else []
+            # Suivi : taches de l'equipe + celles que l'admin a lui-meme deleguees
+            all_taches = Tache.query.filter(
+                db.or_(Tache.assigne_a.in_(team_user_ids), Tache.cree_par == current_user.id)
+            ).all() if team_user_ids else Tache.query.filter_by(cree_par=current_user.id).all()
         else:
             current_equipe = None
             all_equipes_for_switch = Equipe.query.order_by(Equipe.nom).all()
@@ -170,7 +176,10 @@ def taches():
         for eq in mes_equipes:
             team_member_ids.extend([m.id for m in eq.membres.all()])
         membres = membres_visibles_query(current_user).all()
-        all_taches = Tache.query.filter(Tache.assigne_a.in_(team_member_ids)).all()
+        # Suivi : taches de l'equipe + celles deleguees (y compris a un admin)
+        all_taches = Tache.query.filter(
+            db.or_(Tache.assigne_a.in_(team_member_ids), Tache.cree_par == current_user.id)
+        ).all()
     else:
         mes_equipes = current_user.equipes.filter_by(actif=True).all() if hasattr(current_user, 'equipes') else []
         all_equipes_for_switch = mes_equipes

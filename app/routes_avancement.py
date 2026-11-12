@@ -25,7 +25,8 @@ def taches_aujourdhui():
         ids = {current_user.id}
         for eq in mes_eq:
             ids.update(m.id for m in eq.membres.all())
-        today_taches = [t for t in today_taches if t.assigne_a in ids]
+        today_taches = [t for t in today_taches
+                        if t.assigne_a in ids or t.cree_par == current_user.id]
     # pole social pur : uniquement les taches sociales
     social_only = (current_user.role not in ('admin', 'manager')
                    and (current_user.pole or '') == 'social')
@@ -107,6 +108,8 @@ def avancement_ajouter_tache(membre_id):
         team_ids = {current_user.id}
         for eq in mes_equipes:
             team_ids.update(m.id for m in eq.membres.all())
+        # Un manager peut deleguer aussi a un compte admin (supervision).
+        team_ids.update(u.id for u in User.query.filter_by(role='admin').all())
         if membre_id not in team_ids:
             return jsonify({'ok': False, 'error': 'Accès refusé'}), 403
 

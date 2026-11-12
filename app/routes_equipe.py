@@ -243,7 +243,11 @@ def assigner_equipe():
     if user_id:
         user = User.query.get(int(user_id))
         if user and equipe_id:
-            user.equipe_id = int(equipe_id)
+            equipe = Equipe.query.get(int(equipe_id))
+            if not equipe:
+                flash('Équipe introuvable — actualisez la page.', 'danger')
+                return redirect(url_for('membres'))
+            user.equipe_id = equipe.id
             db.session.commit()
             flash(f'Équipe mise à jour pour {user.prenom} {user.nom}.', 'success')
         elif user:
@@ -255,18 +259,29 @@ def assigner_equipe():
 @app.route('/assigner_equipe_manager', methods=['POST'])
 @login_required
 def assigner_equipe_manager():
-    """Assigner un membre \u00e0 une \u00e9quipe (manager seulement)."""
+    """Assigner un membre à une de SES équipes (manager seulement)."""
     if current_user.role != 'manager':
-        flash('Acc\u00e8s refus\u00e9.', 'danger')
+        flash('Accès refusé.', 'danger')
         return redirect(url_for('membres'))
     user_id = request.form.get('user_id') or request.args.get('user_id')
     equipe_id = request.form.get('equipe_id')
+    mes_equipes_ids = {eq.id for eq in Equipe.query.filter_by(manager_id=current_user.id).all()}
     if user_id:
         user = User.query.get(int(user_id))
-        if user and equipe_id:
+        if not user or not membre_visible(user.id, current_user):
+            flash('Accès refusé.', 'danger')
+            return redirect(url_for('membres'))
+        if equipe_id:
+            if int(equipe_id) not in mes_equipes_ids:
+                flash('Vous ne pouvez affecter qu\'à vos propres équipes.', 'danger')
+                return redirect(url_for('membres'))
             user.equipe_id = int(equipe_id)
             db.session.commit()
             flash(f'Équipe mise à jour pour {user.prenom} {user.nom}.', 'success')
+        elif user.equipe_id in mes_equipes_ids:
+            user.equipe_id = None
+            db.session.commit()
+            flash(f'Équipe retirée pour {user.prenom} {user.nom}.', 'info')
     return redirect(url_for('membres'))
 
 @app.route('/supprimer_membre/<int:user_id>', methods=['POST'])

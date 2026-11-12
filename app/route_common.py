@@ -127,6 +127,10 @@ def _tache_accessible(tache, user):
         equipe_id = session.get('current_equipe_id')
         if not equipe_id:
             return True
+        # Meme en vue equipe, l'admin garde acces aux taches qu'il a creees ou
+        # qui lui sont assignees (suivi des delegations).
+        if tache.assigne_a == user.id or tache.cree_par == user.id:
+            return True
         equipe = Equipe.query.get(equipe_id)
         team_ids = [m.id for m in equipe.membres.all()] if equipe else []
         return (tache.assigne_a in team_ids) if team_ids else False

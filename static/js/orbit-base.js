@@ -65,16 +65,30 @@
         var meta = document.querySelector('meta[name="csrf-token"]');
         var TOKEN = meta ? meta.getAttribute('content') : '';
         if (!TOKEN) { return; }
-        document.addEventListener('submit', function (e) {
-            var f = e.target;
-            if (f && f.tagName === 'FORM' && !f.querySelector('input[name="csrf_token"]')) {
-                var i = document.createElement('input');
-                i.type = 'hidden';
-                i.name = 'csrf_token';
-                i.value = TOKEN;
-                f.appendChild(i);
-            }
-        }, true);
+        // `form.submit()` (ex. onchange="this.form.submit()") ne déclenche PAS
+        // l'événement submit : on injecte donc aussi le token une fois au
+        // chargement dans tous les formulaires POST déjà présents.
+        function injecterToken(form) {
+            if (!form || form.tagName !== 'FORM') { return; }
+            var m = (form.getAttribute('method') || 'get').toLowerCase();
+            if (m !== 'post') { return; }
+            if (form.querySelector('input[name="csrf_token"]')) { return; }
+            var i = document.createElement('input');
+            i.type = 'hidden';
+            i.name = 'csrf_token';
+            i.value = TOKEN;
+            form.appendChild(i);
+        }
+        function injecterTous() {
+            var forms = document.querySelectorAll('form');
+            for (var k = 0; k < forms.length; k++) { injecterToken(forms[k]); }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', injecterTous);
+        } else {
+            injecterTous();
+        }
+        document.addEventListener('submit', function (e) { injecterToken(e.target); }, true);
         var _fetch = window.fetch;
         if (_fetch) {
             window.fetch = function (input, init) {
