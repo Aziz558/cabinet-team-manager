@@ -23,34 +23,23 @@ def test_login_charged_la_couche_premium(client):
 
 
 def test_pages_authentifiees_chargent_la_feuille_systeme(admin_client):
-    """base.html : une seule feuille système, chargée en dernier.
+    """base.html : design system unifie, charge en dernier.
 
-    Depuis la consolidation, les 8 couches qui s'empilaient (polish, workspace,
-    orbit-premium, mobile-responsive, filters-premium, orbit-elevate,
-    orbit-hallmark-fix, orbit-ds) sont fusionnées dans orbit-system.css à ordre
-    de cascade identique. L'intention du test d'origine est conservée : la
-    couche qui a le dernier mot est bien chargée en dernier, et aucune couche
-    historique ne doit réapparaître dans la page.
+    Depuis la refonte 9b2164a, base.html ne charge plus que orbit-system.css
+    (composants/structure) puis orbit.css (thème unifié clair/sombre, dernier
+    mot). Les couches historiques (style, light-theme, elevate, fixes…) ne
+    doivent plus réapparaître. Chaque asset porte une version -> cache long.
     """
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
     assert 'orbit-system.css' in html
     assert re.search(r'orbit-premium\.js\?v=\d+', html)
-    # Chaque asset de base porte une version -> cache long possible.
-    for fichier in ('css/style.css', 'css/light-theme.css', 'css/orbit-system.css',
-                    'css/orbit-elevate.css', 'css/orbit-fixes.css'):
+    for fichier in ('css/orbit-system.css', 'css/orbit.css'):
         assert re.search(re.escape(fichier) + r'\?v=\d+', html), \
             'asset sans version (donc non cachable) : %s' % fichier
-    # Ordre : socle (style) -> thème clair -> feuille système -> couche Elevate
-    # (jetons « Editorial Ink & Amber ») -> correctifs accessibilité (dernier mot).
-    assert (html.index('style.css')
-            < html.index('light-theme.css')
-            < html.index('orbit-system.css')
-            < html.index('orbit-elevate.css')
-            < html.index('orbit-fixes.css'))
-    # Les anciennes couches fusionnées dans orbit-system.css ne sont plus
-    # chargées séparément par l'application (orbit-elevate.css est desormais
-    # chargee VOLONTAIREMENT en dernier, voir couche Elevate).
-    for old in ('polish.css', 'workspace.css', 'orbit-premium.css',
+    # Ordre : composants/structure -> thème unifié (dernier mot).
+    assert html.index('orbit-system.css') < html.index('orbit.css')
+    for old in ('style.css', 'light-theme.css', 'orbit-elevate.css', 'orbit-fixes.css',
+                'polish.css', 'workspace.css', 'orbit-premium.css',
                 'mobile-responsive.css', 'filters-premium.css',
                 'orbit-hallmark-fix.css', 'orbit-ds.css'):
         assert 'css/%s' % old not in html, 'couche obsolete encore chargee : %s' % old

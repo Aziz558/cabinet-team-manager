@@ -427,11 +427,16 @@ function changeNotifSound(value) {
 /* ===== bloc extrait de base.html (ligne ~664) ===== */
     (function() {
         // Detects and adds mobile-specific enhancements
+        // Détection mobile : la LARGEUR fait foi. Un laptop 2-en-1 avec écran
+        // tactile garde l'interface bureau (pointeur fin + survol), sinon le
+        // simple fait d'avoir un écran tactile dégradait l'UI sur grand écran.
         var isMobile = () => {
-            return (window.innerWidth <= 991.98) || 
-                   ('ontouchstart' in window) ||
-                   (navigator.maxTouchPoints > 0) ||
-                   (navigator.msMaxTouchPoints > 0);
+            if (window.innerWidth <= 991.98) { return true; }
+            try {
+                if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) { return false; }
+                if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) { return true; }
+            } catch (e) {}
+            return (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
         };
         
         if (isMobile()) {

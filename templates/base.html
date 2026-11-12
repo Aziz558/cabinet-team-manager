@@ -10,12 +10,11 @@
     <style>html,body{background:#101010}html[data-theme="light"],html[data-theme="light"] body{background:#E5E0DA}</style>
     <!-- Socle thème unique, synchrone : applique data-theme + data-bs-theme avant le rendu -->
     <script src="{{ asset('js/orbit-theme.js') }}"></script>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Dépendances front servies localement : l'interface ne dépend d'aucun CDN
+         externe. Un réseau qui bloque jsdelivr / Google Fonts ne change plus le rendu. -->
+    <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.css') }}">
+    <link href="{{ asset('vendor/figtree/figtree.css') }}" rel="stylesheet">
     <!-- Composants legacy (structure) puis design system Orbit (source unique, en dernier) -->
     <link href="{{ asset('css/orbit-system.css') }}" rel="stylesheet">
     <link href="{{ asset('css/orbit.css') }}" rel="stylesheet">
@@ -172,7 +171,7 @@
     </div>
     <div class="sidebar-scrim" id="sidebarScrim" aria-hidden="true"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('js/pl-sync-job.js') }}"></script>
     {% block scripts %}{% endblock %}
     <script src="{{ asset('js/orbit-workspace.js') }}" defer></script>

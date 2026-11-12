@@ -2,7 +2,8 @@
    ORBIT DOCKING — scène spatiale 3D du login (V1)
    États : boot -> far -> approach -> docked (+ static, + warp)
    Progressif : si non armé, pas de WebGL, échec d'import
-   Three ou fps < 35 -> on désarme proprement = login classique.
+   Three ou fps < 24 -> on désarme proprement = login classique.
+   (?space=1 force l'affichage de la scène, sans garde-fou de perf.)
    ============================================================ */
 (function () {
     'use strict';
@@ -75,6 +76,8 @@
     var warp = 0, warpActive = false;
     var starBaseSpeed = 1.6;
     var fpsFrames = 0, fpsTime = 0, fpsChecked = false;
+    var forceScene = false;
+    try { forceScene = new URLSearchParams(window.location.search).get('space') === '1'; } catch (e) {}
     var isMobile = window.matchMedia('(max-width: 991.98px)').matches;
     var FAR_Z = 95;
     var DOCK_Z = isMobile ? 36 : 30;
@@ -516,13 +519,13 @@
         var dt = Math.min(clock.getDelta(), 0.05);
         var t = clock.elapsedTime;
 
-        // Garde-fou perf : si les 90 premières frames sont < 35 fps,
+        // Garde-fou perf : si les 90 premières frames sont < 24 fps,
         // on bascule sur le login classique (aucune animation lourde).
-        if (!fpsChecked) {
+        if (!fpsChecked && !forceScene) {
             fpsFrames++; fpsTime += dt;
             if (fpsFrames >= 90) {
                 fpsChecked = true;
-                if (fpsTime / fpsFrames > 1 / 35) { fail(new Error('fps < 35')); return; }
+                if (fpsTime / fpsFrames > 1 / 24) { fail(new Error('fps < 24')); return; }
             }
         }
 

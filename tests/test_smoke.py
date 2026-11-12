@@ -17,7 +17,7 @@ def test_redirection_racine_vers_login(client):
 
 def test_pages_authentifiees(admin_client):
     pages = [
-        ('/dashboard', ['orbit-logo', 'sidebar-brand']),
+        ('/dashboard', ['orbit-logo', 'app-brand']),
         ('/taches', ['orbitUrgBtn', 'orbitTaskCount', 'orbit-toolbar']),
         ('/dossiers', ['page-head']),
         ('/membres', ['page-head', 'page-head-icon']),
@@ -52,20 +52,22 @@ def test_ui_3_pages_marqueurs(admin_client):
 
 
 def test_sidebar_structree(admin_client):
-    """Le brand de la sidebar doit etre ferme avant le menu (regression </div>)."""
+    """Refonte 9b2164a : le brand vit dans la topbar, la sidebar est une <nav> equilibree."""
     import re
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
-    m = re.search(r'<div class="sidebar-brand">([\s\S]{0,3000}?)<div class="sidebar-menu">', html)
-    assert m, 'bloc sidebar-brand introuvable'
-    seg = m.group(1)
-    # +1 : la <div class="sidebar-brand"> d'ouverture est hors segment, sa
-    # fermeture est dedans -> le desequilibre exact doit etre de 1.
-    assert seg.count('<div') + 1 == seg.count('</div>'), 'sidebar-brand mal fermee (div non equilibree)'
-    assert 'orbit-logo' in seg, 'logo orbit absent du brand sidebar'
+    m = re.search(r'<a class="app-brand"[^>]*>([\s\S]*?)</a>', html)
+    assert m, 'brand topbar introuvable'
+    assert 'orbit-logo' in m.group(1), 'logo orbit absent du brand'
+    m = re.search(r'<nav class="sidebar-menu"[^>]*>([\s\S]*?)</nav>', html)
+    assert m, 'nav sidebar-menu introuvable'
+    assert 'sidebar-nav-item' in m.group(1), 'items de navigation absents'
+    seg = html[html.index('<aside class="app-sidebar"'):]
+    seg = seg[:seg.index('</aside>')]
+    assert seg.count('<div') == seg.count('</div>'), 'sidebar mal equilibree (div non fermees)'
 
 
-def test_carte_triage_pl_repliable_avec_totaux(flask_app, admin_client, seed):
-    """La carte Triage Pennylane : bouton repli + synthese des totaux par nature."""
+def test_triage_pl_dashboard_avec_totaux(flask_app, admin_client, membre_client, seed):
+    """Triage Pennylane : alerte avec totaux cote manager, carte repliable cote collaborateur."""
     from app import db
     from app.models import PennylaneItem
     with flask_app.app_context():
@@ -81,19 +83,24 @@ def test_carte_triage_pl_repliable_avec_totaux(flask_app, admin_client, seed):
         ])
         db.session.commit()
 
+    # Manager : alerte cliquable vers /pennylane avec totaux par nature (refonte 9b2164a).
     html = admin_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
+    assert 'bi-inboxes-fill' in html, 'alerte triage absente'
+    i = html.index('bi-inboxes-fill')
+    seg = html[html.rfind('<a ', 0, i):html.index('</a>', i)]
+    assert 'href="/pennylane"' in seg, 'lien vers la page Pennylane absent'
+    assert '<span class="dar-num">4</span> documents Pennylane à traiter' in seg
+    assert '2 dossiers' in seg
+    assert '2 ventes' in seg
+    assert '1 achat' in seg
+    assert '1 flux bancaire' in seg
+
+    # Collaborateur : carte detaillee repliable + persistance localStorage.
+    html = membre_client.get('/dashboard', follow_redirects=True).get_data(as_text=True)
     assert 'id="plTriageCard"' in html, 'carte de triage absente'
     assert 'id="plTriageToggle"' in html, 'bouton repli/agrandir absent'
     assert 'data-bs-target="#plTriageBody"' in html, 'liaison collapse absente'
     assert 'pl-tr-summary' in html, 'barre de synthese des totaux absente'
-    # Totaux par nature affiches dans la synthese (2 vente, 1 achat, 1 flux)
-    seg = html[html.index('pl-tr-summary'):]
-    seg = seg[:seg.index('</div>')]
-    assert '<strong>2</strong> vente' in seg, 'total vente absent de la synthese'
-    assert '<strong>1</strong> achat' in seg, 'total achat absent de la synthese'
-    assert '<strong>1</strong> flux' in seg, 'total flux absent de la synthese'
-    assert '<strong>4</strong> total' in seg, 'total general absent de la synthese'
-    # Etat initial replie (sans classe show) + persistance localStorage
     import re
     m = re.search(r'<div class="card-body-premium p-0 collapse pl-tr-body" id="plTriageBody">', html)
     assert m, 'corps de la carte non repliable par defaut'

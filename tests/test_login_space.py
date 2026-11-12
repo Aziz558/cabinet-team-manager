@@ -38,7 +38,7 @@ def test_assets_spatiaux(client):
     assert 'orbit-space-armed' in jb
     assert 'three.module.min.js' in jb
     assert "import(" in jb                   # import ESM dynamique
-    assert 'fps < 35' in jb                  # garde-fou performance
+    assert 'fps < 24' in jb                  # garde-fou performance
 
     assert three.status_code == 200
     assert len(three.data) > 500000          # three r160 complet
