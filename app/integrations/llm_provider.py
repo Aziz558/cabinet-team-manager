@@ -21,8 +21,9 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -331,4 +332,81 @@ class LLMManager:
 
 def get_llm_manager() -> LLMManager:
     return LLMManager()
+
+
+# ---------------------------------------------------------------------------
+# Liste des modèles disponibles (pour la liste déroulante des Réglages).
+# Cache mémoire 1 h : la page réglages ne réinterroge pas l'API à chaque ouverture.
+# ---------------------------------------------------------------------------
+
+_MODELES_CACHE: Dict[str, Tuple[float, List[str]]] = {}
+_MODELES_TTL = 3600
+
+# Modèles impropres au chat (embeddings, rerank, speech, garde-fous…) : exclus
+# de la liste déroulante pour ne pas proposer un modèle qui ne peut pas répondre.
+_NON_CHAT = ('embed', 'rerank', 'clip', 'safety', 'guard', 'whisper', 'tts', 'aqa')
+
+
+def _filtrer_chat(ids: List[str]) -> List[str]:
+    return [i for i in ids if not any(k in i.lower() for k in _NON_CHAT)]
+
+
+def _interroger_modeles(provider: str) -> List[str]:
+    """Interroge l'API du provider. Lève RuntimeError avec un message SANS clé."""
+    if provider == 'gemini':
+        cle = _env_or_setting('GEMINI_API_KEY', 'GEMINI_API_KEY')
+        if not cle:
+            raise RuntimeError("Clé Gemini absente : enregistrez-la puis rafraîchissez la liste.")
+        url = 'https://generativelanguage.googleapis.com/v1beta/models'
+        try:
+            resp = requests.get(url, params={'key': cle, 'pageSize': 200}, timeout=15)
+        except Exception:
+            # Le message de requests peut contenir l'URL complète (donc la clé) : générique.
+            raise RuntimeError('Gemini injoignable (réseau).')
+        if resp.status_code >= 400:
+            raise RuntimeError(f'Gemini : HTTP {resp.status_code} — vérifiez la clé API.')
+        data = resp.json()
+        ids = []
+        for m in data.get('models') or []:
+            nom = (m.get('name') or '').removeprefix('models/')
+            methodes = m.get('supportedGenerationMethods') or []
+            if nom and 'generateContent' in methodes:
+                ids.append(nom)
+        return _filtrer_chat(ids)
+
+    urls = {
+        'nvidia': ('https://integrate.api.nvidia.com/v1/models', 'NVIDIA_API_KEY'),
+        'groq': ('https://api.groq.com/openai/v1/models', 'GROQ_API_KEY'),
+        'openrouter': ('https://openrouter.ai/api/v1/models', 'OPENROUTER_API_KEY'),
+    }
+    if provider not in urls:
+        raise RuntimeError('Provider inconnu.')
+    url, cle_setting = urls[provider]
+    headers = {}
+    cle = _env_or_setting(cle_setting, cle_setting)
+    if cle:
+        headers['Authorization'] = f'Bearer {cle}'
+    elif provider != 'openrouter':
+        # La liste OpenRouter est publique ; NVIDIA et Groq exigent une clé.
+        raise RuntimeError(f"Clé {provider} absente : enregistrez-la puis rafraîchissez la liste.")
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+    except Exception as exc:
+        raise RuntimeError(f'{provider} injoignable ({type(exc).__name__}).')
+    if resp.status_code >= 400:
+        raise RuntimeError(f'{provider} : HTTP {resp.status_code} — vérifiez la clé API.')
+    ids = [m.get('id') for m in (resp.json().get('data') or []) if m.get('id')]
+    return _filtrer_chat(ids)
+
+
+def lister_modeles(provider: str, refresh: bool = False) -> Tuple[List[str], str]:
+    """Retourne (ids triés, 'api'|'cache') pour alimenter la liste déroulante."""
+    maintenant = time.time()
+    if not refresh:
+        hit = _MODELES_CACHE.get(provider)
+        if hit and maintenant - hit[0] < _MODELES_TTL:
+            return hit[1], 'cache'
+    ids = sorted(set(_interroger_modeles(provider)), key=str.lower)
+    _MODELES_CACHE[provider] = (maintenant, ids)
+    return ids, 'api'
 

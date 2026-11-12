@@ -284,6 +284,46 @@ class Rappel(db.Model):
         return f'<Rappel {self.id} user={self.user_id} echeance={self.date_echeance}>'
 
 
+class AssistantMemoire(db.Model):
+    """Mémoire longue d'ASTRO : partagée (cabinet, user_id NULL) ou personnelle.
+    Alimentée par les discussions (bloc MEMOIRE), la commande « souviens-toi »
+    ou la page de gestion ; injectée dans le prompt système à chaque échange."""
+    __tablename__ = 'assistant_memoires'
+    id = db.Column(db.Integer, primary_key=True)
+    portee = db.Column(db.String(10), nullable=False, default='personnel', index=True)  # cabinet | personnel
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)  # NULL si cabinet
+    contenu = db.Column(db.String(500), nullable=False)
+    categorie = db.Column(db.String(40), nullable=True)  # preference | fait | decision | process
+    source = db.Column(db.String(20), nullable=False, default='conversation')  # conversation | manuel | regles
+    cree_par_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_modif = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    cree_par = db.relationship('User', foreign_keys=[cree_par_id])
+
+    def __repr__(self):
+        return f'<AssistantMemoire {self.portee} user={self.user_id} {self.contenu[:40]}>'
+
+
+class AssistantMessage(db.Model):
+    """Tampon journalier des conversations ASTRO (question + réponse), en base le
+    temps de la journée puis exporté vers les archives (Drive/local) et purgé.
+    Garde Neon minuscule tout en permettant la recherche d'historique récente."""
+    __tablename__ = 'assistant_messages'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    role = db.Column(db.String(12), nullable=False)  # user | assistant
+    contenu = db.Column(db.Text, nullable=False)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    exporte = db.Column(db.Boolean, nullable=False, default=False, index=True)
+
+    user = db.relationship('User')
+
+    def __repr__(self):
+        return f'<AssistantMessage {self.role} user={self.user_id} exporte={self.exporte}>'
+
+
 class PennylaneItem(db.Model):
     """Item Pennylane (facture client/fournisseur, transaction) vu pour un dossier.
        Permet de détecter les NOUVEAUX items et de suivre leur traitement."""

@@ -248,10 +248,20 @@ function orbitChips() {
                 </form>
             </div>
             <div class="d-flex align-items-center gap-1">
+                {% set peut_gerer = current_user.role in ('admin', 'manager') or t.cree_par == current_user.id %}
                 {% if current_user.role in ('admin', 'manager') and t.assigne_a and t.statut != 'terminee' %}
                 <button type="button" class="btn-task btn-task-sm btn-task-inactive btn-notifier" data-tache-id="{{ t.id }}" title="Notifier l'assigné (email + notification)"><i class="bi bi-bell"></i></button>
                 {% endif %}
-                {% if current_user.role != 'membre' %}
+                {% if peut_gerer %}
+                <button type="button" class="btn-task btn-task-sm btn-task-inactive btn-editer"
+                        data-edit-action="{{ url_for('modifier_tache', tache_id=t.id) }}"
+                        data-edit-titre="{{ t.titre }}"
+                        data-edit-desc="{{ t.description or '' }}"
+                        data-edit-dossier="{{ t.dossier_id or '' }}"
+                        data-edit-assigne="{{ t.assigne_a or '' }}"
+                        data-edit-priorite="{{ t.priorite }}"
+                        data-edit-echeance="{{ t.date_echeance.strftime('%Y-%m-%d') }}"
+                        title="Modifier"><i class="bi bi-pencil"></i></button>
                 <form method="POST" action="{{ url_for('supprimer_tache', tache_id=t.id) }}" class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?');">
                     <button type="submit" class="btn-task btn-task-sm btn-task-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
                 </form>
@@ -360,6 +370,62 @@ function orbitChips() {
                 <div class="modal-footer-premium">
                     <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn-premium btn-premium-primary"><i class="bi bi-plus-lg me-1"></i>Créer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifier Tâche (créateur de la tâche, managers, admins) -->
+<div class="modal fade" id="modalEditTache" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content-premium">
+            <form method="POST" action="" id="formEditTache">
+                <div class="modal-header-premium">
+                    <h5 class="mb-0"><i class="bi bi-pencil me-2" style="color: var(--orange-text)"></i>Modifier la tâche</h5>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="modal-body-premium">
+                    <div class="mb-3">
+                        <label class="form-label-premium">Titre</label>
+                        <input type="text" name="titre" id="editTitre" class="input-premium" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-premium">Description</label>
+                        <textarea name="description" id="editDescription" class="input-premium" rows="4"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Dossier</label>
+                            <select name="dossier_id" class="select-premium" id="editDossierSelect">
+                                <option value="">Chargement...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Assigné à</label>
+                            <select name="assigne_a" class="select-premium" id="editMembreSelect">
+                                <option value="">Chargement...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Priorité</label>
+                            <select name="priorite" id="editPriorite" class="select-premium">
+                                <option value="haute">Haute</option>
+                                <option value="moyenne">Moyenne</option>
+                                <option value="basse">Basse</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-premium">Date d'échéance</label>
+                            <input type="date" name="date_echeance" id="editEcheance" class="input-premium">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer-premium">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-premium btn-premium-primary"><i class="bi bi-check2 me-1"></i>Enregistrer</button>
                 </div>
             </form>
         </div>
@@ -797,6 +863,46 @@ document.addEventListener('click', function(ev) {
             if (icon) icon.className = 'bi bi-bell';
             showToast('Erreur réseau', 'danger');
         });
+});
+
+// Bouton crayon : ouvre le modal de modification pré-rempli depuis le bouton
+// lui-même (donc fonctionne aussi bien en vue Cartes qu'en vue Tableau, où les
+// lignes sont reconstruites en JS à partir des cartes).
+document.addEventListener('click', function(ev) {
+    var btn = ev.target.closest('.btn-editer');
+    if (!btn) return;
+    var form = document.getElementById('formEditTache');
+    if (!form) return;
+    form.action = btn.getAttribute('data-edit-action') || '';
+    document.getElementById('editTitre').value = btn.getAttribute('data-edit-titre') || '';
+    document.getElementById('editDescription').value = btn.getAttribute('data-edit-desc') || '';
+    document.getElementById('editPriorite').value = btn.getAttribute('data-edit-priorite') || 'moyenne';
+    document.getElementById('editEcheance').value = btn.getAttribute('data-edit-echeance') || '';
+    var editMembre = document.getElementById('editMembreSelect');
+    var editDossier = document.getElementById('editDossierSelect');
+    editMembre.innerHTML = '<option value="">Chargement...</option>';
+    editDossier.innerHTML = '<option value="">Chargement...</option>';
+    if (window.bootstrap && bootstrap.Modal) {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditTache')).show();
+    }
+    fetch('/api/dossiers-membres').then(function(r) { return r.json(); }).then(function(data) {
+        if (!data || !data.ok) return;
+        editMembre.innerHTML = '<option value="">Non assignée</option>';
+        (data.membres || []).forEach(function(m) {
+            var o = document.createElement('option'); o.value = m.id; o.textContent = m.label;
+            editMembre.appendChild(o);
+        });
+        editDossier.innerHTML = '<option value="">Sans dossier</option>';
+        (data.dossiers || []).forEach(function(d) {
+            var o = document.createElement('option'); o.value = d.id; o.textContent = d.label;
+            editDossier.appendChild(o);
+        });
+        editMembre.value = btn.getAttribute('data-edit-assigne') || '';
+        editDossier.value = btn.getAttribute('data-edit-dossier') || '';
+    }).catch(function() {
+        editMembre.innerHTML = '<option value="">Erreur</option>';
+        editDossier.innerHTML = '<option value="">Erreur</option>';
+    });
 });
 </script>
 <script>

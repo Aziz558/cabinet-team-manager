@@ -1041,6 +1041,19 @@ try:
     # rejoué UNE fois au réveil au lieu d'être silencieusement perdu.
     GRACE = 6 * 3600
 
+    def exporter_archives_astro_job():
+        """Export fin de journée : mémoire + conversations vers Drive (ou secours
+        local), dédup contre le fichier principal, puis purge du tampon Neon."""
+        with app.app_context():
+            try:
+                from app.assistant_archive import exporter_archives
+                rapport = exporter_archives()
+                app.logger.info("Archives ASTRO: ok=%s backend=%s fichiers=%s messages=%s",
+                                rapport.get('ok'), rapport.get('backend'),
+                                len(rapport.get('fichiers', [])), rapport.get('nb_messages'))
+            except Exception as e:
+                app.logger.error(f"Archives ASTRO error: {e}")
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(envoyer_notifications_quotidiennes, 'cron', hour=8, minute=0,
                       misfire_grace_time=GRACE, coalesce=True)
@@ -1064,6 +1077,8 @@ try:
                       misfire_grace_time=1800, coalesce=True)  # recapitulatif mail
     scheduler.add_job(synchroniser_tva_automatique, 'cron', minute=10,
                       misfire_grace_time=1800, coalesce=True)  # toutes les heures (:10)
+    scheduler.add_job(exporter_archives_astro_job, 'cron', hour=23, minute=55,
+                      misfire_grace_time=GRACE, coalesce=True)  # archives ASTRO du soir
     # NE PAS démarrer ici : voir _orbit_demarrer_planificateur() plus bas.
     # gunicorn --preload importe l'application dans le process maître PUIS
     # fork les workers ; un thread créé avant le fork n'existe pas dans le

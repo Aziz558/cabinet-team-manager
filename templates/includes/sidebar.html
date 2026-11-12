@@ -62,6 +62,9 @@
         {% endif %}
 
         <div class="sidebar-section-title">Outils</div>
+        <a href="{{ url_for('assistant_modeles_page') }}" class="sidebar-nav-item {% if request.endpoint == 'assistant_modeles_page' %}active{% endif %}">
+            <i class="bi bi-collection"></i><span>Modèles</span>
+        </a>
         <a href="{{ url_for('pennylane_page') }}" class="sidebar-nav-item {% if request.endpoint == 'pennylane_page' %}active{% endif %}">
             <i class="bi bi-link-45deg"></i><span>Pennylane</span>
         </a>

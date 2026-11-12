@@ -264,6 +264,129 @@
         box.scrollTop = box.scrollHeight;
     }
 
+    /* Carte générique pour les actions in-app (statut, suppression, étape onboarding).
+       Même contrat que les autres cartes : confirmation explicite -> revalidation serveur. */
+    function ajouterCarteAction(opts) {
+        var card = document.createElement('div');
+        card.className = 'ap-draft' + (opts.danger ? ' ap-draft-danger' : '');
+
+        var titre = document.createElement('div');
+        titre.className = 'ap-draft-subject';
+        titre.textContent = opts.titre;
+
+        var detail = document.createElement('div');
+        detail.className = 'ap-draft-to';
+        detail.textContent = opts.detail;
+
+        card.appendChild(titre);
+        card.appendChild(detail);
+        if (opts.corps) {
+            var corps = document.createElement('div');
+            corps.className = 'ap-draft-body';
+            corps.textContent = opts.corps;
+            card.appendChild(corps);
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'ap-draft-actions';
+
+        var ok = document.createElement('button');
+        ok.type = 'button';
+        ok.textContent = opts.confirmLabel;
+
+        var annuler = document.createElement('button');
+        annuler.type = 'button';
+        annuler.className = 'secondary';
+        annuler.textContent = 'Annuler';
+
+        ok.addEventListener('click', function () {
+            ok.disabled = true;
+            annuler.disabled = true;
+            fetch(opts.endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(opts.payload)
+            }).then(function (r) { return r.json().then(function (j) { return {status: r.status, j: j}; }); })
+              .then(function (res) {
+                  if (res.j && res.j.ok) {
+                      card.remove();
+                      ajouterMessage('assistant', res.j.message || 'Action effectuée.');
+                  } else {
+                      ok.disabled = false;
+                      annuler.disabled = false;
+                      ajouterMessage('error', (res.j && res.j.error) || 'Action refusée.');
+                  }
+              })
+              .catch(function () {
+                  ok.disabled = false;
+                  annuler.disabled = false;
+                  ajouterMessage('error', 'Erreur réseau pendant l\u2019action.');
+              });
+        });
+
+        annuler.addEventListener('click', function () {
+            card.remove();
+            ajouterMessage('assistant', opts.annuleLabel || 'Action annulée.');
+        });
+
+        actions.appendChild(ok);
+        actions.appendChild(annuler);
+        card.appendChild(actions);
+        box.appendChild(card);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function ajouterCarteStatut(p) {
+        ajouterCarteAction({
+            titre: 'Changer le statut : ' + p.titre,
+            detail: p.ancien_statut.replace(/_/g, ' ') + ' → ' + p.statut.replace(/_/g, ' '),
+            confirmLabel: 'Confirmer le changement',
+            endpoint: '/api/assistant/changer_statut',
+            payload: {tache_id: p.tache_id, statut: p.statut},
+            annuleLabel: 'Changement annulé.'
+        });
+    }
+
+    function ajouterCarteStatutLot(p) {
+        var titres = p.lignes.map(function (l) { return '• #' + l.id + ' ' + l.titre; });
+        if (titres.length > 12) titres = titres.slice(0, 12).concat(['… et ' + (titres.length - 12) + ' autre(s)']);
+        ajouterCarteAction({
+            titre: 'Passer ' + p.nb + ' tâche(s) à « ' + p.statut.replace(/_/g, ' ') + ' »',
+            detail: 'Changement en lot — chaque tâche garde ses effets habituels (checklist, notifications).',
+            corps: titres.join(String.fromCharCode(10)),
+            confirmLabel: 'Confirmer le lot',
+            endpoint: '/api/assistant/statut_lot',
+            payload: {tache_ids: p.tache_ids, statut: p.statut},
+            annuleLabel: 'Lot annulé.'
+        });
+    }
+
+    function ajouterCarteSuppression(p) {
+        ajouterCarteAction({
+            titre: 'Supprimer le dossier ' + p.numero,
+            detail: p.intitule + ' · ' + p.nb_taches + ' tâche(s) liée(s)',
+            corps: 'Action irréversible : le dossier et toutes ses données liées (tâches, checklist, notifications, éléments Pennylane) seront définitivement effacés.',
+            confirmLabel: 'Supprimer définitivement',
+            endpoint: '/api/assistant/supprimer_dossier',
+            payload: {dossier_id: p.dossier_id},
+            danger: true,
+            annuleLabel: 'Suppression annulée.'
+        });
+    }
+
+    function ajouterCarteOnbEtape(p) {
+        ajouterCarteAction({
+            titre: (p.fait ? 'Marquer faite : ' : 'Remettre à faire : ') + p.label,
+            detail: p.nom_dossier + (p.deja_fait ? ' · déjà faite actuellement' : ''),
+            corps: p.fait ? 'L\u2019étape sera datée du jour et l\u2019email configuré pour cette étape sera envoyé.' : 'La date de l\u2019étape sera effacée.',
+            confirmLabel: p.fait ? 'Marquer l\u2019étape faite' : 'Remettre l\u2019étape à faire',
+            endpoint: '/api/assistant/onb_etape',
+            payload: {dossier_id: p.dossier_id, code: p.code, fait: p.fait},
+            annuleLabel: 'Modification annulée.'
+        });
+    }
+
     // Résumé du matin : une fois par jour et par navigateur, sans appel LLM.
     function afficherResumeDuJour() {
         var cle = 'assistantResume:' + new Date().toISOString().slice(0, 10);
@@ -294,7 +417,7 @@
         fab.setAttribute('aria-expanded', 'true');
         if (!bienvenueAffichee) {
             bienvenueAffichee = true;
-            ajouterMessage('assistant', 'Bonjour, je peux vous rappeler vos tâches en retard, vos prochaines échéances, vos analyses, ou préparer un email. Que souhaitez-vous ?');
+            ajouterMessage('assistant', 'Bonjour, je suis ASTRO, votre assistant JMH Orbit. Je connais vos dossiers, vos échéances et le suivi des nouveaux dossiers. Je peux agir après votre confirmation (tâches, statuts, rappels, étapes) et je retiens ce que vous m\u2019apprenez : mémoire du cabinet partagée avec l\u2019équipe + votre mémoire personnelle. Que souhaitez-vous ?');
             afficherResumeDuJour();
         }
         input.focus();
@@ -386,6 +509,18 @@
                   if (res.j.brouillon) ajouterBrouillon(res.j.brouillon);
                   if (res.j.tache) ajouterTache(res.j.tache);
                   if (res.j.rappel) ajouterRappel(res.j.rappel);
+                  if (res.j.statut) ajouterCarteStatut(res.j.statut);
+                  if (res.j.statut_lot) ajouterCarteStatutLot(res.j.statut_lot);
+                  if (res.j.suppression) ajouterCarteSuppression(res.j.suppression);
+                  if (res.j.onb_etape) ajouterCarteOnbEtape(res.j.onb_etape);
+                  // Apprentissage visible : ce que le LLM a réellement stocké (hors voie
+                  // rapide, dont la réponse mentionne déjà la prise de note).
+                  if (res.j.source !== 'regles' && res.j.memoires && res.j.memoires.length) {
+                      res.j.memoires.forEach(function (m) {
+                          if (m.info !== 'cree') return;
+                          ajouterMessage('assistant', 'J\u2019ai retenu (' + (m.portee === 'cabinet' ? 'mémoire du cabinet, partagée' : 'mémoire personnelle') + ') : « ' + m.contenu + ' »');
+                      });
+                  }
               } else {
                   ajouterMessage('error', (res.j && res.j.error) || 'Erreur de l\u2019assistant.');
               }

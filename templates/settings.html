@@ -82,8 +82,13 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="orModel">Modèle</label>
-                        <input id="orModel" type="text" name="OPENROUTER_MODEL" class="input-premium" value="{{ values.get('OPENROUTER_MODEL', '') }}" placeholder="meta-llama/llama-3.3-70b-instruct:free">
-                        <div class="form-text text-tertiary">Laisser vide pour utiliser le modèle par défaut.</div>
+                        <div class="d-flex gap-2">
+                            <select id="orModel" name="OPENROUTER_MODEL" class="input-premium" data-saved="{{ values.get('OPENROUTER_MODEL', '') }}"></select>
+                            <input id="orModelLibre" type="text" name="OPENROUTER_MODEL" class="input-premium d-none" value="{{ values.get('OPENROUTER_MODEL', '') }}" disabled>
+                            <button type="button" id="orModelRefresh" class="btn-premium btn-premium-secondary btn-press" title="Recharger la liste des modèles">↻</button>
+                        </div>
+                        <div id="orModelStatus" class="form-text text-tertiary"></div>
+                        <div class="form-text text-tertiary">Liste chargée automatiquement depuis l'API. Vide = modèle par défaut.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="llmInstructions">Instructions personnalisées</label>
@@ -193,6 +198,74 @@
                         <span>{{ '✔ configuré' if secrets_enregistres.MAIL_PASSWORD else '✖ absent' }}</span>
                     </li>
                 </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-premium mb-4 animate-fade-in-up">
+    <div class="card-header-premium">
+        <h5 class="mb-0"><i class="bi bi-cloud-arrow-up me-2" style="color: var(--info);"></i>Archives ASTRO (mémoire &amp; conversations)</h5>
+    </div>
+    <div class="card-body-premium">
+        <p class="text-tertiary small mb-3">
+            Chaque soir à 23h55, ASTRO exporte la mémoire et les conversations de la journée hors de l'application
+            (pour garder la base Neon légère), puis purge le tampon. Stockage principal : <strong>Google Drive</strong>
+            via compte de service. Secours : dossier local, limité aux mémoires personnelles et conversations de chaque membre.
+            Fichiers doubles : Markdown (lisible dans Obsidian) + JSON (index pour la recherche).
+        </p>
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <form id="driveForm">
+                    <div class="mb-3">
+                        <label class="form-label" for="driveSa">Clé JSON du compte de service Google</label>
+                        <textarea id="driveSa" name="GOOGLE_DRIVE_SA_JSON" class="input-premium" rows="4"
+                                  placeholder="{{ 'Enregistrée : laisser vide pour conserver' if secrets_enregistres.GOOGLE_DRIVE_SA_JSON else 'Collez le contenu du fichier JSON téléchargé depuis Google Cloud' }}" autocomplete="off"></textarea>
+                        <div class="form-text text-tertiary">
+                            Google Cloud → IAM &amp; admin → Comptes de service → créer une clé JSON. Activez l'API Google Drive.
+                            Partagez ensuite le dossier Drive avec l'adresse e-mail du compte de service (accès Éditeur).
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="driveFolder">ID du dossier Drive partagé</label>
+                        <input id="driveFolder" type="text" name="GOOGLE_DRIVE_FOLDER_ID" class="input-premium"
+                               value="{{ values.get('GOOGLE_DRIVE_FOLDER_ID', '') }}" placeholder="ex : 1A2b3C… (dans l'URL du dossier)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="driveModeles">ID du dossier Drive des modèles (optionnel)</label>
+                        <input id="driveModeles" type="text" name="GOOGLE_DRIVE_MODELES_FOLDER_ID" class="input-premium"
+                               value="{{ values.get('GOOGLE_DRIVE_MODELES_FOLDER_ID', '') }}" placeholder="1bGe9XEIce2OL-cRALon5gZS9MnXszXPf (défaut)">
+                        <div class="form-text text-tertiary">
+                            Rayon « Modèles » (plaquettes, lettre de mission…) en lecture seule.
+                            Le compte de service doit avoir accès à ce dossier en lecture.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="archiveLocal">Dossier de secours local (optionnel)</label>
+                        <input id="archiveLocal" type="text" name="ARCHIVE_LOCAL_DIR" class="input-premium"
+                               value="{{ values.get('ARCHIVE_LOCAL_DIR', '') }}" placeholder="data/archives par défaut">
+                    </div>
+                    <button type="submit" class="btn-premium btn-premium-primary btn-press w-100">Enregistrer les archives</button>
+                </form>
+                <div id="driveResult" class="small mt-2" aria-live="polite"></div>
+            </div>
+            <div class="col-lg-5">
+                <button type="button" id="btnTestDrive" class="btn-premium btn-premium-secondary btn-press w-100 mb-2">
+                    <i class="bi bi-plug me-1"></i>Tester la connexion Drive
+                </button>
+                <div id="testDriveResult" class="small mb-3" aria-live="polite"></div>
+                <button type="button" id="btnExportArchives" class="btn-premium btn-premium-success btn-press w-100 mb-2">
+                    <i class="bi bi-cloud-arrow-up me-1"></i>Exporter maintenant
+                </button>
+                <div id="exportArchivesResult" class="small mb-3" aria-live="polite"></div>
+                <div class="form-text text-tertiary">Dernier export :</div>
+                <div id="dernierExport" class="small text-tertiary">—</div>
+                <a href="{{ url_for('assistant_memoire_page') }}" class="btn-premium btn-premium-secondary btn-press w-100 mt-3">
+                    <i class="bi bi-journal-bookmark me-1"></i>Voir la mémoire d'ASTRO
+                </a>
+                <a href="{{ url_for('assistant_modeles_page') }}" class="btn-premium btn-premium-secondary btn-press w-100 mt-2">
+                    <i class="bi bi-collection me-1"></i>Voir le rayon Modèles
+                </a>
             </div>
         </div>
     </div>
@@ -353,7 +426,12 @@
                     <input id="nvidiaKey" type="password" name="NVIDIA_API_KEY" class="input-premium" placeholder="Enregistrée : laisser vide pour conserver" autocomplete="new-password">
                     <div class="mb-2">
                         <label class="form-label" for="nvidiaModel">Modèle</label>
-                        <input id="nvidiaModel" type="text" name="NVIDIA_MODEL" class="input-premium" value="{{ values.get('NVIDIA_MODEL', '') }}" placeholder="meta/llama-3.1-8b-instruct">
+                        <div class="d-flex gap-2">
+                            <select id="nvidiaModel" name="NVIDIA_MODEL" class="input-premium" data-saved="{{ values.get('NVIDIA_MODEL', '') }}"></select>
+                            <input id="nvidiaModelLibre" type="text" name="NVIDIA_MODEL" class="input-premium d-none" value="{{ values.get('NVIDIA_MODEL', '') }}" disabled>
+                            <button type="button" id="nvidiaModelRefresh" class="btn-premium btn-premium-secondary btn-press" title="Recharger la liste des modèles">↻</button>
+                        </div>
+                        <div id="nvidiaModelStatus" class="form-text text-tertiary"></div>
                     </div>
                     <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer NVIDIA</button>
                 </form>
@@ -364,7 +442,12 @@
                     <input id="geminiKey" type="password" name="GEMINI_API_KEY" class="input-premium" placeholder="Enregistrée : laisser vide pour conserver" autocomplete="new-password">
                     <div class="mb-2">
                         <label class="form-label" for="geminiModel">Modèle</label>
-                        <input id="geminiModel" type="text" name="GEMINI_MODEL" class="input-premium" value="{{ values.get('GEMINI_MODEL', '') }}" placeholder="gemini-1.5-flash">
+                        <div class="d-flex gap-2">
+                            <select id="geminiModel" name="GEMINI_MODEL" class="input-premium" data-saved="{{ values.get('GEMINI_MODEL', '') }}"></select>
+                            <input id="geminiModelLibre" type="text" name="GEMINI_MODEL" class="input-premium d-none" value="{{ values.get('GEMINI_MODEL', '') }}" disabled>
+                            <button type="button" id="geminiModelRefresh" class="btn-premium btn-premium-secondary btn-press" title="Recharger la liste des modèles">↻</button>
+                        </div>
+                        <div id="geminiModelStatus" class="form-text text-tertiary"></div>
                     </div>
                     <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer Gemini</button>
                 </form>
@@ -375,7 +458,12 @@
                     <input id="groqKey" type="password" name="GROQ_API_KEY" class="input-premium" placeholder="Enregistrée : laisser vide pour conserver" autocomplete="new-password">
                     <div class="mb-2">
                         <label class="form-label" for="groqModel">Modèle</label>
-                        <input id="groqModel" type="text" name="GROQ_MODEL" class="input-premium" value="{{ values.get('GROQ_MODEL', '') }}" placeholder="llama-3.3-70b-versatile">
+                        <div class="d-flex gap-2">
+                            <select id="groqModel" name="GROQ_MODEL" class="input-premium" data-saved="{{ values.get('GROQ_MODEL', '') }}"></select>
+                            <input id="groqModelLibre" type="text" name="GROQ_MODEL" class="input-premium d-none" value="{{ values.get('GROQ_MODEL', '') }}" disabled>
+                            <button type="button" id="groqModelRefresh" class="btn-premium btn-premium-secondary btn-press" title="Recharger la liste des modèles">↻</button>
+                        </div>
+                        <div id="groqModelStatus" class="form-text text-tertiary"></div>
                     </div>
                     <button type="submit" class="btn-premium btn-premium-secondary btn-press w-100">Enregistrer Groq</button>
                 </form>
@@ -473,6 +561,70 @@ document.getElementById('groqForm').addEventListener('submit', function(e) {
     ], document.getElementById('groqResult'), 'Groq enregistré.');
 });
 
+// Listes déroulantes de modèles : chargées depuis l'API du provider (cache 1 h côté serveur).
+// Le modèle enregistré reste sélectionné ; s'il n'est plus dans la liste, il est conservé
+// en tête pour ne pas l'effacer. Si l'API échoue (clé absente, réseau), on bascule en
+// saisie libre — le champ désactivé est exclu du FormData, un seul des deux n'est envoyé.
+function configurerSelectModeles(provider, selectId, libreId, statusId, refreshId) {
+    const select = document.getElementById(selectId);
+    const libre = document.getElementById(libreId);
+    const status = document.getElementById(statusId);
+    if (!select || !libre || !status) return;
+    const saved = select.getAttribute('data-saved') || '';
+
+    function montrerSelect() {
+        select.disabled = false; select.classList.remove('d-none');
+        libre.disabled = true; libre.classList.add('d-none');
+    }
+    function montrerLibre() {
+        select.disabled = true; select.classList.add('d-none');
+        libre.disabled = false; libre.classList.remove('d-none');
+    }
+    function charger(force) {
+        status.textContent = 'Chargement des modèles…';
+        fetch('/api/llm/models?provider=' + provider + (force ? '&refresh=1' : ''), {credentials: 'same-origin'})
+            .then(r => r.json())
+            .then(j => {
+                if (!j.ok || !Array.isArray(j.models)) {
+                    status.textContent = (j.error || 'Liste indisponible.') + ' Saisie libre activée.';
+                    montrerLibre();
+                    return;
+                }
+                select.replaceChildren();
+                const def = document.createElement('option');
+                def.value = '';
+                def.textContent = '— Modèle par défaut du provider —';
+                select.appendChild(def);
+                let trouve = false;
+                j.models.forEach(id => {
+                    const o = document.createElement('option');
+                    o.value = id; o.textContent = id;
+                    select.appendChild(o);
+                    if (id === saved) trouve = true;
+                });
+                if (saved && !trouve) {
+                    const o = document.createElement('option');
+                    o.value = saved; o.textContent = saved + ' (valeur actuelle)';
+                    select.insertBefore(o, select.children[1] || null);
+                }
+                select.value = saved;
+                montrerSelect();
+                status.textContent = j.models.length + ' modèles disponibles' + (j.source === 'cache' ? ' (cache 1 h)' : '') + '.';
+            })
+            .catch(() => {
+                status.textContent = 'Erreur réseau — saisie libre activée.';
+                montrerLibre();
+            });
+    }
+    const btn = document.getElementById(refreshId);
+    if (btn) btn.addEventListener('click', () => charger(true));
+    charger(false);
+}
+configurerSelectModeles('openrouter', 'orModel', 'orModelLibre', 'orModelStatus', 'orModelRefresh');
+configurerSelectModeles('nvidia', 'nvidiaModel', 'nvidiaModelLibre', 'nvidiaModelStatus', 'nvidiaModelRefresh');
+configurerSelectModeles('gemini', 'geminiModel', 'geminiModelLibre', 'geminiModelStatus', 'geminiModelRefresh');
+configurerSelectModeles('groq', 'groqModel', 'groqModelLibre', 'groqModelStatus', 'groqModelRefresh');
+
 document.getElementById('brevoForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const f = new FormData(this);
@@ -480,6 +632,52 @@ document.getElementById('brevoForm').addEventListener('submit', function(e) {
         {cle: 'BREVO_API_KEY', valeur: f.get('BREVO_API_KEY'), service: 'mail', type_valeur: 'password', masque: true, secret: true},
     ], document.getElementById('brevoResult'), 'Brevo enregistré.');
 });
+
+// --- Archives ASTRO (Google Drive / secours local) ---
+document.getElementById('driveForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const f = new FormData(this);
+    saveSettings([
+        {cle: 'GOOGLE_DRIVE_SA_JSON', valeur: f.get('GOOGLE_DRIVE_SA_JSON'), service: 'google_drive', type_valeur: 'password', masque: true, secret: true},
+        {cle: 'GOOGLE_DRIVE_FOLDER_ID', valeur: (f.get('GOOGLE_DRIVE_FOLDER_ID') || '').trim(), service: 'google_drive', type_valeur: 'string', masque: false},
+        {cle: 'GOOGLE_DRIVE_MODELES_FOLDER_ID', valeur: (f.get('GOOGLE_DRIVE_MODELES_FOLDER_ID') || '').trim(), service: 'google_drive', type_valeur: 'string', masque: false},
+        {cle: 'ARCHIVE_LOCAL_DIR', valeur: (f.get('ARCHIVE_LOCAL_DIR') || '').trim(), service: 'google_drive', type_valeur: 'string', masque: false},
+    ], document.getElementById('driveResult'), 'Réglages des archives enregistrés.');
+});
+
+document.getElementById('btnTestDrive').addEventListener('click', function() {
+    const box = document.getElementById('testDriveResult');
+    box.textContent = 'Test en cours...';
+    fetch('/api/assistant/archives/tester', {method: 'POST'})
+        .then(r => r.json())
+        .then(j => showResult(box, j.ok ? 'var(--success)' : 'var(--danger)', j.message || j.error || 'Réponse inattendue.'))
+        .catch(err => showResult(box, 'var(--danger)', 'Erreur réseau : ' + err.message));
+});
+
+document.getElementById('btnExportArchives').addEventListener('click', function() {
+    const box = document.getElementById('exportArchivesResult');
+    box.textContent = 'Export en cours...';
+    fetch('/api/assistant/archives/exporter', {method: 'POST'})
+        .then(r => r.json())
+        .then(j => {
+            showResult(box, j.ok ? 'var(--success)' : 'var(--danger)', j.message || j.error || 'Réponse inattendue.');
+            chargerDernierExport();
+        })
+        .catch(err => showResult(box, 'var(--danger)', 'Erreur réseau : ' + err.message));
+});
+
+function chargerDernierExport() {
+    fetch('/api/assistant/archives/statut').then(r => r.json()).then(j => {
+        const el = document.getElementById('dernierExport');
+        const r = j.dernier_export;
+        if (!r) { el.textContent = 'aucun export pour le moment.'; return; }
+        const ok = r.ok ? '✔' : '✖';
+        el.textContent = `${ok} ${r.date || ''} — ${r.backend || '?'} (${r.mode || ''}), `
+            + `${(r.fichiers || []).length} fichier(s), ${r.nb_messages || 0} message(s).`
+            + (r.erreur ? ' ' + r.erreur : '');
+    }).catch(() => {});
+}
+chargerDernierExport();
 
 document.getElementById('onboardingForm').addEventListener('submit', function(e) {
     e.preventDefault();

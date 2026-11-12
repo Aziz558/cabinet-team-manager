@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Modèles &amp; plaquettes{% endblock %}
+{% block content %}
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-collection"></i></span>
+        <div class="page-head-titles">
+            <h2>Modèles &amp; plaquettes</h2>
+            <p class="page-head-sub">Lettre de mission, plaquettes et modèles de documents — lecture seule, partagés avec toute l'équipe</p>
+        </div>
+    </div>
+    <div class="page-head-actions d-flex flex-wrap gap-2">
+        <a class="btn-premium btn-premium-primary btn-press" href="{{ modeles.dossier_url }}" target="_blank" rel="noopener">
+            <i class="bi bi-google me-1"></i>Ouvrir le dossier Drive
+        </a>
+        <a class="btn-premium btn-premium-secondary btn-press" href="{{ url_for('assistant_modeles_page') }}?rafraichir=1">
+            <i class="bi bi-arrow-clockwise me-1"></i>Rafraîchir
+        </a>
+    </div>
+</div>
+
+<style>
+.modele-card { border: 1px solid var(--border-color); border-radius: 12px; padding: .8rem .9rem; background: var(--surface-raised); height: 100%; display: flex; gap: .7rem; align-items: flex-start; }
+.modele-icon { font-size: 1.35rem; line-height: 1; color: var(--orange-text); flex: 0 0 auto; margin-top: .1rem; }
+.modele-nom { font-size: .9rem; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
+.modele-meta { font-size: .72rem; color: var(--text-tertiary); display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .2rem; }
+.modele-ouvrir { font-size: .72rem; margin-top: .35rem; display: inline-flex; align-items: center; gap: .2rem; }
+.modele-rayon-titre { font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-tertiary); margin: 1.1rem 0 .5rem; display: flex; align-items: center; gap: .4rem; }
+.modele-vide { color: var(--text-tertiary); font-size: .88rem; padding: .5rem 0; }
+</style>
+
+{% if modeles.message %}
+<div class="alert alert-info d-flex align-items-start gap-2" role="status">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div>
+        {{ modeles.message }}
+        <a href="{{ modeles.dossier_url }}" target="_blank" rel="noopener" class="ms-1">Ouvrir sur Google Drive</a>
+    </div>
+</div>
+{% endif %}
+
+{% if modeles.ok %}
+<div class="d-flex align-items-center gap-2 mb-1">
+    <span class="badge badge-tertiary">
+        <i class="bi {{ 'bi-google' if modeles.source == 'drive' else 'bi-hdd' }} me-1"></i>{{ 'Google Drive' if modeles.source == 'drive' else 'Serveur local' }}
+    </span>
+    <span class="text-tertiary" style="font-size:.76rem;">{{ modeles.fichiers|length }} modèle{{ 's' if modeles.fichiers|length > 1 else '' }}</span>
+</div>
+
+{% macro carte(f) %}
+<div class="col-12 col-md-6 col-xl-4">
+    <div class="modele-card">
+        <i class="bi {{ f.icone }} modele-icon"></i>
+        <div class="flex-grow-1" style="min-width:0;">
+            <div class="modele-nom">{{ f.nom }}</div>
+            <div class="modele-meta">
+                <span>{{ f.type }}</span>
+                {% if f.modifie %}<span><i class="bi bi-clock"></i> {{ f.modifie }}</span>{% endif %}
+                {% if f.taille %}
+                <span><i class="bi bi-hdd"></i>
+                    {% if f.taille >= 1048576 %}{{ (f.taille / 1048576)|round(1) }} Mo{% else %}{{ (f.taille / 1024)|round|int }} Ko{% endif %}
+                </span>
+                {% endif %}
+            </div>
+            {% if f.lien %}
+            <a class="modele-ouvrir" href="{{ f.lien }}" target="_blank" rel="noopener">
+                <i class="bi bi-box-arrow-up-right"></i> Ouvrir
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% for rayon in modeles.rayons %}
+<h6 class="modele-rayon-titre"><i class="bi bi-folder2-open"></i>{{ rayon.nom }} <span class="badge badge-tertiary">{{ rayon.nb }}</span></h6>
+<div class="row g-3">
+    {% for f in modeles.fichiers if f.rayon == rayon.nom %}{{ carte(f) }}{% endfor %}
+</div>
+{% endfor %}
+
+{% set racine = modeles.fichiers | selectattr('rayon', 'equalto', '') | list %}
+{% if racine %}
+{% if modeles.rayons %}<h6 class="modele-rayon-titre"><i class="bi bi-files"></i>Racine du dossier</h6>{% endif %}
+<div class="row g-3">
+    {% for f in racine %}{{ carte(f) }}{% endfor %}
+</div>
+{% endif %}
+
+{% if not modeles.fichiers %}
+<div class="modele-vide">Aucun fichier dans le rayon Modèles.</div>
+{% endif %}
+
+{% else %}
+<div class="modele-vide">Le rayon Modèles n'est pas disponible pour le moment.</div>
+{% endif %}
+{% endblock %}

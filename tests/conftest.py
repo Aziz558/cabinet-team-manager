@@ -30,6 +30,9 @@ MIGRATIONS_DIR = str(ROOT / 'migrations')
 def flask_app():
     from app import app
     app.config['TESTING'] = True
+    # CSRF global depuis 9b2164a : les tests visent la logique metier, pas le
+    # jeton (les POST de test ne portent pas de csrf_token).
+    app.config['WTF_CSRF_ENABLED'] = False
     with app.app_context():
         from flask_migrate import upgrade
         upgrade(directory=MIGRATIONS_DIR)  # baseline -> schema (teste la migration)
@@ -82,10 +85,12 @@ def _login(client, seed, key):
 
 
 @pytest.fixture()
-def admin_client(client, seed):
-    return _login(client, seed, 'admin')
+def admin_client(flask_app, seed):
+    # Client frais par fixture : /login redirige les sessions deja authentifiees,
+    # partager un client entre roles laisserait la premiere session active.
+    return _login(flask_app.test_client(), seed, 'admin')
 
 
 @pytest.fixture()
-def membre_client(client, seed):
-    return _login(client, seed, 'membre')
+def membre_client(flask_app, seed):
+    return _login(flask_app.test_client(), seed, 'membre')

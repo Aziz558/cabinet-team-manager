@@ -453,21 +453,29 @@ def supprimer_equipe(equipe_id):
 @app.route('/supprimer_tache/<int:tache_id>', methods=['POST'])
 @login_required
 def supprimer_tache(tache_id):
-    """Supprimer une tâche."""
+    """Supprimer une tâche. Managers/admin, ou le créateur de la tâche (permet à
+    un collaborateur de corriger une tâche qu'il a créée par erreur)."""
     tache = Tache.query.get_or_404(tache_id)
     
-    # Vérifier les droits
-    if current_user.role == 'membre':
-        flash('Seuls les managers et administrateurs peuvent supprimer des tâches.', 'danger')
+    # Vérifier les droits : managers/admins, ou l'auteur de la tâche.
+    if current_user.role not in ('admin', 'manager') and tache.cree_par != current_user.id:
+        flash("Vous ne pouvez supprimer qu'une tâche que vous avez créée.", 'danger')
         return redirect(url_for('taches'))
     
     try:
+        assigne = tache.assigne_a
+        titre = tache.titre
         # Supprimer les notifications liées
         Notification.query.filter_by(tache_id=tache.id).delete()
         # Supprimer les commentaires
         CommentaireTache.query.filter_by(tache_id=tache.id).delete()
         # Supprimer la tâche
         db.session.delete(tache)
+        # Prévenir l'assigné (sauf s'il supprime lui-même) — tâche détachée : tache_id None
+        if assigne and assigne != current_user.id:
+            db.session.add(Notification(user_id=assigne, tache_id=None,
+                                        message=f'Tâche supprimée : {titre}',
+                                        type_notification='systeme'))
         db.session.commit()
         flash('Tâche supprimée.', 'success')
     except Exception as e:

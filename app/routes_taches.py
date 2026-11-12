@@ -6,6 +6,44 @@ from .models import User, Equipe, Dossier, Tache, Notification
 from datetime import date, datetime, timedelta
 from .route_common import membres_visibles_query
 
+
+def _perimetre_cible(user, assigne_a, dossier_id):
+    """Contrôle de périmètre pour créer/modifier une tâche. Retourne (ok, message, manager_equipe).
+
+    - membre : assignation à soi-même ou au manager de son équipe ; dossiers qui lui sont affectés
+    - manager : membres de ses équipes + comptes admin ; dossiers de ses équipes
+    - admin : tout
+
+    manager_equipe = équipe du collaborateur (pour notifier son manager responsable).
+    """
+    manager_equipe = None
+    if user.role == 'membre':
+        autorises = {user.id}
+        if user.equipe_id:
+            manager_equipe = Equipe.query.get(user.equipe_id)
+            if manager_equipe and manager_equipe.manager_id:
+                autorises.add(manager_equipe.manager_id)
+        if assigne_a and assigne_a not in autorises:
+            return False, 'Vous pouvez assigner uniquement à vous-même ou au manager de votre équipe.', manager_equipe
+        if dossier_id:
+            d = Dossier.query.get(dossier_id)
+            if not d or d.collaborateur_id != user.id:
+                return False, 'Dossier hors de votre périmètre.', manager_equipe
+    elif user.role == 'manager':
+        team_ids = {user.id}
+        for eq in Equipe.query.filter_by(manager_id=user.id).all():
+            team_ids.update(m.id for m in eq.membres.all())
+        assignables = set(team_ids)
+        assignables.update(u.id for u in User.query.filter_by(role='admin').all())
+        if assigne_a and assigne_a not in assignables:
+            return False, 'Assignation refusée : ce membre ne fait pas partie de vos équipes.', manager_equipe
+        if dossier_id:
+            d = Dossier.query.get(dossier_id)
+            if d and d.collaborateur_id and d.collaborateur_id not in team_ids:
+                return False, 'Dossier hors de votre périmètre.', manager_equipe
+    return True, None, manager_equipe
+
+
 @app.route('/taches', methods=['GET', 'POST'])
 @login_required
 def taches():
@@ -18,37 +56,10 @@ def taches():
         # Isolation par equipe : valider assigne_a et dossier_id selon le role
         assigne_a = request.form.get('assigne_a', type=int) or None
         dossier_id = request.form.get('dossier_id', type=int) or None
-        manager_equipe = None  # manager responsable de l'equipe d'un collaborateur
-        if current_user.role == 'membre':
-            # Un collaborateur cree pour lui-meme ou pour le manager de son equipe
-            autorises = {current_user.id}
-            if current_user.equipe_id:
-                manager_equipe = Equipe.query.get(current_user.equipe_id)
-                if manager_equipe and manager_equipe.manager_id:
-                    autorises.add(manager_equipe.manager_id)
-            if assigne_a and assigne_a not in autorises:
-                flash('Vous pouvez assigner uniquement à vous-même ou au manager de votre équipe.', 'danger')
-                return redirect(url_for('taches'))
-            if dossier_id:
-                d = Dossier.query.get(dossier_id)
-                if not d or d.collaborateur_id != current_user.id:
-                    flash('Dossier hors de votre périmètre.', 'danger')
-                    return redirect(url_for('taches'))
-        elif current_user.role == 'manager':
-            team_ids = {current_user.id}
-            for eq in Equipe.query.filter_by(manager_id=current_user.id).all():
-                team_ids.update(m.id for m in eq.membres.all())
-            # Delegation possible vers les comptes admin (supervision).
-            assignables = set(team_ids)
-            assignables.update(u.id for u in User.query.filter_by(role='admin').all())
-            if assigne_a and assigne_a not in assignables:
-                flash('Assignation refusée : ce membre ne fait pas partie de vos équipes.', 'danger')
-                return redirect(url_for('taches'))
-            if dossier_id:
-                d = Dossier.query.get(dossier_id)
-                if d and d.collaborateur_id and d.collaborateur_id not in team_ids:
-                    flash('Dossier hors de votre périmètre.', 'danger')
-                    return redirect(url_for('taches'))
+        ok, erreur, manager_equipe = _perimetre_cible(current_user, assigne_a, dossier_id)
+        if not ok:
+            flash(erreur, 'danger')
+            return redirect(url_for('taches'))
         t = Tache(
             titre=titre,
             description=request.form.get('description', '').strip(),
@@ -245,3 +256,77 @@ def taches():
         },
         social_only=social_only,
         date=date, timedelta=timedelta)
+
+
+@app.route('/modifier_tache/<int:tache_id>', methods=['POST'])
+@login_required
+def modifier_tache(tache_id):
+    """Modifier une tâche. Le créateur peut modifier la sienne (y compris un
+    collaborateur qui l'a créée pour lui-même ou son manager) ; les managers et
+    admins modifient dans leur périmètre. Notifications conservées : in-app, et
+    email uniquement si la tâche (re)devient urgente."""
+    t = Tache.query.get_or_404(tache_id)
+    if not (t.cree_par == current_user.id or current_user.role in ('admin', 'manager')):
+        flash("Vous ne pouvez modifier qu'une tâche que vous avez créée.", 'danger')
+        return redirect(url_for('taches'))
+    titre = (request.form.get('titre') or '').strip()
+    if not titre:
+        flash('Le titre est obligatoire.', 'warning')
+        return redirect(url_for('taches'))
+    assigne_a = request.form.get('assigne_a', type=int) or None
+    dossier_id = request.form.get('dossier_id', type=int) or None
+    ok, erreur, manager_equipe = _perimetre_cible(current_user, assigne_a, dossier_id)
+    if not ok:
+        flash(erreur, 'danger')
+        return redirect(url_for('taches'))
+
+    ancien_assigne = t.assigne_a
+    t.titre = titre
+    t.description = (request.form.get('description') or '').strip()
+    t.dossier_id = dossier_id
+    t.assigne_a = assigne_a
+    priorite = request.form.get('priorite')
+    if priorite in ('haute', 'moyenne', 'basse'):
+        t.priorite = priorite
+    echeance = request.form.get('date_echeance')
+    if echeance:
+        try:
+            t.date_echeance = datetime.strptime(echeance, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    db.session.commit()
+
+    # Notification au nouvel assigné SEULEMENT si l'assignation a changé (pour ne
+    # pas spammer à chaque petite édition) : in-app, + email si priorité haute.
+    if assigne_a != ancien_assigne and t.assigne_a and t.assigne_a != current_user.id:
+        assigne_est_manager = bool(manager_equipe and manager_equipe.manager_id == t.assigne_a)
+        if not assigne_est_manager:
+            db.session.add(Notification(user_id=t.assigne_a, tache_id=t.id,
+                                        message=f"Nouvelle tâche assignée : {t.titre}",
+                                        type_notification='assignation'))
+            db.session.commit()
+            if t.priorite == 'haute':
+                try:
+                    from app.integrations.brevo import send_task_assigned_email_brevo
+                    send_task_assigned_email_brevo(t, t.assigne_a)
+                except Exception as e:
+                    app.logger.warning(f"Send email failed: {e}")
+
+    # Collaborateur : le manager responsable de son équipe est informé de la
+    # modification (comme à la création) ; email de suivi si la tâche est urgente.
+    if current_user.role == 'membre' and manager_equipe and manager_equipe.manager_id:
+        mgr_id = manager_equipe.manager_id
+        auteur = f'{current_user.prenom} {current_user.nom}'
+        db.session.add(Notification(user_id=mgr_id, tache_id=t.id,
+                                    message=f'{auteur} a modifié une tâche : {t.titre}',
+                                    type_notification='assignation'))
+        db.session.commit()
+        if t.priorite == 'haute':
+            try:
+                from app.integrations.brevo import send_tache_creee_manager_email_brevo
+                send_tache_creee_manager_email_brevo(t, mgr_id, auteur)
+            except Exception as e:
+                app.logger.warning(f"Send email manager failed: {e}")
+
+    flash('Tâche modifiée.', 'success')
+    return redirect(url_for('taches'))

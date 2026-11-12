@@ -1,5 +1,5 @@
 <style>
-/* Assistant Orbit — habillage aligné sur les jetons du design system. */
+/* ASTRO — habillage aligné sur les jetons du design system. */
 #assistantFab{position:fixed;right:20px;bottom:20px;z-index:1050;width:56px;height:56px;border-radius:50%;border:0;background:var(--amber,#C45B32);color:#17181c;font-size:22px;box-shadow:var(--shadow-orange,0 8px 22px -12px rgba(196,91,50,.55)),var(--shadow-2,0 10px 26px -16px rgba(23,26,31,.18));cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s cubic-bezier(.22,1,.36,1)}
 #assistantFab:hover{transform:translateY(-2px) scale(1.03)}
 #assistantFab:active{transform:scale(.96)}
@@ -14,8 +14,8 @@
 #assistantPanel .ap-head-text{flex:1 1 auto;min-width:0;line-height:1.2}
 #assistantPanel .ap-head-text strong{display:block;font-size:.92rem;font-weight:700}
 #assistantPanel .ap-head-text small{display:block;font-size:.72rem;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#assistantPanel .ap-head button{background:none;border:0;color:#17181c;font-size:17px;line-height:1;cursor:pointer;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:background-color .15s linear}
-#assistantPanel .ap-head button:hover{background:rgba(23,26,31,.14)}
+#assistantPanel .ap-head button, #assistantPanel .ap-head a{background:none;border:0;color:#17181c;font-size:17px;line-height:1;cursor:pointer;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:background-color .15s linear;text-decoration:none}
+#assistantPanel .ap-head button:hover, #assistantPanel .ap-head a:hover{background:rgba(23,26,31,.14)}
 
 #assistantMessages{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--paper-tint,#f9f7f2)}
 .ap-msg{max-width:86%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;line-height:1.45;font-size:.84rem}
@@ -43,6 +43,10 @@
 .ap-draft button{padding:6px 12px;border-radius:8px;border:1px solid var(--amber,#C45B32);background:var(--amber,#C45B32);color:#17181c;cursor:pointer;font-size:.78rem;font-weight:600}
 .ap-draft button.secondary{background:transparent;color:var(--amber-deep)}
 .ap-draft button:disabled{opacity:.55;cursor:default}
+.ap-draft.ap-draft-danger{border-color:rgba(187,58,58,.45);background:var(--danger-bg,#fbe9e9)}
+.ap-draft.ap-draft-danger .ap-draft-to{color:var(--danger,#bb3a3a)}
+.ap-draft.ap-draft-danger button:not(.secondary){background:var(--danger,#bb3a3a);border-color:var(--danger,#bb3a3a);color:#fff}
+.ap-draft.ap-draft-danger button.secondary{border-color:rgba(187,58,58,.4);color:var(--danger,#bb3a3a)}
 
 #assistantForm{display:flex;align-items:flex-end;gap:8px;padding:11px 12px;border-top:1px solid var(--rule);background:var(--surface-raised,#fff)}
 #assistantForm textarea{flex:1 1 auto;resize:none;border:1px solid var(--rule);border-radius:12px;padding:9px 12px;font:inherit;font-size:.85rem;line-height:1.4;max-height:96px;background:var(--bg-card,#fafafb);color:inherit}
@@ -61,17 +65,20 @@
 }
 </style>
 
-<button id="assistantFab" type="button" aria-label="Ouvrir l'assistant" title="Assistant Orbit" aria-expanded="false">
+<button id="assistantFab" type="button" aria-label="Ouvrir ASTRO" title="ASTRO — assistant IA" aria-expanded="false">
     <i class="bi bi-stars"></i>
 </button>
 
-<div id="assistantPanel" role="dialog" aria-label="Assistant Orbit">
+<div id="assistantPanel" role="dialog" aria-label="ASTRO">
     <div class="ap-head">
         <span class="ap-avatar"><i class="bi bi-stars"></i></span>
         <span class="ap-head-text">
-            <strong>Assistant Orbit</strong>
-            <small id="assistantStatus">Vos dossiers, vos échéances, vos tâches</small>
+            <strong>ASTRO</strong>
+            <small id="assistantStatus">Votre copilote JMH Orbit</small>
         </span>
+        <a id="assistantMemoire" href="/assistant/memoire" title="Mémoire d'ASTRO (cabinet + personnelle)" aria-label="Mémoire d'ASTRO">
+            <i class="bi bi-journal-bookmark"></i>
+        </a>
         <button id="assistantDiag" type="button" title="Diagnostic de l'assistant" aria-label="Diagnostic">
             <i class="bi bi-activity"></i>
         </button>
@@ -85,6 +92,9 @@
         <button type="button" data-q="Quel est mon résumé du jour ?">Résumé du jour</button>
         <button type="button" data-q="Quelles échéances arrivent cette semaine ?">Échéances de la semaine</button>
         <button type="button" data-q="Où en est l'avancement de l'équipe ?">Avancement</button>
+        <button type="button" data-q="Où en sont les nouveaux dossiers ?">Nouveaux dossiers</button>
+        <button type="button" data-q="Que sais-tu de moi ?">Ma mémoire</button>
+        <button type="button" data-q="cherche dans l'historique : ">Historique</button>
     </div>
 
     <form id="assistantForm" autocomplete="off">

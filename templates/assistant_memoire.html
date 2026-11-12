@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Mémoire d'ASTRO{% endblock %}
+{% block content %}
+<div class="page-head animate-fade-in-up">
+    <div class="page-head-main">
+        <span class="page-head-icon"><i class="bi bi-journal-bookmark"></i></span>
+        <div class="page-head-titles">
+            <h2>Mémoire d'ASTRO</h2>
+            <p class="page-head-sub">Ce que l'assistant retient : mémoire du cabinet partagée avec l'équipe + votre mémoire personnelle</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.mem-entry { border: 1px solid var(--border-color); border-radius: 12px; padding: .8rem 1rem; margin-bottom: .6rem; background: var(--surface-raised); }
+.mem-contenu { font-size: .92rem; margin-bottom: .35rem; white-space: pre-wrap; }
+.mem-meta { font-size: .74rem; color: var(--text-tertiary); display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.mem-meta .badge { font-size: .66rem; }
+.mem-actions { margin-left: auto; display: inline-flex; gap: .4rem; }
+.mem-actions summary, .mem-actions button { font-size: .74rem; }
+.mem-edit-form { margin-top: .6rem; display: flex; gap: .5rem; align-items: flex-start; }
+.mem-edit-form textarea { flex: 1; min-height: 60px; }
+.mem-vide { color: var(--text-tertiary); font-size: .88rem; padding: .6rem 0; }
+</style>
+
+<div class="card-premium mb-4">
+    <div class="card-body-premium">
+        <h5 class="mb-3"><i class="bi bi-plus-circle me-1"></i> Ajouter un souvenir</h5>
+        <form method="post" action="{{ url_for('assistant_memoire_ajouter') }}" class="d-flex flex-wrap gap-2 align-items-start">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <textarea name="contenu" class="input-premium" rows="2" maxlength="500" required
+                      placeholder="Ex : Le client SOPARK préfère être contacté par email le matin." style="flex:1 1 320px;"></textarea>
+            <select name="portee" class="input-premium" style="flex:0 0 auto;">
+                <option value="personnel">Ma mémoire personnelle</option>
+                <option value="cabinet">Mémoire du cabinet (partagée)</option>
+            </select>
+            <button type="submit" class="btn btn-premium-primary"><i class="bi bi-check-lg"></i> Mémoriser</button>
+        </form>
+        <p class="text-tertiary mt-2 mb-0" style="font-size:.78rem;">
+            ASTRO apprend aussi tout seul des discussions (« souviens-toi que… » pour forcer la prise de note).
+            Jamais de mots de passe ni de clés API ici.
+        </p>
+    </div>
+</div>
+
+{% macro entree(m, editable) %}
+<div class="mem-entry">
+    <div class="mem-contenu">{{ m.contenu }}</div>
+    <div class="mem-meta">
+        {% if m.categorie %}<span class="badge badge-tertiary">{{ m.categorie }}</span>{% endif %}
+        <span><i class="bi bi-clock"></i> {{ m.date_creation.strftime('%d/%m/%Y') if m.date_creation else '' }}</span>
+        {% if m.portee == 'cabinet' and m.cree_par %}<span><i class="bi bi-person"></i> {{ m.cree_par.nom_complet() }}</span>{% endif %}
+        <span>{{ {'conversation': 'appris en discussion', 'regles': 'commande souviens-toi', 'manuel': 'ajout manuel'}.get(m.source, m.source) }}</span>
+        {% if editable %}
+        <span class="mem-actions">
+            <details class="d-inline">
+                <summary class="btn btn-premium-outline btn-sm"><i class="bi bi-pencil"></i> Modifier</summary>
+                <form method="post" action="{{ url_for('assistant_memoire_modifier', memoire_id=m.id) }}" class="mem-edit-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <textarea name="contenu" class="input-premium" maxlength="500" required>{{ m.contenu }}</textarea>
+                    <button type="submit" class="btn btn-premium-primary btn-sm"><i class="bi bi-check-lg"></i></button>
+                </form>
+            </details>
+            <form method="post" action="{{ url_for('assistant_memoire_supprimer', memoire_id=m.id) }}" class="d-inline"
+                  onsubmit="return confirm('Effacer définitivement ce souvenir ?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-premium-outline btn-sm" title="Effacer"><i class="bi bi-trash"></i></button>
+            </form>
+        </span>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+<div class="card-premium mb-4">
+    <div class="card-body-premium">
+        <h5 class="mb-1"><i class="bi bi-people me-1"></i> Mémoire du cabinet <span class="badge badge-tertiary">{{ cabinet|length }}</span></h5>
+        <p class="text-tertiary" style="font-size:.78rem;">Partagée avec toute l'équipe. Chacun peut contribuer ; seuls l'auteur, un manager ou un admin peuvent modifier ou effacer.</p>
+        {% for m in cabinet %}
+            {{ entree(m, peut_ecrire_cabinet(m)) }}
+        {% else %}
+            <div class="mem-vide">Aucun souvenir partagé pour l'instant. Dites à ASTRO « souviens-toi que … pour le cabinet » ou ajoutez-en un ci-dessus.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card-premium mb-4">
+    <div class="card-body-premium">
+        <h5 class="mb-1"><i class="bi bi-person-lock me-1"></i> Ma mémoire personnelle <span class="badge badge-tertiary">{{ perso|length }}</span></h5>
+        <p class="text-tertiary" style="font-size:.78rem;">Visible uniquement par vous et ASTRO quand vous discutez. Vos préférences, vos habitudes, votre contexte.</p>
+        {% for m in perso %}
+            {{ entree(m, true) }}
+        {% else %}
+            <div class="mem-vide">Rien de personnel pour l'instant. ASTRO retiendra vos préférences au fil des discussions.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

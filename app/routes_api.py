@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from .route_common import membres_visibles_query, dossiers_visibles_query
 
 # Réglages dont la valeur n'est JAMAIS renvoyée au navigateur (ni dans le HTML, ni dans le JSON).
-_CLES_SECRETES = ('MAIL_PASSWORD', 'BREVO_API_KEY', 'OPENROUTER_API_KEY', 'NVIDIA_API_KEY', 'GEMINI_API_KEY', 'GROQ_API_KEY')
+_CLES_SECRETES = ('MAIL_PASSWORD', 'BREVO_API_KEY', 'OPENROUTER_API_KEY', 'NVIDIA_API_KEY', 'GEMINI_API_KEY', 'GROQ_API_KEY', 'GOOGLE_DRIVE_SA_JSON')
 
 
 @app.route('/settings')
@@ -72,6 +72,28 @@ def api_settings():
     setting.masque = bool(data.get('masque', setting.masque)) or cle in _CLES_SECRETES
     db.session.commit()
     return jsonify({'ok': True, 'cle': cle})
+
+
+@app.route('/api/llm/models', methods=['GET'])
+@login_required
+def api_llm_models():
+    """Liste déroulante des modèles : interroge l'API du provider (cache 1 h).
+
+    ?provider=nvidia|groq|openrouter|gemini — ?refresh=1 force le rechargement.
+    La clé n'est jamais renvoyée, seulement utilisée côté serveur.
+    """
+    if current_user.role != 'admin':
+        return jsonify({'ok': False, 'error': 'Accès refusé.'}), 403
+    provider = (request.args.get('provider') or '').strip().lower()
+    from app.integrations.llm_provider import lister_modeles
+    try:
+        modeles, source = lister_modeles(provider, refresh=request.args.get('refresh') == '1')
+    except RuntimeError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 502
+    except Exception:
+        app.logger.exception('api_llm_models: erreur inattendue provider=%s', provider)
+        return jsonify({'ok': False, 'error': 'Liste des modèles indisponible.'}), 502
+    return jsonify({'ok': True, 'models': modeles, 'source': source})
 
 
 @app.route('/api/test/mail', methods=['POST'])
