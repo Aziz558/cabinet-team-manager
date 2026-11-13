@@ -32,6 +32,16 @@ VERBE_ACTION_RE = re.compile(
     r'passe|passer|mets|mettre|remets|remettre|change|changer|rends|rendre|'
     r'supprime|supprimer|efface|effacer|cree|creer|ajoute|ajouter)\b')
 
+# Demande de rappel en langage naturel : « rappelle-moi… », « rappeler moi… »,
+# « fais-moi un rappel… ». Distinct de la mémoire (« rappelle-toi que… »).
+RAPPEL_DEMANDE_RE = re.compile(
+    r'\b(?:rappelle|rappeler|rappelez|rappeles|rappel)\b[\s\-]*(?:moi|nous|me)\b'
+    r'|\b(?:fais|faites|programme|planifie|planifier|creer|cree)\b[^.]{0,25}\brappel\b')
+
+JOURS_SEMAINE = {'lundi': 0, 'mardi': 1, 'mercredi': 2, 'jeudi': 3,
+                 'vendredi': 4, 'samedi': 5, 'dimanche': 6}
+REFERENTS_RAPPEL = ('ca', 'cela', 'ceci', 'ca la', 'cette liste', 'la liste', 'tout ca')
+
 
 def taches_visibles_query(user):
     """Tâches visibles : admin = toutes ; manager = celles de son équipe + les siennes ; membre = les siennes."""
@@ -141,7 +151,8 @@ def construire_prompt(user):
         '<RAPPEL>{"titre": "...", "message": "...", "date_echeance": "AAAA-MM-JJ"}</RAPPEL>\n'
         "Un rappel crée une notification in-app immédiate pour l'utilisateur. S'il n'est pas marqué "
         "comme lu (NOTE) sous 24h, un email de relance est envoyé. Un email est aussi envoyé à la "
-        "date d'échéance. Ne propose un rappel que si l'utilisateur le demande.\n\n"
+        "date d'échéance. Ne propose un rappel que si l'utilisateur le demande. Si une heure est "
+        "demandée (« à 10h »), ajoute-la au titre : « … (10h) » — la date reste AAAA-MM-JJ.\n\n"
         "Pour proposer un changement de statut d'une tâche, ajoute à la fin de ta réponse un bloc exact :\n"
         '<STATUT>{"tache_id": <id d\'une tâche listée>, "statut": "a_faire|en_cours|terminee"}</STATUT>\n'
         "N'utilise que les identifiants de tâches listés. Terminer une tâche deadline fiscale coche "
@@ -757,6 +768,138 @@ def detecter_recherche_historique(message, user):
     return {'reponse': '\n'.join(lignes)}
 
 
+def _date_rappel_depuis(m, aujourd=None):
+    """Date d'un rappel demandé en français courant. None si aucune date n'est donnée."""
+    aujourd = aujourd or date.today()
+    if 'apres demain' in m:
+        return aujourd + timedelta(days=2)
+    if 'demain' in m:
+        return aujourd + timedelta(days=1)
+    if 'aujourd' in m:
+        return aujourd
+    mm = re.search(r'\bdans\s+(\d{1,2})\s+jours?\b', m)
+    if mm:
+        return aujourd + timedelta(days=int(mm.group(1)))
+    mm = re.search(r'\b(\d{1,2})\s*[/.]\s*(\d{1,2})(?:\s*[/.]\s*(\d{2,4}))?\b', m)
+    if mm:
+        jour, mois, an = int(mm.group(1)), int(mm.group(2)), mm.group(3)
+        annee = int(an) if an else aujourd.year
+        if an and annee < 100:
+            annee += 2000
+        try:
+            d = date(annee, mois, jour)
+        except ValueError:
+            return None
+        if not an and d < aujourd:
+            try:
+                d = date(annee + 1, mois, jour)
+            except ValueError:
+                return None
+        return d
+    for nom, idx in JOURS_SEMAINE.items():
+        if re.search(r'\b' + nom + r'\b', m):
+            return aujourd + timedelta(days=(idx - aujourd.weekday()) % 7 or 7)
+    return None
+
+
+def _heure_rappel_depuis(m):
+    """Heure demandée (« 10h », « 10h30 », « 10:00 »), au format 10h / 10h30."""
+    mm = re.search(r'\b(\d{1,2})\s*h\s*(\d{2})?\b', m) or re.search(r'\b(\d{1,2})\s*:\s*(\d{2})\b', m)
+    if not mm:
+        return None
+    h, mn = int(mm.group(1)), int(mm.group(2) or 0)
+    if h > 23 or mn > 59:
+        return None
+    return f'{h:02d}h{mn:02d}' if mn else f'{h:02d}h'
+
+
+def _sujet_rappel(message):
+    """Objet du rappel, débarrassé des mots de la demande et des dates.
+    Chaîne vide = l'utilisateur a dit « de ça » : le contexte tranchera."""
+    txt = message
+    txt = re.sub(r'(?i)\b(?:non|oui|alors|et)\b\s*', ' ', txt)
+    txt = re.sub(r'(?i)\b(?:rappelle|rappeler|rappelez|rappeles|rappel|fais|faites|programme|planifie|planifier)\b',
+                 ' ', txt)
+    txt = re.sub(r'(?i)\b(?:moi|nous|me)\b', ' ', txt)
+    txt = re.sub(r"(?i)\b(?:demain|aujourd[\'’]?hui|apr[eè]s[\s-]*demain)\b", ' ', txt)
+    txt = re.sub(r'(?i)\bdans\s+\d{1,2}\s+jours?\b', ' ', txt)
+    txt = re.sub(r'(?i)\b(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b', ' ', txt)
+    txt = re.sub(r'(?i)\b(?:à|a)\s*\d{1,2}\s*(?:h|:)\s*\d{0,2}\b', ' ', txt)
+    txt = re.sub(r'(?i)\b\d{1,2}\s*h\s*\d{0,2}\b', ' ', txt)
+    txt = re.sub(r'\b\d{1,2}\s*[/.]\s*\d{1,2}(?:\s*[/.]\s*\d{2,4})?\b', ' ', txt)
+    txt = re.sub(r'[?!.,;:]+', ' ', txt)
+    txt = re.sub(r'\s+', ' ', txt).strip(' -')
+    txt = re.sub(r'(?i)^(?:de|des|du|pour|que|qu|la|le|les|mes|mon|ma)\s+', '', txt).strip()
+    return txt[:200]
+
+
+def _mise_en_forme_titre(titre):
+    """Titre de rappel lisible : sans ponctuation finale, capitalisé, pas tout en majuscules."""
+    titre = re.sub(r'[\s:;,.]+$', '', (titre or '').strip())
+    titre = re.sub(r'(?i)\s+(?:sont|est)$', '', titre)
+    if titre.isupper():
+        titre = titre.capitalize()
+    elif titre[:1].islower():
+        titre = titre[:1].upper() + titre[1:]
+    return titre[:200]
+
+
+def _contexte_rappel(historique):
+    """Reprend la dernière réponse d'ASTRO quand l'utilisateur dit « de ça »."""
+    for m in reversed(historique_propre(historique)):
+        if m['role'] != 'assistant':
+            continue
+        texte = re.sub(r'<[A-Z_]+>.*?</[A-Z_]+>', '', m['content'], flags=re.S).strip()
+        lignes = [re.sub(r'^[\s\-•*]+', '', l).strip() for l in texte.splitlines()]
+        lignes = [l for l in lignes if l]
+        if not lignes:
+            continue
+        return {'titre': lignes[0][:180], 'detail': texte[:1500]}
+    return None
+
+
+def detecter_rappel(message, user, historique=None):
+    """Voie rapide SANS LLM : « rappelle-moi demain à 10h de relancer X ».
+
+    Le routeur par intention interceptait le mot « demain » et renvoyait la liste
+    des échéances : une demande d'action était traitée comme une question. Ici la
+    demande produit directement la proposition de rappel (confirmation côté client).
+    """
+    m = _normaliser(message)
+    if not RAPPEL_DEMANDE_RE.search(m):
+        return None
+
+    echeance = _date_rappel_depuis(m)
+    if echeance is None:
+        return {'reponse': "Pour quelle date ? (ex. « demain », « lundi », « dans 3 jours », « le 20/11 »)",
+                'rappel': None}
+    heure = _heure_rappel_depuis(m)
+    sujet = _sujet_rappel(message)
+    titre, message_rappel = None, None
+    if sujet and _normaliser(sujet) not in REFERENTS_RAPPEL:
+        titre = _mise_en_forme_titre(sujet)
+        message_rappel = titre
+    else:
+        ctx = _contexte_rappel(historique)
+        if not ctx:
+            return {'reponse': "De quoi dois-je vous rappeler ? Précisez l'objet du rappel.",
+                    'rappel': None}
+        titre = _mise_en_forme_titre(ctx['titre'])
+        message_rappel = ctx['detail']
+    if heure:
+        titre = f'{titre} ({heure})'[:200]
+        message_rappel = f'{message_rappel}\nHeure souhaitée : {heure}.'
+
+    proposition, erreur = valider_rappel({'titre': titre, 'message': message_rappel,
+                                          'date_echeance': echeance.isoformat()}, user)
+    if erreur:
+        return {'reponse': f"Rappel impossible : {erreur}.", 'rappel': None}
+    quand = echeance.strftime('%d/%m/%Y') + (f' à {heure}' if heure else '')
+    return {'reponse': f"Rappel proposé : « {proposition['titre']} » — {quand}. "
+                       "Confirmez pour le créer.",
+            'rappel': proposition}
+
+
 def journaliser_echange(user, message, reponse):
     """Tampon journalier : stocke la question + la réponse en base (exportées puis
     purgées par le job du soir). Borné à 8000 caractères par entrée pour garder
@@ -957,6 +1100,10 @@ def detecter_intention(message):
     if not m or len(m) > 200:
         return None
     if VERBE_ACTION_RE.search(m):
+        return None
+    # Une demande de rappel est une action : « rappelle-moi demain… » ne doit pas
+    # être absorbée par le mot-clé « demain ».
+    if RAPPEL_DEMANDE_RE.search(m):
         return None
     if any(k in m for k in ('nouveau dossier', 'nouveaux dossiers', 'onboarding', 'suivi nouveau')):
         return 'onboarding'

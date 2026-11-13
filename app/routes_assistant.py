@@ -22,7 +22,8 @@ from .assistant_service import (construire_prompt, historique_propre,
                                 appliquer_suppression_dossier,
                                 extraire_proposition_onb_etape, valider_onb_etape,
                                 appliquer_onb_etape, extraire_memoires,
-                                journaliser_echange, detecter_recherche_historique)
+                                journaliser_echange, detecter_recherche_historique,
+                                detecter_rappel)
 
 
 @app.route('/api/assistant/message', methods=['POST'])
@@ -33,6 +34,17 @@ def assistant_message():
     message = (data.get('message') or '').strip()[:2000]
     if not message:
         return jsonify({'ok': False, 'error': 'Message vide.'}), 400
+
+    # Demande de rappel explicite (« rappelle-moi demain à 10h de relancer X ») :
+    # c'est une ACTION, pas une question. Elle passe avant le routage par mot-clé,
+    # qui répondait sinon la liste des échéances de demain.
+    rappel_rule = detecter_rappel(message, current_user, data.get('historique'))
+    if rappel_rule:
+        journaliser_echange(current_user, message, rappel_rule['reponse'])
+        return jsonify({'ok': True, 'reponse': rappel_rule['reponse'], 'brouillon': None,
+                        'tache': None, 'rappel': rappel_rule.get('rappel'),
+                        'statut': None, 'statut_lot': None, 'suppression': None,
+                        'onb_etape': None, 'memoires': None, 'source': 'regles'})
 
     # Actions explicites d'abord (« termine la tâche #123 », « toutes les tâches
     # de X en retard à terminer », « supprime le dossier Y », « souviens-toi ») :
