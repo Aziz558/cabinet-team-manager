@@ -2121,20 +2121,22 @@ body::before {
    ------------------------------------------------------------------------- */
 :root,
 html[data-theme="light"] {
-  --paper: #E5E0DA;
-  --paper-deep: #D9D3CA;
-  --paper-tint: #EFEBE4;
-  --surface: #EFEBE4;
-  --surface-raised: #F3EFE8;
+  /* Blanc de référence (#FFFFFF) + hairlines neutres : la profondeur vient du
+     trait et de l'ombre, jamais d'un blanc teinté. */
+  --paper: #FFFFFF;
+  --paper-deep: #F7F8F8;
+  --paper-tint: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
 
   --ink: #1C1A17;
   --ink-2: #4A453F;
   --ink-3: #5C5650;
   --ink-4: #66605A;
 
-  --rule: #D2CBC1;
-  --rule-soft: #DDD7CD;
-  --rule-strong: #BDB5A8;
+  --rule: #E4E5E7;
+  --rule-soft: #EDEFF1;
+  --rule-strong: #D6D9DB;
 
   --amber: #C45B32;
   --amber-deep: #A34A28;
@@ -2171,13 +2173,13 @@ html[data-theme="light"] {
   --bg-dark: var(--paper);
   --bg-darker: var(--paper-deep);
   --bg-card: var(--surface);
-  --bg-card-hover: #F2EDE6;
-  --bg-card-active: #E5E0DA;
+  --bg-card-hover: #F7F8F8;
+  --bg-card-active: #F0F2F3;
   --bg-elevated: var(--surface-raised);
   --bg-sidebar: transparent;
   --bg-sidebar-hover: rgba(23, 26, 31, .045);
-  --bg-hover: rgba(23, 26, 31, .04);
-  --bg-glass: rgba(243, 239, 232, .86);
+  --bg-hover: rgba(23, 26, 31, .035);
+  --bg-glass: rgba(255, 255, 255, .86);
   --text-primary: var(--ink);
   --text-secondary: var(--ink-2);
   --text-tertiary: var(--ink-3);

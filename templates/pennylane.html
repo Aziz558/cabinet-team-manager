@@ -977,9 +977,9 @@ function plRefreshData(silent) {
     border: 1px solid var(--border-color, #e3e5e9);
     border-radius: var(--pl-radius-xl);
     background:
-        radial-gradient(900px 320px at 8% -40%, rgba(196, 91, 50, 0.16), transparent 62%),
-        radial-gradient(700px 300px at 105% 140%, rgba(255, 161, 73, 0.14), transparent 58%),
-        linear-gradient(135deg, var(--bg-elevated, #fff) 0%, var(--bg-card, #fafafb) 100%);
+        radial-gradient(900px 320px at 8% -40%, rgba(196, 91, 50, 0.05), transparent 62%),
+        radial-gradient(700px 300px at 105% 140%, rgba(255, 161, 73, 0.04), transparent 58%),
+        var(--bg-elevated, #fff);
     box-shadow: var(--pl-shadow-1);
     overflow: hidden;
 }
@@ -991,7 +991,7 @@ function plRefreshData(silent) {
     width: 320px;
     height: 320px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(196, 91, 50, 0.16) 0%, transparent 68%);
+    background: radial-gradient(circle, rgba(196, 91, 50, 0.05) 0%, transparent 68%);
     pointer-events: none;
 }
 .pl-hero > * { position: relative; z-index: 1; }

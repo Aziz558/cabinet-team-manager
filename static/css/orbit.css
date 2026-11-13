@@ -23,13 +23,13 @@
   --danger: #ef5350;
   --info: #4cc3ff;
 
-  /* Mode clair : papier chaud du cabinet.
-     Échelle volontairement courte et teintée : aucune surface ne dépasse
-     #F3EFE8, sinon elle se lit comme du blanc pur contre le papier. */
-  --paper: #E5E0DA;
-  --surface: #EFEBE4;
-  --surface-raised: #F3EFE8;
-  --surface-sunken: #D9D3CA;
+  /* Mode clair : le blanc de référence du cabinet — #FFFFFF, hairlines
+     neutres (#E4E5E7) et un seul lavis (#F7F8F8) pour les creux. Aucune
+     surface teintée : la hiérarchie vient du trait, pas d'une nuance de blanc. */
+  --paper: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-sunken: #F7F8F8;
   --overlay: rgba(16, 16, 16, .48);
   --scrim: rgba(16, 16, 16, .62);
 
@@ -38,12 +38,12 @@
   --ink-3: #5C5650;
   --ink-4: #66605A;
 
-  --line: rgba(28, 26, 23, .12);
-  --line-strong: rgba(28, 26, 23, .20);
+  --line: #E4E5E7;
+  --line-strong: #D6D9DB;
 
   --bg-dark: var(--paper);
   --bg-card: var(--surface);
-  --bg-card-hover: #F2EDE6;
+  --bg-card-hover: #F7F8F8;
   --bg-elevated: var(--surface-raised);
   --border-color: var(--line);
   --text-primary: var(--ink-1);
@@ -91,17 +91,17 @@
 
   --orbit-grid: rgba(16, 19, 26, .045);
 
-  /* Composants Bootstrap : ils lisent --bs-body-bg (#fff par défaut) pour les
-     modales, toasts, dropdowns, accordéons, offcanvas. On les branche sur le
-     papier chaud — sinon ces couches réintroduisent du blanc pur. */
+  /* Composants Bootstrap : ils lisent --bs-body-bg pour les modales, toasts,
+     dropdowns, accordéons, offcanvas. Tout est branché sur le même blanc que
+     le reste de l'app — une seule teinte, aucune couche qui dérive. */
   --bs-body-bg: var(--surface);
-  --bs-body-bg-rgb: 239, 235, 228;
+  --bs-body-bg-rgb: 255, 255, 255;
   --bs-body-color: var(--ink-1);
-  --bs-secondary-bg: var(--surface-raised);
-  --bs-tertiary-bg: var(--surface-raised);
-  --bs-white: var(--surface-raised);
-  --bs-white-rgb: 243, 239, 232;
-  --bs-light: var(--surface-raised);
+  --bs-secondary-bg: var(--surface-sunken);
+  --bs-tertiary-bg: var(--surface-sunken);
+  --bs-white: #FFFFFF;
+  --bs-white-rgb: 255, 255, 255;
+  --bs-light: var(--surface-sunken);
   --bs-border-color: var(--line);
 
   color-scheme: light;
@@ -747,6 +747,12 @@ main#mainContent { view-transition-name: none !important; }
   border-radius: 999px; padding: 5px 12px; font-size: .78rem; color: var(--text-secondary);
 }
 .kpi-chip strong { font-family: var(--font-mono); color: var(--text-primary); }
+/* Mode clair : pas de pastille grise sur le blanc — le trait sépare. */
+html[data-theme="light"] .kpi-chip {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: var(--shadow-1);
+}
 
 /* --------------------------------------------------------------------------
    10. TABLES
